@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2c31"/><stop offset="1" stop-color="#0c0c0f"/></linearGradient></defs>
+<rect width="256" height="256" rx="57.6" fill="url(#g)"/>
+<path d="M139.52,112.64 L182.53,112.64 L182.53,135.68 L139.52,135.68 Z" fill="#fff" fill-opacity="0.14" stroke="#fff" stroke-opacity="0.55" stroke-width="3.23" stroke-linejoin="round"/>
+<path d="M124.16,171.01 A50.69,50.69 0 0 1 73.47,120.32 L73.47,143.36 A50.69,50.69 0 0 0 124.16,194.05 Z" fill="#fff" fill-opacity="0.14" stroke="#fff" stroke-opacity="0.55" stroke-width="3.23" stroke-linejoin="round"/>
+<path d="M131.84,61.95 A50.69,50.69 0 0 1 182.53,112.64 L139.52,112.64 A7.68,7.68 0 0 0 131.84,104.96 Z" fill="#fff" fill-opacity="0.3" stroke="#fff" stroke-width="5.38" stroke-linejoin="round"/>
+<path d="M124.16,171.01 A50.69,50.69 0 0 1 73.47,120.32 L116.48,120.32 A7.68,7.68 0 0 0 124.16,128.00 Z" fill="#fff" fill-opacity="0.3" stroke="#fff" stroke-width="5.38" stroke-linejoin="round"/>
+<circle cx="128.00" cy="116.48" r="6.53" fill="#fff"/>
+</svg>
