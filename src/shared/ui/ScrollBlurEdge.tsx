@@ -1,25 +1,53 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface ScrollBlurEdgeProps {
   /** height of the blurred band in px */
   height?: number;
   /** scrollTop after which the band fades in */
   threshold?: number;
-  /** top padding of the scroller, so the band starts at its very top */
+  /** kept for compatibility; the band is always aligned to the scroller's top edge */
   offset?: number;
 }
 
+interface Box {
+  top: number;
+  left: number;
+  width: number;
+}
+
 /**
- * A soft frosted band pinned to the top of the nearest scroll container. It
- * fades in once the content scrolls under the window controls, so headers stay
- * readable without a hard bar. Render it as the FIRST child of the scroller.
+ * A soft frosted band over the top edge of the nearest scroll container. It fades
+ * in once content scrolls under the window controls. Render it anywhere inside
+ * the scroller (first child is best): it measures the scroller and draws an
+ * overlay next to it, so padding and sticky quirks can't misplace it.
  */
-export default function ScrollBlurEdge({ height = 64, threshold = 6, offset = 0 }: ScrollBlurEdgeProps) {
-  const ref = useRef<HTMLDivElement>(null);
+export default function ScrollBlurEdge({ height = 64, threshold = 6 }: ScrollBlurEdgeProps) {
+  const marker = useRef<HTMLSpanElement>(null);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const [box, setBox] = useState<Box | null>(null);
   const [visible, setVisible] = useState(false);
 
+  useLayoutEffect(() => {
+    const scroller = marker.current?.parentElement;
+    const parent = scroller?.parentElement;
+    if (!scroller || !parent) return;
+    if (getComputedStyle(parent).position === "static") parent.style.position = "relative";
+    setHost(parent);
+
+    const measure = () =>
+      setBox((prev) => {
+        const next = { top: scroller.offsetTop, left: scroller.offsetLeft, width: scroller.clientWidth };
+        return prev && prev.top === next.top && prev.left === next.left && prev.width === next.width ? prev : next;
+      });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(scroller);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
-    const scroller = ref.current?.parentElement;
+    const scroller = marker.current?.parentElement;
     if (!scroller) return;
     let raf = 0;
     const update = () => {
@@ -37,21 +65,32 @@ export default function ScrollBlurEdge({ height = 64, threshold = 6, offset = 0 
     };
   }, [threshold]);
 
-  const mask = "linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%)";
+  const mask = "linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.85) 40%, transparent 100%)";
   return (
-    <div ref={ref} aria-hidden className="sticky top-0 z-[15] h-0 w-full pointer-events-none" style={{ marginTop: -offset, marginBottom: offset }}>
-      <div
-        className="absolute -left-[8px] -right-[8px] top-0 transition-opacity duration-300 ease-out"
-        style={{
-          height,
-          opacity: visible ? 1 : 0,
-          backdropFilter: "blur(12px) saturate(1.15)",
-          WebkitBackdropFilter: "blur(12px) saturate(1.15)",
-          background: "color-mix(in srgb, var(--bg-canvas, transparent) 28%, transparent)",
-          maskImage: mask,
-          WebkitMaskImage: mask,
-        }}
-      />
-    </div>
+    <>
+      <span ref={marker} hidden aria-hidden />
+      {host && box
+        ? createPortal(
+            <div
+              aria-hidden
+              className="pointer-events-none absolute z-[15] transition-opacity duration-300 ease-out"
+              style={{
+                top: box.top,
+                left: box.left,
+                width: box.width,
+                height,
+                opacity: visible ? 1 : 0,
+                backdropFilter: "blur(10px) saturate(1.1)",
+                WebkitBackdropFilter: "blur(10px) saturate(1.1)",
+                background:
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--bg-canvas, #000) 55%, transparent), transparent)",
+                maskImage: mask,
+                WebkitMaskImage: mask,
+              }}
+            />,
+            host,
+          )
+        : null}
+    </>
   );
 }

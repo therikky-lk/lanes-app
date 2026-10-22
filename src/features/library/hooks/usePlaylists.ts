@@ -1,4 +1,4 @@
-import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
+import { getPlaylistCover } from "../services/playlistCovers";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
@@ -145,7 +145,7 @@ function load(force = false): Promise<void> {
 
     // imported playlists show their original artwork (e.g. the Spotify cover)
     for (const playlist of playlists) {
-      const importedCover = getImportedPlaylistMeta(playlist.id)?.coverUrl;
+      const importedCover = getPlaylistCover(playlist.id);
       if (importedCover) {
         playlist.coverUrl = importedCover;
         playlist.coverUrls = [importedCover];

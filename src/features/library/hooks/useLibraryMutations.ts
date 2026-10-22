@@ -1,3 +1,4 @@
+import { isLocalTrackId, setLocalTrackLiked } from "@/shared/media/local/localTracks";
 import { useCallback, useState } from "react";
 import { api } from "@/shared/api";
 import { notifyLibraryChanged, evictPlaylistFromCache } from "./usePlaylists";
@@ -135,6 +136,10 @@ export function useLikeTrack() {
   const mutateAsync = useCallback(async (input: TrackMutationInput) => {
     const trackId = trackIdFrom(input);
     setIsPending(true);
+    if (isLocalTrackId(trackId)) {
+      await setLocalTrackLiked(trackId, true);
+      return undefined as unknown as Awaited<ReturnType<typeof api.likeTrack>>;
+    }
     const rollback = applyOptimisticLike(trackId);
     try {
       const result = await api.likeTrack(trackId);
@@ -167,6 +172,10 @@ export function useUnlikeTrack() {
   const mutateAsync = useCallback(async (input: TrackMutationInput) => {
     const trackId = trackIdFrom(input);
     setIsPending(true);
+    if (isLocalTrackId(trackId)) {
+      await setLocalTrackLiked(trackId, false);
+      return undefined as unknown as Awaited<ReturnType<typeof api.unlikeTrack>>;
+    }
     const rollback = applyOptimisticUnlike(trackId);
     try {
       const result = await api.unlikeTrack(trackId);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { WifiOffLine, CopyLine, DownloadLine, MailLine, CloseLine } from "@mingcute/react";
+import { WifiOffLine, CopyLine, DownloadLine, CloseLine } from "@mingcute/react";
 import Button from "@/shared/ui/Button";
 import { useTranslation } from "@/languages";
 import { useToast } from "@/shared/ui";
@@ -9,7 +9,6 @@ import { DIAG_ENDPOINTS } from "../lib/diagnostics";
 import { buildOfflineDump, copyDump, downloadDump } from "../lib/dump";
 import { isServerOutage } from "../lib/failureKind";
 
-const SUPPORT_MAIL = "dev@tryliner.fun";
 
 function StatusDot({ status }: { status: DiagCheck["status"] }) {
   const color =
@@ -206,21 +205,7 @@ export default function ConnectivityWall() {
             <DownloadLine size={15} />
             {t("connectivity.download_dump")}
           </Button>
-          <a
-            href={`mailto:${SUPPORT_MAIL}?subject=${encodeURIComponent("Lane connection problem")}`}
-            className="inline-flex h-[38px] items-center gap-[6px] px-[8px] text-[13px] font-[500] text-text-secondary hover:text-text-primary transition-colors"
-            style={{ fontFamily: "var(--font-inter), sans-serif" }}
-          >
-            <MailLine size={15} />
-            {t("connectivity.support")}
-          </a>
         </div>
-        <p
-          className="m-0 mt-[10px] text-[12px] text-text-tertiary"
-          style={{ fontFamily: "var(--font-inter), sans-serif" }}
-        >
-          {t("connectivity.support_hint")}
-        </p>
       </div>
     </div>
   );

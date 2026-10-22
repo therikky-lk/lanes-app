@@ -22,7 +22,7 @@ interface LrclibRecord {
 }
 
 const LRCLIB_BASE = "https://lrclib.net/api";
-const LRCLIB_HEADERS = { "Lrclib-Client": "Lane (https://github.com/tryliner/desktop)" };
+const LRCLIB_HEADERS = { "Lrclib-Client": "Lane (https://github.com/therikky-lk)" };
 
 export function normalizeForMatch(text: string): string {
   return text

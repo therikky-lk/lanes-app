@@ -288,7 +288,8 @@ function ArtistContent() {
                 )}
 
 
-                <div className="relative z-10 px-[32px] pt-[56px]" data-window-drag />
+                {/* drag strip starts right of the Back button: on Linux a later drag box would swallow its clicks */}
+                <div className="relative z-10 ml-[150px] pt-[56px]" data-window-drag />
 
               <div className="relative z-10 px-[32px] pb-[20px] flex flex-col md:flex-row items-start md:items-end justify-between gap-[24px]">
                 <div className="flex flex-col min-w-0">

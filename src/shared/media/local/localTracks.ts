@@ -14,6 +14,8 @@ export interface LocalTrackRecord {
   durationMs: number;
   coverDataUrl?: string;
   lyrics?: string;
+  /** "liked" on this device; local files can't be liked on the server */
+  likedAt?: number;
   mimeType: string;
   size: number;
   fileName: string;
@@ -77,7 +79,10 @@ export async function removeLocalTrack(id: string): Promise<void> {
   emit();
 }
 
-export async function updateLocalTrack(id: string, patch: Partial<Pick<LocalTrackRecord, "title" | "artists" | "album" | "lyrics">>): Promise<void> {
+export async function updateLocalTrack(
+  id: string,
+  patch: Partial<Pick<LocalTrackRecord, "title" | "artists" | "album" | "lyrics" | "likedAt">>,
+): Promise<void> {
   const current = await getLocalTrack(id);
   if (!current) return;
   await tx("readwrite", (s) => s.put({ ...current, ...patch }));
@@ -117,6 +122,14 @@ async function coverToDataUrl(cover: { mime: string; data: Uint8Array }): Promis
   } catch {
     return undefined;
   }
+}
+
+export async function setLocalTrackLiked(id: string, liked: boolean): Promise<void> {
+  await updateLocalTrack(id, { likedAt: liked ? Date.now() : undefined });
+}
+
+export async function listLikedLocalTracks(): Promise<LocalTrackRecord[]> {
+  return (await listLocalTracks()).filter((r) => r.likedAt).sort((a, b) => (b.likedAt ?? 0) - (a.likedAt ?? 0));
 }
 
 export function isSupportedAudioFile(file: File): boolean {
