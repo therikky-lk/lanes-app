@@ -1,4 +1,3 @@
-import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { memo } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -798,7 +797,7 @@ function MiniPlayer({
             <button
               type="button"
               aria-label={isLiked ? "Unlike" : "Like"}
-              className={`${isLocalTrackId(currentTrack?.id) ? "!hidden " : ""}${iconButtonClass} shrink-0 transition-colors duration-150 pointer-events-auto prevent-seek ${
+              className={`${iconButtonClass} shrink-0 transition-colors duration-150 pointer-events-auto prevent-seek ${
                 isLiked ? "text-accent-primary" : "text-text-secondary hover:text-text-primary"
               }`}
               onPointerDown={(e) => e.stopPropagation()}

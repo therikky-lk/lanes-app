@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftLine, PlayFill, UploadLine, MusicLine, Edit2Line, DeleteLine } from "@mingcute/react";
+import { ArrowLeftLine, PlayFill, UploadLine, MusicLine, Edit2Line, DeleteLine, HeartLine, HeartFill } from "@mingcute/react";
 import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
@@ -11,7 +11,7 @@ import { playerEngine, usePlayerStore } from "@/features/player";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { useTranslation } from "@/languages";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
-import { addLocalFiles, removeLocalTrack } from "@/shared/media/local/localTracks";
+import { addLocalFiles, removeLocalTrack, setLocalTrackLiked } from "@/shared/media/local/localTracks";
 import type { Track } from "@/shared/types";
 import { useLocalTracks } from "../hooks/useLocalTracks";
 
@@ -28,7 +28,8 @@ export default function LocalTracksPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const hasCustomBg = useIsContentTransparent();
-  const { tracks, isLoading } = useLocalTracks();
+  const { tracks, records, isLoading } = useLocalTracks();
+  const likedIds = new Set(records.filter((r) => r.likedAt).map((r) => r.id));
   const currentTrackId = usePlayerStore((s) => s.currentTrack?.id ?? null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -180,6 +181,19 @@ export default function LocalTracksPage() {
                 isCurrent={currentTrackId === track.id}
                 onPlay={() => play(track)}
                 menuItems={[
+                  likedIds.has(track.id)
+                    ? {
+                        id: "unlike",
+                        icon: <HeartFill size={15} />,
+                        label: t("common.unlike"),
+                        onClick: () => void setLocalTrackLiked(track.id, false),
+                      }
+                    : {
+                        id: "like",
+                        icon: <HeartLine size={15} />,
+                        label: t("common.like"),
+                        onClick: () => void setLocalTrackLiked(track.id, true),
+                      },
                   {
                     id: "lyrics",
                     icon: <Edit2Line size={15} />,

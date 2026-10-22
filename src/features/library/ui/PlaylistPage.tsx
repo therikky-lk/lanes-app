@@ -16,11 +16,17 @@ import {
   ArrowLeftLine,
   ShareForwardLine,
   Search2Line,
+  PicLine,
+  GridLine,
+  MenuLine,
 } from "@mingcute/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink } from "react-icons/lu";
 import { FaSpotify } from "react-icons/fa";
+import SegmentedTabs from "@/shared/ui/SegmentedTabs";
+import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
+import { getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { buildShareUrl } from "@/shared/utils/share";
 import Button from "@/shared/ui/Button";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
@@ -157,6 +163,20 @@ function LibraryPlaylistContent() {
     return () => window.removeEventListener("library:changed", refresh);
   }, [decodedId, isLikesMode]);
   const currentTrackId = usePlayerStore((st) => st.currentTrack?.id ?? null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [trackView, setTrackViewState] = useState<"list" | "grid">(() => {
+    try {
+      return localStorage.getItem("lane_tracks_view") === "grid" ? "grid" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const setTrackView = useCallback((view: "list" | "grid") => {
+    setTrackViewState(view);
+    try {
+      localStorage.setItem("lane_tracks_view", view);
+    } catch {}
+  }, []);
 
   const viewData = (() => {
     if (isLikesMode) {
@@ -503,6 +523,22 @@ function LibraryPlaylistContent() {
           className="flex-1 min-w-0 h-full pointer-events-auto"
         />
       </div>
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file || !decodedId) return;
+          try {
+            setPlaylistCover(decodedId, await imageFileToCover(file));
+          } catch {
+            toast(t("playlist.cover_failed") || "Could not use this image", "error");
+          }
+        }}
+      />
       <button
         type="button"
         onClick={handleBack}
@@ -553,8 +589,9 @@ function LibraryPlaylistContent() {
                     : undefined
                 }
                 cover={(() => {
-                    const urls = importMeta?.coverUrl
-                      ? [importMeta.coverUrl]
+                    const customCover = getPlaylistCover(isLikesMode ? null : decodedId);
+                    const urls = customCover
+                      ? [customCover]
                       : viewData.coverUrls ??
                         (viewData.coverUrl ? [viewData.coverUrl] : []);
                     if (urls.length === 0) {
@@ -846,6 +883,22 @@ function LibraryPlaylistContent() {
                                   ]
                                 : []),
                               {
+                                id: "cover",
+                                icon: <PicLine size={15} />,
+                                label: t("playlist.change_cover") || "Change cover",
+                                onClick: () => coverInputRef.current?.click(),
+                              },
+                              ...(hasCustomPlaylistCover(decodedId)
+                                ? [
+                                    {
+                                      id: "cover-reset",
+                                      icon: <PicLine size={15} />,
+                                      label: t("playlist.reset_cover") || "Reset cover",
+                                      onClick: () => decodedId && setPlaylistCover(decodedId, null),
+                                    },
+                                  ]
+                                : []),
+                              {
                                 id: "share",
                                 icon: <ShareForwardLine size={15} />,
                                 label: t("common.share"),
@@ -887,7 +940,23 @@ function LibraryPlaylistContent() {
                 className="min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
                 style={{ willChange: "scroll-position" }}
               >
-              <ScrollBlurEdge offset={56} height={60} />
+              <ScrollBlurEdge height={60} />
+              {currentTracks.length > 0 && (
+                <div className="flex items-center justify-between gap-[12px] px-[8px] pb-[10px]">
+                  <span className="text-[13px] text-text-tertiary" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+                    {viewData.countLabel}
+                  </span>
+                  <SegmentedTabs
+                    iconOnly
+                    value={trackView}
+                    onChange={setTrackView}
+                    options={[
+                      { id: "list" as const, label: <MenuLine size={16} />, title: t("common.list") || "List" },
+                      { id: "grid" as const, label: <GridLine size={16} />, title: t("common.grid") || "Grid" },
+                    ]}
+                  />
+                </div>
+              )}
               {currentTracks.length === 0 ? (
                 <div className="flex min-h-[50vh] flex-col items-center justify-center gap-[12px] text-center">
                   <PlaylistFill size={40} className="text-border-alpha-33" />
@@ -908,6 +977,30 @@ function LibraryPlaylistContent() {
                 </div>
               ) : search.matches && search.matches.length === 0 ? (
                 <TrackSearchEmpty query={search.activeQuery} onClear={() => search.setQuery("")} />
+              ) : trackView === "grid" ? (
+                <div
+                  className="grid gap-x-[16px] gap-y-[18px] px-[8px] pb-[8px]"
+                  style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}
+                >
+                  {visibleTracks.map(({ track, index }) => (
+                    <TrackGridCard
+                      key={track.playlistItemId ?? `${track.id}-${index}`}
+                      track={track}
+                      coverFallback={viewData.coverUrl}
+                      isCurrent={currentTrackId === track.id}
+                      playlistId={isLikesMode ? undefined : (decodedId ?? undefined)}
+                      playlistTitle={viewData.title}
+                      onPlay={() =>
+                        playerEngine.playTrack(
+                          track,
+                          currentTracks,
+                          decodedId && !isLikesMode ? `playlist:${decodedId}` : viewData.title,
+                          viewData.coverUrl,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
               ) : (
               <div
                 ref={trackListContainerRef}

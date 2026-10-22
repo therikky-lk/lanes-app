@@ -498,8 +498,8 @@ export class DiscordRpcManager {
 
       if (this.settings.showDownloadButton) {
         buttons.push({
-          label: "Download Lane",
-          url: "https://tryliner.fun",
+          label: "Get Lane",
+          url: "https://discord.gg/D5saRWxcUx",
         });
       }
 

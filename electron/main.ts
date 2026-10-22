@@ -379,6 +379,7 @@ function createWindow() {
 // Single instance lock
 // Lane is a fork of Liner: upstream's auto-updates would replace it with Liner.
 const LANE_FORK_UPDATES_DISABLED = true;
+let lanePurgedInjectedIcons = false;
 
 // The name media controls show (MPRIS on Linux, the Windows media flyout) and
 // the window class: never the npm package name.
@@ -637,6 +638,17 @@ if (!gotTheLock) {
       }
       if (removedAny) refreshLinuxIconCaches();
     };
+
+    // Lane ships one icon. Older builds injected recoloured "accent" icons into
+    // ~/.local/share/icons, which override the packaged one in docks; clear them.
+    if (process.platform === "linux" && app.isPackaged && !lanePurgedInjectedIcons) {
+      lanePurgedInjectedIcons = true;
+      void (async () => {
+        for (const name of new Set(["lane", "liner", await resolveLinuxDesktopIconName()])) {
+          await removeLinuxAppIcon(name).catch(() => undefined);
+        }
+      })();
+    }
 
     ipcMain.handle(
       "app:set-icon",

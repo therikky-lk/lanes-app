@@ -443,7 +443,10 @@
     "type_spotify": "Public Playlist · Spotify",
     "open_source": "Open original",
     "col_title": "Title",
-    "col_album": "Album"
+    "col_album": "Album",
+    "change_cover": "Change cover",
+    "reset_cover": "Reset cover",
+    "cover_failed": "Could not use this image"
   },
   "search": {
     "placeholder": "Buscar canciones, artistas, álbumes...",
@@ -556,7 +559,7 @@
       },
       "show_download_button": {
         "title": "Botón 'Descargar Lane'",
-        "description": "Añade un botón interactivo que enlaza a tryliner.fun para descargar la aplicación."
+        "description": "Add a button inviting people to the Lane Discord server."
       },
       "status": {
         "connected": "Conectado a Discord ({user})",

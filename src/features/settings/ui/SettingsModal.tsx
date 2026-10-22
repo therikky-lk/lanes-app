@@ -44,7 +44,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
 };
 
 const TAB_GROUPS: { labelKey: "preferences" | "application"; ids: TabId[] }[] = [
-  { labelKey: "preferences", ids: ["Playback", "Shortcuts", "Overlay", "Discord", "Audio", "Appearance", "Customization"] },
+  { labelKey: "preferences", ids: ["Playback", "Shortcuts", "Overlay", "Discord", "Audio", "Appearance"] },
   { labelKey: "application", ids: ["Storage", "About"] },
 ];
 
@@ -87,9 +87,9 @@ const SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
   { tabId: "Appearance", titleKey: "settings.theme.title", descKey: "settings.theme.description" },
 
   // Customization
-  { tabId: "Customization", titleKey: "settings.customization.wallpaper_title", descKey: "settings.customization.wallpaper_description" },
-  { tabId: "Customization", titleKey: "settings.customization.blocks_title", descKey: "settings.customization.blocks_description" },
-  { tabId: "Customization", titleKey: "settings.customization.reset_all", descKey: "settings.customization.reset_all_desc" },
+  { tabId: "Appearance", titleKey: "settings.customization.wallpaper_title", descKey: "settings.customization.wallpaper_description" },
+  { tabId: "Appearance", titleKey: "settings.customization.blocks_title", descKey: "settings.customization.blocks_description" },
+  { tabId: "Appearance", titleKey: "settings.customization.reset_all", descKey: "settings.customization.reset_all_desc" },
 
   // Audio
   { tabId: "Audio", titleKey: "settings.audio.title", descKey: "settings.audio.description" },
@@ -310,32 +310,6 @@ export default function SettingsModal() {
             </div>
           )))}
 
-          <div className="flex flex-col gap-[2px] pt-[2px] mt-[2px] border-t border-solid border-border-primary">
-            <p
-              className="text-text-tertiary text-[11px] font-[500] m-0 px-[10px] pt-[10px] pb-[4px]"
-              style={font}
-            >
-              {t("settings.groups.help")}
-            </p>
-            <button
-              type="button"
-              onClick={() => openExternal("https://github.com/tryliner/desktop/blob/main/README.md")}
-              className="w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] border-0 bg-transparent text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary cursor-pointer text-left transition-colors"
-              style={{ ...font, fontSize: "13.5px" }}
-            >
-              <Book2 size={18} weight="Bold" className="text-text-tertiary shrink-0" />
-              <span className="leading-none">{t("settings.docs")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => openExternal("https://t.me/liner_app?direct")}
-              className="w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] border-0 bg-transparent text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary cursor-pointer text-left transition-colors"
-              style={{ ...font, fontSize: "13.5px" }}
-            >
-              <QuestionCircle size={18} weight="Bold" className="text-text-tertiary shrink-0" />
-              <span className="leading-none">{t("settings.support")}</span>
-            </button>
-          </div>
         </nav>
 
         <div className="shrink-0 p-[12px] pt-[8px]">
@@ -414,8 +388,12 @@ export default function SettingsModal() {
             {activeTab === "Shortcuts" && <ShortcutsTab searchQuery={searchQuery} />}
             {activeTab === "Overlay" && <OverlayTab searchQuery={searchQuery} />}
             {activeTab === "Discord" && <DiscordTab searchQuery={searchQuery} />}
-            {activeTab === "Appearance" && <AppearanceTab searchQuery={searchQuery} />}
-            {activeTab === "Customization" && <CustomizationTab searchQuery={searchQuery} />}
+            {(activeTab === "Appearance" || activeTab === "Customization") && (
+              <div className="flex flex-col gap-[28px]">
+                <AppearanceTab searchQuery={searchQuery} />
+                <CustomizationTab searchQuery={searchQuery} />
+              </div>
+            )}
             {activeTab === "Audio" && <AudioTab searchQuery={searchQuery} />}
             {activeTab === "Storage" && <StorageTab searchQuery={searchQuery} />}
             {activeTab === "About" && <AboutTab searchQuery={searchQuery} />}
