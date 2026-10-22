@@ -1,0 +1,60 @@
+import { resolveDirectAudioStream, toVideoId } from "@/shared/media/innertube";
+import { resolveSoundCloudStream, toSoundCloudTrackId } from "@/shared/media/soundcloud";
+import { resolveLinerStream } from "@/shared/media/liner/linerPlayback";
+import { isAbortError } from "@/shared/utils/abort";
+import { log } from "@/shared/utils/logger";
+import {
+  fromInnertubeStream,
+  fromLinerStream,
+  fromSoundCloudStream,
+  type PlayableTrack,
+  type PlaybackStream,
+} from "./playbackStream";
+import { findYoutubeStandIn } from "./youtubeStandIn";
+import { getLocalTrack, isLocalTrackId } from "@/shared/media/local/localTracks";
+
+export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlaybackStream } from "./playbackStream";
+
+async function resolveYoutubeStandIn(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
+  const videoId = await findYoutubeStandIn(track, signal);
+  if (!videoId) throw new Error("No matching YouTube track found");
+  log("cyan", "playback", `playing youtube stand-in ${videoId} for "${track.title}"`);
+  return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal }));
+}
+
+async function resolveSoundCloud(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
+  try {
+    return fromSoundCloudStream(await resolveSoundCloudStream(track.id, { signal }));
+  } catch (soundCloudError) {
+    if (isAbortError(soundCloudError, signal)) throw soundCloudError;
+    log("yellow", "playback", `soundcloud resolution failed, searching youtube: ${String(soundCloudError)}`);
+    try {
+      return await resolveYoutubeStandIn(track, signal);
+    } catch (standInError) {
+      if (isAbortError(standInError, signal)) throw standInError;
+      throw soundCloudError;
+    }
+  }
+}
+
+async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal?: AbortSignal): Promise<PlaybackStream> {
+  const liner = await resolveLinerStream(videoId, signal);
+  if (liner) {
+    log("cyan", "playback", `playing liner audio (r2) for "${track.title}"`);
+    return fromLinerStream(liner, track);
+  }
+  return fromInnertubeStream(await resolveDirectAudioStream(track.id, { signal }));
+}
+
+export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
+  if (isLocalTrackId(track.id)) {
+    // the user's own file: play the stored Blob, never look for a stand-in
+    const record = await getLocalTrack(track.id);
+    if (!record) throw new Error("This uploaded track is no longer on this device");
+    return { blob: record.blob, mimeType: record.mimeType, codec: "", bitrate: 0, expiresAtMs: null, contentLength: record.size };
+  }
+  if (toSoundCloudTrackId(track.id)) return resolveSoundCloud(track, signal);
+  const videoId = toVideoId(track.id);
+  if (videoId) return resolveYoutubeTrack(track, videoId, signal);
+  return resolveYoutubeStandIn(track, signal);
+}
