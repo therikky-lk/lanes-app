@@ -444,7 +444,10 @@
     "type_spotify": "Public Playlist · Spotify",
     "open_source": "Open original",
     "col_title": "Title",
-    "col_album": "Album"
+    "col_album": "Album",
+    "change_cover": "Change cover",
+    "reset_cover": "Reset cover",
+    "cover_failed": "Could not use this image"
   },
   "search": {
     "placeholder": "Szukaj utworów, wykonawców, albumów...",

@@ -1,4 +1,3 @@
-import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { useState, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -139,7 +138,7 @@ export function PlayerUiElements({
         <button
           type="button"
           aria-label={isLiked ? t("common.unlike") : t("common.like")}
-          className={`${isLocalTrackId(track?.id) ? "!hidden " : ""}absolute bottom-3 left-3 z-20 inline-flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors duration-200 ease-out active:scale-[0.92] bg-black/40 backdrop-blur-md border-none hover:bg-black/60 ${
+          className={`absolute bottom-3 left-3 z-20 inline-flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors duration-200 ease-out active:scale-[0.92] bg-black/40 backdrop-blur-md border-none hover:bg-black/60 ${
             isLiked ? "text-white" : "text-white/70 hover:text-white"
           }`}
           onClick={handleLikeToggle}

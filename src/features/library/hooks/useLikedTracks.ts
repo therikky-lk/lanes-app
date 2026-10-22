@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { api, getAuthSession, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
+import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@/shared/media/local/localTracks";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
@@ -12,10 +13,13 @@ let view = { data: cache, isLoading: true };
 
 const optimisticOverrides = new Map<string, boolean>();
 
-function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } {
-  if (optimisticOverrides.size === 0) return { data: cache, isLoading };
+// liked uploads live on this device and are shown first
+let localLiked: Track[] = [];
 
-  let tracks = cache.tracks.filter(
+function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } {
+  if (optimisticOverrides.size === 0 && localLiked.length === 0) return { data: cache, isLoading };
+
+  let tracks = [...localLiked, ...cache.tracks].filter(
     (t) => optimisticOverrides.get(t.id) !== false
   );
   for (const [id, liked] of optimisticOverrides) {
@@ -138,4 +142,16 @@ export function useLikedTracks(_params?: { limit?: number; offset?: number }) {
 export function useLikedTrackCount() {
   const { data, isLoading } = useLikedTracks();
   return { data: data.total, isLoading };
+}
+
+if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
+  const refreshLocal = () =>
+    listLikedLocalTracks()
+      .then((records) => {
+        localLiked = records.map(localRecordToTrack);
+        emit(view.isLoading);
+      })
+      .catch(() => undefined);
+  void refreshLocal();
+  onLocalTracksChange(() => void refreshLocal());
 }

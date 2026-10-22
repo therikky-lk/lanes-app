@@ -443,7 +443,10 @@
     "type_spotify": "Публичный плейлист · Spotify",
     "open_source": "Открыть оригинал",
     "col_title": "Название",
-    "col_album": "Альбом"
+    "col_album": "Альбом",
+    "change_cover": "Сменить обложку",
+    "reset_cover": "Сбросить обложку",
+    "cover_failed": "Не удалось использовать это изображение"
   },
   "search": {
     "placeholder": "Поиск треков, исполнителей, альбомов...",
@@ -614,7 +617,7 @@
       },
       "show_download_button": {
         "title": "Кнопка «Скачать Lane»",
-        "description": "Добавлять интерактивную кнопку со ссылкой на tryliner.fun для загрузки приложения."
+        "description": "Добавлять кнопку-приглашение на Discord-сервер Lane."
       },
       "status": {
         "connected": "Подключено к Discord ({user})",

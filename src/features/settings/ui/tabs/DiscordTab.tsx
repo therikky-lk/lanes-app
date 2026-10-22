@@ -257,7 +257,7 @@ export function DiscordTab({ searchQuery }: { searchQuery?: string }) {
           title={t("settings.discord.show_download_button.title") || "'Download Lane' Button"}
           description={
             t("settings.discord.show_download_button.description") ||
-            "Add an interactive button linking to tryliner.fun to download the app."
+            "Add a button inviting people to the Lane Discord server."
           }
           titleKey="settings.discord.show_download_button.title"
           descKey="settings.discord.show_download_button.description"

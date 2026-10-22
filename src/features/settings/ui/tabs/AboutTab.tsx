@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FaTelegramPlane, FaGithub, FaGlobe } from "react-icons/fa";
+import { FaTelegramPlane, FaGithub, FaGlobe, FaDiscord } from "react-icons/fa";
 import { Refresh1Line, CheckLine } from "@mingcute/react";
 import { QuestionCircle } from "@solar-icons/react";
 import Button from "@/shared/ui/Button";
@@ -170,7 +170,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={handleCheckUpdates}
+            onClick={() => openUrl("https://github.com/therikky-lk/lane_app/releases")}
             disabled={checkingUpdate}
             className="!h-[32px] !px-[16px] !text-[12.5px] !gap-[7px] !rounded-lg"
           >
@@ -178,49 +178,38 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
               size={14}
               className={checkingUpdate ? "animate-spin text-text-primary" : "text-text-tertiary"}
             />
-            {checkingUpdate
-              ? t("settings.about.checking_updates")
-              : t("settings.about.check_updates")}
+            {t("settings.about.all_releases") || "All versions"}
           </Button>
         </div>
 
-        {/* Social & Support Links */}
+        {/* Links */}
         <div className="flex flex-wrap items-center justify-center gap-[6px] w-full pt-[16px] border-t border-border-primary/30">
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openUrl("https://t.me/liner_app")}
+            onClick={() => openUrl("https://t.me/therikky_ls")}
             className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
           >
             <FaTelegramPlane size={13} className="text-[#2AABEE]" />
-            {t("settings.about.telegram")}
+            Telegram
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openUrl("https://t.me/liner_app?direct")}
+            onClick={() => openUrl("https://discord.gg/D5saRWxcUx")}
             className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
           >
-            <QuestionCircle size={14} weight="Bold" className="text-text-tertiary" />
-            {t("settings.about.support")}
+            <FaDiscord size={14} className="text-[#5865F2]" />
+            Discord
           </Button>
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openUrl("https://github.com/tryliner/desktop")}
+            onClick={() => openUrl("https://github.com/therikky-lk")}
             className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
           >
             <FaGithub size={13} />
-            {t("settings.about.github")}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openUrl("https://tryliner.fun")}
-            className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
-          >
-            <FaGlobe size={12} className="text-text-tertiary" />
-            {t("settings.about.website")}
+            GitHub
           </Button>
         </div>
       </div>
