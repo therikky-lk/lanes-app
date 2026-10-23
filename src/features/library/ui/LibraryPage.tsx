@@ -1,3 +1,4 @@
+import SpotifyLikedImportDialog from "./SpotifyLikedImportDialog";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
@@ -163,6 +164,7 @@ export default function LibraryPage() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileAdd, setMobileAdd] = useState(false);
+  const [spotifyLikedOpen, setSpotifyLikedOpen] = useState(false);
   const mobileTabLabels: Record<LibraryTab, string> = {
     playlists: t("library.tab_playlists"),
     albums: t("library.tab_albums"),
@@ -431,6 +433,14 @@ export default function LibraryPage() {
                     void openSpotifyImport();
                   }}
                 />
+                <PhoneMenuItem
+                  icon={<HeartFill size={16} className="text-[#1ed760]" />}
+                  label={t("library.spotify_liked.menu") || "Liked Songs from Spotify"}
+                  onClick={() => {
+                    setMobileAdd(false);
+                    setSpotifyLikedOpen(true);
+                  }}
+                />
               </PhoneMenu>
               <button
                 type="button"
@@ -538,9 +548,9 @@ export default function LibraryPage() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`${activeTab}:${debouncedQuery || "all"}:${viewMode}`}
-                initial={{ opacity: 0, filter: "blur(4px)", y: 6 }}
-                animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                exit={{ opacity: 0, filter: "blur(4px)", y: -4 }}
+                initial={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(4px)", y: 6 }}
+                animate={isMobile ? { opacity: 1 } : { opacity: 1, filter: "blur(0px)", y: 0 }}
+                exit={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(4px)", y: -4 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
                 <LibraryGrid
@@ -596,13 +606,27 @@ export default function LibraryPage() {
           type="button"
           onClick={() => void openSpotifyImport()}
           title={t("library.import_spotify") || "Import from Spotify"}
-          className="absolute bottom-[20px] right-[80px] z-30 flex h-[44px] items-center gap-[8px] rounded-[14px] px-[14px] bg-[#1ed760] text-black text-[13.5px] font-[600] hover:bg-[#3be477] active:scale-[0.96] transition-all border-0 cursor-pointer select-none shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
+          className="absolute bottom-[20px] right-[132px] z-30 flex h-[44px] items-center gap-[8px] rounded-[14px] px-[14px] bg-[#1ed760] text-black text-[13.5px] font-[600] hover:bg-[#3be477] active:scale-[0.96] transition-all border-0 cursor-pointer select-none shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
         >
           <FaSpotify size={18} />
           {t("library.import_spotify") || "Import from Spotify"}
         </button>
       )}
+
+      {activeTab === "playlists" && !isMobile && (
+        <button
+          type="button"
+          onClick={() => setSpotifyLikedOpen(true)}
+          title={t("library.spotify_liked.menu") || "Liked Songs from Spotify"}
+          aria-label={t("library.spotify_liked.menu") || "Liked Songs from Spotify"}
+          className="absolute bottom-[20px] right-[80px] z-30 flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-[#1ed760] text-black hover:bg-[#3be477] active:scale-[0.92] transition-all border-0 cursor-pointer select-none shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
+        >
+          <HeartFill size={20} />
+        </button>
+      )}
+
+      <SpotifyLikedImportDialog open={spotifyLikedOpen} onClose={() => setSpotifyLikedOpen(false)} />
 
       {activeTab === "playlists" && !isMobile && (
         <button

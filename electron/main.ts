@@ -1,3 +1,4 @@
+import { registerSpotifyAccount } from "./spotify-account";
 import { app, BaseWindow, BrowserWindow, globalShortcut, ipcMain, shell, screen, dialog, session, nativeImage, powerSaveBlocker } from "electron";
 import type { Display, Rectangle } from "electron";
 import { autoUpdater } from "electron-updater";
@@ -759,6 +760,8 @@ if (!gotTheLock) {
         }
       });
     });
+
+    registerSpotifyAccount(() => mainWindow);
 
     ipcMain.handle("dialog:save-dump", async (_event, { filename, content }: { filename: string; content: string }) => {
       if (!mainWindow) return { success: false, canceled: true };

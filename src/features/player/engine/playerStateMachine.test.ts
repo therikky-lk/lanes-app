@@ -147,7 +147,7 @@ describe("Player State Machine", () => {
     expect(queue.map((t) => t.id)).toContain("3");
   });
 
-  it("shuffles only upcoming tracks when shuffle is enabled", async () => {
+  it("shuffles the whole list (earlier tracks too) when shuffle is enabled", async () => {
     const tracks = Array.from({ length: 6 }, (_, i) => mockTrack(String(i + 1), `Track ${i + 1}`));
     await playerEngine.playTrack(tracks[1], tracks, undefined, undefined, 1);
 
@@ -155,12 +155,11 @@ describe("Player State Machine", () => {
     const state = usePlayerStore.getState();
 
     expect(state.shuffle).toBe(true);
-    expect(state.currentIndex).toBe(1);
-    expect(state.queue[0].id).toBe("1");
-    expect(state.queue[1].id).toBe("2");
+    expect(state.currentIndex).toBe(0);
+    expect(state.queue[0].id).toBe("2");
 
-    const upcomingIds = state.queue.slice(2).map((t) => t.id);
-    expect(upcomingIds.sort()).toEqual(["3", "4", "5", "6"]);
+    const upcomingIds = state.queue.slice(1).map((t) => t.id);
+    expect(upcomingIds.sort()).toEqual(["1", "3", "4", "5", "6"]);
   });
 
   it("restores original relative order of remaining upcoming tracks when shuffle is disabled", async () => {

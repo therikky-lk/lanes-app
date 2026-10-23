@@ -85,6 +85,10 @@ public class LanePoTokenPlugin extends Plugin {
     private void createWebView() {
         ready = false;
         web = new WebView(getContext());
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            // never on screen: don't let its renderer be deprioritised
+            web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
+        }
         WebSettings settings = web.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);

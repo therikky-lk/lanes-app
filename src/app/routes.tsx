@@ -7,6 +7,7 @@ import CollectionPage from "@/features/collection/ui/CollectionPage";
 import LoginPage from "@/features/auth/ui/LoginPage";
 import PlayerPage from "@/features/player/ui/FullscreenPlayer";
 import LocalTracksPage from "@/features/local/ui/LocalTracksPage";
+import RecentPage from "@/features/home/ui/RecentPage";
 
 export function AppRoutes() {
   return (
@@ -15,6 +16,7 @@ export function AppRoutes() {
       <Route path="/library" element={<LibraryPage />} />
       <Route path="/library/playlist" element={<PlaylistPage />} />
       <Route path="/local" element={<LocalTracksPage />} />
+      <Route path="/recent" element={<RecentPage />} />
       <Route path="/artist" element={<ArtistPage />} />
       <Route path="/collection" element={<CollectionPage />} />
       <Route path="/login" element={<LoginPage />} />
