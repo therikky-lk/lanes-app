@@ -1,3 +1,4 @@
+import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { diag } from "@/shared/platform/diag";
 import { isNativeApp } from "@/shared/platform/native";
 import {
@@ -996,9 +997,10 @@ class PlayerEngine {
   }
 
   private normalizeQueue(queue: Track[], selected: Track): Track[] {
-    if (queue.length === 0) return [selected];
+    if (queue.length === 0) return [{ ...selected, title: cleanTrackTitle(selected.title, selected.artists) }];
     return queue.map((item) => ({
       ...item,
+      title: cleanTrackTitle(item.title, item.artists),
       coverUrl: item.coverUrl || selected.coverUrl,
       durationMs: item.durationMs ?? 0,
     }));
