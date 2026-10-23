@@ -8,6 +8,8 @@ import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 
 interface NativeState {
   playing: boolean;
+  playWhenReady?: boolean;
+  seekable?: boolean;
   buffering: boolean;
   ended: boolean;
   positionMs: number;
@@ -134,11 +136,15 @@ export function createNativeAudioElement(): HTMLAudioElement {
   const livePosition = () =>
     playing ? positionMs + (performance.now() - positionAt) * rate : positionMs;
 
+  let playWhenReady = false;
+  let seekable = true;
   void LaneAudio.addListener("state", (s) => {
     const wasPlaying = playing;
+    const wasActive = playWhenReady;
     const hadDuration = Number.isFinite(durationMs);
     positionMs = s.positionMs;
     positionAt = performance.now();
+    seekable = s.seekable !== false;
     if (s.durationMs > 0 && s.durationMs !== durationMs) {
       durationMs = s.durationMs;
       if (!hadDuration) {
@@ -148,20 +154,23 @@ export function createNativeAudioElement(): HTMLAudioElement {
       }
       fire("durationchange");
     }
-    if (s.buffering && !buffering) fire("waiting");
-    buffering = s.buffering;
-    playing = s.playing;
-    if (playing && !wasPlaying) {
-      fire("play");
-      fire("playing");
-    } else if (!playing && wasPlaying && !s.ended) {
+    // "paused" follows the user's intent (playWhenReady), not whether sound is
+    // coming out right now: buffering after a seek is not a pause
+    playWhenReady = s.playWhenReady ?? s.playing;
+    if (playWhenReady && !wasActive) fire("play");
+    else if (!playWhenReady && wasActive && !s.ended) {
       wantPlay = false;
       fire("pause");
     }
+    if (s.buffering && !buffering && playWhenReady) fire("waiting");
+    buffering = s.buffering;
+    playing = s.playing;
+    if (playing && !wasPlaying) fire("playing");
     fire("timeupdate");
     if (s.ended && !ended) {
       ended = true;
       wantPlay = false;
+      playWhenReady = false;
       fire("pause");
       fire("ended");
     }
@@ -182,6 +191,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
     positionAt = performance.now();
     durationMs = NaN;
     playing = false;
+    playWhenReady = false;
     ended = false;
     error = null;
     readyState = 0;
@@ -224,6 +234,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
   });
   define("currentSrc", () => src);
   define("currentTime", () => livePosition() / 1000, (v: number) => {
+    if (!seekable) diag("seek: this stream reports itself as not seekable");
     positionMs = Math.max(0, v * 1000);
     positionAt = performance.now();
     ended = false;
@@ -232,7 +243,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
     fire("timeupdate");
   });
   define("duration", () => (Number.isFinite(durationMs) ? durationMs / 1000 : NaN));
-  define("paused", () => !playing && !wantPlay);
+  define("paused", () => !playWhenReady && !wantPlay);
   define("ended", () => ended);
   define("readyState", () => readyState);
   define("networkState", () => (buffering ? 2 : 1));

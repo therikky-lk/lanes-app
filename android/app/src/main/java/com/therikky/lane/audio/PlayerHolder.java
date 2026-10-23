@@ -47,7 +47,8 @@ import java.util.concurrent.Executors;
 public final class PlayerHolder {
 
     public interface Events {
-        void onState(boolean playing, boolean buffering, boolean ended, long positionMs, long durationMs, String error);
+        void onState(boolean playing, boolean playWhenReady, boolean buffering, boolean ended, boolean seekable,
+                     long positionMs, long durationMs, String error);
 
         void onRemote(String action, long positionMs);
     }
@@ -101,6 +102,11 @@ public final class PlayerHolder {
 
             @Override
             public void onPlaybackStateChanged(int state) {
+                emit();
+            }
+
+            @Override
+            public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
                 emit();
             }
 
@@ -194,8 +200,10 @@ public final class PlayerHolder {
         int state = player.getPlaybackState();
         events.onState(
             player.isPlaying(),
+            player.getPlayWhenReady(),
             state == Player.STATE_BUFFERING,
             state == Player.STATE_ENDED,
+            player.isCurrentMediaItemSeekable(),
             Math.max(0, player.getCurrentPosition()),
             duration == C.TIME_UNSET ? -1 : duration,
             lastError);
