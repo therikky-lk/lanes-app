@@ -1,3 +1,4 @@
+import { diag } from "@/shared/platform/diag";
 import { isNativeApp } from "@/shared/platform/native";
 import { APP_VERSION as APP_VERSION_FOR_ALERT } from "@/shared/config/version";
 import {
@@ -994,6 +995,7 @@ class PlayerEngine {
     }
 
     console.error("[PlaybackError]", info.trackId, info.message);
+    diag(`play "${track.title}": ${info.message}`);
     // Android test builds: show the full reason once per launch (screenshot it)
     if (isNativeApp() && !(window as unknown as { __laneErrorShown?: boolean }).__laneErrorShown) {
       (window as unknown as { __laneErrorShown?: boolean }).__laneErrorShown = true;

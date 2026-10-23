@@ -596,7 +596,7 @@ function LibraryPlaylistContent() {
           >
             <div
               ref={isMobile ? scrollRef : undefined}
-              data-page-scroller={isMobile ? "" : undefined}
+              data-page-scroller={isMobile ? "with-back" : undefined}
               className={
                 isMobile
                   ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"

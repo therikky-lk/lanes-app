@@ -1,3 +1,4 @@
+import { diag } from "./diag";
 // Android: playback runs in a native ExoPlayer (background audio, media
 // notification, lock screen). The player engine and the lyrics view keep talking
 // to an <audio id="liner-audio"> element; on Android that element is a real
@@ -165,6 +166,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
       fire("ended");
     }
     if (s.error && !error) {
+      diag(`player: ${s.error}`);
       error = new NativeMediaError(2, s.error);
       fire("error");
     }
