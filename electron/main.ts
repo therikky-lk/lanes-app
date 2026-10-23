@@ -644,9 +644,15 @@ if (!gotTheLock) {
     if (process.platform === "linux" && app.isPackaged && !lanePurgedInjectedIcons) {
       lanePurgedInjectedIcons = true;
       void (async () => {
-        for (const name of new Set(["lane", "liner", await resolveLinuxDesktopIconName()])) {
-          await removeLinuxAppIcon(name).catch(() => undefined);
-        }
+        // Overwrite (not just delete) the user-level copies with the packaged
+        // icon: desktop shells cache the user path, and a missing file there
+        // shows up as a blank tile until the next login.
+        const iconName = await resolveLinuxDesktopIconName();
+        try {
+          const png = await fs.promises.readFile(path.join(process.env.VITE_PUBLIC!, "icon.png"));
+          await installLinuxAppIcon(iconName, png);
+        } catch {}
+        if (iconName !== "liner") await removeLinuxAppIcon("liner").catch(() => undefined);
       })();
     }
 
