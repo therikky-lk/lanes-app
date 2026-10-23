@@ -4,6 +4,7 @@ import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/librar
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
+import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
 import { AddLine, Edit2Line } from "@mingcute/react";
 import {
   useCallback,
@@ -223,6 +224,7 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
     };
 
     syncRafId = requestAnimationFrame(checkActiveLine);
+    const detachLetters = attachLetterAnimation(el);
 
     el.addEventListener("braccato:lyrics-loaded", onLyricsLoaded);
     el.addEventListener("braccato:line-click", handleBraccatoLineClick);
@@ -231,6 +233,7 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
 
     return () => {
       cancelAnimationFrame(syncRafId);
+      detachLetters();
       useLyricsStore.getState().setActiveLineIndex(null);
       el.removeEventListener("braccato:lyrics-loaded", onLyricsLoaded);
       el.removeEventListener("braccato:line-click", handleBraccatoLineClick);
