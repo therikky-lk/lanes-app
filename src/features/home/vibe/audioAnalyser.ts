@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 // Taps the player's <audio> element with an AnalyserNode so visuals can react to the beat.
 // Shares the AudioContext / MediaElementSource with the pitch & reverb graph
 // (window.__liner_audio_context / __liner_media_source_node) because an element
@@ -24,6 +25,9 @@ function getAudio(): HTMLAudioElement | null {
 }
 
 function ensureGraph(): AnalyserNode | null {
+  // Android: tapping a stream without CORS headers would silence it; the visuals
+  // fall back to their own pulse instead
+  if (isNativeApp()) return null;
   const now = performance.now();
   if (analyser && now - lastEnsure < 1000) return analyser;
   lastEnsure = now;

@@ -1,3 +1,4 @@
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useCallback, useEffect, useState, useMemo, useRef, Suspense } from "react";
@@ -225,6 +226,7 @@ function CollectionContent() {
   };
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // results start at the top, not wherever the full list was scrolled to
   useEffect(() => {
@@ -345,9 +347,16 @@ function CollectionContent() {
               isReady ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >
-            <div className="relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border">
+            <div
+              ref={isMobile ? scrollRef : undefined}
+              className={
+                isMobile
+                  ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"
+                  : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"
+              }
+            >
               <div
-                className="shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"
+                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}
                 data-no-window-drag
               >
                 <EntitySidebar
@@ -563,14 +572,18 @@ function CollectionContent() {
               </div>
 
               <div
-                ref={scrollRef}
+                ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag
                 onScroll={() => {
                   if (rafIdRef.current === null) {
                     targetScrollTopRef.current = null;
                   }
                 }}
-                className="min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
+                className={
+                  isMobile
+                    ? "min-w-0 w-full pb-[24px]"
+                    : "min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
+                }
                 style={{ willChange: "scroll-position" }}
               >
               <ScrollBlurEdge offset={56} height={60} />

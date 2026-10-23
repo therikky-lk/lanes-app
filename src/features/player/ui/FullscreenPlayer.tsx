@@ -1,3 +1,4 @@
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { AddLine, Edit2Line } from "@mingcute/react";
 import {
@@ -333,6 +334,8 @@ export function FullscreenPlayer({
   const { t } = useTranslation();
   const player = usePlayerState();
   const [customLyricsOpen, setCustomLyricsOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileLyrics, setMobileLyrics] = useState(false);
   const coverUrl = player.currentTrack?.coverUrl;
   const kawarpSrc = useCoverSrc(coverUrl);
 
@@ -409,12 +412,19 @@ export function FullscreenPlayer({
 
       <div className="absolute inset-0 z-[1] bg-black/40" />
 
-      <div className="absolute inset-0 z-10 flex">
-        <div className="flex-1 flex flex-col items-center justify-center gap-5">
+      <div
+        className={`absolute inset-0 z-10 flex ${isMobile ? "flex-col" : ""}`}
+        style={isMobile ? { paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
+      >
+        <div className={`flex-1 flex flex-col items-center justify-center gap-5 ${isMobile && mobileLyrics ? "hidden" : ""}`}>
           <PlayerUiElements onClose={onClose} />
         </div>
 
-        <div className="flex-1 h-full min-h-0 pl-2 pr-6 flex flex-col relative">
+        <div
+          className={`flex-1 h-full min-h-0 flex flex-col relative ${isMobile ? "px-[12px]" : "pl-2 pr-6"} ${
+            isMobile && !mobileLyrics ? "hidden" : ""
+          }`}
+        >
           {showProviderIsland && (
             <div className="absolute top-[12px] left-1/2 -translate-x-1/2 z-30 pointer-events-none flex justify-center">
               <LyricsProviderIsland />
@@ -537,6 +547,20 @@ export function FullscreenPlayer({
         </button>
       )}
 
+      {isMobile && (
+        <button
+          type="button"
+          onClick={() => setMobileLyrics((v) => !v)}
+          aria-pressed={mobileLyrics}
+          className={`absolute right-[12px] z-30 inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
+            mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
+          }`}
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
+        >
+          {t("player.lyrics") || "Lyrics"}
+        </button>
+      )}
+
       <CustomLyricsDialog
         open={customLyricsOpen}
         onOpenChange={setCustomLyricsOpen}
@@ -548,6 +572,7 @@ export function FullscreenPlayer({
         type="button"
         aria-label={t("player.close_fullscreen")}
         onClick={onClose}
+        style={isMobile ? { top: "calc(env(safe-area-inset-top, 0px) + 10px)" } : undefined}
         data-no-window-drag
         className="absolute top-[12px] left-[12px] z-30 inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto"
       >

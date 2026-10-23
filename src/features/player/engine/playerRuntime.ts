@@ -8,6 +8,7 @@ import type { Track } from "@/shared/types";
 import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
 import { downloadAudioBytes } from "@/shared/media/innertube";
+import { isNativeApp } from "@/shared/platform/native";
 
 
 // error recovery tuning (see the audio "error" handler)
@@ -53,7 +54,9 @@ export class PlayerRuntime {
     if (!audio) {
       audio = new Audio();
       audio.id = "liner-audio";
-      audio.crossOrigin = "anonymous";
+      // desktop: Electron adds CORS headers so the audio graph can read samples;
+      // Android plays from blobs (same origin) or plain URLs that lack CORS headers
+      if (!isNativeApp()) audio.crossOrigin = "anonymous";
       audio.preload = "auto";
       if (typeof document !== "undefined") {
         document.body.appendChild(audio);
@@ -746,8 +749,16 @@ export class PlayerRuntime {
       const streamBitrate = stream.bitrate;
       this.currentSessionExpiresAt = stream.expiresAtMs;
       log("cyan", "playback", `resolved stream for ${track.title}`);
-      const url = stream.blob ? URL.createObjectURL(stream.blob) : stream.url;
-      this.attachSource(url, Boolean(stream.blob), track.id);
+      // Android: the WebView can't send the stream's client headers, so fetch it
+      // natively first and play it from memory
+      let playable = stream;
+      if (isNativeApp() && !stream.blob && stream.url) {
+        const blob = await this.downloadAudioBlob(stream, controller.signal).catch(() => null);
+        if (epoch !== this.loadEpoch || controller.signal.aborted) return;
+        if (blob) playable = { ...stream, url: undefined, blob, expiresAtMs: null } as PlaybackStream;
+      }
+      const url = playable.blob ? URL.createObjectURL(playable.blob) : playable.url!;
+      this.attachSource(url, Boolean(playable.blob), track.id);
       this.audio.volume = 0;
       this.audio.load();
       this.applyPlaybackRateAndPitch();
