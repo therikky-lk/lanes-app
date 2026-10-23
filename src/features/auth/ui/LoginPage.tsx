@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -194,7 +195,7 @@ export default function LoginPage() {
         />
       </div>
 
-      <WindowControls variant="glass" />
+      {!isNativeApp() && <WindowControls variant="glass" />}
 
       {/* Centered solid panel in new app style — bg stays visible around it */}
       <section className="relative z-10 mx-4 my-auto flex max-h-[calc(100%-48px)] w-full max-w-[400px] flex-col overflow-y-auto rounded-xl border border-border-primary bg-bg-panel p-[28px]">

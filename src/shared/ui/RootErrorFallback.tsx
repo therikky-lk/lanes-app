@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import React, { useState, useMemo, useCallback } from "react";
 import {
   LuTriangleAlert,
@@ -151,7 +152,7 @@ export function RootErrorFallback({
       className="relative flex flex-col h-screen w-screen overflow-hidden rounded-5xl bg-bg-canvas p-1.5 select-none"
     >
       {/* Window Controls */}
-      <WindowControls />
+      {!isNativeApp() && <WindowControls />}
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full bg-bg-primary rounded-sm border border-border-primary/40 p-6 md:p-10 overflow-y-auto">
