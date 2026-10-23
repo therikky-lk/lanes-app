@@ -462,3 +462,32 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-mobile body { padding: 0 !important; }
 /* no hover on touch screens: keep hover-only controls reachable */
 .lane-mobile .group:active .group-hover\:opacity-100 { opacity: 1; }
+
+/* phone: content scrolls under the status bar, keep sticky bars below it */
+:root { --lane-safe-top: env(safe-area-inset-top, 0px); --lane-safe-bottom: env(safe-area-inset-bottom, 0px); }
+.lane-mobile { --lane-scroll-top-inset: var(--lane-safe-top, 0px); }
+.lane-mobile .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
+.lane-mobile { --lane-releases-top: 12px; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* phone search: full width, results fill the space above the dock */
+.lane-search-mobile .lane-search-box,
+.lane-search-mobile .lane-search-panel { width: 100% !important; }
+.lane-search-mobile .lane-search-panel { max-height: none !important; flex: 1 1 auto; min-height: 0; }
+.lane-search-mobile .lane-search-panel.h-auto { flex: 0 1 auto; }
+
+/* phone settings: a full screen page instead of a floating two-pane dialog */
+.lane-settings-mobile {
+  position: fixed !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  padding-top: var(--lane-safe-top, 0px) !important;
+  padding-bottom: var(--lane-safe-bottom, 0px) !important;
+}
+.lane-settings-mobile .px-\[24px\] { padding-left: 16px !important; padding-right: 16px !important; }

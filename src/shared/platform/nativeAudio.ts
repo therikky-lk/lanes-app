@@ -1,0 +1,265 @@
+// Android: playback runs in a native ExoPlayer (background audio, media
+// notification, lock screen). The player engine and the lyrics view keep talking
+// to an <audio id="liner-audio"> element; on Android that element is a real
+// HTMLAudioElement whose media properties and events are forwarded to the native
+// player, so nothing above this file has to know the difference.
+import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+
+interface NativeState {
+  playing: boolean;
+  buffering: boolean;
+  ended: boolean;
+  positionMs: number;
+  durationMs: number;
+  error?: string;
+}
+
+interface LaneAudioPlugin {
+  load(options: {
+    url: string;
+    headers?: Record<string, string>;
+    title?: string;
+    artist?: string;
+    album?: string;
+    artwork?: string;
+    startPositionMs?: number;
+    autoplay?: boolean;
+  }): Promise<void>;
+  play(): Promise<void>;
+  pause(): Promise<void>;
+  stop(): Promise<void>;
+  seek(options: { positionMs: number }): Promise<void>;
+  setVolume(options: { volume: number }): Promise<void>;
+  setRate(options: { rate: number }): Promise<void>;
+  writeCacheFile(options: { name: string; base64: string }): Promise<{ url: string }>;
+  addListener(event: "state", cb: (s: NativeState) => void): Promise<PluginListenerHandle>;
+  addListener(event: "remote", cb: (r: { action: string; positionMs: number }) => void): Promise<PluginListenerHandle>;
+}
+
+export const LaneAudio = registerPlugin<LaneAudioPlugin>("LaneAudio");
+
+export interface NowPlayingMeta {
+  title?: string;
+  artist?: string;
+  album?: string;
+  artwork?: string;
+}
+
+let nowPlaying: NowPlayingMeta = {};
+/** what the notification / lock screen should show for the next load */
+export function setNativeNowPlaying(meta: NowPlayingMeta): void {
+  nowPlaying = meta;
+}
+
+let headersForUrl: (url: string) => Record<string, string> = () => ({});
+export function setNativeHeaderProvider(fn: (url: string) => Record<string, string>): void {
+  headersForUrl = fn;
+}
+
+type RemoteHandler = (action: string, positionMs: number) => void;
+let remoteHandler: RemoteHandler | null = null;
+export function onNativeRemote(handler: RemoteHandler): void {
+  remoteHandler = handler;
+}
+
+// blob: URLs are page-local; remember the Blob behind each one so it can be
+// handed to the native player as a file
+const blobsByUrl = new Map<string, Blob>();
+let blobTrackingInstalled = false;
+function trackBlobUrls(): void {
+  if (blobTrackingInstalled) return;
+  blobTrackingInstalled = true;
+  const create = URL.createObjectURL.bind(URL);
+  const revoke = URL.revokeObjectURL.bind(URL);
+  URL.createObjectURL = (obj: Blob | MediaSource) => {
+    const url = create(obj);
+    if (obj instanceof Blob) blobsByUrl.set(url, obj);
+    return url;
+  };
+  URL.revokeObjectURL = (url: string) => {
+    blobsByUrl.delete(url);
+    revoke(url);
+  };
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+class NativeMediaError {
+  readonly MEDIA_ERR_ABORTED = 1;
+  readonly MEDIA_ERR_NETWORK = 2;
+  readonly MEDIA_ERR_DECODE = 3;
+  readonly MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
+  constructor(
+    readonly code: number,
+    readonly message: string,
+  ) {}
+}
+
+/** an <audio> element whose playback happens in the native player */
+export function createNativeAudioElement(): HTMLAudioElement {
+  trackBlobUrls();
+  const el = document.createElement("audio");
+  el.id = "liner-audio";
+
+  let src = "";
+  let positionMs = 0;
+  let positionAt = performance.now();
+  let durationMs = NaN;
+  let playing = false;
+  let buffering = false;
+  let ended = false;
+  let wantPlay = false;
+  let volume = 1;
+  let rate = 1;
+  let readyState = 0;
+  let error: NativeMediaError | null = null;
+  let loadToken = 0;
+
+  const fire = (type: string) => el.dispatchEvent(new Event(type));
+  const livePosition = () =>
+    playing ? positionMs + (performance.now() - positionAt) * rate : positionMs;
+
+  void LaneAudio.addListener("state", (s) => {
+    const wasPlaying = playing;
+    const hadDuration = Number.isFinite(durationMs);
+    positionMs = s.positionMs;
+    positionAt = performance.now();
+    if (s.durationMs > 0 && s.durationMs !== durationMs) {
+      durationMs = s.durationMs;
+      if (!hadDuration) {
+        readyState = 4;
+        fire("loadedmetadata");
+        fire("canplay");
+      }
+      fire("durationchange");
+    }
+    if (s.buffering && !buffering) fire("waiting");
+    buffering = s.buffering;
+    playing = s.playing;
+    if (playing && !wasPlaying) {
+      fire("play");
+      fire("playing");
+    } else if (!playing && wasPlaying && !s.ended) {
+      wantPlay = false;
+      fire("pause");
+    }
+    fire("timeupdate");
+    if (s.ended && !ended) {
+      ended = true;
+      wantPlay = false;
+      fire("pause");
+      fire("ended");
+    }
+    if (s.error && !error) {
+      error = new NativeMediaError(2, s.error);
+      fire("error");
+    }
+  });
+  void LaneAudio.addListener("remote", (r) => remoteHandler?.(r.action, r.positionMs));
+
+  const startLoad = async () => {
+    const token = ++loadToken;
+    positionMs = 0;
+    positionAt = performance.now();
+    durationMs = NaN;
+    playing = false;
+    ended = false;
+    error = null;
+    readyState = 0;
+    if (!src) {
+      await LaneAudio.stop();
+      return;
+    }
+    fire("loadstart");
+    let url = src;
+    try {
+      if (src.startsWith("blob:")) {
+        const blob: Blob = blobsByUrl.get(src) ?? (await fetch(src).then((r) => r.blob()));
+        const ext = (blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
+        const written = await LaneAudio.writeCacheFile({
+          name: `track-${Date.now()}.${ext}`,
+          base64: await blobToBase64(blob),
+        });
+        url = written.url;
+      }
+      if (token !== loadToken) return;
+      await LaneAudio.load({
+        url,
+        headers: url.startsWith("http") ? headersForUrl(url) : {},
+        ...nowPlaying,
+        autoplay: wantPlay,
+      });
+    } catch (e) {
+      if (token !== loadToken) return;
+      error = new NativeMediaError(4, e instanceof Error ? e.message : String(e));
+      fire("error");
+    }
+  };
+
+  const define = (name: string, get: () => unknown, set?: (v: never) => void) =>
+    Object.defineProperty(el, name, { configurable: true, get, ...(set ? { set } : {}) });
+
+  define("src", () => src, (v: string) => {
+    src = v ?? "";
+    void startLoad();
+  });
+  define("currentSrc", () => src);
+  define("currentTime", () => livePosition() / 1000, (v: number) => {
+    positionMs = Math.max(0, v * 1000);
+    positionAt = performance.now();
+    ended = false;
+    fire("seeking");
+    void LaneAudio.seek({ positionMs }).then(() => fire("seeked"));
+    fire("timeupdate");
+  });
+  define("duration", () => (Number.isFinite(durationMs) ? durationMs / 1000 : NaN));
+  define("paused", () => !playing && !wantPlay);
+  define("ended", () => ended);
+  define("readyState", () => readyState);
+  define("networkState", () => (buffering ? 2 : 1));
+  define("error", () => error);
+  define("buffered", () => ({ length: 0, start: () => 0, end: () => 0 }));
+  define("volume", () => volume, (v: number) => {
+    volume = Math.max(0, Math.min(1, v));
+    void LaneAudio.setVolume({ volume });
+    fire("volumechange");
+  });
+  define("playbackRate", () => rate, (v: number) => {
+    rate = v || 1;
+    void LaneAudio.setRate({ rate });
+    fire("ratechange");
+  });
+  define("defaultPlaybackRate", () => 1, () => {});
+  define("preservesPitch", () => true, () => {});
+
+  (el as unknown as { play: () => Promise<void> }).play = async () => {
+    wantPlay = true;
+    ended = false;
+    await LaneAudio.play();
+  };
+  (el as unknown as { pause: () => void }).pause = () => {
+    wantPlay = false;
+    void LaneAudio.pause();
+  };
+  (el as unknown as { load: () => void }).load = () => {
+    void startLoad();
+  };
+  const removeAttribute = el.removeAttribute.bind(el);
+  el.removeAttribute = (name: string) => {
+    if (name === "src") {
+      src = "";
+      void startLoad();
+      return;
+    }
+    removeAttribute(name);
+  };
+
+  return el;
+}

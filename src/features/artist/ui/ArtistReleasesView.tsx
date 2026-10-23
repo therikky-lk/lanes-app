@@ -6,7 +6,6 @@ import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
-import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import { useTranslation } from "@/languages";
 import type { ArtistAlbumViewModel, ArtistReleaseViewModel } from "../hooks/useArtist";
@@ -99,43 +98,59 @@ export default function ArtistReleasesView({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute inset-0 z-40 flex flex-col bg-bg-primary/95 backdrop-blur-2xl"
+          className="absolute inset-0 z-40 overflow-y-auto bg-bg-primary"
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
           data-no-window-drag
         >
-          <header className="shrink-0 flex flex-wrap items-center gap-[12px] px-[32px] pt-[52px] pb-[14px]">
-            <div className="min-w-0 flex-1">
-              <p className="m-0 text-[13px] text-text-tertiary truncate">{artistName}</p>
-              <h2 className="m-0 text-[26px] font-[600] tracking-[-0.02em] text-text-primary">
-                {t("artist.discography") || "Discography"}
-              </h2>
+          {/* frosted header: releases scroll under it */}
+          <header
+            className="sticky top-[0px] z-20 flex flex-col gap-[12px] px-[32px] pb-[12px] backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.05]"
+            style={{
+              paddingTop: "calc(var(--lane-safe-top, 0px) + var(--lane-releases-top, 52px))",
+              background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
+            }}
+          >
+            <div className="flex items-center gap-[12px]">
+              <div className="min-w-0 flex-1">
+                <p className="m-0 text-[13px] text-text-tertiary truncate">{artistName}</p>
+                <h2 className="m-0 truncate text-[26px] font-[600] tracking-[-0.02em] text-text-primary">
+                  {t("artist.discography") || "Discography"}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t("common.close") || "Close"}
+                className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-border-alpha-14 text-text-primary hover:bg-border-alpha-22 cursor-pointer transition-colors"
+              >
+                <CloseLine size={18} />
+              </button>
             </div>
-            <SegmentedTabs
-              options={filters.map((f) => ({ id: f.id, label: f.label, count: f.count }))}
-              value={filter}
-              onChange={setFilter}
-            />
-            <SegmentedTabs
-              iconOnly
-              options={[
-                { id: "grid" as const, label: <GridLine size={16} />, title: t("common.grid") || "Grid" },
-                { id: "list" as const, label: <MenuLine size={16} />, title: t("common.list") || "List" },
-              ]}
-              value={view}
-              onChange={setView}
-            />
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={t("common.close") || "Close"}
-              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full border-0 bg-border-alpha-14 text-text-primary hover:bg-border-alpha-22 cursor-pointer transition-colors"
-            >
-              <CloseLine size={18} />
-            </button>
+            <div className="flex items-center gap-[10px]">
+              <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar">
+                <div className="w-max">
+                  <SegmentedTabs
+                    options={filters.map((f) => ({ id: f.id, label: f.label, count: f.count }))}
+                    value={filter}
+                    onChange={setFilter}
+                  />
+                </div>
+              </div>
+              <div className="shrink-0">
+                <SegmentedTabs
+                  iconOnly
+                  options={[
+                    { id: "grid" as const, label: <GridLine size={16} />, title: t("common.grid") || "Grid" },
+                    { id: "list" as const, label: <MenuLine size={16} />, title: t("common.list") || "List" },
+                  ]}
+                  value={view}
+                  onChange={setView}
+                />
+              </div>
+            </div>
           </header>
 
-          <div className="relative min-h-0 flex-1 overflow-y-auto px-[24px] pb-[32px]">
-            <ScrollBlurEdge height={40} />
+          <div className="relative px-[24px] pt-[14px]" style={{ paddingBottom: "calc(32px + var(--lane-dock-h, 0px))" }}>
             {view === "grid" ? (
               <div className="grid gap-x-[16px] gap-y-[8px] px-[8px]" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))" }}>
                 {items.map(({ release, kind }) =>
