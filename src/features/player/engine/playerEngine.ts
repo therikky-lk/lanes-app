@@ -54,7 +54,9 @@ export type RemoteAction =
   | { type: "next" }
   | { type: "prev" }
   | { type: "seek"; positionMs: number }
-  | { type: "volume"; volume: number };
+  | { type: "volume"; volume: number }
+  /** a new track / queue picked while mirroring: start it over there */
+  | { type: "load"; queue: Track[]; index: number; context: string | null };
 
 let remoteInterceptor: ((action: RemoteAction) => boolean) | null = null;
 let localPlayListener: (() => void) | null = null;
@@ -446,6 +448,22 @@ class PlayerEngine {
     queueIndex?: number,
     preserveQueue?: boolean,
   ): Promise<void> {
+    if (remoteInterceptor) {
+      const wanted = queue ?? [track];
+      const at = queueIndex ?? wanted.findIndex((item) => item.id === track.id);
+      const index = at >= 0 && wanted[at]?.id === track.id ? at : -1;
+      const forwardQueue = index >= 0 ? wanted : [track];
+      if (
+        forwarded({
+          type: "load",
+          queue: forwardQueue,
+          index: Math.max(0, index),
+          context: context === undefined ? usePlayerStore.getState().playbackContext : context,
+        })
+      ) {
+        return;
+      }
+    }
     localPlayListener?.();
     const store = usePlayerStore.getState();
     const nextQueue = this.normalizeQueue(queue ?? [track], track);
