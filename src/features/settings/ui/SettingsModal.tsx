@@ -1,3 +1,4 @@
+import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CloseLine, Search2Line, CloseCircleFill, ExitLine, DiscordFill, KeyboardLine } from "@mingcute/react";
@@ -14,6 +15,7 @@ import {
 } from "@solar-icons/react";
 import Dialog from "@/shared/ui/Dialog";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { isNativeApp } from "@/shared/platform/native";
 import { ArrowLeftLine } from "@mingcute/react";
 import { UserAvatar } from "@/shared/ui";
 import { useTranslation, getTranslationsForAllLocales } from "@/languages";
@@ -45,13 +47,18 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   About: InfoCircle,
 };
 
+// Android has no keyboard shortcuts, desktop overlay or Discord presence
+const DESKTOP_ONLY_TABS = new Set<TabId>(["Shortcuts", "Overlay", "Discord"]);
 const TAB_GROUPS: { labelKey: "preferences" | "application"; ids: TabId[] }[] = [
   { labelKey: "preferences", ids: ["Playback", "Shortcuts", "Overlay", "Discord", "Audio", "Appearance"] },
   { labelKey: "application", ids: ["Storage", "About"] },
-];
+].map((group) => ({
+  ...group,
+  ids: isNativeApp() ? (group.ids as TabId[]).filter((id) => !DESKTOP_ONLY_TABS.has(id)) : (group.ids as TabId[]),
+})) as { labelKey: "preferences" | "application"; ids: TabId[] }[];
 
 
-const SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
+const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
   // Playback
   { tabId: "Playback", titleKey: "settings.autoplay_similar.title", descKey: "settings.autoplay_similar.description" },
   { tabId: "Playback", titleKey: "settings.track_double_click.title", descKey: "settings.track_double_click.description" },
@@ -106,6 +113,8 @@ const SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
   { tabId: "About", titleKey: "settings.about.liner", descKey: "common.app.version" },
   { tabId: "About", titleKey: "settings.notifications.test_button" },
 ];
+
+const SETTING_ITEMS = ALL_SETTING_ITEMS.filter((item) => !isNativeApp() || !DESKTOP_ONLY_TABS.has(item.tabId));
 
 const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
 
@@ -228,6 +237,14 @@ export default function SettingsModal() {
   useEffect(() => {
     if (!open) setMobilePage(false);
   }, [open]);
+  // Android Back on a settings page returns to the list first
+  useEffect(() => {
+    if (!open || !mobilePage) return;
+    return onAndroidBack(() => {
+      setMobilePage(false);
+      return true;
+    });
+  }, [open, mobilePage]);
 
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);

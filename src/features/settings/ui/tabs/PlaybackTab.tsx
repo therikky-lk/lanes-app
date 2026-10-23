@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect } from "react";
 import { useTranslation } from "@/languages";
 import { usePlayerStore } from "@/features/player";
@@ -109,7 +110,7 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
         }
       />
 
-      <SettingRow
+      {!isNativeApp() && <SettingRow
         title={t("settings.audio.pause_on_device_change.title")}
         description={t("settings.audio.pause_on_device_change.description")}
         titleKey="settings.audio.pause_on_device_change.title"
@@ -121,7 +122,7 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
             onChange={setPauseOnDeviceChange}
           />
         }
-      />
+      />}
     </SettingSection>
   );
 }

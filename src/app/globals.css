@@ -471,12 +471,29 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-bottom: calc(var(--lane-dock-h, 0px) + 16px) !important;
 }
 .lane-mobile [data-page-scroller] .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
-.lane-mobile .lane-frost-sticky { transition: background-color 0.25s ease, backdrop-filter 0.25s ease; }
-.lane-mobile .lane-frost-sticky[data-frost="true"] {
-  background-color: color-mix(in srgb, var(--bg-primary, #0d0d10) 72%, transparent) !important;
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+/* library header on phones: a soft frosted fade (no visible edge) once the
+   grid scrolls under it; it reaches up under the status bar */
+.lane-mobile [data-page-scroller] .lane-frost-sticky {
+  top: 0 !important;
+  margin-top: calc(-1 * var(--lane-safe-top, 0px));
+  padding-top: var(--lane-safe-top, 0px);
+  padding-bottom: 14px;
 }
+.lane-mobile .lane-frost-sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -10px 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: color-mix(in srgb, var(--bg-primary, #0d0d10) 70%, transparent);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+.lane-mobile .lane-frost-sticky[data-frost="true"]::before { opacity: 1; }
 .lane-mobile { --lane-releases-top: 12px; }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

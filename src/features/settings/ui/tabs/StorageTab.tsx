@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import lottie, { type AnimationItem } from "lottie-web";
@@ -576,7 +577,7 @@ export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string
             : t("settings.storage.clear_selected")}
         </Button>
 
-        <Button
+        {!isNativeApp() && <Button
           variant="secondary"
           size="default"
           type="button"
@@ -586,7 +587,7 @@ export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string
         >
           <FolderOpenLine size={16} />
           <span>{t("settings.storage.open_folder")}</span>
-        </Button>
+        </Button>}
       </div>
           </motion.div>
         )}

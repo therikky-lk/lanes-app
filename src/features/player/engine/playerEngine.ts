@@ -1,4 +1,5 @@
 import { isNativeApp } from "@/shared/platform/native";
+import { APP_VERSION as APP_VERSION_FOR_ALERT } from "@/shared/config/version";
 import {
   usePlayerStore,
   type PlayerCommand,
@@ -993,6 +994,11 @@ class PlayerEngine {
     }
 
     console.error("[PlaybackError]", info.trackId, info.message);
+    // Android test builds: show the full reason once per launch (screenshot it)
+    if (isNativeApp() && !(window as unknown as { __laneErrorShown?: boolean }).__laneErrorShown) {
+      (window as unknown as { __laneErrorShown?: boolean }).__laneErrorShown = true;
+      setTimeout(() => window.alert(`Lane ${APP_VERSION_FOR_ALERT}: ${track.title}\n\n${info.message.slice(0, 1800)}`), 0);
+    }
     log("yellow", "playback", `"${track.title}" failed (${info.message}) — skipping to next`);
     showToast(translate("player.track_unavailable_title"), "error", {
       description:

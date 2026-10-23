@@ -1,3 +1,4 @@
+import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -62,6 +63,15 @@ export default function ArtistReleasesView({
       localStorage.setItem(VIEW_KEY, view);
     } catch {}
   }, [view]);
+
+  useEffect(() => {
+    if (!open) return;
+    return onAndroidBack(() => {
+      if (menuOpen) setMenuOpen(false);
+      else onClose();
+      return true;
+    });
+  }, [open, menuOpen, onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,7 +151,8 @@ export default function ArtistReleasesView({
                 {menuOpen && (
                   <>
                     <div className="fixed inset-0 z-[1]" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-0 top-[44px] z-[2] w-[210px] overflow-hidden rounded-xl border border-border-primary/60 bg-bg-elevated/95 p-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+                    <div className="absolute right-[4px] top-[54px] z-[2] w-[210px] overflow-hidden rounded-xl border border-white/[0.08] p-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+                      style={{ background: "color-mix(in srgb, var(--bg-elevated, #1a1a1e) 62%, transparent)", backdropFilter: "blur(24px) saturate(1.5)", WebkitBackdropFilter: "blur(24px) saturate(1.5)" }}>
                       {filters.map((f) => (
                         <button
                           key={f.id}
@@ -227,7 +238,7 @@ export default function ArtistReleasesView({
           </header>
           )}
 
-          <div className={`relative ${isMobile ? "px-[8px]" : "px-[24px]"} pt-[14px]`} style={{ paddingBottom: "calc(32px + var(--lane-dock-h, 0px))" }}>
+          <div className={`relative ${isMobile ? "px-[8px] pt-[22px]" : "px-[24px] pt-[14px]"}`} style={{ paddingBottom: "calc(32px + var(--lane-dock-h, 0px))" }}>
             {view === "grid" ? (
               <div className="grid gap-x-[16px] gap-y-[8px] px-[8px]" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 140 : 168}px, 1fr))` }}>
                 {items.map(({ release, kind }) =>
