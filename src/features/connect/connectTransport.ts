@@ -1,12 +1,12 @@
 // Lane Connect relays: public ntfy servers. Every message is published to all
 // of them and devices listen on all of them, so two devices meet as long as
 // they share at least one reachable relay. The desktop app talks to the relays
-// from the main process (no CORS, system networking); the phone uses SSE and
-// falls back to polling when long-lived streams don't get through.
+// from the main process (no CORS, system networking); the phone uses a
+// WebSocket and polls only while the socket is down.
 import { diag } from "@/shared/platform/diag";
 
 export const RELAYS = ["https://ntfy.sh", "https://ntfy.envs.net"];
-const POLL_MS = 3000;
+const POLL_MS = 1500;
 
 export interface Relay {
   publish(text: string): Promise<void>;
@@ -27,11 +27,15 @@ function browserSubscribe(
   deliver: (text: string) => void,
   status: (online: boolean, error?: string) => void,
 ): Sub {
+  // A WebSocket is the primary channel: messages arrive within a fraction of a
+  // second, and unlike fetch/XHR it isn't routed through CapacitorHttp (which
+  // buffers whole responses) and unlike SSE it survives Android WebView well.
+  // While the socket is down, poll often and keep retrying the socket, so a
+  // hiccup never leaves the device on slow polling for good.
   let closed = false;
-  let source: EventSource | null = null;
+  let socket: WebSocket | null = null;
   let retry: ReturnType<typeof setTimeout> | null = null;
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
-  let polling = false;
   let failures = 0;
   let since = String(Math.floor(Date.now() / 1000));
 
@@ -42,12 +46,15 @@ function browserSubscribe(
     deliver(data.message);
   };
 
+  const socketOpen = () => socket?.readyState === WebSocket.OPEN;
+
   const poll = async () => {
-    if (closed) return;
+    pollTimer = null;
+    if (closed || socketOpen()) return;
     try {
       const res = await fetch(`${relay}/${topic}/json?poll=1&since=${encodeURIComponent(since)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      status(true);
+      if (!socketOpen()) status(true);
       for (const line of (await res.text()).split("\n")) {
         if (!line.trim()) continue;
         try {
@@ -55,51 +62,93 @@ function browserSubscribe(
         } catch {}
       }
     } catch (error) {
-      status(false, error instanceof Error ? error.message : String(error));
+      if (!socketOpen()) status(false, error instanceof Error ? error.message : String(error));
     }
+    schedulePoll();
+  };
+
+  const schedulePoll = () => {
+    if (closed || pollTimer || socketOpen()) return;
     pollTimer = setTimeout(() => void poll(), POLL_MS);
   };
 
-  const startPolling = () => {
-    if (polling || closed) return;
-    polling = true;
-    source?.close();
-    source = null;
-    void poll();
-  };
-
   const connect = () => {
-    if (closed || polling) return;
-    source = new EventSource(`${relay}/${topic}/sse`);
-    source.onopen = () => {
+    retry = null;
+    if (closed) return;
+    const url = `${relay.replace(/^http/, "ws")}/${topic}/ws?since=${encodeURIComponent(since)}`;
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(url);
+    } catch (error) {
+      status(false, error instanceof Error ? error.message : String(error));
+      return reconnect();
+    }
+    socket = ws;
+    let opened = false;
+    // a socket stuck connecting counts as a failure
+    const guard = setTimeout(() => {
+      if (!opened && socket === ws) ws.close();
+    }, 6000);
+    ws.onopen = () => {
+      opened = true;
+      clearTimeout(guard);
       failures = 0;
+      if (pollTimer) clearTimeout(pollTimer);
+      pollTimer = null;
       status(true);
     };
-    source.onmessage = (event) => {
+    ws.onmessage = (event) => {
       try {
-        handle(JSON.parse(event.data) as NtfyMessage);
+        handle(JSON.parse(String(event.data)) as NtfyMessage);
       } catch {}
     };
-    source.onerror = () => {
-      status(false, "stream error");
-      if (++failures >= 2) return startPolling();
-      if (source?.readyState === EventSource.CLOSED) {
-        source = null;
-        retry = setTimeout(connect, 4000);
-      }
+    ws.onerror = () => {};
+    ws.onclose = () => {
+      clearTimeout(guard);
+      if (socket !== ws) return;
+      socket = null;
+      if (closed) return;
+      if (opened) status(false, "socket closed");
+      reconnect();
     };
   };
+
+  const reconnect = () => {
+    if (closed || retry) return;
+    failures += 1;
+    // fill the gap by polling until the socket is back
+    if (failures === 1) void poll();
+    else schedulePoll();
+    const delay = Math.min(1000 * 2 ** Math.min(failures - 1, 4), 15_000);
+    retry = setTimeout(connect, delay);
+  };
+
+  // phones suspend sockets in the background: reconnect as soon as we're back
+  const onVisible = () => {
+    if (closed || document.visibilityState !== "visible") return;
+    if (!socketOpen()) {
+      if (retry) clearTimeout(retry);
+      retry = null;
+      socket?.close();
+      socket = null;
+      failures = 0;
+      void poll();
+      connect();
+    }
+  };
+  document.addEventListener("visibilitychange", onVisible);
+
   connect();
-  setTimeout(() => {
-    if (!closed && !polling && source && source.readyState !== EventSource.OPEN) startPolling();
-  }, 8000);
 
   return {
     close() {
       closed = true;
+      document.removeEventListener("visibilitychange", onVisible);
       if (retry) clearTimeout(retry);
       if (pollTimer) clearTimeout(pollTimer);
-      source?.close();
+      const ws = socket;
+      socket = null;
+      ws?.close();
     },
   };
 }

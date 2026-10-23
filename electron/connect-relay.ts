@@ -16,19 +16,33 @@ function key(relay: string, topic: string): string {
 }
 
 async function streamLoop(sender: WebContents, relay: string, topic: string, abort: AbortController): Promise<void> {
-  let backoff = 2000;
+  let backoff = 1000;
+  let since: string | null = null;
   while (!abort.signal.aborted && !sender.isDestroyed()) {
+    // a connection that dies silently (sleep, network switch) sends nothing:
+    // ntfy sends a keepalive every ~45 s, so 70 s of silence means it's gone
+    const attempt = new AbortController();
+    const onAbort = () => attempt.abort();
+    abort.signal.addEventListener("abort", onAbort);
+    let idle: ReturnType<typeof setTimeout> | null = null;
+    const touch = () => {
+      if (idle) clearTimeout(idle);
+      idle = setTimeout(() => attempt.abort(), 70_000);
+    };
     try {
-      const res = await fetch(`${relay}/${topic}/json`, { signal: abort.signal });
+      touch();
+      const query = since ? `?since=${encodeURIComponent(since)}` : "";
+      const res = await fetch(`${relay}/${topic}/json${query}`, { signal: attempt.signal });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       sender.send("connect:status", { relay, online: true });
-      backoff = 2000;
+      backoff = 1000;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        touch();
         buffer += decoder.decode(value, { stream: true });
         let nl: number;
         while ((nl = buffer.indexOf("\n")) >= 0) {
@@ -37,6 +51,7 @@ async function streamLoop(sender: WebContents, relay: string, topic: string, abo
           if (!line) continue;
           try {
             const msg = JSON.parse(line) as { event?: string; message?: string; id?: string };
+            if (msg.id && msg.event === "message") since = msg.id;
             if (msg.event === "message" && typeof msg.message === "string" && !sender.isDestroyed()) {
               sender.send("connect:message", { relay, id: msg.id, text: msg.message });
             }
@@ -48,7 +63,10 @@ async function streamLoop(sender: WebContents, relay: string, topic: string, abo
       if (abort.signal.aborted || sender.isDestroyed()) return;
       sender.send("connect:status", { relay, online: false, error: error instanceof Error ? error.message : String(error) });
       await new Promise((r) => setTimeout(r, backoff));
-      backoff = Math.min(backoff * 2, 30_000);
+      backoff = Math.min(backoff * 2, 15_000);
+    } finally {
+      if (idle) clearTimeout(idle);
+      abort.signal.removeEventListener("abort", onAbort);
     }
   }
 }

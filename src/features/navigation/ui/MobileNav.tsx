@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home7Fill, Search3Fill, BookmarksFill, Settings4Fill, MusicFill } from "@mingcute/react";
+import { Home7Fill, Search3Fill, BookmarksFill, Settings4Fill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "@/features/library/store/modalStore";
 
@@ -39,13 +39,9 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
         <Search3Fill size={23} />
         <span className={label}>{t("common.sidebar.search") || "Search"}</span>
       </button>
-      <Link to="/library" className={item(onRoute("/library"))}>
+      <Link to="/library" className={item(onRoute("/library") || onRoute("/local"))}>
         <BookmarksFill size={23} />
         <span className={label}>{t("common.sidebar.library") || "Library"}</span>
-      </Link>
-      <Link to="/local" className={item(onRoute("/local"))}>
-        <MusicFill size={23} />
-        <span className={label}>{t("local.title") || "My tracks"}</span>
       </Link>
       <button type="button" onClick={toggleSettings} className={item(settingsOpen)}>
         <Settings4Fill size={23} />
