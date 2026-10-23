@@ -146,8 +146,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      // phones: half-resolution canvas (the blob is soft anyway), CSS scales it up
-      dpr = lite ? 0.5 : Math.min(2, window.devicePixelRatio || 1);
+      dpr = lite ? 1 : Math.min(2, window.devicePixelRatio || 1);
       w = rect.width;
       h = rect.height;
       canvas.width = Math.max(1, Math.round(w * dpr));
@@ -168,7 +167,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     function frame(now: number) {
       raf = 0;
       if (!visible || document.hidden) return;
-      if (lite && now - lastDraw < 40) {
+      if (lite && now - lastDraw < 32) {
         raf = requestAnimationFrame(frame);
         return;
       }

@@ -528,3 +528,5 @@ html[data-hover-reset] [data-window-controls] button:hover {
 
 /* phone settings: no inset card frame */
 .lane-settings-mobile .rounded-xl.bg-bg-primary { border-radius: 0 !important; }
+/* phone settings: a row's control drops under its title when space runs out */
+.lane-settings-mobile .lane-setting-row { flex-wrap: wrap; row-gap: 10px; }

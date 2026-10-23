@@ -36,7 +36,7 @@ export function SettingRow({
   }
 
   return (
-    <div className="flex items-center justify-between gap-[16px] py-[13px]">
+    <div className="lane-setting-row flex items-center justify-between gap-[16px] py-[13px]">
       <div className="flex min-w-0 max-w-[360px] flex-col gap-[2px]">
         <span
           className="text-text-primary text-[13px] font-[500] leading-snug"
