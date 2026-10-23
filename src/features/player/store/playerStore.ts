@@ -1,3 +1,4 @@
+import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Track } from "@/shared/types";
@@ -173,7 +174,8 @@ export const usePlayerStore = create<PlayerStore>()(
       setRepeat: (repeat) => set({ repeat }),
       setShuffle: (shuffle) => set({ shuffle }),
       setVolume: (volume) => set({ volume }),
-      setCurrentTrack: (currentTrack, currentIndex) => {
+      setCurrentTrack: (rawTrack, currentIndex) => {
+        const currentTrack = rawTrack ? { ...rawTrack, title: cleanTrackTitle(rawTrack.title, rawTrack.artists) } : rawTrack;
         const prev = get().currentTrack;
         const isDifferent = prev?.id !== currentTrack?.id;
         set({
