@@ -24,10 +24,10 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
 
   return (
     <nav
-      className="shrink-0 w-full flex items-stretch bg-bg-primary/95 backdrop-blur-xl border-t border-border-primary/40"
+      className="shrink-0 w-full flex items-stretch bg-bg-primary/55 backdrop-blur-2xl backdrop-saturate-150 border-t border-white/[0.06]"
       style={{
-        height: "calc(58px + env(safe-area-inset-bottom, 0px))",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        height: "calc(58px + var(--lane-safe-bottom, 0px))",
+        paddingBottom: "var(--lane-safe-bottom, 0px)",
         fontFamily: "var(--font-inter), sans-serif",
       }}
     >

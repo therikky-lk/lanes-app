@@ -13,6 +13,8 @@ import {
   Widget5,
 } from "@solar-icons/react";
 import Dialog from "@/shared/ui/Dialog";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { ArrowLeftLine } from "@mingcute/react";
 import { UserAvatar } from "@/shared/ui";
 import { useTranslation, getTranslationsForAllLocales } from "@/languages";
 import { useModalStore } from "@/features/library";
@@ -220,6 +222,13 @@ export default function SettingsModal() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  // phone: the tab list and a tab's page are two screens
+  const isMobile = useIsMobile();
+  const [mobilePage, setMobilePage] = useState(false);
+  useEffect(() => {
+    if (!open) setMobilePage(false);
+  }, [open]);
+
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const displayName =
@@ -234,9 +243,9 @@ export default function SettingsModal() {
       open={open}
       onOpenChange={(next) => (!next ? handleClose() : undefined)}
       maxWidth={880}
-      className="p-0 h-[620px] max-h-[86vh] !flex-row overflow-hidden !bg-bg-elevated !border-0"
+      className={`p-0 h-[620px] max-h-[86vh] !flex-row overflow-hidden !bg-bg-elevated !border-0 ${isMobile ? "lane-settings-mobile" : ""}`}
     >
-      <aside className="w-[248px] shrink-0 flex flex-col min-h-0 bg-transparent">
+      <aside className={`${isMobile ? (mobilePage ? "hidden" : "flex-1 w-full") : "w-[248px] shrink-0"} flex flex-col min-h-0 bg-transparent`}>
         <div className="px-[12px] pt-[14px] pb-[8px]">
           <div className="relative flex items-center">
             <Search2Line
@@ -290,7 +299,10 @@ export default function SettingsModal() {
                     type="button"
                     role="tab"
                     aria-selected={isActive}
-                    onClick={() => setActiveTab(id)}
+                    onClick={() => {
+                      setActiveTab(id);
+                      setMobilePage(true);
+                    }}
                     className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] border-0 cursor-pointer text-left transition-colors ${
                       isActive
                         ? "bg-border-alpha-14 text-text-primary"
@@ -349,10 +361,20 @@ export default function SettingsModal() {
       </aside>
 
       {/* ── Right secondary frame: same roundness, inset with padding, darker ── */}
-      <div className="flex-1 min-w-0 min-h-0 p-[2px] flex">
+      <div className={`flex-1 min-w-0 min-h-0 p-[2px] ${isMobile && !mobilePage ? "hidden" : "flex"}`}>
         <div className="flex-1 min-w-0 min-h-0 flex flex-col rounded-xl bg-bg-primary overflow-hidden">
         <div className="flex items-start justify-between gap-[16px] px-[24px] pt-[20px] pb-[10px] shrink-0">
-          <div className="min-w-0">
+          {isMobile && (
+            <button
+              type="button"
+              aria-label={t("common.back") || "Back"}
+              onClick={() => setMobilePage(false)}
+              className="-ml-[6px] w-[32px] h-[32px] shrink-0 inline-flex items-center justify-center rounded-md text-text-primary hover:bg-border-alpha-14 border-0 bg-transparent p-0 cursor-pointer"
+            >
+              <ArrowLeftLine size={20} />
+            </button>
+          )}
+          <div className="min-w-0 flex-1">
             <h3
               className="text-text-primary text-[15px] m-0 font-[600] tracking-[-0.01em]"
               style={font}

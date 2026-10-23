@@ -65,3 +65,15 @@ export function installNativeFetchHeaders(): void {
     return original(input, { ...init, headers });
   };
 }
+
+/** request headers the native player sends for a stream URL */
+export function streamHeadersFor(url: string): Record<string, string> {
+  const host = hostOf(url);
+  if (!host.endsWith("googlevideo.com") && !host.endsWith("youtube.com")) return {};
+  const headers: Record<string, string> = {
+    Origin: "https://music.youtube.com",
+    Referer: "https://music.youtube.com/",
+  };
+  if (streamUserAgent) headers["User-Agent"] = streamUserAgent;
+  return headers;
+}

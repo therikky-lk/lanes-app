@@ -12,7 +12,8 @@ const config: CapacitorConfig = {
   plugins: {
     // route fetch/XHR through native HTTP: no CORS limits, custom headers allowed
     CapacitorHttp: { enabled: true },
-    StatusBar: { overlaysWebView: false, style: "DARK", backgroundColor: "#0d0d10" },
+    // edge-to-edge is handled by MainActivity (--lane-safe-* CSS vars)
+    SystemBars: { insetsHandling: "disable", style: "DARK" },
   },
 };
 

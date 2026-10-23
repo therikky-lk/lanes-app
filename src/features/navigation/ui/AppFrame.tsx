@@ -689,6 +689,13 @@ export default function AppFrame({ children }: AppFrameProps) {
   useEffect(() => {
     document.documentElement.classList.toggle("lane-mobile", isMobile);
   }, [isMobile]);
+  // height of the phone's bottom dock (mini player + tab bar); pages and
+  // overlays pad themselves with it so nothing ends up hidden under the dock
+  useEffect(() => {
+    const style = document.documentElement.style;
+    if (isMobile) style.setProperty("--lane-dock-h", `calc(58px + var(--lane-safe-bottom, 0px) + ${shouldShowMiniPlayer ? 62 : 0}px)`);
+    else style.removeProperty("--lane-dock-h");
+  }, [isMobile, shouldShowMiniPlayer]);
   // Android Back closes the topmost overlay before leaving the page
   useEffect(
     () =>
@@ -780,9 +787,12 @@ export default function AppFrame({ children }: AppFrameProps) {
             }`}
           >
 
+            {/* phone: pages scroll under the status bar and the bottom dock */}
+            {isMobile && <div aria-hidden className="shrink-0" style={{ height: "var(--lane-safe-top, 0px)" }} />}
             <PageTransition>
               {isFullscreenRoute ? shellChildrenRef.current : children}
             </PageTransition>
+            {isMobile && <div aria-hidden className="shrink-0" style={{ height: "var(--lane-dock-h, 0px)" }} />}
           </div>
 
           <AnimatePresence>
@@ -822,7 +832,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           )}
         </main>
 
-        {shouldShowMiniPlayer && (
+        {shouldShowMiniPlayer && !isMobile && (
           <div
             ref={miniPlayerContainerRef}
             // Above the right drawer (z-50) so the player's volume/speed/queue
@@ -844,7 +854,30 @@ export default function AppFrame({ children }: AppFrameProps) {
         )}
       </div>
 
-      {isMobile && <MobileNav searchOpen={searchOpen} onSearchToggle={handleSearchToggle} />}
+      {isMobile && (
+        <>
+          {/* frosted strip behind the status bar */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 z-[40] backdrop-blur-md"
+            style={{
+              height: "var(--lane-safe-top, 0px)",
+              background: "linear-gradient(to bottom, color-mix(in srgb, var(--bg-canvas, #000) 70%, transparent), color-mix(in srgb, var(--bg-canvas, #000) 35%, transparent))",
+            }}
+          />
+          {/* floating dock: mini player + translucent tab bar over the content */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex flex-col">
+            {shouldShowMiniPlayer && (
+              <div ref={miniPlayerContainerRef} className="pointer-events-auto w-full">
+                <MobileMiniPlayer />
+              </div>
+            )}
+            <div className="pointer-events-auto w-full">
+              <MobileNav searchOpen={searchOpen} onSearchToggle={handleSearchToggle} />
+            </div>
+          </div>
+        </>
+      )}
 
       <AnimatePresence initial={false}>
         {fullscreenPlayerOpen ? (
@@ -879,16 +912,16 @@ export default function AppFrame({ children }: AppFrameProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.99 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`absolute right-0 z-[60] flex flex-col items-center pointer-events-none pt-[56px]`}
-            style={{
-              left: SIDEBAR_WIDTH + SHELL_EDGE_GAP,
-              right: SHELL_EDGE_GAP,
-              top: 12,
-            }}
+            className={`absolute right-0 z-[60] flex flex-col items-center pointer-events-none ${isMobile ? "lane-search-mobile" : "pt-[56px]"}`}
+            style={
+              isMobile
+                ? { left: 10, right: 10, top: "calc(var(--lane-safe-top, 0px) + 10px)", bottom: "calc(var(--lane-dock-h, 58px) + 10px)" }
+                : { left: SIDEBAR_WIDTH + SHELL_EDGE_GAP, right: SHELL_EDGE_GAP, top: 12 }
+            }
           >
             {/* 1. Search Input Island */}
             <div
-              className="w-[min(660px,calc(100vw-72px))] h-[54px] rounded-[8px] pointer-events-auto flex items-center px-[18px] gap-[14px] bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
+              className="w-[min(660px,calc(100vw-72px))] lane-search-box h-[54px] shrink-0 rounded-[8px] pointer-events-auto flex items-center px-[18px] gap-[14px] bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
             >
               <span className="shrink-0 flex items-center justify-center text-text-tertiary">
                 <AnimatePresence mode="wait" initial={false}>
@@ -969,7 +1002,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
                   transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-[min(660px,calc(100vw-72px))] mt-[8px] max-h-[500px] h-[500px] rounded-[8px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
+                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[500px] h-[500px] rounded-[8px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
                 >
                   <div className="flex gap-[6px] px-[14px] pt-[12px] pb-[6px] shrink-0 overflow-x-auto">
                     {filterKeys.map((key) => {
@@ -1082,7 +1115,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
                   transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-[min(660px,calc(100vw-72px))] mt-[8px] max-h-[480px] h-auto rounded-[8px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
+                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[480px] h-auto rounded-[8px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
                 >
                   <SearchHistoryList
                     onSelectQuery={handleSelectHistoryQuery}
