@@ -896,6 +896,7 @@
       "badge_private": "Приватный"
     },
     "about": {
+      "all_releases": "Все версии",
       "liner": "Lane",
       "telegram": "Канал",
       "support": "Поддержка",
