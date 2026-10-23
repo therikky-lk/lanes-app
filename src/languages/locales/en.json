@@ -1091,6 +1091,9 @@
     "unknown_artist": "Unknown artist"
   },
   "connect": {
+    "code_section": "Pair by code",
+    "code_hint": "If the devices don't find each other on their own: create a code on one and enter it on the other.",
+    "use_account": "Use the account instead",
     "tab": "Connect",
     "description": "Play on one device and control it from another signed in to the same account.",
     "devices": "Devices",

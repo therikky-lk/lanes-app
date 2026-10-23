@@ -453,9 +453,22 @@ function accountSecret(): string | null {
   return `lane-account:${user.id}`;
 }
 
+const MANUAL_CODE_KEY = "lane_connect_code";
+
+/** a code typed on both devices wins over the account channel */
+export function manualCode(): string | null {
+  return readStorage(MANUAL_CODE_KEY);
+}
+
+export async function setManualCode(code: string | null): Promise<void> {
+  writeStorage(MANUAL_CODE_KEY, code);
+  await startConnect();
+}
+
 export async function startConnect(): Promise<void> {
   stopConnect(false);
-  const code = accountSecret();
+  const manual = manualCode();
+  const code = manual ? `lane-code:${manual}` : accountSecret();
   useConnectStore.setState({ code });
   if (!code) return;
   keys = await deriveKeys(code);
