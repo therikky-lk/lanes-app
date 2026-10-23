@@ -1,6 +1,6 @@
 {
   "name": "lane",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
@@ -78,7 +78,7 @@
         }
       ],
       "category": "Audio",
-      "synopsis": "Lane \u2014 music player"
+      "synopsis": "Lane — music player"
     },
     "deb": {
       "packageName": "lane",
@@ -172,7 +172,6 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
-    "@capacitor/status-bar": "^8.0.4",
     "@mingcute/react": "^1.4.1",
     "@solar-icons/react": "^1.1.1",
     "@tanstack/react-virtual": "^3.13.23",

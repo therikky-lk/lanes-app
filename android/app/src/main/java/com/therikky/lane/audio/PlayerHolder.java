@@ -1,0 +1,216 @@
+package com.therikky.lane.audio;
+
+import android.content.Context;
+import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Base64;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
+import androidx.media3.common.ForwardingPlayer;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.MediaMetadata;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.PlaybackParameters;
+import androidx.media3.common.Player;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DefaultDataSource;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * One ExoPlayer for the whole app process. The Capacitor plugin drives it; the
+ * media session service exposes it to the notification, lock screen and headsets.
+ * Must be used on the main thread.
+ */
+@OptIn(markerClass = UnstableApi.class)
+public final class PlayerHolder {
+
+    public interface Events {
+        void onState(boolean playing, boolean buffering, boolean ended, long positionMs, long durationMs, String error);
+
+        void onRemote(String action, long positionMs);
+    }
+
+    private static PlayerHolder instance;
+
+    private final Context context;
+    private final ExoPlayer player;
+    private final Player sessionPlayer;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private Events events;
+    private String lastError;
+
+    private final Runnable ticker = new Runnable() {
+        @Override
+        public void run() {
+            emit();
+            if (player.isPlaying()) main.postDelayed(this, 250);
+        }
+    };
+
+    public static synchronized PlayerHolder get(Context context) {
+        if (instance == null) instance = new PlayerHolder(context.getApplicationContext());
+        return instance;
+    }
+
+    private PlayerHolder(Context context) {
+        this.context = context;
+        player = new ExoPlayer.Builder(context)
+            .setAudioAttributes(
+                new AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                /* handleAudioFocus= */ true)
+            .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
+            .build();
+
+        player.addListener(new Player.Listener() {
+            @Override
+            public void onIsPlayingChanged(boolean isPlaying) {
+                main.removeCallbacks(ticker);
+                if (isPlaying) main.post(ticker);
+                else emit();
+            }
+
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                emit();
+            }
+
+            @Override
+            public void onPlayerError(@NonNull PlaybackException error) {
+                lastError = error.getErrorCodeName() + ": " + error.getMessage();
+                emit();
+            }
+
+            @Override
+            public void onPositionDiscontinuity(@NonNull Player.PositionInfo oldPosition, @NonNull Player.PositionInfo newPosition, int reason) {
+                emit();
+            }
+        });
+
+        // what the notification and the lock screen talk to: next / previous are
+        // always offered and handed to the app, which owns the queue
+        sessionPlayer = new ForwardingPlayer(player) {
+            @NonNull
+            @Override
+            public Player.Commands getAvailableCommands() {
+                return super.getAvailableCommands().buildUpon()
+                    .add(Player.COMMAND_SEEK_TO_NEXT)
+                    .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .add(Player.COMMAND_SEEK_TO_PREVIOUS)
+                    .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .build();
+            }
+
+            @Override
+            public boolean isCommandAvailable(int command) {
+                return getAvailableCommands().contains(command);
+            }
+
+            @Override
+            public void seekToNext() {
+                remote("next");
+            }
+
+            @Override
+            public void seekToNextMediaItem() {
+                remote("next");
+            }
+
+            @Override
+            public void seekToPrevious() {
+                remote("previous");
+            }
+
+            @Override
+            public void seekToPreviousMediaItem() {
+                remote("previous");
+            }
+        };
+    }
+
+    public Player sessionPlayer() {
+        return sessionPlayer;
+    }
+
+    public ExoPlayer player() {
+        return player;
+    }
+
+    public void setEvents(Events events) {
+        this.events = events;
+    }
+
+    private void remote(String action) {
+        if (events != null) events.onRemote(action, player.getCurrentPosition());
+    }
+
+    void emit() {
+        if (events == null) return;
+        long duration = player.getDuration();
+        int state = player.getPlaybackState();
+        events.onState(
+            player.isPlaying(),
+            state == Player.STATE_BUFFERING,
+            state == Player.STATE_ENDED,
+            Math.max(0, player.getCurrentPosition()),
+            duration == C.TIME_UNSET ? -1 : duration,
+            lastError);
+    }
+
+    /** load a stream (http/https/file) with the request headers its client needs */
+    public void load(String url, Map<String, String> headers, String title, String artist, String album,
+                     String artwork, long startPositionMs, boolean playWhenReady) {
+        lastError = null;
+        MediaMetadata.Builder meta = new MediaMetadata.Builder()
+            .setTitle(title)
+            .setArtist(artist)
+            .setAlbumTitle(album)
+            .setIsPlayable(true);
+        if (artwork != null && !artwork.isEmpty()) {
+            if (artwork.startsWith("data:")) {
+                try {
+                    String b64 = artwork.substring(artwork.indexOf(',') + 1);
+                    meta.setArtworkData(Base64.decode(b64, Base64.DEFAULT), MediaMetadata.PICTURE_TYPE_FRONT_COVER);
+                } catch (IllegalArgumentException ignored) {
+                }
+            } else {
+                meta.setArtworkUri(Uri.parse(artwork));
+            }
+        }
+        MediaItem item = new MediaItem.Builder()
+            .setUri(Uri.parse(url))
+            .setMediaMetadata(meta.build())
+            .build();
+
+        Map<String, String> requestHeaders = new HashMap<>(headers);
+        String userAgent = requestHeaders.remove("User-Agent");
+        DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(requestHeaders);
+        if (userAgent != null) http.setUserAgent(userAgent);
+        MediaSource source = new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, http))
+            .createMediaSource(item);
+
+        player.setMediaSource(source, Math.max(0, startPositionMs));
+        player.prepare();
+        player.setPlayWhenReady(playWhenReady);
+        emit();
+    }
+
+    public void setRate(float rate) {
+        player.setPlaybackParameters(new PlaybackParameters(rate));
+    }
+}

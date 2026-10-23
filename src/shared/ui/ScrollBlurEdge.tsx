@@ -75,7 +75,7 @@ export default function ScrollBlurEdge({ height = 64, threshold = 6 }: ScrollBlu
               aria-hidden
               className="pointer-events-none absolute z-[15] transition-opacity duration-300 ease-out"
               style={{
-                top: box.top,
+                top: `calc(${box.top}px + var(--lane-scroll-top-inset, 0px))`,
                 left: box.left,
                 width: box.width,
                 height,

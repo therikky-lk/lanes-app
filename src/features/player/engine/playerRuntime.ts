@@ -8,7 +8,8 @@ import type { Track } from "@/shared/types";
 import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
 import { downloadAudioBytes } from "@/shared/media/innertube";
-import { isNativeApp } from "@/shared/platform/native";
+import { isNativeApp, streamHeadersFor } from "@/shared/platform/native";
+import { createNativeAudioElement, onNativeRemote, setNativeHeaderProvider, setNativeNowPlaying } from "@/shared/platform/nativeAudio";
 
 
 // error recovery tuning (see the audio "error" handler)
@@ -51,6 +52,19 @@ export class PlayerRuntime {
   constructor() {
     const win = typeof window !== "undefined" ? (window as any) : null;
     let audio = (win?.__liner_audio || (typeof document !== "undefined" && document.getElementById("liner-audio"))) as HTMLAudioElement | null;
+    if (!audio && isNativeApp()) {
+      // Android: a native player behind an <audio> facade (background playback,
+      // media notification, lock screen controls)
+      audio = createNativeAudioElement();
+      setNativeHeaderProvider(streamHeadersFor);
+      onNativeRemote((action) => {
+        void import("./playerEngine").then(({ playerEngine }) => {
+          if (action === "next") void playerEngine.skipNext(false);
+          else if (action === "previous") void playerEngine.skipPrevious();
+        });
+      });
+      if (typeof document !== "undefined") document.body.appendChild(audio);
+    }
     if (!audio) {
       audio = new Audio();
       audio.id = "liner-audio";
@@ -209,6 +223,19 @@ export class PlayerRuntime {
   }
 
   public updateMediaSessionMetadata(track: Track | null) {
+    if (isNativeApp()) {
+      setNativeNowPlaying(
+        track
+          ? {
+              title: track.title,
+              artist: track.artists,
+              album: (track as { albumTitle?: string }).albumTitle || "Lane",
+              artwork: track.coverUrl || undefined,
+            }
+          : {},
+      );
+      return;
+    }
     if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
     if (!track) {
       navigator.mediaSession.metadata = null;
@@ -547,6 +574,8 @@ export class PlayerRuntime {
   }
 
   public async preloadTrack(track: Track): Promise<void> {
+    // Android streams natively; downloading ahead would just double the traffic
+    if (isNativeApp()) return;
     if (this.currentTrackId === track.id) return;
     if (this.preloadingTrackId === track.id) return;
 
@@ -749,14 +778,7 @@ export class PlayerRuntime {
       const streamBitrate = stream.bitrate;
       this.currentSessionExpiresAt = stream.expiresAtMs;
       log("cyan", "playback", `resolved stream for ${track.title}`);
-      // Android: the WebView can't send the stream's client headers, so fetch it
-      // natively first and play it from memory
-      let playable = stream;
-      if (isNativeApp() && !stream.blob && stream.url) {
-        const blob = await this.downloadAudioBlob(stream, controller.signal).catch(() => null);
-        if (epoch !== this.loadEpoch || controller.signal.aborted) return;
-        if (blob) playable = { ...stream, url: undefined, blob, expiresAtMs: null } as PlaybackStream;
-      }
+      const playable = stream;
       const url = playable.blob ? URL.createObjectURL(playable.blob) : playable.url!;
       this.attachSource(url, Boolean(playable.blob), track.id);
       this.audio.volume = 0;
@@ -994,6 +1016,7 @@ export class PlayerRuntime {
   }
 
   private cacheAudioInBackground(track: Track, stream: PlaybackStream, signal: AbortSignal) {
+    if (isNativeApp()) return;
     if (track.durationMs && track.durationMs > 20 * 60 * 1000) return;
     const generation = audioCache.currentGeneration();
     void (async () => {

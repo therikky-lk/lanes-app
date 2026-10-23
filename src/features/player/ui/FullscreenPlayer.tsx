@@ -414,7 +414,7 @@ export function FullscreenPlayer({
 
       <div
         className={`absolute inset-0 z-10 flex ${isMobile ? "flex-col" : ""}`}
-        style={isMobile ? { paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" } : undefined}
+        style={isMobile ? { paddingTop: "calc(var(--lane-safe-top, 0px) + 48px)", paddingBottom: "var(--lane-safe-bottom, 0px)" } : undefined}
       >
         <div className={`flex-1 flex flex-col items-center justify-center gap-5 ${isMobile && mobileLyrics ? "hidden" : ""}`}>
           <PlayerUiElements onClose={onClose} />
@@ -555,7 +555,7 @@ export function FullscreenPlayer({
           className={`absolute right-[12px] z-30 inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
             mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
           }`}
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
+          style={{ top: "calc(var(--lane-safe-top, 0px) + 10px)" }}
         >
           {t("player.lyrics") || "Lyrics"}
         </button>
@@ -572,7 +572,7 @@ export function FullscreenPlayer({
         type="button"
         aria-label={t("player.close_fullscreen")}
         onClick={onClose}
-        style={isMobile ? { top: "calc(env(safe-area-inset-top, 0px) + 10px)" } : undefined}
+        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)" } : undefined}
         data-no-window-drag
         className="absolute top-[12px] left-[12px] z-30 inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto"
       >
