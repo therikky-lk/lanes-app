@@ -162,7 +162,10 @@ export function Select<T extends string = string>({
     menu.style.width = "max-content";
     menu.style.maxWidth = "calc(100vw - 32px)";
 
+    menu.style.maxWidth = "calc(100vw - 24px)";
     const menuRect = menu.getBoundingClientRect();
+    // keep the whole menu on screen (phones: the trigger sits at the right edge)
+    const clampedLeft = Math.max(12, Math.min(trigger.left, window.innerWidth - 12 - menuRect.width));
     const top =
       menuRect.bottom > window.innerHeight
         ? trigger.top - menuRect.height - 6
@@ -172,10 +175,10 @@ export function Select<T extends string = string>({
       top,
       minWidth: computedMinWidth,
       width: "max-content",
-      maxWidth: "calc(100vw - 32px)",
+      maxWidth: "calc(100vw - 24px)",
       ...(align === "bottom-right"
-        ? { right: window.innerWidth - trigger.right }
-        : { left: trigger.left }),
+        ? { right: Math.max(12, window.innerWidth - trigger.right) }
+        : { left: clampedLeft }),
     });
   }, [open, align]);
 
