@@ -74,6 +74,7 @@ export function streamHeadersFor(url: string): Record<string, string> {
     Origin: "https://music.youtube.com",
     Referer: "https://music.youtube.com/",
   };
-  if (streamUserAgent) headers["User-Agent"] = streamUserAgent;
+  const ua = streamUserAgent ?? (typeof navigator !== "undefined" ? navigator.userAgent : undefined);
+  if (ua) headers["User-Agent"] = ua;
   return headers;
 }

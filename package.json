@@ -1,6 +1,6 @@
 {
   "name": "lane",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
@@ -12,6 +12,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "build:potoken": "vite build --config vite.potoken.config.ts",
     "build": "tsc -b && vite build",
     "bundle:publish": "pnpm --dir ../updater bundle:publish",
     "signer:build": "node ../signer/scripts/build-wasm.mjs",

@@ -365,10 +365,11 @@ export default function LibraryPage() {
           const next = event.currentTarget.scrollTop > 2;
           setShowTopFog((prev) => (prev === next ? prev : next));
         }}
+        data-page-scroller
         className="h-full w-full overflow-y-auto bg-transparent pb-[80px]"
       >
         <ScrollBlurEdge height={96} />
-        <div className="sticky top-0 z-20 bg-transparent">
+        <div className="sticky top-0 z-20 bg-transparent lane-frost-sticky" data-frost={showTopFog ? "true" : undefined}>
 
           <div className="px-[32px] pt-[20px] pb-[10px]">
             <h1

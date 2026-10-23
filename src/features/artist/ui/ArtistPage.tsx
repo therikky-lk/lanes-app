@@ -227,6 +227,7 @@ function ArtistContent() {
           }
           setIsScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
         }}
+        data-page-scroller
         className="relative h-full w-full overflow-y-auto pb-[32px]"
       >
         <StickyHeader

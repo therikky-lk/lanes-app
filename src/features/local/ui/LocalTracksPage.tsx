@@ -83,7 +83,7 @@ export default function LocalTracksPage() {
       }}
     >
       <div data-window-drag className="absolute top-0 left-0 right-0 h-[56px] z-10" />
-      <div className="h-full w-full overflow-y-auto pb-[32px]" style={font}>
+      <div data-page-scroller className="h-full w-full overflow-y-auto pb-[32px]" style={font}>
         <ScrollBlurEdge height={72} />
         <button
           type="button"

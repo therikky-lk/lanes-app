@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { CloseLine, GridLine, MenuLine } from "@mingcute/react";
+import { ArrowLeftLine, CheckLine, CloseLine, GridLine, MenuLine, More2Fill } from "@mingcute/react";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
 import CoverImage from "@/features/covers/ui/CoverImage";
@@ -42,6 +43,8 @@ export default function ArtistReleasesView({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<ReleaseFilter>(initialFilter);
+  const isMobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [view, setView] = useState<ViewMode>(() => {
     try {
       return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "grid";
@@ -102,7 +105,80 @@ export default function ArtistReleasesView({
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
           data-no-window-drag
         >
-          {/* frosted header: releases scroll under it */}
+          {isMobile ? (
+            <header
+              className="sticky top-[0px] z-20 flex items-center gap-[6px] px-[8px] pb-[8px] backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.05]"
+              style={{
+                paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
+                background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t("common.back") || "Back"}
+                className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary active:bg-border-alpha-14 cursor-pointer"
+              >
+                <ArrowLeftLine size={22} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <h2 className="m-0 truncate text-[18px] font-[600] tracking-[-0.01em] text-text-primary">
+                  {t("artist.discography") || "Discography"}
+                </h2>
+                <p className="m-0 truncate text-[12px] text-text-tertiary">
+                  {filters.find((f) => f.id === filter)?.label} · {items.length}
+                </p>
+              </div>
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-label={t("common.more") || "More"}
+                  className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary active:bg-border-alpha-14 cursor-pointer"
+                >
+                  <More2Fill size={22} />
+                </button>
+                {menuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[1]" onClick={() => setMenuOpen(false)} />
+                    <div className="absolute right-0 top-[44px] z-[2] w-[210px] overflow-hidden rounded-xl border border-border-primary/60 bg-bg-elevated/95 p-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+                      {filters.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            setFilter(f.id);
+                            setMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
+                        >
+                          <span className="flex-1">{f.label}</span>
+                          <span className="text-text-tertiary tabular-nums">{f.count}</span>
+                          <span className="w-[16px]">{filter === f.id && <CheckLine size={16} />}</span>
+                        </button>
+                      ))}
+                      <div className="my-[4px] h-px bg-border-primary/50" />
+                      {(["grid", "list"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => {
+                            setView(mode);
+                            setMenuOpen(false);
+                          }}
+                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
+                        >
+                          {mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
+                          <span className="flex-1">{mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}</span>
+                          <span className="w-[16px]">{view === mode && <CheckLine size={16} />}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </header>
+          ) : (
           <header
             className="sticky top-[0px] z-20 flex flex-col gap-[12px] px-[32px] pb-[12px] backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.05]"
             style={{
@@ -149,10 +225,11 @@ export default function ArtistReleasesView({
               </div>
             </div>
           </header>
+          )}
 
-          <div className="relative px-[24px] pt-[14px]" style={{ paddingBottom: "calc(32px + var(--lane-dock-h, 0px))" }}>
+          <div className={`relative ${isMobile ? "px-[8px]" : "px-[24px]"} pt-[14px]`} style={{ paddingBottom: "calc(32px + var(--lane-dock-h, 0px))" }}>
             {view === "grid" ? (
-              <div className="grid gap-x-[16px] gap-y-[8px] px-[8px]" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(168px, 1fr))" }}>
+              <div className="grid gap-x-[16px] gap-y-[8px] px-[8px]" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? 140 : 168}px, 1fr))` }}>
                 {items.map(({ release, kind }) =>
                   kind === "album" ? (
                     <AlbumCard

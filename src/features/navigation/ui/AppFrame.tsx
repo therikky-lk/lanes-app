@@ -1,6 +1,7 @@
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import MobileNav from "./MobileNav";
+import { useNativeMediaSync } from "@/features/player/hooks/useNativeMediaSync";
 import MobileMiniPlayer from "@/features/player/ui/MobileMiniPlayer";
 import {
   useCallback,
@@ -686,6 +687,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   );
 
   const isMobile = useIsMobile();
+  useNativeMediaSync();
   useEffect(() => {
     document.documentElement.classList.toggle("lane-mobile", isMobile);
   }, [isMobile]);
@@ -788,11 +790,9 @@ export default function AppFrame({ children }: AppFrameProps) {
           >
 
             {/* phone: pages scroll under the status bar and the bottom dock */}
-            {isMobile && <div aria-hidden className="shrink-0" style={{ height: "var(--lane-safe-top, 0px)" }} />}
             <PageTransition>
               {isFullscreenRoute ? shellChildrenRef.current : children}
             </PageTransition>
-            {isMobile && <div aria-hidden className="shrink-0" style={{ height: "var(--lane-dock-h, 0px)" }} />}
           </div>
 
           <AnimatePresence>
