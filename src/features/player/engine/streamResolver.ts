@@ -11,6 +11,7 @@ import {
   type PlaybackStream,
 } from "./playbackStream";
 import { findYoutubeStandIn } from "./youtubeStandIn";
+import { findSoundCloudStandIn } from "./soundcloudStandIn";
 import { getLocalTrack, isLocalTrackId } from "@/shared/media/local/localTracks";
 
 export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlaybackStream } from "./playbackStream";
@@ -37,13 +38,37 @@ async function resolveSoundCloud(track: PlayableTrack, signal?: AbortSignal): Pr
   }
 }
 
+/** YouTube failed (region lock, blocked network): try the same song on SoundCloud */
+async function withSoundCloudFallback(
+  track: PlayableTrack,
+  primary: () => Promise<PlaybackStream>,
+  signal?: AbortSignal,
+): Promise<PlaybackStream> {
+  try {
+    return await primary();
+  } catch (youtubeError) {
+    if (isAbortError(youtubeError, signal)) throw youtubeError;
+    try {
+      const scId = await findSoundCloudStandIn(track, signal);
+      if (scId) {
+        log("cyan", "playback", `youtube failed, playing soundcloud stand-in ${scId} for "${track.title}"`);
+        return fromSoundCloudStream(await resolveSoundCloudStream(scId, { signal }));
+      }
+    } catch (scError) {
+      if (isAbortError(scError, signal)) throw scError;
+      log("yellow", "playback", `soundcloud fallback failed: ${String(scError)}`);
+    }
+    throw youtubeError;
+  }
+}
+
 async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal?: AbortSignal): Promise<PlaybackStream> {
   const liner = await resolveLinerStream(videoId, signal);
   if (liner) {
     log("cyan", "playback", `playing liner audio (r2) for "${track.title}"`);
     return fromLinerStream(liner, track);
   }
-  return fromInnertubeStream(await resolveDirectAudioStream(track.id, { signal }));
+  return withSoundCloudFallback(track, async () => fromInnertubeStream(await resolveDirectAudioStream(track.id, { signal })), signal);
 }
 
 export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
@@ -56,5 +81,5 @@ export async function resolvePlaybackStream(track: PlayableTrack, signal?: Abort
   if (toSoundCloudTrackId(track.id)) return resolveSoundCloud(track, signal);
   const videoId = toVideoId(track.id);
   if (videoId) return resolveYoutubeTrack(track, videoId, signal);
-  return resolveYoutubeStandIn(track, signal);
+  return withSoundCloudFallback(track, () => resolveYoutubeStandIn(track, signal), signal);
 }

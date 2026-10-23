@@ -22,14 +22,14 @@ export default function PhoneMenu({
   useLayoutEffect(() => {
     if (!open) return;
     const rect = anchorRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 10, right: Math.max(8, window.innerWidth - rect.right) });
+    if (rect) setPos({ top: rect.bottom + 18, right: Math.max(14, window.innerWidth - rect.right + 4) });
   }, [open, anchorRef]);
   if (!open || !pos) return null;
   return createPortal(
     <>
       <div className="fixed inset-0 z-[180]" onClick={onClose} />
       <div
-        className="fixed z-[181] w-[220px] overflow-hidden rounded-2xl border border-white/[0.08] p-[6px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+        className="fixed z-[181] w-[230px] overflow-hidden rounded-2xl border border-white/[0.08] p-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
         style={{
           top: pos.top,
           right: pos.right,
@@ -63,7 +63,7 @@ export function PhoneMenuItem({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-[10px] rounded-xl border-0 bg-transparent px-[10px] py-[10px] text-left text-[14.5px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
+      className="flex w-full items-center gap-[12px] rounded-xl border-0 bg-transparent px-[14px] py-[11px] text-left text-[14.5px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
     >
       {icon}
       <span className="flex-1 truncate">{label}</span>

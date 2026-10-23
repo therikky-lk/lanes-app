@@ -804,6 +804,7 @@
       "badge_private": "Privado"
     },
     "about": {
+      "all_releases": "Todas las versiones",
       "liner": "Lane",
       "telegram": "Canal",
       "support": "Soporte",

@@ -810,6 +810,7 @@
       "badge_private": "Privato"
     },
     "about": {
+      "all_releases": "Tutte le versioni",
       "liner": "Lane",
       "telegram": "Canale",
       "support": "Supporto",
