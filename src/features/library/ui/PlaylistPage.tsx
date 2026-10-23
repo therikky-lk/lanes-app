@@ -1,6 +1,7 @@
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
-import { useCallback, useEffect, useMemo, useRef, useState, memo, Suspense } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo, Suspense } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import PlaylistPageSkeleton from "./PlaylistPageSkeleton";
 import { useToast, ReorderDropPlaceholder, FloatingDragCard, EntitySidebar, SIDEBAR_TITLE_CLASS, SIDEBAR_SUBTITLE_CLASS } from "@/shared/ui";
@@ -133,6 +134,7 @@ function LibraryPlaylistContent() {
   const isLikesMode = id === "likes";
   const decodedId = id ? decodeURIComponent(id) : null;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const { t } = useTranslation();
   const hasCustomBg = useIsContentTransparent();
 
@@ -360,7 +362,22 @@ function LibraryPlaylistContent() {
     maxScrollSpeed: 22,
   });
 
+  // phone layout: the whole page scrolls, so the list starts below the header
+  const [listScrollMargin, setListScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    if (!isMobile) {
+      setListScrollMargin(0);
+      return;
+    }
+    const list = trackListContainerRef.current;
+    const scroller = scrollRef.current;
+    if (!list || !scroller) return;
+    const margin = list.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+    setListScrollMargin((prev) => (Math.abs(prev - margin) > 0.5 ? margin : prev));
+  });
+
   const rowVirtualizer = useVirtualizer({
+    scrollMargin: listScrollMargin,
     count: visibleTracks.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 64,
@@ -577,9 +594,16 @@ function LibraryPlaylistContent() {
               isReady ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >
-            <div className="relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border">
+            <div
+              ref={isMobile ? scrollRef : undefined}
+              className={
+                isMobile
+                  ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"
+                  : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"
+              }
+            >
               <div
-                className="shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"
+                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}
                 data-no-window-drag
               >
                 <EntitySidebar
@@ -930,14 +954,18 @@ function LibraryPlaylistContent() {
               </div>
 
               <div
-                ref={scrollRef}
+                ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag
                 onScroll={() => {
                   if (rafIdRef.current === null) {
                     targetScrollTopRef.current = null;
                   }
                 }}
-                className="min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
+                className={
+                  isMobile
+                    ? "min-w-0 w-full pb-[24px]"
+                    : "min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
+                }
                 style={{ willChange: "scroll-position" }}
               >
               <ScrollBlurEdge height={60} />
@@ -1074,7 +1102,7 @@ function LibraryPlaylistContent() {
                         left: 0,
                         width: "100%",
                         height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start + shiftY}px)`,
+                        transform: `translateY(${virtualRow.start - listScrollMargin + shiftY}px)`,
                         transition: isDragging
                           ? "transform 180ms cubic-bezier(0.2, 0, 0, 1)"
                           : undefined,

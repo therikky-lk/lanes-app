@@ -443,3 +443,22 @@ body[data-edge-to-edge="true"] {
 html[data-hover-reset] [data-window-controls] button:hover {
   background-color: transparent !important;
 }
+
+
+/* ---- phone layout (Android app / narrow windows) --------------------------
+   pages hard-code desktop gutters; tighten them instead of forking every page */
+.lane-mobile .px-8,
+.lane-mobile .px-\[32px\] {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+.lane-mobile .pl-\[32px\] { padding-left: 14px !important; }
+.lane-mobile .ml-\[32px\] { margin-left: 14px !important; }
+.lane-mobile .left-\[32px\] { left: 14px !important; }
+.lane-mobile .px-\[24px\] {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+.lane-mobile body { padding: 0 !important; }
+/* no hover on touch screens: keep hover-only controls reachable */
+.lane-mobile .group:active .group-hover\:opacity-100 { opacity: 1; }

@@ -85,9 +85,63 @@ jobs:
             release/*.zip
             release/SHA256SUMS-windows.txt
 
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Web build for Android
+        run: LANE_TARGET=android pnpm exec vite build --outDir dist-android
+      - name: Sync Capacitor
+        run: pnpm exec cap sync android
+      - name: Build signed APK
+        env:
+          LANE_KEYSTORE_B64: ${{ secrets.LANE_KEYSTORE_B64 }}
+          LANE_KEYSTORE_PASSWORD_SECRET: ${{ secrets.LANE_KEYSTORE_PASSWORD }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          export LANE_VERSION_NAME="$VERSION"
+          export LANE_VERSION_CODE=$(node -p "const [a,b,c]=require('./package.json').version.split('.').map(Number); a*10000+b*100+c")
+          # the signing key: repository secrets if set, else the one kept in the private repo
+          if [ -n "$LANE_KEYSTORE_B64" ]; then
+            echo "$LANE_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/lane.jks"
+            export LANE_KEYSTORE_FILE="$RUNNER_TEMP/lane.jks"
+            export LANE_KEYSTORE_PASSWORD="$LANE_KEYSTORE_PASSWORD_SECRET"
+          else
+            export LANE_KEYSTORE_FILE="$GITHUB_WORKSPACE/android/keystore/lane-release.jks"
+            export LANE_KEYSTORE_PASSWORD="$(cat android/keystore/lane-release.password)"
+          fi
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          mkdir -p ../release
+          cp app/build/outputs/apk/release/app-release.apk "../release/Lane-$VERSION.apk"
+          cd ../release && sha256sum *.apk > SHA256SUMS-android.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          if-no-files-found: error
+          path: |
+            release/*.apk
+            release/SHA256SUMS-android.txt
+
   publish:
     name: Publish release
-    needs: [linux, windows]
+    needs: [linux, windows, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

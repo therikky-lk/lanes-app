@@ -1,3 +1,7 @@
+import { onAndroidBack } from "@/shared/platform/androidBack";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import MobileNav from "./MobileNav";
+import MobileMiniPlayer from "@/features/player/ui/MobileMiniPlayer";
 import {
   useCallback,
   useEffect,
@@ -681,13 +685,39 @@ export default function AppFrame({ children }: AppFrameProps) {
     [contentViewConfig, isDark, hasCustomBg],
   );
 
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    document.documentElement.classList.toggle("lane-mobile", isMobile);
+  }, [isMobile]);
+  // Android Back closes the topmost overlay before leaving the page
+  useEffect(
+    () =>
+      onAndroidBack(() => {
+        if (fullscreenPlayerOpen) {
+          setFullscreenPlayerOpen(false);
+          return true;
+        }
+        if (searchOpen) {
+          closeSearch();
+          return true;
+        }
+        const modals = useModalStore.getState();
+        if (modals.settingsOpen) {
+          modals.toggleSettings();
+          return true;
+        }
+        return false;
+      }),
+    [fullscreenPlayerOpen, setFullscreenPlayerOpen, searchOpen, closeSearch],
+  );
+
   return (
     <div
       ref={appFrameRef}
       data-custom-bg={hasCustomBg ? "true" : undefined}
-      className={`relative flex flex-row h-full w-full overflow-hidden ${
-        isEdgeToEdge ? "rounded-none p-0" : "rounded-5xl p-1.5"
-      } bg-bg-canvas gap-1.5`}
+      className={`relative flex ${isMobile ? "flex-col" : "flex-row"} h-full w-full overflow-hidden ${
+        isMobile ? "rounded-none p-0 gap-0" : isEdgeToEdge ? "rounded-none p-0 gap-1.5" : "rounded-5xl p-1.5 gap-1.5"
+      } bg-bg-canvas`}
       onScroll={(e) => {
         if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0;
         if (e.currentTarget.scrollTop !== 0) e.currentTarget.scrollTop = 0;
@@ -720,7 +750,7 @@ export default function AppFrame({ children }: AppFrameProps) {
 
       <aside
         ref={sidebarRef}
-        className="w-[58px] h-full shrink-0 z-[45] relative"
+        className={`w-[58px] h-full shrink-0 z-[45] relative ${isMobile ? "hidden" : ""}`}
       >
         <Sidebar
           searchOpen={searchOpen}
@@ -729,7 +759,7 @@ export default function AppFrame({ children }: AppFrameProps) {
         />
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 h-full relative gap-1.5 overflow-hidden">
+      <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? "min-h-0" : "h-full gap-1.5"} relative overflow-hidden`}>
         <main
           data-custom-bg={hasCustomBg ? "true" : undefined}
           className={`flex-1 min-w-0 flex flex-col relative h-full ${
@@ -799,16 +829,22 @@ export default function AppFrame({ children }: AppFrameProps) {
             // popups, which live in this stacking context, aren't hidden by it.
             className="relative z-[55] w-full shrink-0"
           >
-            <MiniPlayer
-              embedded
-              isEdgeToEdge={isEdgeToEdge}
-              onQueueOpenChange={handleQueuePopupToggle}
-              onQueueToggle={handleQueuePopupToggleRequest}
-              onFullscreenOpen={openFullscreenPlayer}
-            />
+            {isMobile ? (
+              <MobileMiniPlayer />
+            ) : (
+              <MiniPlayer
+                embedded
+                isEdgeToEdge={isEdgeToEdge}
+                onQueueOpenChange={handleQueuePopupToggle}
+                onQueueToggle={handleQueuePopupToggleRequest}
+                onFullscreenOpen={openFullscreenPlayer}
+              />
+            )}
           </div>
         )}
       </div>
+
+      {isMobile && <MobileNav searchOpen={searchOpen} onSearchToggle={handleSearchToggle} />}
 
       <AnimatePresence initial={false}>
         {fullscreenPlayerOpen ? (
@@ -1076,7 +1112,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       <SettingsModal />
       <UpdateModal />
       <UpdateToastBridge />
-      <WindowControls
+      {!isMobile && <WindowControls
         isFullscreen={isFullscreenPlayer}
         style={{
           top: isFullscreenPlayer || isEdgeToEdge ? 12 : 18,
@@ -1084,7 +1120,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           transition: "all 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
           zIndex: 80,
         }}
-      />
+      />}
     </div>
   );
 }

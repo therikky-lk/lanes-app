@@ -55,3 +55,6 @@ scratch/
 /native/*/build/
 /native-build.log
 .harness/
+
+# android web build
+/dist-android

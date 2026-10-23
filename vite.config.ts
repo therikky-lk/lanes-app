@@ -11,14 +11,18 @@ export default defineConfig(({ command, mode }) => {
     if (devSigningSecret) process.env.LINER_DEV_SIGNING_SECRET = devSigningSecret;
   }
 
+  // `LANE_TARGET=android vite build`: renderer only, for the Capacitor app
+  const android = process.env.LANE_TARGET === "android";
+
   return {
+  base: android ? "./" : undefined,
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
     react(),
     tailwindcss(),
-    electron({
+    !android && electron({
       main: {
         entry: "electron/main.ts",
       },
