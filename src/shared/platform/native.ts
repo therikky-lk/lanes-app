@@ -1,3 +1,4 @@
+import { registerPlugin } from "@capacitor/core";
 import { diag } from "./diag";
 // Lane on Android runs the same renderer inside Capacitor. Things Electron's
 // main process does for the desktop app (CORS-free networking, request header
@@ -47,14 +48,12 @@ interface NativeHttpResponse {
   body: string;
 }
 
-let laneHttp: { request(options: { url: string; method: string; headers: Record<string, string>; body?: string }): Promise<NativeHttpResponse> } | null = null;
-async function getLaneHttp() {
-  if (!laneHttp) {
-    const { registerPlugin } = await import("@capacitor/core");
-    laneHttp = registerPlugin("LaneHttp");
-  }
-  return laneHttp;
-}
+// a Capacitor plugin proxy answers every property, `then` included, so it must
+// never be returned from an async function (await would call "then" natively
+// and hang forever): keep it in a plain module constant
+const laneHttp = registerPlugin<{
+  request(options: { url: string; method: string; headers: Record<string, string>; body?: string }): Promise<NativeHttpResponse>;
+}>("LaneHttp");
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -82,11 +81,17 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
   headers.forEach((value, key) => {
     plain[key] = value;
   });
-  const http = (await getLaneHttp())!;
+  const http = laneHttp;
   const short = url.replace(/^https:\/\//, "").slice(0, 70);
   let res: NativeHttpResponse;
   try {
-    res = await http.request({ url, method, headers: plain, body });
+    const started = performance.now();
+    res = await Promise.race([
+      http.request({ url, method, headers: plain, body }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timed out after 40s")), 40_000)),
+    ]);
+    const took = performance.now() - started;
+    if (took > 8000) diag(`HTTP ${method} ${short} slow: ${Math.round(took / 1000)}s`);
   } catch (error) {
     diag(`HTTP ${method} ${short} failed: ${error instanceof Error ? error.message : String(error)}`);
     throw new TypeError(`Network error (${error instanceof Error ? error.message : String(error)})`);
