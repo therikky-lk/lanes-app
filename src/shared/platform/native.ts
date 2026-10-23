@@ -46,6 +46,7 @@ interface NativeHttpResponse {
   url: string;
   headers: Record<string, string>;
   body: string;
+  via?: string;
 }
 
 // a Capacitor plugin proxy answers every property, `then` included, so it must
@@ -96,7 +97,13 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
     diag(`HTTP ${method} ${short} failed: ${error instanceof Error ? error.message : String(error)}`);
     throw new TypeError(`Network error (${error instanceof Error ? error.message : String(error)})`);
   }
-  if (res.status >= 400) diag(`HTTP ${method} ${short} -> ${res.status}`);
+  if (res.status >= 400) {
+    let snippet = "";
+    try {
+      snippet = new TextDecoder().decode(base64ToBytes(res.body).subarray(0, 600)).replace(/\s+/g, " ").slice(0, 160);
+    } catch {}
+    diag(`HTTP ${method} ${short} -> ${res.status} [${res.via ?? "?"}] ${snippet}`);
+  }
   if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
   const nullBody = res.status === 204 || res.status === 304 || method === "HEAD";
   const response = new Response(nullBody ? null : (base64ToBytes(res.body) as Uint8Array<ArrayBuffer>), {

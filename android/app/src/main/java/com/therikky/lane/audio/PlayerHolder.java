@@ -19,6 +19,9 @@ import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.cronet.CronetDataSource;
+import com.therikky.lane.net.Net;
+import org.chromium.net.CronetEngine;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
@@ -229,10 +232,23 @@ public final class PlayerHolder {
 
         Map<String, String> requestHeaders = new HashMap<>(headers);
         String userAgent = requestHeaders.remove("User-Agent");
-        DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(true)
-            .setDefaultRequestProperties(requestHeaders);
-        if (userAgent != null) http.setUserAgent(userAgent);
+        androidx.media3.datasource.DataSource.Factory http;
+        CronetEngine cronet = Net.engine();
+        if (cronet != null) {
+            // Chromium stack: same TLS as Chrome, gets through where Java HTTPS doesn't
+            CronetDataSource.Factory factory = new CronetDataSource.Factory(cronet, Net.executor())
+                .setDefaultRequestProperties(requestHeaders)
+                .setConnectionTimeoutMs(20_000)
+                .setReadTimeoutMs(30_000);
+            if (userAgent != null) factory.setUserAgent(userAgent);
+            http = factory;
+        } else {
+            DefaultHttpDataSource.Factory factory = new DefaultHttpDataSource.Factory()
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(requestHeaders);
+            if (userAgent != null) factory.setUserAgent(userAgent);
+            http = factory;
+        }
         MediaSource source = new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, http))
             .createMediaSource(item);
 

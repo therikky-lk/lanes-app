@@ -33,6 +33,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LanePoTokenPlugin.class);
         registerPlugin(LaneHttpPlugin.class);
         super.onCreate(savedInstanceState);
+        com.therikky.lane.net.Net.init(this);
         drawEdgeToEdge();
     }
 
