@@ -1,3 +1,4 @@
+import { diag } from "./diag";
 // Lane on Android runs the same renderer inside Capacitor. Things Electron's
 // main process does for the desktop app (CORS-free networking, request header
 // rewriting) are done here instead.
@@ -82,7 +83,15 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
     plain[key] = value;
   });
   const http = (await getLaneHttp())!;
-  const res = await http.request({ url, method, headers: plain, body });
+  const short = url.replace(/^https:\/\//, "").slice(0, 70);
+  let res: NativeHttpResponse;
+  try {
+    res = await http.request({ url, method, headers: plain, body });
+  } catch (error) {
+    diag(`HTTP ${method} ${short} failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new TypeError(`Network error (${error instanceof Error ? error.message : String(error)})`);
+  }
+  if (res.status >= 400) diag(`HTTP ${method} ${short} -> ${res.status}`);
   if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
   const nullBody = res.status === 204 || res.status === 304 || method === "HEAD";
   const response = new Response(nullBody ? null : (base64ToBytes(res.body) as Uint8Array<ArrayBuffer>), {

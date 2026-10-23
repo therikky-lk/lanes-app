@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState, useRef, useCallback } from "react";
 import {
   Gallery,
@@ -246,7 +247,7 @@ export function CustomizationTab({ searchQuery }: { searchQuery?: string }) {
 
       {/* ── 3 Logic Blocks Customization Section ── */}
       <SettingSection>
-        <SettingBlock
+        {!isNativeApp() && <SettingBlock
           title={t("settings.customization.blocks_title") || "Blocks Glassmorphism"}
           description={
             t("settings.customization.blocks_description") ||
@@ -378,7 +379,7 @@ export function CustomizationTab({ searchQuery }: { searchQuery?: string }) {
               </div>
             </div>
           </div>
-        </SettingBlock>
+        </SettingBlock>}
 
         <SettingRow
           title={t("settings.customization.reset_all") || "Reset All Customization"}

@@ -470,7 +470,10 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-top: var(--lane-safe-top, 0px) !important;
   padding-bottom: calc(var(--lane-dock-h, 0px) + 16px) !important;
 }
+.lane-mobile [data-page-scroller][data-own-top] { padding-top: 0 !important; }
 .lane-mobile [data-page-scroller] .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
+/* sliders: the finger drags the thumb, the page must not scroll instead */
+[role="slider"] { touch-action: none; }
 /* library header on phones: a soft frosted fade (no visible edge) once the
    grid scrolls under it; it reaches up under the status bar */
 .lane-mobile [data-page-scroller] .lane-frost-sticky {
@@ -518,3 +521,10 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-bottom: var(--lane-safe-bottom, 0px) !important;
 }
 .lane-settings-mobile .px-\[24px\] { padding-left: 16px !important; padding-right: 16px !important; }
+
+/* pages with a floating Back button: keep it (and the content) below the status bar */
+.lane-mobile [data-page-scroller="with-back"] { padding-top: calc(var(--lane-safe-top, 0px) + 52px) !important; }
+.lane-mobile main .absolute.top-\[12px\] { top: calc(var(--lane-safe-top, 0px) + 8px) !important; }
+
+/* phone settings: no inset card frame */
+.lane-settings-mobile .rounded-xl.bg-bg-primary { border-radius: 0 !important; }
