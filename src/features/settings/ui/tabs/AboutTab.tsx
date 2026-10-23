@@ -215,7 +215,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           </Button>
         </div>
       </div>
-      {isNativeApp() && <DiagnosticsBox />}
+      <DiagnosticsBox />
     </div>
   );
 }
