@@ -1,3 +1,4 @@
+import { diag } from "@/shared/platform/diag";
 import { Innertube, Platform } from "youtubei.js/web";
 import { registerPlugin } from "@capacitor/core";
 import { getClientVisitorData } from "@/shared/api/visitorSession";
@@ -68,7 +69,16 @@ export function resetWebRemixSession(): void {
 }
 
 async function mintContentPoToken(videoId: string): Promise<string> {
-  if (isNativeApp()) return (await LanePoToken.mint({ identifier: videoId })).token;
+  if (isNativeApp()) {
+    try {
+      const { token } = await LanePoToken.mint({ identifier: videoId });
+      diag(`PO token ok (${token.length} chars)`);
+      return token;
+    } catch (error) {
+      diag(`PO token failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
   const mint = typeof window === "undefined" ? undefined : window.linerElectron?.mintPoToken;
   if (!mint) throw new InnertubeError("PO tokens need a newer Lane app version.", 501);
   return mint(videoId);

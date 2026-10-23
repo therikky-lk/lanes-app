@@ -1,5 +1,6 @@
+import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { onAndroidBack } from "@/shared/platform/androidBack";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeftLine, CheckLine, CloseLine, GridLine, MenuLine, More2Fill } from "@mingcute/react";
@@ -46,6 +47,7 @@ export default function ArtistReleasesView({
   const [filter, setFilter] = useState<ReleaseFilter>(initialFilter);
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [view, setView] = useState<ViewMode>(() => {
     try {
       return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "grid";
@@ -142,51 +144,40 @@ export default function ArtistReleasesView({
               <div className="relative shrink-0">
                 <button
                   type="button"
+                  ref={menuButtonRef}
                   onClick={() => setMenuOpen((v) => !v)}
                   aria-label={t("common.more") || "More"}
                   className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary active:bg-border-alpha-14 cursor-pointer"
                 >
                   <More2Fill size={22} />
                 </button>
-                {menuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-[1]" onClick={() => setMenuOpen(false)} />
-                    <div className="absolute right-[4px] top-[54px] z-[2] w-[210px] overflow-hidden rounded-xl border border-white/[0.08] p-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
-                      style={{ background: "color-mix(in srgb, var(--bg-elevated, #1a1a1e) 62%, transparent)", backdropFilter: "blur(24px) saturate(1.5)", WebkitBackdropFilter: "blur(24px) saturate(1.5)" }}>
-                      {filters.map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => {
-                            setFilter(f.id);
-                            setMenuOpen(false);
-                          }}
-                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
-                        >
-                          <span className="flex-1">{f.label}</span>
-                          <span className="text-text-tertiary tabular-nums">{f.count}</span>
-                          <span className="w-[16px]">{filter === f.id && <CheckLine size={16} />}</span>
-                        </button>
-                      ))}
-                      <div className="my-[4px] h-px bg-border-primary/50" />
-                      {(["grid", "list"] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => {
-                            setView(mode);
-                            setMenuOpen(false);
-                          }}
-                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
-                        >
-                          {mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
-                          <span className="flex-1">{mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}</span>
-                          <span className="w-[16px]">{view === mode && <CheckLine size={16} />}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <PhoneMenu open={menuOpen} anchorRef={menuButtonRef} onClose={() => setMenuOpen(false)}>
+                  {filters.map((f) => (
+                    <PhoneMenuItem
+                      key={f.id}
+                      label={f.label}
+                      hint={f.count}
+                      checked={filter === f.id}
+                      onClick={() => {
+                        setFilter(f.id);
+                        setMenuOpen(false);
+                      }}
+                    />
+                  ))}
+                  <PhoneMenuDivider />
+                  {(["grid", "list"] as const).map((mode) => (
+                    <PhoneMenuItem
+                      key={mode}
+                      icon={mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
+                      label={mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}
+                      checked={view === mode}
+                      onClick={() => {
+                        setView(mode);
+                        setMenuOpen(false);
+                      }}
+                    />
+                  ))}
+                </PhoneMenu>
               </div>
             </header>
           ) : (

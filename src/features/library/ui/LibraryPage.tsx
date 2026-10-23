@@ -1,3 +1,4 @@
+import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { FaSpotify } from "react-icons/fa";
@@ -159,6 +160,7 @@ export default function LibraryPage() {
   const [activeTab, setActiveTab] = useState<LibraryTab>("playlists");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileTabLabels: Record<LibraryTab, string> = {
     playlists: t("library.tab_playlists"),
     albums: t("library.tab_albums"),
@@ -375,6 +377,7 @@ export default function LibraryPage() {
           setShowTopFog((prev) => (prev === next ? prev : next));
         }}
         data-page-scroller
+        data-own-top
         className="h-full w-full overflow-y-auto bg-transparent pb-[80px]"
       >
         {!isMobile && <ScrollBlurEdge height={96} />}
@@ -382,7 +385,6 @@ export default function LibraryPage() {
           <header
             className="sticky top-[0px] z-20 border-b border-white/[0.05] backdrop-blur-2xl backdrop-saturate-150"
             style={{
-              marginTop: "calc(-1 * var(--lane-safe-top, 0px))",
               paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
               background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
             }}
@@ -403,52 +405,39 @@ export default function LibraryPage() {
               <div className="relative">
                 <button
                   type="button"
+                  ref={menuButtonRef}
                   aria-label={t("common.more") || "More"}
                   onClick={() => setMobileMenu((v) => !v)}
                   className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
                 >
                   <More2Fill size={22} />
                 </button>
-                {mobileMenu && (
-                  <>
-                    <div className="fixed inset-0 z-[1]" onClick={() => setMobileMenu(false)} />
-                    <div
-                      className="absolute right-[4px] top-[54px] z-[2] w-[210px] overflow-hidden rounded-xl border border-white/[0.08] p-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
-                      style={{ background: "color-mix(in srgb, var(--bg-elevated, #1a1a1e) 62%, transparent)", backdropFilter: "blur(24px) saturate(1.5)", WebkitBackdropFilter: "blur(24px) saturate(1.5)" }}
-                    >
-                      {(["playlists", "albums", "artists"] as const).map((tab) => (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => {
-                            setActiveTab(tab);
-                            setMobileMenu(false);
-                          }}
-                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
-                        >
-                          <span className="flex-1">{mobileTabLabels[tab]}</span>
-                          <span className="w-[16px]">{activeTab === tab && <CheckLine size={16} />}</span>
-                        </button>
-                      ))}
-                      <div className="my-[4px] h-px bg-border-primary/50" />
-                      {(["grid", "list"] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => {
-                            handleViewModeChange(mode);
-                            setMobileMenu(false);
-                          }}
-                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
-                        >
-                          {mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
-                          <span className="flex-1">{mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}</span>
-                          <span className="w-[16px]">{viewMode === mode && <CheckLine size={16} />}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
+                <PhoneMenu open={mobileMenu} anchorRef={menuButtonRef} onClose={() => setMobileMenu(false)}>
+                  {(["playlists", "albums", "artists"] as const).map((tab) => (
+                    <PhoneMenuItem
+                      key={tab}
+                      label={mobileTabLabels[tab]}
+                      checked={activeTab === tab}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setMobileMenu(false);
+                      }}
+                    />
+                  ))}
+                  <PhoneMenuDivider />
+                  {(["grid", "list"] as const).map((mode) => (
+                    <PhoneMenuItem
+                      key={mode}
+                      icon={mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
+                      label={mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}
+                      checked={viewMode === mode}
+                      onClick={() => {
+                        handleViewModeChange(mode);
+                        setMobileMenu(false);
+                      }}
+                    />
+                  ))}
+                </PhoneMenu>
               </div>
             </div>
             {mobileSearch && (

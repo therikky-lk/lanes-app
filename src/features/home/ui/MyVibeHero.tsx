@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PauseFill, PlayFill, Refresh2Line } from "@mingcute/react";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -128,6 +129,10 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     if (!ctx) return;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    // phones: canvas shadows are very expensive there, so draw at 1x, ~30 fps,
+    // and fake the glow with gradients only
+    const lite = isNativeApp() || window.innerWidth < 700;
+    let lastDraw = 0;
     const tracker = new BeatTracker();
     let palette: VibePalette = DEFAULT_VIBE_PALETTE;
     const sparks: Spark[] = [];
@@ -141,7 +146,8 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      // phones: half-resolution canvas (the blob is soft anyway), CSS scales it up
+      dpr = lite ? 0.5 : Math.min(2, window.devicePixelRatio || 1);
       w = rect.width;
       h = rect.height;
       canvas.width = Math.max(1, Math.round(w * dpr));
@@ -162,6 +168,11 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     function frame(now: number) {
       raf = 0;
       if (!visible || document.hidden) return;
+      if (lite && now - lastDraw < 40) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+      lastDraw = now;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
 
@@ -183,7 +194,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
       // soft halo that breathes with the low end
       const haloR = Math.min(R * 2.4, cy - 4, h - cy - 4);
       const halo = ctx!.createRadialGradient(cx, cy, R * 0.4, cx, cy, haloR);
-      halo.addColorStop(0, rgba(mid, 0.2 + b * 0.25));
+      halo.addColorStop(0, rgba(mid, (lite ? 0.45 : 0.2) + b * 0.25));
       halo.addColorStop(0.5, rgba(edge, 0.07 + b * 0.08));
       halo.addColorStop(1, rgba(edge, 0));
       ctx!.fillStyle = halo;
@@ -199,7 +210,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
       body.addColorStop(1, rgba(edge, 1));
       ctx!.save();
       ctx!.shadowColor = rgba(mid, 0.85);
-      ctx!.shadowBlur = 50 + b * 70 + bt * 30;
+      ctx!.shadowBlur = lite ? 0 : 50 + b * 70 + bt * 30;
       traceBlob(ctx!, cx, cy, R, time, b, bt);
       ctx!.fillStyle = body;
       ctx!.fill();
@@ -212,7 +223,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
       ctx!.strokeStyle = rgba(core, 0.18 + b * 0.25 + bt * 0.2);
       ctx!.lineWidth = 3 + b * 4;
       ctx!.shadowColor = rgba(core, 0.9);
-      ctx!.shadowBlur = 18 + b * 22;
+      ctx!.shadowBlur = lite ? 0 : 18 + b * 22;
       ctx!.stroke();
 
       // inner shimmer that flashes on the beat
@@ -356,7 +367,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
             type="button"
             onClick={() => void launch()}
             disabled={starting}
-            className="mt-[12px] inline-flex items-center gap-1.5 rounded-full bg-black/25 hover:bg-black/40 backdrop-blur-md px-3 py-1.5 text-[12px] text-white/90 transition-colors cursor-pointer"
+            className="mt-[12px] inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/40 md:backdrop-blur-md px-3 py-1.5 text-[12px] text-white/90 transition-colors cursor-pointer"
           >
             <Refresh2Line size={14} />
             {t("home.vibe.another") || "Another vibe"}

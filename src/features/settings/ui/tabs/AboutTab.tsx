@@ -1,3 +1,4 @@
+import DiagnosticsBox from "./DiagnosticsBox";
 import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo } from "react";
 import { FaTelegramPlane, FaGithub, FaGlobe, FaDiscord } from "react-icons/fa";
@@ -214,6 +215,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           </Button>
         </div>
       </div>
+      {isNativeApp() && <DiagnosticsBox />}
     </div>
   );
 }
