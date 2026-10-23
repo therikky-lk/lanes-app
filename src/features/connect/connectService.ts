@@ -70,6 +70,8 @@ interface ConnectStore {
   /** the device this one mirrors, when playback runs elsewhere */
   followingId: string | null;
   remote: RemoteState | null;
+  /** short id of the account channel, to compare between devices */
+  fingerprint: string | null;
 }
 
 function readStorage(key: string): string | null {
@@ -120,6 +122,7 @@ export const useConnectStore = create<ConnectStore>(() => ({
   devices: {},
   followingId: null,
   remote: null,
+  fingerprint: null,
 }));
 
 function toWire(track: Track): WireTrack {
@@ -443,9 +446,11 @@ async function onRelayMessage(text: string): Promise<void> {
 
 /** devices signed in to the same account find each other on their own */
 function accountSecret(): string | null {
-  const user = useAuthStore.getState().user as { id?: string; email?: string | null; username?: string | null } | null;
+  // only the account id: it's the one field every device has from the start
+  // (email / username may arrive later or be missing on a restored session)
+  const user = useAuthStore.getState().user as { id?: string } | null;
   if (!user?.id) return null;
-  return `lane-account:${user.id}:${user.email ?? user.username ?? ""}`;
+  return `lane-account:${user.id}`;
 }
 
 export async function startConnect(): Promise<void> {
@@ -454,10 +459,12 @@ export async function startConnect(): Promise<void> {
   useConnectStore.setState({ code });
   if (!code) return;
   keys = await deriveKeys(code);
+  useConnectStore.setState({ fingerprint: keys.topic.slice(5, 11) });
   relay = openRelay(
     keys.topic,
     (text) => void onRelayMessage(text),
     (online) => {
+      if (online !== useConnectStore.getState().online) diag(`connect: relay ${online ? "connected" : "unreachable (ntfy.sh)"}`);
       useConnectStore.setState({ online });
       if (online) void send({ t: "hello", from: me() });
     },
