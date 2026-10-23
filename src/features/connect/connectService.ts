@@ -3,7 +3,15 @@
 // Exactly one device plays at a time. Every device broadcasts its playback
 // state; when another device starts playing, the one that was playing pauses
 // and becomes a "remote" for it: its player shows what plays over there and its
-// controls (play/pause, next/previous, seek, volume) are forwarded there.
+// controls (play/pause, next/previous, seek, volume, picking a new track) are
+// forwarded there.
+//
+// Who is "the player" is decided by an epoch: a hybrid logical clock
+// (max(wall clock, highest epoch seen + 1)) taken whenever a device starts
+// playing on its own or receives a hand-over. A device that is playing only
+// yields to a playing device with a newer epoch, so stale or crossing
+// messages can't make two devices play at once or bounce playback back and
+// forth.
 import { create } from "zustand";
 import type { Track } from "@/shared/types";
 import { isNativeApp } from "@/shared/platform/native";
@@ -12,6 +20,7 @@ import { playerEngine, setRemoteHooks, usePlayerStore, type RemoteAction } from 
 import { deriveKeys, open, seal, type ConnectKeys } from "./connectCrypto";
 import { openRelay, type Relay } from "./connectTransport";
 import { useAuthStore } from "@/features/auth/store/authStore";
+import { isLocalTrackId } from "@/shared/media/local/localTracks";
 
 const DEVICE_ID_KEY = "lane_connect_device_id";
 const DEVICE_NAME_KEY = "lane_connect_device_name";
@@ -44,13 +53,20 @@ interface RemoteState {
   positionMs: number;
   at: number;
   volume: number;
+  /** when the sender became the player (see the epoch note at the top) */
+  epoch?: number;
 }
 
-type Message =
+type Command = RemoteAction | { type: "transfer"; to: string };
+type WireCommand =
+  | Exclude<Command, { type: "load" }>
+  | { type: "load"; queue: WireTrack[]; index: number; context: string | null };
+
+type Message = { clock?: number } & (
   | { t: "hello"; from: ConnectDevice }
   | { t: "bye"; from: ConnectDevice }
   | { t: "state"; from: ConnectDevice; state: RemoteState }
-  | { t: "cmd"; from: ConnectDevice; to: string; action: RemoteAction | { type: "transfer"; to: string } }
+  | { t: "cmd"; from: ConnectDevice; to: string; action: WireCommand }
   | {
       t: "takeover";
       from: ConnectDevice;
@@ -58,9 +74,11 @@ type Message =
       queue: WireTrack[];
       index: number;
       positionMs: number;
+      at?: number;
       playing: boolean;
       context: string | null;
-    };
+    }
+);
 
 interface ConnectStore {
   code: string | null;
@@ -148,13 +166,59 @@ let heartbeat: ReturnType<typeof setInterval> | null = null;
 let ticker: ReturnType<typeof setInterval> | null = null;
 let unsubscribeStore: (() => void) | null = null;
 let lastBroadcast = "";
+let lastBroadcastState: RemoteState | null = null;
+let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 let savedLocalVolume: number | null = null;
 let volumeTimer: ReturnType<typeof setTimeout> | null = null;
+let handOverTimer: ReturnType<typeof setTimeout> | null = null;
+
+// ---- epoch (hybrid logical clock) --------------------------------------------
+let clock = 0; // highest epoch seen anywhere
+let myEpoch = 0; // when this device last became the player
+
+function observe(value: number | undefined): void {
+  if (typeof value === "number" && Number.isFinite(value) && value > clock) clock = value;
+}
+
+function becomePlayer(): void {
+  clock = Math.max(Date.now(), clock + 1);
+  myEpoch = clock;
+}
+
+/** does a device playing with `epoch` win over this one playing? */
+function theyWin(epoch: number | undefined, theirId: string): boolean {
+  const e = epoch ?? 0;
+  if (e !== myEpoch) return e > myEpoch;
+  return theirId > useConnectStore.getState().me.id;
+}
+
+function isActive(status: string): boolean {
+  return status === "playing" || status === "loading";
+}
+
+// ntfy turns messages over 4 KB into file attachments: keep them small
+const MAX_SEALED = 3600;
+
+async function fitQueue<M>(build: (queue: WireTrack[]) => M, queue: WireTrack[]): Promise<M> {
+  let q = queue;
+  let message = build(q);
+  while (q.length > 1 && keys && (await seal(keys.key, message)).length > MAX_SEALED) {
+    q = q.slice(0, -1);
+    message = build(q);
+  }
+  return message;
+}
+
+/** the queue window from `index` on, as small wire tracks */
+function queueWindow(queue: Track[], index: number): WireTrack[] {
+  const start = Math.max(0, index);
+  return queue.slice(start, start + 8).map(toWire);
+}
 
 async function send(message: Message): Promise<void> {
   if (!relay || !keys) return;
   try {
-    await relay.publish(await seal(keys.key, message));
+    await relay.publish(await seal(keys.key, { ...message, clock }));
   } catch (error) {
     diag(`connect: send failed (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -178,6 +242,7 @@ function localState(): RemoteState {
     positionMs: p.positionMs,
     at: Date.now(),
     volume: p.volume,
+    epoch: myEpoch,
   };
 }
 
@@ -185,11 +250,38 @@ function broadcastState(force = false): void {
   if (useConnectStore.getState().followingId) return;
   const state = localState();
   if (!state.track) return;
-  // skip repeats: only changes of track / status / volume, or a jump in position
-  const signature = `${state.track.id}|${state.status}|${state.volume.toFixed(2)}|${Math.round(state.positionMs / 4000)}`;
-  if (!force && signature === lastBroadcast) return;
+  // Only real changes go out: track, status, volume, or a seek (the position
+  // drifting from where followers would extrapolate it). Followers move the
+  // position on their own, so a playing device doesn't need to keep publishing
+  // (ntfy rate-limits chatty clients, and dropped messages are what desyncs).
+  const signature = `${state.track.id}|${state.status}|${myEpoch}`;
+  const prev = lastBroadcastState;
+  const volumeChanged = !!prev && Math.abs(prev.volume - state.volume) > 0.005;
+  const seeked = !!prev && Math.abs(livePosition(prev) - state.positionMs) > 2500;
+  if (!force && signature === lastBroadcast && !volumeChanged && !seeked) return;
+  const urgent = force || signature !== lastBroadcast || seeked;
   lastBroadcast = signature;
-  void send({ t: "state", from: me(), state });
+  lastBroadcastState = state;
+  if (broadcastTimer) clearTimeout(broadcastTimer);
+  broadcastTimer = null;
+  if (urgent) {
+    void send({ t: "state", from: me(), state });
+  } else {
+    // a volume slider fires many times a second: send the last value
+    broadcastTimer = setTimeout(() => {
+      broadcastTimer = null;
+      if (useConnectStore.getState().followingId) return;
+      const latest = localState();
+      lastBroadcastState = latest;
+      void send({ t: "state", from: me(), state: latest });
+    }, 200);
+  }
+}
+
+function onPlayerChange(state: { status: string }, prev: { status: string }): void {
+  // playback started on this device by itself (not mirrored): newest player
+  if (!useConnectStore.getState().followingId && isActive(state.status) && !isActive(prev.status)) becomePlayer();
+  broadcastState();
 }
 
 // ---- following another device ---------------------------------------------
@@ -296,6 +388,7 @@ function stopFollowing(): void {
 function intercept(action: RemoteAction): boolean {
   const { followingId, remote } = useConnectStore.getState();
   if (!followingId) return false;
+  if (action.type === "load") return forwardLoad(followingId, action);
   // keep the mirrored UI snappy: apply the obvious part locally right away
   if (remote) {
     let next: RemoteState | null = null;
@@ -319,6 +412,30 @@ function intercept(action: RemoteAction): boolean {
   return true;
 }
 
+/** a track picked here while mirroring plays on the device being mirrored */
+function forwardLoad(targetId: string, action: Extract<RemoteAction, { type: "load" }>): boolean {
+  const track = action.queue[action.index];
+  // files added on this device exist only here: play those locally
+  if (!track || isLocalTrackId(track.id)) return false;
+  const upcoming = queueWindow(action.queue, action.index).filter((t) => !isLocalTrackId(t.id));
+  const remote = useConnectStore.getState().remote;
+  const optimistic: RemoteState = {
+    track: toWire(track),
+    status: "loading",
+    positionMs: 0,
+    at: Date.now(),
+    volume: remote?.volume ?? usePlayerStore.getState().volume,
+    epoch: remote?.epoch,
+  };
+  useConnectStore.setState({ remote: optimistic });
+  applyRemote(optimistic);
+  void fitQueue(
+    (queue): Message => ({ t: "cmd", from: me(), to: targetId, action: { type: "load", queue, index: 0, context: action.context } }),
+    upcoming.length ? upcoming : [toWire(track)],
+  ).then(send);
+  return true;
+}
+
 function livePosition(state: RemoteState): number {
   return state.status === "playing" ? state.positionMs + (Date.now() - state.at) : state.positionMs;
 }
@@ -332,8 +449,14 @@ function installHooks(): void {
   setRemoteHooks(intercept, onLocalPlay);
 }
 
-function runCommand(action: RemoteAction | { type: "transfer"; to: string }): void {
+function runCommand(action: WireCommand): void {
   switch (action.type) {
+    case "load": {
+      const queue = action.queue.map(fromWire);
+      const track = queue[action.index] ?? queue[0];
+      if (track) void playerEngine.playTrack(track, queue, action.context, null, queue.indexOf(track));
+      break;
+    }
     case "toggle":
       playerEngine.togglePlayPause();
       break;
@@ -364,26 +487,44 @@ function runCommand(action: RemoteAction | { type: "transfer"; to: string }): vo
 
 /** move playback (queue, position) from this device to another one */
 async function handOver(targetId: string): Promise<void> {
+  if (useConnectStore.getState().followingId) return;
   const store = usePlayerStore.getState();
-  if (!store.currentTrack) return;
-  const start = Math.max(0, store.currentIndex);
-  // ntfy turns messages over 4 KB into file attachments: keep it small
-  let queue = store.queue.slice(start, start + 8).map(toWire);
-  const message: Message = {
-    t: "takeover",
-    from: me(),
-    to: targetId,
-    queue: queue.length ? queue : [toWire(store.currentTrack)],
-    index: 0,
-    positionMs: store.positionMs,
-    playing: store.status === "playing" || store.status === "loading",
-    context: store.playbackContext,
-  };
-  while (queue.length > 1 && keys && (await seal(keys.key, message)).length > 3600) {
-    queue = queue.slice(0, -1);
-    message.queue = queue;
-  }
+  const current = store.currentTrack;
+  if (!current) return;
+  const audioEl = document.getElementById("liner-audio") as HTMLAudioElement | null;
+  const positionMs =
+    store.status === "playing" && audioEl && !Number.isNaN(audioEl.currentTime)
+      ? Math.round(audioEl.currentTime * 1000)
+      : store.positionMs;
+  const playing = isActive(store.status);
+  const upcoming = queueWindow(store.queue, store.currentIndex).filter((t) => !isLocalTrackId(t.id));
+  const at = Date.now();
+  const message = await fitQueue(
+    (queue): Message => ({
+      t: "takeover",
+      from: me(),
+      to: targetId,
+      queue,
+      index: 0,
+      positionMs,
+      at,
+      playing,
+      context: store.playbackContext,
+    }),
+    upcoming.length ? upcoming : [toWire(current)],
+  );
+  // Stop here right away and mirror the target, instead of playing on until
+  // its first state arrives (that gap is when both devices were playing).
+  // epoch 0: the target's real state, with its fresh epoch, replaces this.
+  follow(targetId, { track: toWire(current), status: playing ? "loading" : "paused", positionMs, at, volume: store.volume, epoch: 0 });
   await send(message);
+  // the target never answered (offline, message lost): stop mirroring a guess
+  if (handOverTimer) clearTimeout(handOverTimer);
+  handOverTimer = setTimeout(() => {
+    handOverTimer = null;
+    const { followingId, remote } = useConnectStore.getState();
+    if (followingId === targetId && remote?.epoch === 0) stopFollowing();
+  }, 15_000);
 }
 
 async function takeOver(message: Extract<Message, { t: "takeover" }>): Promise<void> {
@@ -391,9 +532,14 @@ async function takeOver(message: Extract<Message, { t: "takeover" }>): Promise<v
   const queue = message.queue.map(fromWire);
   const track = queue[message.index] ?? queue[0];
   if (!track) return;
+  becomePlayer();
+  // the music kept going while the message travelled; clocks may differ a bit
+  const transit = message.playing && message.at ? Math.min(Math.max(0, Date.now() - message.at), 10_000) : 0;
+  const positionMs = message.positionMs + transit;
   await playerEngine.playTrack(track, queue, message.context, null, message.index);
-  if (message.positionMs > 3000) playerEngine.seek(message.positionMs);
+  if (positionMs > 3000) playerEngine.seek(positionMs);
   if (!message.playing) setTimeout(() => playerEngine.pause(), 400);
+  broadcastState(true);
 }
 
 // ---- incoming ---------------------------------------------------------------
@@ -402,6 +548,8 @@ async function onRelayMessage(text: string): Promise<void> {
   if (!keys) return;
   const message = await open<Message>(keys.key, text);
   if (!message || !message.from || message.from.id === useConnectStore.getState().me.id) return;
+  observe(message.clock);
+  if (message.t === "state") observe(message.state.epoch);
   seen(message.from);
   const { followingId, me: self } = useConnectStore.getState();
 
@@ -419,10 +567,19 @@ async function onRelayMessage(text: string): Promise<void> {
       break;
     case "state": {
       const local = usePlayerStore.getState();
-      const playingHere = !followingId && (local.status === "playing" || local.status === "loading");
-      if (message.state.status === "playing") {
-        // the newest player wins: this device pauses and mirrors it
-        follow(message.from.id, message.state);
+      const playingHere = !followingId && isActive(local.status);
+      const theirs = message.state;
+      if (isActive(theirs.status)) {
+        if (followingId === message.from.id) {
+          useConnectStore.setState({ remote: theirs });
+          applyRemote(theirs);
+        } else if (playingHere) {
+          // both playing: only the newer player keeps going
+          if (theyWin(theirs.epoch, message.from.id)) follow(message.from.id, theirs);
+          else broadcastState(true);
+        } else if (!followingId || (theirs.epoch ?? 0) >= (useConnectStore.getState().remote?.epoch ?? 0)) {
+          follow(message.from.id, theirs);
+        }
       } else if (followingId === message.from.id) {
         useConnectStore.setState({ remote: message.state });
         applyRemote(message.state);
@@ -483,7 +640,9 @@ export async function startConnect(): Promise<void> {
     },
   );
   installHooks();
-  unsubscribeStore = usePlayerStore.subscribe(() => broadcastState());
+  // already playing when Connect comes up: this device is the current player
+  if (isActive(usePlayerStore.getState().status)) becomePlayer();
+  unsubscribeStore = usePlayerStore.subscribe(onPlayerChange);
   heartbeat = setInterval(() => {
     const now = Date.now();
     useConnectStore.setState((s) => ({
@@ -505,6 +664,10 @@ export function stopConnect(sayBye = true): void {
   heartbeat = null;
   unsubscribeStore?.();
   unsubscribeStore = null;
+  if (broadcastTimer) clearTimeout(broadcastTimer);
+  broadcastTimer = null;
+  lastBroadcast = "";
+  lastBroadcastState = null;
   stopFollowing();
   setRemoteHooks(null, null);
   useConnectStore.setState({ online: false, devices: {} });
