@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import {
   usePlayerStore,
   type PlayerCommand,
@@ -994,7 +995,10 @@ class PlayerEngine {
     console.error("[PlaybackError]", info.trackId, info.message);
     log("yellow", "playback", `"${track.title}" failed (${info.message}) — skipping to next`);
     showToast(translate("player.track_unavailable_title"), "error", {
-      description: track.artists ? `${track.title} — ${track.artists}` : track.title,
+      description:
+        (track.artists ? `${track.title} — ${track.artists}` : track.title) +
+        // Android test builds: show why, so it can be reported from a screenshot
+        (isNativeApp() ? `\n${info.message.slice(0, 220)}` : ""),
     });
     void this.skipNext(false);
   }

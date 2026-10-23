@@ -17,6 +17,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
 import com.therikky.lane.audio.LaneAudioPlugin;
+import com.therikky.lane.potoken.LanePoTokenPlugin;
 
 import java.util.Locale;
 
@@ -28,6 +29,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(LaneAudioPlugin.class);
+        registerPlugin(LanePoTokenPlugin.class);
         super.onCreate(savedInstanceState);
         drawEdgeToEdge();
     }

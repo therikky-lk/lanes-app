@@ -246,6 +246,21 @@ export default function SettingsModal() {
       className={`p-0 h-[620px] max-h-[86vh] !flex-row overflow-hidden !bg-bg-elevated !border-0 ${isMobile ? "lane-settings-mobile" : ""}`}
     >
       <aside className={`${isMobile ? (mobilePage ? "hidden" : "flex-1 w-full") : "w-[248px] shrink-0"} flex flex-col min-h-0 bg-transparent`}>
+        {isMobile && (
+          <div className="flex items-center gap-[8px] px-[10px] pt-[10px]">
+            <button
+              type="button"
+              aria-label={t("common.back") || "Back"}
+              onClick={handleClose}
+              className="w-[36px] h-[36px] shrink-0 inline-flex items-center justify-center rounded-md text-text-primary hover:bg-border-alpha-14 border-0 bg-transparent p-0 cursor-pointer"
+            >
+              <ArrowLeftLine size={21} />
+            </button>
+            <h2 className="m-0 text-[20px] font-[600] tracking-[-0.01em] text-text-primary" style={font}>
+              {t("common.sidebar.settings") || "Settings"}
+            </h2>
+          </div>
+        )}
         <div className="px-[12px] pt-[14px] pb-[8px]">
           <div className="relative flex items-center">
             <Search2Line

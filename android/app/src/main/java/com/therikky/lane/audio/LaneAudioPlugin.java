@@ -151,6 +151,15 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         });
     }
 
+    @PluginMethod
+    public void setLiked(PluginCall call) {
+        boolean liked = Boolean.TRUE.equals(call.getBoolean("liked", false));
+        main.post(() -> {
+            PlayerHolder.get(getContext()).setLiked(liked);
+            call.resolve();
+        });
+    }
+
     /** blobs (uploaded files, cached audio) can't be streamed natively: park them in the cache */
     @PluginMethod
     public void writeCacheFile(PluginCall call) {

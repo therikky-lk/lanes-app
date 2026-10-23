@@ -57,6 +57,8 @@ async function resolveViaWebRemix(
   for (let attempt = 0; attempt < WEB_REMIX_ATTEMPTS; attempt += 1) {
     try {
       const stream = await resolveWebRemixAudioStream(videoId, options);
+      // the stream is tied to the client that asked for it: the WebView's own UA
+      if (typeof navigator !== "undefined") setStreamUserAgent(navigator.userAgent);
       await assertStreamReachable(stream.url, stream.contentLength, options.signal);
       webRemixFailures = 0;
       return stream;

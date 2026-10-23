@@ -31,6 +31,7 @@ interface LaneAudioPlugin {
   seek(options: { positionMs: number }): Promise<void>;
   setVolume(options: { volume: number }): Promise<void>;
   setRate(options: { rate: number }): Promise<void>;
+  setLiked(options: { liked: boolean }): Promise<void>;
   writeCacheFile(options: { name: string; base64: string }): Promise<{ url: string }>;
   addListener(event: "state", cb: (s: NativeState) => void): Promise<PluginListenerHandle>;
   addListener(event: "remote", cb: (r: { action: string; positionMs: number }) => void): Promise<PluginListenerHandle>;
@@ -60,6 +61,12 @@ type RemoteHandler = (action: string, positionMs: number) => void;
 let remoteHandler: RemoteHandler | null = null;
 export function onNativeRemote(handler: RemoteHandler): void {
   remoteHandler = handler;
+}
+
+// the notification's like button
+let likeHandler: (() => void) | null = null;
+export function onNativeLike(handler: (() => void) | null): void {
+  likeHandler = handler;
 }
 
 // blob: URLs are page-local; remember the Blob behind each one so it can be
@@ -162,7 +169,10 @@ export function createNativeAudioElement(): HTMLAudioElement {
       fire("error");
     }
   });
-  void LaneAudio.addListener("remote", (r) => remoteHandler?.(r.action, r.positionMs));
+  void LaneAudio.addListener("remote", (r) => {
+    if (r.action === "like") likeHandler?.();
+    else remoteHandler?.(r.action, r.positionMs);
+  });
 
   const startLoad = async () => {
     const token = ++loadToken;
