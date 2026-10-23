@@ -50,9 +50,12 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     }
 
     @Override
-    public void onState(boolean playing, boolean buffering, boolean ended, long positionMs, long durationMs, String error) {
+    public void onState(boolean playing, boolean playWhenReady, boolean buffering, boolean ended, boolean seekable,
+                        long positionMs, long durationMs, String error) {
         JSObject data = new JSObject();
         data.put("playing", playing);
+        data.put("playWhenReady", playWhenReady);
+        data.put("seekable", seekable);
         data.put("buffering", buffering);
         data.put("ended", ended);
         data.put("positionMs", positionMs);
