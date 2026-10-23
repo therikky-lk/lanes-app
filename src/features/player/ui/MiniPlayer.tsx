@@ -1,3 +1,4 @@
+import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { memo } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -912,6 +913,7 @@ function MiniPlayer({
                   <VolumeLoud size={18} weight="Outline" />
                 )}
               </button>
+              <ConnectDevicesButton className={iconButtonClass} />
               <button
                 type="button"
                 aria-label={t("player.open_player")}

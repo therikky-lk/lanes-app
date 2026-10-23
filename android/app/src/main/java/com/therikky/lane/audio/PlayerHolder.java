@@ -19,6 +19,8 @@ import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.DataSpec;
+import androidx.media3.datasource.ResolvingDataSource;
 import androidx.media3.datasource.cronet.CronetDataSource;
 import com.therikky.lane.net.Net;
 import org.chromium.net.CronetEngine;
@@ -257,7 +259,14 @@ public final class PlayerHolder {
             if (userAgent != null) factory.setUserAgent(userAgent);
             http = factory;
         }
-        MediaSource source = new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, http))
+        // googlevideo refuses (or ignores) Range headers for many clients, which
+        // made every seek fail: ask for byte ranges with the `range` URL
+        // parameter instead, like YouTube's own players do
+        androidx.media3.datasource.DataSource.Factory upstream = http;
+        if (url.contains(".googlevideo.com/")) {
+            upstream = new ResolvingDataSource.Factory(http, PlayerHolder::withRangeParam);
+        }
+        MediaSource source = new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, upstream))
             .createMediaSource(item);
 
         player.setMediaSource(source, Math.max(0, startPositionMs));
@@ -307,6 +316,51 @@ public final class PlayerHolder {
                     current.buildUpon().setMediaMetadata(updated).build());
             });
         });
+    }
+
+    private static DataSpec withRangeParam(DataSpec spec) {
+        Uri uri = spec.uri;
+        if (uri.getHost() == null || !uri.getHost().endsWith(".googlevideo.com")) return spec;
+        if (spec.position == 0 && spec.length == C.LENGTH_UNSET) return spec;
+        long start = spec.position;
+        long end = -1;
+        if (spec.length != C.LENGTH_UNSET) {
+            end = start + spec.length - 1;
+        } else {
+            String clen = uri.getQueryParameter("clen");
+            if (clen != null) {
+                try {
+                    end = Long.parseLong(clen) - 1;
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        Uri.Builder builder = uri.buildUpon().clearQuery();
+        for (String name : uri.getQueryParameterNames()) {
+            if ("range".equals(name)) continue;
+            for (String value : uri.getQueryParameters(name)) builder.appendQueryParameter(name, value);
+        }
+        builder.appendQueryParameter("range", start + "-" + (end >= start ? String.valueOf(end) : ""));
+        // the server now answers from `start`: read it as a fresh stream
+        return spec.buildUpon().setUri(builder.build()).setPosition(0).setLength(C.LENGTH_UNSET).build();
+    }
+
+    private int repeatMode;
+    private Runnable repeatListener;
+
+    /** 0 off, 1 all, 2 one: shown on the notification's repeat button */
+    public int getRepeatMode() {
+        return repeatMode;
+    }
+
+    public void setRepeatMode(int mode) {
+        if (repeatMode == mode) return;
+        repeatMode = mode;
+        if (repeatListener != null) repeatListener.run();
+    }
+
+    void setRepeatListener(Runnable listener) {
+        repeatListener = listener;
     }
 
     public void setRate(float rate) {

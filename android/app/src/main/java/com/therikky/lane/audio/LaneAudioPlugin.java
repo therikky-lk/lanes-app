@@ -155,6 +155,15 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     }
 
     @PluginMethod
+    public void setRepeat(PluginCall call) {
+        int mode = call.getInt("mode", 0);
+        main.post(() -> {
+            PlayerHolder.get(getContext()).setRepeatMode(Math.max(0, Math.min(2, mode)));
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
     public void setLiked(PluginCall call) {
         boolean liked = Boolean.TRUE.equals(call.getBoolean("liked", false));
         main.post(() -> {
