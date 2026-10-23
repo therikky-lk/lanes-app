@@ -482,15 +482,14 @@ class PlayerEngine {
     }
 
     if (!isSelectingFromCurrentQueue && store.shuffle && nextQueue.length > 1) {
-      const played = nextQueue.slice(0, nextIndex);
+      // shuffle the whole list, not just what comes after the tapped track:
+      // the tapped track first, then everything else in random order
       const selectedTrackItem = nextQueue[nextIndex] ?? track;
-      const upcoming = nextQueue.slice(nextIndex + 1);
+      const others = nextQueue.filter((_, i) => i !== nextIndex);
 
-      this.originalUpcomingQueue = [...upcoming];
-      const shuffledUpcoming = shuffleArray(upcoming);
-
-      finalQueue = [...played, selectedTrackItem, ...shuffledUpcoming];
-      finalIndex = nextIndex;
+      this.originalUpcomingQueue = [...others];
+      finalQueue = [selectedTrackItem, ...shuffleArray(others)];
+      finalIndex = 0;
     } else if (!isSelectingFromCurrentQueue) {
       this.originalUpcomingQueue = [];
     }
@@ -819,9 +818,20 @@ class PlayerEngine {
       const upcoming = queue.slice(currentIndex + 1);
 
       if (enabled) {
+        // everything that hasn't just played goes into the shuffle, including
+        // tracks before the current one in the original list
+        const pool = (this.masterPlaylist.length > 0 ? this.masterPlaylist : [...played, ...upcoming]).filter(
+          (item) => item.id !== current.id,
+        );
         this.originalUpcomingQueue = [...upcoming];
-        const shuffledUpcoming = shuffleArray(upcoming);
-        store.setQueue([...played, current, ...shuffledUpcoming]);
+        store.setQueue([current, ...shuffleArray(pool)]);
+        usePlayerStore.setState({ currentIndex: 0 });
+      } else if (this.masterPlaylist.some((item) => item.id === current.id)) {
+        // back to the list's own order, carrying on from the current track
+        const master = [...this.masterPlaylist];
+        store.setQueue(master);
+        usePlayerStore.setState({ currentIndex: master.findIndex((item) => item.id === current.id) });
+        this.originalUpcomingQueue = [];
       } else {
         const referenceList =
           this.masterPlaylist.length > 0

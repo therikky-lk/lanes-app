@@ -1,3 +1,4 @@
+import { fetchSpotifyLikedTracks } from "./spotifyAccount";
 import type { ClientImportedPlaylist, ClientImportedTrack } from "../../importTypes";
 import { rethrowIfAborted } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
@@ -38,6 +39,12 @@ function pickPlaylistTracks(full: PathfinderResult, embed: ClientImportedTrack[]
 }
 
 export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promise<ClientImportedPlaylist> {
+  if (rawUrl.replace(/\/+$/, "").endsWith("/collection/tracks")) {
+    // the signed-in user's Liked Songs (see spotifyAccount.ts)
+    const tracks = await fetchSpotifyLikedTracks(signal);
+    if (!tracks.length) throw new Error("Your Spotify Liked Songs are empty.");
+    return { source: "spotify", sourceUrl: rawUrl, title: "Spotify — Liked Songs", tracks };
+  }
   const resolvedUrl = await resolveSpotifyUrl(rawUrl, signal);
   const { type: entityType, id: entityId } = parseSpotifyUrl(resolvedUrl);
   const embed = await fetchSpotifyEmbed(entityType, entityId, defaultTitle(entityType), signal);

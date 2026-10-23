@@ -11,8 +11,8 @@ import { diag } from "@/shared/platform/diag";
 import { playerEngine, setRemoteHooks, usePlayerStore, type RemoteAction } from "@/features/player/engine/playerEngine";
 import { deriveKeys, open, seal, type ConnectKeys } from "./connectCrypto";
 import { openRelay, type Relay } from "./connectTransport";
+import { useAuthStore } from "@/features/auth/store/authStore";
 
-const CODE_KEY = "lane_connect_code";
 const DEVICE_ID_KEY = "lane_connect_device_id";
 const DEVICE_NAME_KEY = "lane_connect_device_name";
 const PRESENCE_TTL_MS = 150_000;
@@ -114,7 +114,7 @@ function makeMe(): ConnectDevice {
 }
 
 export const useConnectStore = create<ConnectStore>(() => ({
-  code: readStorage(CODE_KEY),
+  code: null,
   online: false,
   me: makeMe(),
   devices: {},
@@ -206,6 +206,42 @@ function applyRemote(state: RemoteState): void {
   if (Math.abs(store.volume - state.volume) > 0.001) store.setVolume(state.volume);
 }
 
+// the lyrics view follows the <audio> element; while mirroring another device
+// that element is idle here, so make it report the remote position instead
+let restoreAudio: (() => void) | null = null;
+
+function virtualizeAudio(on: boolean): void {
+  const el = document.getElementById("liner-audio") as HTMLAudioElement | null;
+  if (!el) return;
+  if (on && !restoreAudio) {
+    const names = ["currentTime", "paused"] as const;
+    const saved = names.map((n) => [n, Object.getOwnPropertyDescriptor(el, n)] as const);
+    Object.defineProperty(el, "currentTime", {
+      configurable: true,
+      get: () => {
+        const r = useConnectStore.getState().remote;
+        return r ? livePosition(r) / 1000 : 0;
+      },
+      set: () => {},
+    });
+    Object.defineProperty(el, "paused", {
+      configurable: true,
+      get: () => useConnectStore.getState().remote?.status !== "playing",
+    });
+    const timer = setInterval(() => el.dispatchEvent(new Event("timeupdate")), 250);
+    restoreAudio = () => {
+      clearInterval(timer);
+      for (const [n, d] of saved) {
+        if (d) Object.defineProperty(el, n, d);
+        else delete (el as unknown as Record<string, unknown>)[n];
+      }
+    };
+  } else if (!on && restoreAudio) {
+    restoreAudio();
+    restoreAudio = null;
+  }
+}
+
 function startTicker(): void {
   if (ticker) return;
   ticker = setInterval(() => {
@@ -235,6 +271,7 @@ function follow(deviceId: string, state: RemoteState): void {
       playerEngine.pause();
       installHooks();
     }
+    virtualizeAudio(true);
   }
   applyRemote(state);
   startTicker();
@@ -244,6 +281,7 @@ function stopFollowing(): void {
   if (!useConnectStore.getState().followingId) return;
   useConnectStore.setState({ followingId: null, remote: null });
   stopTicker();
+  virtualizeAudio(false);
   const store = usePlayerStore.getState();
   if (savedLocalVolume !== null) store.setVolume(savedLocalVolume);
   savedLocalVolume = null;
@@ -326,7 +364,8 @@ async function handOver(targetId: string): Promise<void> {
   const store = usePlayerStore.getState();
   if (!store.currentTrack) return;
   const start = Math.max(0, store.currentIndex);
-  const queue = store.queue.slice(start, start + 12).map(toWire);
+  // ntfy turns messages over 4 KB into file attachments: keep it small
+  let queue = store.queue.slice(start, start + 8).map(toWire);
   const message: Message = {
     t: "takeover",
     from: me(),
@@ -337,6 +376,10 @@ async function handOver(targetId: string): Promise<void> {
     playing: store.status === "playing" || store.status === "loading",
     context: store.playbackContext,
   };
+  while (queue.length > 1 && keys && (await seal(keys.key, message)).length > 3600) {
+    queue = queue.slice(0, -1);
+    message.queue = queue;
+  }
   await send(message);
 }
 
@@ -398,9 +441,17 @@ async function onRelayMessage(text: string): Promise<void> {
 
 // ---- lifecycle ----------------------------------------------------------------
 
+/** devices signed in to the same account find each other on their own */
+function accountSecret(): string | null {
+  const user = useAuthStore.getState().user as { id?: string; email?: string | null; username?: string | null } | null;
+  if (!user?.id) return null;
+  return `lane-account:${user.id}:${user.email ?? user.username ?? ""}`;
+}
+
 export async function startConnect(): Promise<void> {
   stopConnect(false);
-  const code = useConnectStore.getState().code;
+  const code = accountSecret();
+  useConnectStore.setState({ code });
   if (!code) return;
   keys = await deriveKeys(code);
   relay = openRelay(
@@ -437,13 +488,6 @@ export function stopConnect(sayBye = true): void {
   stopFollowing();
   setRemoteHooks(null, null);
   useConnectStore.setState({ online: false, devices: {} });
-}
-
-export async function setPairingCode(code: string | null): Promise<void> {
-  writeStorage(CODE_KEY, code);
-  useConnectStore.setState({ code });
-  if (code) await startConnect();
-  else stopConnect();
 }
 
 export function setDeviceName(name: string): void {

@@ -1,9 +1,11 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useRef, useState } from "react";
 import { KawarpEngine } from "../engine/kawarpEngine";
 import { getCoverElement, useCoverElement } from "@/features/covers";
 
 export const KAWARP_RESIZE_SETTLE_MS = 300;
-export const KAWARP_RENDER_SCALE = 0.5;
+// phones: a much smaller surface and fewer blur passes keep it smooth
+export const KAWARP_RENDER_SCALE = isNativeApp() ? 0.28 : 0.5;
 
 interface KawarpWrapperProps {
   src?: string;
@@ -26,9 +28,9 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
     try {
       engine = new KawarpEngine(canvas, {
         warpIntensity: 1.1,
-        blurPasses: 8,
+        blurPasses: isNativeApp() ? 4 : 8,
         transitionDuration: 1000,
-        animationSpeed: 1.0,
+        animationSpeed: isNativeApp() ? 0.7 : 1.0,
         saturation: 1.3,
         scale: 1.18,
         dithering: 0.008,

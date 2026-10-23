@@ -197,6 +197,7 @@
     "list": "List"
   },
   "home": {
+    "recent": "Recently played",
     "speedDial": "Speed dial",
     "goodMorning": "Good morning",
     "goodAfternoon": "Good afternoon",
@@ -222,6 +223,17 @@
     "daily_mix": "Daily Mix {n}"
   },
   "library": {
+    "spotify_liked": {
+      "title": "Transfer Liked Songs from Spotify",
+      "signin_desc": "Sign in to your Spotify account to see your Liked Songs.",
+      "signin": "Sign in to Spotify",
+      "count": "You can import {count} tracks",
+      "import": "Import",
+      "signout": "Use another Spotify account",
+      "retry": "Sign in again",
+      "unsupported": "Available in the Lane app for desktop and Android.",
+      "menu": "Liked Songs from Spotify"
+    },
     "title": "Library",
     "liked_songs": "Liked Songs",
     "song": "song",
@@ -1080,14 +1092,14 @@
   },
   "connect": {
     "tab": "Connect",
-    "description": "Play on one device and control it from another, like Spotify Connect.",
+    "description": "Play on one device and control it from another signed in to the same account.",
     "devices": "Devices",
     "this_device": "This device",
     "playing_here": "Playing",
     "tap_to_play": "Tap to play here",
     "playing_on": "Playing on {name}",
-    "setup_hint": "Link your devices in Settings ▸ Connect",
-    "no_devices": "No other devices online. Open Lane on another device with the same code.",
+    "setup_hint": "Sign in to the same account on your other devices",
+    "no_devices": "No other devices online. Open Lane on another device signed in to this account.",
     "offline": "Connecting…",
     "code_title": "Pairing code",
     "code_desc": "Use the same code on all your devices. Anyone with the code can control your playback, so keep it to yourself.",
@@ -1100,6 +1112,7 @@
     "name_desc": "How this device shows up on your other devices.",
     "online_title": "Online now",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "sign_in": "Sign in to the same account on your devices to switch playback between them."
   }
 }
