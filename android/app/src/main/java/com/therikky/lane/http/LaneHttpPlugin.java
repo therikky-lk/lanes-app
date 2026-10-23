@@ -67,6 +67,14 @@ public class LaneHttpPlugin extends Plugin {
         byte[] body = b64 != null && !b64.isEmpty() && !"GET".equals(method) && !"HEAD".equals(method)
             ? Base64.decode(b64, Base64.DEFAULT) : null;
         Map<String, String> requestHeaders = new LinkedHashMap<>();
+        if (Boolean.TRUE.equals(call.getBoolean("withCookies", false))) {
+            // Spotify import: the user's login lives in the app cookie store
+            String host = android.net.Uri.parse(url).getHost();
+            if (host != null && host.endsWith(".spotify.com")) {
+                String cookies = android.webkit.CookieManager.getInstance().getCookie(url);
+                if (cookies != null && !cookies.isEmpty()) requestHeaders.put("Cookie", cookies);
+            }
+        }
         if (headers != null) {
             Iterator<String> keys = headers.keys();
             while (keys.hasNext()) {

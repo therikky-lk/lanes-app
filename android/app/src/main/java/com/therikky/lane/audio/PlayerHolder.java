@@ -97,6 +97,7 @@ public final class PlayerHolder {
         player.addListener(new Player.Listener() {
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
+                if (isPlaying) releaseHandoff();
                 main.removeCallbacks(ticker);
                 if (isPlaying) main.post(ticker);
                 else emit();
@@ -104,6 +105,10 @@ public final class PlayerHolder {
 
             @Override
             public void onPlaybackStateChanged(int state) {
+                // between two tracks nothing holds the CPU awake: with the screen
+                // off the page could not load the next track until the phone
+                // woke up. Keep it awake while the page hands over.
+                if (state == Player.STATE_ENDED) holdHandoff();
                 emit();
             }
 
@@ -114,7 +119,20 @@ public final class PlayerHolder {
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
-                lastError = error.getErrorCodeName() + ": " + error.getMessage();
+                StringBuilder detail = new StringBuilder(error.getErrorCodeName());
+                Throwable cause = error.getCause();
+                if (cause instanceof androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
+                    androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException http =
+                        (androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) cause;
+                    detail.append(" HTTP ").append(http.responseCode);
+                    if (http.dataSpec != null) {
+                        detail.append(" at byte ").append(http.dataSpec.position)
+                            .append(http.dataSpec.uri.getQueryParameter("range") != null ? " (range " + http.dataSpec.uri.getQueryParameter("range") + ")" : "");
+                    }
+                } else if (cause != null) {
+                    detail.append(" ").append(cause.getClass().getSimpleName()).append(": ").append(cause.getMessage());
+                }
+                lastError = detail.toString();
                 emit();
             }
 
@@ -163,6 +181,27 @@ public final class PlayerHolder {
                 remote("previous");
             }
         };
+    }
+
+    private android.os.PowerManager.WakeLock handoffLock;
+
+    private void holdHandoff() {
+        try {
+            if (handoffLock == null) {
+                android.os.PowerManager pm = (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                handoffLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "lane:handoff");
+                handoffLock.setReferenceCounted(false);
+            }
+            handoffLock.acquire(45_000);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void releaseHandoff() {
+        try {
+            if (handoffLock != null && handoffLock.isHeld()) handoffLock.release();
+        } catch (Exception ignored) {
+        }
     }
 
     public Player sessionPlayer() {
@@ -215,6 +254,7 @@ public final class PlayerHolder {
     public void load(String url, Map<String, String> headers, String title, String artist, String album,
                      String artwork, long startPositionMs, boolean playWhenReady) {
         lastError = null;
+        holdHandoff();
         MediaMetadata.Builder meta = new MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)

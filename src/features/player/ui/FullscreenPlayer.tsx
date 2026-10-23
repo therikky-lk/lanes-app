@@ -1,3 +1,6 @@
+import { usePlayerStore } from "../store/playerStore";
+import { HeartFill, HeartLine } from "@mingcute/react";
+import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
@@ -548,19 +551,6 @@ export function FullscreenPlayer({
         </button>
       )}
 
-      {isMobile && (
-        <button
-          type="button"
-          onClick={() => setMobileLyrics((v) => !v)}
-          aria-pressed={mobileLyrics}
-          className={`absolute right-[54px] z-30 inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
-            mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
-          }`}
-          style={{ top: "calc(var(--lane-safe-top, 0px) + 10px)" }}
-        >
-          {t("player.lyrics") || "Lyrics"}
-        </button>
-      )}
 
       <CustomLyricsDialog
         open={customLyricsOpen}
@@ -579,14 +569,52 @@ export function FullscreenPlayer({
       >
         <DownLine size={18} />
       </button>
+      {/* top-right group: phones get like + lyrics + devices together; on the
+          desktop the devices button sits right next to the window controls */}
       <div
-        className="absolute z-30"
-        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 150 }}
+        className="absolute z-30 flex items-center gap-[8px]"
+        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 108 }}
         data-no-window-drag
       >
-        <ConnectDevicesButton className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none" />
+        {isMobile && <MobileLikeButton />}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setMobileLyrics((v) => !v)}
+            aria-pressed={mobileLyrics}
+            className={`inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
+              mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
+            }`}
+          >
+            {t("player.lyrics") || "Lyrics"}
+          </button>
+        )}
+        <ConnectDevicesButton
+          className={`inline-flex ${isMobile ? "h-[34px] w-[34px] rounded-full" : "h-[32px] w-[32px] rounded-lg"} items-center justify-center border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none`}
+        />
       </div>
     </div>
+  );
+}
+
+function MobileLikeButton() {
+  const { t } = useTranslation();
+  const track = usePlayerStore((s) => s.currentTrack);
+  const isLiked = useIsTrackLiked(track?.id);
+  const like = useLikeTrack();
+  const unlike = useUnlikeTrack();
+  if (!track) return null;
+  return (
+    <button
+      type="button"
+      aria-label={isLiked ? t("common.unlike") : t("common.like")}
+      onClick={() => (isLiked ? unlike.mutate(track.id) : like.mutate(track.id))}
+      className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-black/45 backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer ${
+        isLiked ? "text-[#ff3b5c]" : "text-white/85"
+      }`}
+    >
+      {isLiked ? <HeartFill size={18} /> : <HeartLine size={18} />}
+    </button>
   );
 }
 

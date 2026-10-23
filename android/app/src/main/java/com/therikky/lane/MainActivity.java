@@ -19,6 +19,7 @@ import com.getcapacitor.WebViewListener;
 import com.therikky.lane.audio.LaneAudioPlugin;
 import com.therikky.lane.potoken.LanePoTokenPlugin;
 import com.therikky.lane.http.LaneHttpPlugin;
+import com.therikky.lane.spotify.LaneSpotifyPlugin;
 
 import java.util.Locale;
 
@@ -32,9 +33,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LaneAudioPlugin.class);
         registerPlugin(LanePoTokenPlugin.class);
         registerPlugin(LaneHttpPlugin.class);
+        registerPlugin(LaneSpotifyPlugin.class);
         super.onCreate(savedInstanceState);
         com.therikky.lane.net.Net.init(this);
         drawEdgeToEdge();
+        keepWebViewAliveInBackground();
     }
 
     /**
@@ -93,6 +96,33 @@ public class MainActivity extends BridgeActivity {
             }
         });
         decor.requestApplyInsets();
+    }
+
+    /**
+     * Playback runs natively, but the queue (what plays next) lives in the page:
+     * keep its renderer as important as the app (which runs a foreground media
+     * service) so Android doesn't freeze it while the screen is off.
+     */
+    private void keepWebViewAliveInBackground() {
+        WebView web = getBridge() != null ? getBridge().getWebView() : null;
+        if (web == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        WebView web = getBridge() != null ? getBridge().getWebView() : null;
+        if (web != null) web.resumeTimers();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        WebView web = getBridge() != null ? getBridge().getWebView() : null;
+        if (web != null) web.resumeTimers();
     }
 
     private void pushInsets() {

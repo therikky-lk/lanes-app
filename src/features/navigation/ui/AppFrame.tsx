@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/authStore";
 import { startConnect, stopConnect } from "@/features/connect/connectService";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -690,10 +691,11 @@ export default function AppFrame({ children }: AppFrameProps) {
   const isMobile = useIsMobile();
   useNativeMediaSync();
   // Lane Connect: join the user's other devices when a pairing code is set
+  const connectUserId = useAuthStore((s) => s.user?.id ?? null);
   useEffect(() => {
     void startConnect();
     return () => stopConnect(false);
-  }, []);
+  }, [connectUserId]);
   useEffect(() => {
     document.documentElement.classList.toggle("lane-mobile", isMobile);
   }, [isMobile]);

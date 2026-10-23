@@ -16,6 +16,17 @@ export function resetSpotifySessionCache(): void {
   cachedSpotifySession = null;
 }
 
+/** the web player's token endpoint, signed with the current TOTP */
+export async function buildSpotifyTokenUrl(signal?: AbortSignal): Promise<string> {
+  const { secret, version } = await fetchSpotifySecret(signal);
+  const secretBytes = spotifySecretBytes(secret);
+  const serverTime = await fetchSpotifyServerTime(signal);
+  const totp = await generateTotp(secretBytes, Date.now());
+  const totpServer = serverTime ? await generateTotp(secretBytes, serverTime * 1000) : "unavailable";
+  const params = new URLSearchParams({ reason: "init", productType: "web-player", totp, totpServer, totpVer: String(version) });
+  return `https://open.spotify.com/api/token?${params.toString()}`;
+}
+
 async function fetchAccessToken(signal?: AbortSignal): Promise<{ accessToken: string; expiresAt: number }> {
   const { secret, version } = await fetchSpotifySecret(signal);
   const secretBytes = spotifySecretBytes(secret);

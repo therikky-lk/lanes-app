@@ -130,86 +130,41 @@ export default function HomePage() {
         {/* Real Content Layer */}
         {isReady && (
           <div className="col-start-1 row-start-1 w-full pb-[16px]">
-            {hasEnoughQuickData && (
-              <div className="flex flex-col">
-              <div className="mt-[20px] px-8 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center shrink-0">
-                    <FlashCircleFill className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <h2
-                      className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight"
-                      style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                    >
-                      {t("home.speedDial") || "Speed dial"}
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="px-8 mt-[12px] relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                  <SongCard
-                    title={t("library.liked_songs")}
-                    artists={`${likedData.total} ${likedData.total === 1 ? t("library.song") : t("library.songs")}`}
-                    artistsClickable={false}
-                    coverUrl=""
-                    icon={<HeartFill size={22} className={hasCustomBg ? "text-white/80" : "text-zinc-400 dark:text-zinc-500"} />}
-                    onPlay={() => navigate("/library/playlist?id=likes")}
-                    compact
-                    className={quickCardClass}
-                  />
-
-                  {/* Recently Played Quick Cards */}
-                  {quickRecentItems.map((entry, idx) => {
-                    if (entry.type === "album") {
-                      const album = entry.item;
-                      return (
-                        <SongCardWithMenu
-                          key={`quick-album-${album.id}-${idx}`}
-                          id={album.id}
-                          title={album.title}
-                          artists={album.artist}
-                          coverUrl={album.coverUrl ?? ""}
-                          onPlay={() =>
-                            navigate(
-                              `/collection?type=album&id=${encodeURIComponent(album.id)}`,
-                            )
-                          }
-                          searchType="album"
-                          compact
-                          className={quickCardClass}
-                        />
-                      );
-                    }
-                    if (entry.type === "track") {
-                      const track = entry.item;
-                      return (
-                        <SongCardWithMenu
-                          key={`quick-track-${track.id}-${idx}`}
-                          id={track.id}
-                          title={track.title}
-                          artists={track.artists}
-                          coverUrl={track.coverUrl ?? ""}
-                          durationMs={track.durationMs}
-                          explicit={track.explicit}
-                          onPlay={() => {
-                            void playerEngine.playTrack(
-                              track,
-                              [track],
-                              `${track.title} Radio`,
-                              track.coverUrl,
-                            );
-                          }}
-                          searchType="track"
-                          compact
-                          className={quickCardClass}
-                        />
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
-            )}
+            {/* two big shortcuts: liked songs and recently played */}
+            <div className="mt-[20px] px-8 grid grid-cols-2 gap-[10px]">
+              <button
+                type="button"
+                onClick={() => navigate("/library/playlist?id=likes")}
+                className="group relative flex h-[84px] items-center gap-[12px] overflow-hidden rounded-2xl border-0 px-[16px] text-left cursor-pointer transition-transform active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg, rgba(255,59,92,0.30), rgba(255,59,92,0.08))" }}
+              >
+                <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-[#ff3b5c] text-white shadow-[0_6px_18px_rgba(255,59,92,0.35)]">
+                  <HeartFill size={22} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[15px] font-[600] text-text-primary">{t("library.liked_songs")}</span>
+                  <span className="block truncate text-[12.5px] text-text-tertiary">
+                    {likedData.total} {likedData.total === 1 ? t("library.song") : t("library.songs")}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/recent")}
+                className="group relative flex h-[84px] items-center gap-[12px] overflow-hidden rounded-2xl border-0 px-[16px] text-left cursor-pointer transition-transform active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(56,189,248,0.07))" }}
+              >
+                <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-[0_6px_18px_rgba(56,189,248,0.35)]">
+                  <TimeFill size={22} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[15px] font-[600] text-text-primary">
+                    {t("home.recent") && t("home.recent") !== "home.recent" ? t("home.recent") : "Recently played"}
+                  </span>
+                  <span className="block truncate text-[12.5px] text-text-tertiary">{t("home.jumpBackIn")}</span>
+                </span>
+              </button>
+            </div>
 
             {/* Daily Mixes (Made For You) */}
             {dailyMixes && dailyMixes.length > 0 && (

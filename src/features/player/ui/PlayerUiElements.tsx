@@ -105,16 +105,16 @@ export function PlayerUiElements({
       {/* Artwork: grows with the window */}
       <div
         style={{ width: S, height: S }}
-        className={`relative shrink-0 overflow-hidden rounded-2xl bg-black/20 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${
+        className={`group/cover relative shrink-0 overflow-hidden rounded-2xl bg-black/20 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${
           coverUrl && !isCoverLoaded ? "animate-pulse" : ""
         }`}
       >
         <AnimatePresence>
           <motion.div
             key={track?.id || coverUrl || "empty"}
-            initial={{ opacity: 0, filter: "blur(8px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, filter: "blur(8px)" }}
+            initial={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(8px)" }}
+            animate={isMobile ? { opacity: 1 } : { opacity: 1, filter: "blur(0px)" }}
+            exit={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(8px)" }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute inset-0"
           >
@@ -136,12 +136,12 @@ export function PlayerUiElements({
             )}
           </motion.div>
         </AnimatePresence>
-        {/* like button on the cover corner (no tooltip; aria-label names it) */}
-        <button
+        {/* like button: centred on the cover, shown on hover (phones: in the top bar) */}
+        {!isMobile && <button
           type="button"
           aria-label={isLiked ? t("common.unlike") : t("common.like")}
-          className={`absolute bottom-3 left-3 z-20 inline-flex h-[36px] w-[36px] items-center justify-center rounded-full transition-colors duration-200 ease-out active:scale-[0.92] bg-black/40 backdrop-blur-md border-none hover:bg-black/60 ${
-            isLiked ? "text-white" : "text-white/70 hover:text-white"
+          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex h-[72px] w-[72px] items-center justify-center rounded-full opacity-0 group-hover/cover:opacity-100 focus-visible:opacity-100 transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] bg-black/35 backdrop-blur-md border-none hover:bg-black/50 ${
+            isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"
           }`}
           onClick={handleLikeToggle}
           style={{ cursor: "pointer" }}
@@ -153,7 +153,7 @@ export function PlayerUiElements({
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <HeartLine size={19} />
+            <HeartLine size={34} />
           </motion.div>
           <motion.div
             initial={false}
@@ -165,9 +165,9 @@ export function PlayerUiElements({
             }
             className="absolute inset-0 flex items-center justify-center"
           >
-            <HeartFill size={19} />
+            <HeartFill size={34} />
           </motion.div>
-        </button>
+        </button>}
       </div>
 
       {/* Track info */}
@@ -273,7 +273,7 @@ export function PlayerUiElements({
       </div>
 
       {/* Volume (Compact smooth slider, size sm) */}
-      <VolumePicker className="mt-[2px]" size="md" style={{ width: `calc(${S} * 0.62)` }} />
+      {!isMobile && <VolumePicker className="mt-[2px]" size="md" style={{ width: `calc(${S} * 0.62)` }} />}
     </>
   );
 }

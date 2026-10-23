@@ -135,6 +135,10 @@ export interface LinerElectronApi {
   discordUpdateSettings: (settings: any) => void;
   getDiscordStatus: () => Promise<{ connected: boolean; username?: string; error?: string }>;
   mintPoToken: (identifier: string) => Promise<string>;
+  spotifyHasLogin?: () => Promise<boolean>;
+  spotifyLogin?: () => Promise<boolean>;
+  spotifyLogout?: () => Promise<boolean>;
+  spotifyFetch?: (request: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ status: number; body: string }>;
 }
 
 const isHyprland = Boolean(
@@ -364,6 +368,10 @@ const api: LinerElectronApi = {
   },
   getDiscordStatus: () => ipcRenderer.invoke("discord:get-status"),
   mintPoToken: (identifier) => ipcRenderer.invoke("potoken:mint", identifier),
+  spotifyHasLogin: () => ipcRenderer.invoke("spotify:has-login"),
+  spotifyLogin: () => ipcRenderer.invoke("spotify:login"),
+  spotifyLogout: () => ipcRenderer.invoke("spotify:logout"),
+  spotifyFetch: (request) => ipcRenderer.invoke("spotify:fetch", request),
 };
 
 if (location.hostname === "www.youtube.com") {
