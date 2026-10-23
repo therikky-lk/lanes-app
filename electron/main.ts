@@ -744,10 +744,21 @@ if (!gotTheLock) {
     );
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      const responseHeaders = { ...(details.responseHeaders || {}) };
-      responseHeaders["access-control-allow-origin"] = ["*"];
-      responseHeaders["access-control-allow-headers"] = ["*"];
-      responseHeaders["access-control-allow-methods"] = ["GET, HEAD, OPTIONS"];
+      const responseHeaders: Record<string, string[]> = {};
+      // drop the server's own CORS headers first: a second
+      // Access-Control-Allow-Origin (other letter case) makes Chromium reject
+      // the response, which broke EventSource / fetch to servers that do send
+      // CORS (ntfy.sh for Lane Connect)
+      let methods: string[] | undefined;
+      for (const [name, value] of Object.entries(details.responseHeaders || {})) {
+        const lower = name.toLowerCase();
+        if (lower === "access-control-allow-methods") methods = value;
+        if (lower.startsWith("access-control-allow-")) continue;
+        responseHeaders[name] = value;
+      }
+      responseHeaders["Access-Control-Allow-Origin"] = ["*"];
+      responseHeaders["Access-Control-Allow-Headers"] = ["*"];
+      responseHeaders["Access-Control-Allow-Methods"] = methods ?? ["GET, HEAD, POST, OPTIONS"];
       callback({ responseHeaders });
     });
 
