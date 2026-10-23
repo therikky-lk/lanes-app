@@ -1,7 +1,8 @@
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, ExitLine, DiscordFill, KeyboardLine } from "@mingcute/react";
+import { CloseLine, Search2Line, CloseCircleFill, ExitLine, DiscordFill, KeyboardLine, DeviceLine } from "@mingcute/react";
+import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
   Palette,
@@ -33,10 +34,11 @@ import {
   DiscordTab,
 } from "./tabs";
 
-type TabId = "Playback" | "Shortcuts" | "Overlay" | "Discord" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
+type TabId = "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Playback: Play,
+  Connect: DeviceLine,
   Shortcuts: KeyboardLine,
   Overlay: Widget5,
   Discord: DiscordFill,
@@ -50,7 +52,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
 // Android has no keyboard shortcuts, desktop overlay or Discord presence
 const DESKTOP_ONLY_TABS = new Set<TabId>(["Shortcuts", "Overlay", "Discord"]);
 const TAB_GROUPS: { labelKey: "preferences" | "application"; ids: TabId[] }[] = [
-  { labelKey: "preferences", ids: ["Playback", "Shortcuts", "Overlay", "Discord", "Audio", "Appearance"] },
+  { labelKey: "preferences", ids: ["Playback", "Connect", "Shortcuts", "Overlay", "Discord", "Audio", "Appearance"] },
   { labelKey: "application", ids: ["Storage", "About"] },
 ].map((group) => ({
   ...group,
@@ -133,6 +135,7 @@ export default function SettingsModal() {
 
   const tabLabels: Record<TabId, string> = {
     Playback: t("settings.tabs.playback"),
+    Connect: "Lane Connect",
     Shortcuts: t("settings.tabs.shortcuts") || "Shortcuts",
     Overlay: t("settings.tabs.overlay") || "Overlay",
     Discord: t("settings.tabs.discord") || "Discord RPC",
@@ -145,6 +148,7 @@ export default function SettingsModal() {
 
   const tabDescriptions: Record<TabId, string> = {
     Playback: t("settings.playback.description"),
+    Connect: t("connect.description"),
     Shortcuts: t("settings.shortcuts.description") || "System-wide and player keyboard shortcuts.",
     Overlay: t("settings.overlay.description") || "Desktop overlay behavior, position and lyrics display.",
     Discord: t("settings.discord.description") || "Show what you're listening to on Discord with artwork, artist badge and progress bar.",
@@ -162,6 +166,7 @@ export default function SettingsModal() {
 
     const TAB_LABEL_KEYS: Record<TabId, string> = {
       Playback: "settings.tabs.playback",
+      Connect: "connect.tab",
       Shortcuts: "settings.tabs.shortcuts",
       Overlay: "settings.tabs.overlay",
       Discord: "settings.tabs.discord",
@@ -174,6 +179,7 @@ export default function SettingsModal() {
 
     const TAB_DESC_KEYS: Record<TabId, string> = {
       Playback: "settings.playback.description",
+      Connect: "connect.description",
       Shortcuts: "settings.shortcuts.description",
       Overlay: "settings.overlay.description",
       Discord: "settings.discord.description",
@@ -439,6 +445,7 @@ export default function SettingsModal() {
             className="flex-1 flex flex-col"
           >
             {activeTab === "Playback" && <PlaybackTab searchQuery={searchQuery} />}
+            {activeTab === "Connect" && <ConnectTab searchQuery={searchQuery} />}
             {activeTab === "Shortcuts" && <ShortcutsTab searchQuery={searchQuery} />}
             {activeTab === "Overlay" && <OverlayTab searchQuery={searchQuery} />}
             {activeTab === "Discord" && <DiscordTab searchQuery={searchQuery} />}

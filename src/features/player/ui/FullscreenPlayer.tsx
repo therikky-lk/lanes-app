@@ -1,3 +1,4 @@
+import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { AddLine, Edit2Line } from "@mingcute/react";
@@ -578,6 +579,13 @@ export function FullscreenPlayer({
       >
         <DownLine size={18} />
       </button>
+      <div
+        className="absolute z-30"
+        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 150 }}
+        data-no-window-drag
+      >
+        <ConnectDevicesButton className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none" />
+      </div>
     </div>
   );
 }

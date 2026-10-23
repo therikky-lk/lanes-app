@@ -43,6 +43,33 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export { usePlayerStore, type PlayerStatus, type RepeatMode, type PlayerState };
 
+// ---- Lane Connect hooks ----------------------------------------------------
+// While this device only mirrors playback that runs on another device, the
+// transport controls are forwarded there instead of touching local audio.
+export type RemoteAction =
+  | { type: "toggle" }
+  | { type: "play" }
+  | { type: "pause" }
+  | { type: "next" }
+  | { type: "prev" }
+  | { type: "seek"; positionMs: number }
+  | { type: "volume"; volume: number };
+
+let remoteInterceptor: ((action: RemoteAction) => boolean) | null = null;
+let localPlayListener: (() => void) | null = null;
+
+export function setRemoteHooks(
+  interceptor: ((action: RemoteAction) => boolean) | null,
+  onLocalPlay: (() => void) | null,
+): void {
+  remoteInterceptor = interceptor;
+  localPlayListener = onLocalPlay;
+}
+
+function forwarded(action: RemoteAction): boolean {
+  return remoteInterceptor ? remoteInterceptor(action) : false;
+}
+
 function shuffleArray<T>(array: T[]): T[] {
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
@@ -418,6 +445,7 @@ class PlayerEngine {
     queueIndex?: number,
     preserveQueue?: boolean,
   ): Promise<void> {
+    localPlayListener?.();
     const store = usePlayerStore.getState();
     const nextQueue = this.normalizeQueue(queue ?? [track], track);
     const nextIndex =
@@ -587,6 +615,7 @@ class PlayerEngine {
   }
 
   public pause(): void {
+    if (forwarded({ type: "pause" })) return;
     const store = usePlayerStore.getState();
     const wasLoading = store.status === "loading";
     if (wasLoading) {
@@ -603,6 +632,7 @@ class PlayerEngine {
   }
 
   public resume(): void {
+    if (forwarded({ type: "play" })) return;
     const store = usePlayerStore.getState();
     if (playerRuntime) {
       if (
@@ -618,6 +648,7 @@ class PlayerEngine {
   }
 
   public togglePlayPause(): void {
+    if (forwarded({ type: "toggle" })) return;
     const store = usePlayerStore.getState();
     if (store.status === "playing" || store.status === "loading") {
       this.pause();
@@ -627,6 +658,7 @@ class PlayerEngine {
   }
 
   public async skipNext(isAutoEnd: boolean = false): Promise<void> {
+    if (!isAutoEnd && forwarded({ type: "next" })) return;
     const store = usePlayerStore.getState();
     const nextIndex = this.computeNextIndex(isAutoEnd);
 
@@ -675,6 +707,7 @@ class PlayerEngine {
   }
 
   public async skipPrevious(): Promise<void> {
+    if (forwarded({ type: "prev" })) return;
     const store = usePlayerStore.getState();
     if (store.queue.length === 0) return;
 
@@ -709,6 +742,7 @@ class PlayerEngine {
   }
 
   public setVolume(volume: number): void {
+    if (forwarded({ type: "volume", volume: Math.min(1, Math.max(0, volume)) })) return;
     usePlayerStore.getState().setVolume(Math.min(1, Math.max(0, volume)));
   }
 
@@ -803,6 +837,7 @@ class PlayerEngine {
   }
 
   public seek(positionMs: number, autoPlay: boolean = false): void {
+    if (forwarded({ type: "seek", positionMs })) return;
     const store = usePlayerStore.getState();
     const currentMs = store.positionMs;
     const durationMs = store.durationMs || store.currentTrack?.durationMs || 0;
