@@ -76,6 +76,20 @@ function reviewItem(sourceTrack: ClientImportedTrack, position: number, outcome:
   };
 }
 
+/** big imports (Liked Songs) hit YouTube's rate limit: back off and retry */
+async function matchWithRetry(track: ClientImportedTrack, signal?: AbortSignal) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await findCatalogMatch(track, signal);
+    } catch (error) {
+      const status = (error as { status?: number })?.status;
+      const limited = status === 429 || /\b429\b/.test(String((error as Error)?.message ?? ""));
+      if (!limited || attempt >= 4 || signal?.aborted) throw error;
+      await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
+    }
+  }
+}
+
 async function matchPlaylist(playlist: ClientImportedPlaylist, options: RunImportOptions): Promise<ClientImportOutcome> {
   const total = playlist.tracks.length;
   const result: ImportResult = { total, imported: 0, skipped: 0 };
@@ -89,7 +103,7 @@ async function matchPlaylist(playlist: ClientImportedPlaylist, options: RunImpor
   };
 
   const outcomes = await mapConcurrent(playlist.tracks, SEARCH_CONCURRENCY, async (track) => {
-    const outcome = await findCatalogMatch(track, options.signal).catch((error: unknown) => {
+    const outcome = await matchWithRetry(track, options.signal).catch((error: unknown) => {
       if (options.signal?.aborted) throw error;
       return { status: "pending" as const, reason: "catalog_lookup_failed" as const };
     });

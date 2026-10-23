@@ -59,11 +59,45 @@ async function fetchWithLogin(url: string): Promise<{ status: number; text: stri
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    }, { once: true });
+  });
+
+/** Spotify answers 429 when asked too fast: wait as told (or back off) and retry */
+async function withRateLimit<T>(
+  run: () => Promise<{ status: number; retryAfter?: string | null; value?: T }>,
+  what: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await run();
+    if (res.status !== 429 && res.status < 500) {
+      if (res.value === undefined) throw new Error(`${what} failed (${res.status})`);
+      return res.value;
+    }
+    if (attempt >= 6) throw new Error(`${what} failed (${res.status}): Spotify is rate-limiting, try again in a few minutes`);
+    const told = Number(res.retryAfter);
+    const wait = Number.isFinite(told) && told > 0 ? Math.min(told, 60) * 1000 : Math.min(2000 * 2 ** attempt, 30_000);
+    await sleep(wait + Math.random() * 500, signal);
+  }
+}
+
 async function userToken(signal?: AbortSignal): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) return cachedToken.token;
-  const res = await fetchWithLogin(await buildSpotifyTokenUrl(signal));
-  if (res.status !== 200) throw new Error(`Spotify sign-in token failed (${res.status})`);
-  const data = JSON.parse(res.text) as { accessToken?: string; isAnonymous?: boolean; accessTokenExpirationTimestampMs?: number };
+  const text = await withRateLimit(
+    async () => {
+      const res = await fetchWithLogin(await buildSpotifyTokenUrl(signal));
+      return { status: res.status, value: res.status === 200 ? res.text : undefined };
+    },
+    "Spotify sign-in token",
+    signal,
+  );
+  const data = JSON.parse(text) as { accessToken?: string; isAnonymous?: boolean; accessTokenExpirationTimestampMs?: number };
   if (!data.accessToken || data.isAnonymous) throw new Error("Not signed in to Spotify");
   cachedToken = { token: data.accessToken, expiresAt: data.accessTokenExpirationTimestampMs ?? Date.now() + 3_000_000 };
   return data.accessToken;
@@ -81,13 +115,23 @@ interface SavedTrackItem {
 }
 
 async function likedPage(offset: number, limit: number, signal?: AbortSignal): Promise<{ total: number; items: SavedTrackItem[] }> {
-  const token = await userToken(signal);
-  const res = await fetch(`https://api.spotify.com/v1/me/tracks?limit=${limit}&offset=${offset}`, {
-    headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+  const data = await withRateLimit(
+    async () => {
+      const token = await userToken(signal);
+      const res = await fetch(`https://api.spotify.com/v1/me/tracks?limit=${limit}&offset=${offset}`, {
+        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+        signal,
+      });
+      if (res.status === 401) cachedToken = null;
+      return {
+        status: res.status,
+        retryAfter: res.headers.get("retry-after"),
+        value: res.ok ? ((await res.json()) as { total?: number; items?: SavedTrackItem[] }) : undefined,
+      };
+    },
+    "Spotify Liked Songs request",
     signal,
-  });
-  if (!res.ok) throw new Error(`Spotify Liked Songs request failed (${res.status})`);
-  const data = (await res.json()) as { total?: number; items?: SavedTrackItem[] };
+  );
   return { total: data.total ?? 0, items: data.items ?? [] };
 }
 
@@ -115,6 +159,8 @@ export async function fetchSpotifyLikedTracks(signal?: AbortSignal): Promise<Cli
     }
     offset += page.items.length;
     if (page.items.length === 0 || offset >= page.total) break;
+    // stay well under Spotify's rate limit
+    await sleep(350, signal);
   }
   return out;
 }
