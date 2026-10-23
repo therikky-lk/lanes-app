@@ -18,6 +18,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
 import com.therikky.lane.audio.LaneAudioPlugin;
 import com.therikky.lane.potoken.LanePoTokenPlugin;
+import com.therikky.lane.http.LaneHttpPlugin;
 
 import java.util.Locale;
 
@@ -30,6 +31,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(LaneAudioPlugin.class);
         registerPlugin(LanePoTokenPlugin.class);
+        registerPlugin(LaneHttpPlugin.class);
         super.onCreate(savedInstanceState);
         drawEdgeToEdge();
     }
