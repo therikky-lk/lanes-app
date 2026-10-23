@@ -135,6 +135,11 @@ export interface LinerElectronApi {
   discordUpdateSettings: (settings: any) => void;
   getDiscordStatus: () => Promise<{ connected: boolean; username?: string; error?: string }>;
   mintPoToken: (identifier: string) => Promise<string>;
+  connectSubscribe?: (relay: string, topic: string) => Promise<boolean>;
+  connectUnsubscribe?: (relay: string, topic: string) => Promise<boolean>;
+  connectPublish?: (relay: string, topic: string, text: string) => Promise<boolean>;
+  onConnectMessage?: (cb: (msg: { relay: string; id?: string; text: string }) => void) => () => void;
+  onConnectStatus?: (cb: (status: { relay: string; online: boolean; error?: string }) => void) => () => void;
   spotifyHasLogin?: () => Promise<boolean>;
   spotifyLogin?: () => Promise<boolean>;
   spotifyLogout?: () => Promise<boolean>;
@@ -368,6 +373,19 @@ const api: LinerElectronApi = {
   },
   getDiscordStatus: () => ipcRenderer.invoke("discord:get-status"),
   mintPoToken: (identifier) => ipcRenderer.invoke("potoken:mint", identifier),
+  connectSubscribe: (relay, topic) => ipcRenderer.invoke("connect:subscribe", { relay, topic }),
+  connectUnsubscribe: (relay, topic) => ipcRenderer.invoke("connect:unsubscribe", { relay, topic }),
+  connectPublish: (relay, topic, text) => ipcRenderer.invoke("connect:publish", { relay, topic, text }),
+  onConnectMessage: (cb) => {
+    const listener = (_e: unknown, msg: { relay: string; id?: string; text: string }) => cb(msg);
+    ipcRenderer.on("connect:message", listener);
+    return () => ipcRenderer.removeListener("connect:message", listener);
+  },
+  onConnectStatus: (cb) => {
+    const listener = (_e: unknown, status: { relay: string; online: boolean; error?: string }) => cb(status);
+    ipcRenderer.on("connect:status", listener);
+    return () => ipcRenderer.removeListener("connect:status", listener);
+  },
   spotifyHasLogin: () => ipcRenderer.invoke("spotify:has-login"),
   spotifyLogin: () => ipcRenderer.invoke("spotify:login"),
   spotifyLogout: () => ipcRenderer.invoke("spotify:logout"),
