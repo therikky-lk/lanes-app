@@ -15,6 +15,7 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
   const devices = useConnectStore((s) => s.devices);
   const online = useConnectStore((s) => s.online);
   const followingId = useConnectStore((s) => s.followingId);
+  const fingerprint = useConnectStore((s) => s.fingerprint);
   const [name, setName] = useState(me.name);
   const activeId = followingId ?? me.id;
 
@@ -61,6 +62,11 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
                 </button>
               );
             })}
+            {fingerprint && (
+              <span className="px-[6px] pt-[4px] text-[11px] text-text-tertiary">
+                {online ? "●" : "○"} channel {fingerprint}
+              </span>
+            )}
             {Object.keys(devices).length === 0 && (
               <span className="px-[6px] py-[6px] text-[12.5px] text-text-tertiary">
                 {online ? tr("connect.no_devices", "No other devices online.") : tr("connect.offline", "Connecting…")}
