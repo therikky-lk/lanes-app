@@ -1,3 +1,4 @@
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -27,6 +28,7 @@ export default function ScrollBlurEdge({ height = 64, threshold = 6 }: ScrollBlu
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [visible, setVisible] = useState(false);
+  const isMobile = useIsMobile();
 
   useLayoutEffect(() => {
     const scroller = marker.current?.parentElement;
@@ -65,6 +67,8 @@ export default function ScrollBlurEdge({ height = 64, threshold = 6 }: ScrollBlu
     };
   }, [threshold]);
 
+  // phones: content simply slides under the status bar shade
+  if (isMobile) return null;
   const mask = "linear-gradient(to bottom, #000 0%, rgba(0,0,0,0.85) 40%, transparent 100%)";
   return (
     <>

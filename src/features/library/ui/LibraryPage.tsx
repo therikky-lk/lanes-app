@@ -18,7 +18,7 @@ import {
   useExternalItems,
   useLikedTrackCount,
 } from "../hooks";
-import { MusicLine, HeartFill, AddLine } from "@mingcute/react";
+import { MusicLine, HeartFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "../store/modalStore";
 import { useImportStore } from "../store/importStore";
@@ -157,6 +157,13 @@ export default function LibraryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<LibraryTab>("playlists");
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [mobileSearch, setMobileSearch] = useState(false);
+  const mobileTabLabels: Record<LibraryTab, string> = {
+    playlists: t("library.tab_playlists"),
+    albums: t("library.tab_albums"),
+    artists: t("library.tab_artists"),
+  };
   const [stateByTab, setStateByTab] = useState<LibraryState>(initialState);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [showTopFog, setShowTopFog] = useState(false);
@@ -371,7 +378,96 @@ export default function LibraryPage() {
         className="h-full w-full overflow-y-auto bg-transparent pb-[80px]"
       >
         {!isMobile && <ScrollBlurEdge height={96} />}
-        <div className="sticky top-0 z-20 bg-transparent lane-frost-sticky" data-frost={showTopFog ? "true" : undefined}>
+        {isMobile ? (
+          <header
+            className="sticky top-[0px] z-20 border-b border-white/[0.05] backdrop-blur-2xl backdrop-saturate-150"
+            style={{
+              marginTop: "calc(-1 * var(--lane-safe-top, 0px))",
+              paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
+              background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
+            }}
+          >
+            <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
+              <div className="min-w-0 flex-1">
+                <h1 className="m-0 truncate text-[22px] font-[700] tracking-[-0.01em] text-text-primary">{t("library.title")}</h1>
+                <p className="m-0 truncate text-[12px] text-text-tertiary">{mobileTabLabels[activeTab]}</p>
+              </div>
+              <button
+                type="button"
+                aria-label={t("common.search") || "Search"}
+                onClick={() => setMobileSearch((v) => !v)}
+                className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 cursor-pointer ${mobileSearch ? "bg-border-alpha-14 text-text-primary" : "bg-transparent text-text-primary"}`}
+              >
+                <Search2Line size={21} />
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label={t("common.more") || "More"}
+                  onClick={() => setMobileMenu((v) => !v)}
+                  className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+                >
+                  <More2Fill size={22} />
+                </button>
+                {mobileMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[1]" onClick={() => setMobileMenu(false)} />
+                    <div
+                      className="absolute right-[4px] top-[54px] z-[2] w-[210px] overflow-hidden rounded-xl border border-white/[0.08] p-[6px] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+                      style={{ background: "color-mix(in srgb, var(--bg-elevated, #1a1a1e) 62%, transparent)", backdropFilter: "blur(24px) saturate(1.5)", WebkitBackdropFilter: "blur(24px) saturate(1.5)" }}
+                    >
+                      {(["playlists", "albums", "artists"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => {
+                            setActiveTab(tab);
+                            setMobileMenu(false);
+                          }}
+                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
+                        >
+                          <span className="flex-1">{mobileTabLabels[tab]}</span>
+                          <span className="w-[16px]">{activeTab === tab && <CheckLine size={16} />}</span>
+                        </button>
+                      ))}
+                      <div className="my-[4px] h-px bg-border-primary/50" />
+                      {(["grid", "list"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => {
+                            handleViewModeChange(mode);
+                            setMobileMenu(false);
+                          }}
+                          className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[10px] py-[9px] text-left text-[14px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
+                        >
+                          {mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
+                          <span className="flex-1">{mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}</span>
+                          <span className="w-[16px]">{viewMode === mode && <CheckLine size={16} />}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            {mobileSearch && (
+              <div className="px-[12px] pb-[10px]">
+                <input
+                  autoFocus
+                  type="text"
+                  value={activeState.query}
+                  onChange={(e) =>
+                    setActiveTabState({ query: e.target.value, visibleCount: PAGE_SIZE, loadingMore: false })
+                  }
+                  placeholder={t("common.search") || "Search"}
+                  className="h-[38px] w-full rounded-[10px] border-0 bg-border-alpha-14 px-[12px] text-[15px] text-text-primary outline-none placeholder:text-text-tertiary"
+                />
+              </div>
+            )}
+          </header>
+        ) : (
+        <div className="sticky top-0 z-20 bg-transparent">
 
           <div className="px-[32px] pt-[20px] pb-[10px]">
             <h1
@@ -399,9 +495,9 @@ export default function LibraryPage() {
             />
           </div>
         </div>
+        )}
 
-
-        <div className="px-[32px] pt-[4px] pb-[20px]">
+        <div className={isMobile ? "px-[12px] pt-[16px] pb-[20px]" : "px-[32px] pt-[4px] pb-[20px]"}>
           {activeTab === "playlists" && playlistsError ? (
             <div className="mb-[10px] text-[12px] text-accent-secondary">
               {t("playlist.error_loading")}
