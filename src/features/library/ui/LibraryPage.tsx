@@ -1,3 +1,4 @@
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { FaSpotify } from "react-icons/fa";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
@@ -357,6 +358,7 @@ export default function LibraryPage() {
       importJob?.status === "finalizing" ||
       importJob?.status === "awaiting_decision");
 
+  const isMobile = useIsMobile();
   return (
     <div className="relative h-full w-full overflow-hidden">
       <div
@@ -368,7 +370,7 @@ export default function LibraryPage() {
         data-page-scroller
         className="h-full w-full overflow-y-auto bg-transparent pb-[80px]"
       >
-        <ScrollBlurEdge height={96} />
+        {!isMobile && <ScrollBlurEdge height={96} />}
         <div className="sticky top-0 z-20 bg-transparent lane-frost-sticky" data-frost={showTopFog ? "true" : undefined}>
 
           <div className="px-[32px] pt-[20px] pb-[10px]">

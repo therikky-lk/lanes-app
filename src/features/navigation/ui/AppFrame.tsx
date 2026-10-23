@@ -856,13 +856,13 @@ export default function AppFrame({ children }: AppFrameProps) {
 
       {isMobile && (
         <>
-          {/* frosted strip behind the status bar */}
+          {/* soft shade behind the status bar icons: no blur, no edge */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 z-[40] backdrop-blur-md"
+            className="pointer-events-none absolute inset-x-0 top-0 z-[40]"
             style={{
-              height: "var(--lane-safe-top, 0px)",
-              background: "linear-gradient(to bottom, color-mix(in srgb, var(--bg-canvas, #000) 70%, transparent), color-mix(in srgb, var(--bg-canvas, #000) 35%, transparent))",
+              height: "calc(var(--lane-safe-top, 0px) + 18px)",
+              background: "linear-gradient(to bottom, color-mix(in srgb, var(--bg-canvas, #000) 55%, transparent), transparent)",
             }}
           />
           {/* floating dock: mini player + translucent tab bar over the content */}

@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect } from "react";
 import { FolderOpenLine } from "@mingcute/react";
 import { useToast } from "@/shared/ui";
@@ -57,7 +58,7 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
         />
       </SettingSection>
 
-      <SettingSection label={t("settings.connection.title")}>
+      {!isNativeApp() && <SettingSection label={t("settings.connection.title")}>
         <SettingRow
           title={t("settings.connection.checks_title")}
           titleKey="settings.connection.checks_title"
@@ -116,7 +117,7 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
             </div>
           }
         />
-      </SettingSection>
+      </SettingSection>}
     </div>
   );
 }
