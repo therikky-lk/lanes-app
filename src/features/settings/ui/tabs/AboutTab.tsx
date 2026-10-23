@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo } from "react";
 import { FaTelegramPlane, FaGithub, FaGlobe, FaDiscord } from "react-icons/fa";
 import { Refresh1Line, CheckLine } from "@mingcute/react";
@@ -161,7 +162,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
         >
           {bundleInfo?.isOta
             ? `Client ${bundleInfo.bundleVersion}${bundleInfo.sha256 ? ` (${bundleInfo.sha256.slice(0, 7)})` : ""} · Core ${appVersion}`
-            : `Client ${appVersion} (native)`}
+            : `Client ${appVersion} (${isNativeApp() ? "Android" : "native"})`}
           {lastCheckedTime ? ` · ${lastCheckedTime}` : ""}
         </span>
 

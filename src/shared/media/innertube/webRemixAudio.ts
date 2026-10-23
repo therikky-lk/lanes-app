@@ -25,13 +25,30 @@ function installPlayerEvaluator(): void {
   evaluatorInstalled = true;
 }
 
+/**
+ * youtubei.js hands fetch Request objects; Capacitor's native HTTP bridge only
+ * copes reliably with a plain url + init, so unwrap them first.
+ */
+async function nativeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (!(input instanceof Request)) return fetch(input, init);
+  const headers = new Headers(input.headers);
+  if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+  const method = (init?.method ?? input.method ?? "GET").toUpperCase();
+  let body = init?.body ?? undefined;
+  if (body === undefined && method !== "GET" && method !== "HEAD") {
+    const text = await input.clone().text();
+    if (text) body = text;
+  }
+  return fetch(input.url, { method, headers, body, signal: init?.signal ?? input.signal });
+}
+
 async function createSession(visitorData: string): Promise<WebRemixSession> {
   const innertube = await Innertube.create({
     visitor_data: visitorData,
     user_agent: navigator.userAgent,
     generate_session_locally: true,
     retrieve_player: true,
-    fetch: (input, init) => fetch(input, init),
+    fetch: (input, init) => (isNativeApp() ? nativeFetch(input, init) : fetch(input, init)),
   });
   return { visitorData, innertube };
 }
