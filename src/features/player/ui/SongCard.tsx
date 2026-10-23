@@ -1,3 +1,4 @@
+import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { memo, useEffect, useRef, useState } from "react";
 import { More2Fill, RepeatFill } from "@mingcute/react";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
@@ -78,6 +79,7 @@ function SongCard({
   onGrabStart,
   highlight,
 }: SongCardProps) {
+  const shownTitle = cleanTrackTitle(title, artists);
   const { t } = useTranslation();
   const [imageLoaded, setImageLoaded] = useState(() => isCoverReady(coverUrl));
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -211,7 +213,7 @@ function SongCard({
                 fontWeight: 400,
               }}
             >
-              {highlight ? <HighlightedText text={title} query={highlight} /> : title}
+              {highlight ? <HighlightedText text={shownTitle} query={highlight} /> : shownTitle}
             </h3>
             {repostedBy && (
               <div

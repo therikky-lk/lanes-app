@@ -161,6 +161,8 @@ export default function LibraryPage() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const [mobileAdd, setMobileAdd] = useState(false);
   const mobileTabLabels: Record<LibraryTab, string> = {
     playlists: t("library.tab_playlists"),
     albums: t("library.tab_albums"),
@@ -368,6 +370,15 @@ export default function LibraryPage() {
       importJob?.status === "awaiting_decision");
 
   const isMobile = useIsMobile();
+  const openSpotifyImport = async () => {
+    // prefill a Spotify link from the clipboard; a lone space opens the import tab empty
+    let link = " ";
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (/^https?:\/\/(open\.spotify\.com|spotify\.link)\//i.test(text)) link = text;
+    } catch {}
+    openCreatePlaylist(link);
+  };
   return (
     <div className="relative h-full w-full overflow-hidden">
       <div
@@ -394,6 +405,33 @@ export default function LibraryPage() {
                 <h1 className="m-0 truncate text-[22px] font-[700] tracking-[-0.01em] text-text-primary">{t("library.title")}</h1>
                 <p className="m-0 truncate text-[12px] text-text-tertiary">{mobileTabLabels[activeTab]}</p>
               </div>
+              <button
+                ref={addButtonRef}
+                type="button"
+                aria-label={t("library.create_playlist")}
+                onClick={() => setMobileAdd((v) => !v)}
+                className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+              >
+                <AddLine size={22} />
+              </button>
+              <PhoneMenu open={mobileAdd} anchorRef={addButtonRef} onClose={() => setMobileAdd(false)}>
+                <PhoneMenuItem
+                  icon={<AddLine size={16} />}
+                  label={t("library.create_playlist")}
+                  onClick={() => {
+                    setMobileAdd(false);
+                    openCreatePlaylist();
+                  }}
+                />
+                <PhoneMenuItem
+                  icon={<FaSpotify size={16} />}
+                  label={t("library.import_spotify") || "Import from Spotify"}
+                  onClick={() => {
+                    setMobileAdd(false);
+                    void openSpotifyImport();
+                  }}
+                />
+              </PhoneMenu>
               <button
                 type="button"
                 aria-label={t("common.search") || "Search"}
@@ -553,18 +591,10 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {activeTab === "playlists" && (
+      {activeTab === "playlists" && !isMobile && (
         <button
           type="button"
-          onClick={async () => {
-            // prefill a Spotify link from the clipboard; a lone space opens the import tab empty
-            let link = " ";
-            try {
-              const text = (await navigator.clipboard.readText()).trim();
-              if (/^https?:\/\/(open\.spotify\.com|spotify\.link)\//i.test(text)) link = text;
-            } catch {}
-            openCreatePlaylist(link);
-          }}
+          onClick={() => void openSpotifyImport()}
           title={t("library.import_spotify") || "Import from Spotify"}
           className="absolute bottom-[20px] right-[80px] z-30 flex h-[44px] items-center gap-[8px] rounded-[14px] px-[14px] bg-[#1ed760] text-black text-[13.5px] font-[600] hover:bg-[#3be477] active:scale-[0.96] transition-all border-0 cursor-pointer select-none shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
@@ -574,7 +604,7 @@ export default function LibraryPage() {
         </button>
       )}
 
-      {activeTab === "playlists" && (
+      {activeTab === "playlists" && !isMobile && (
         <button
           type="button"
           onClick={() => openCreatePlaylist()}
