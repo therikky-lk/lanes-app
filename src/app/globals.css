@@ -466,7 +466,17 @@ html[data-hover-reset] [data-window-controls] button:hover {
 /* phone: content scrolls under the status bar, keep sticky bars below it */
 :root { --lane-safe-top: env(safe-area-inset-top, 0px); --lane-safe-bottom: env(safe-area-inset-bottom, 0px); }
 .lane-mobile { --lane-scroll-top-inset: var(--lane-safe-top, 0px); }
-.lane-mobile .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
+.lane-mobile [data-page-scroller] {
+  padding-top: var(--lane-safe-top, 0px) !important;
+  padding-bottom: calc(var(--lane-dock-h, 0px) + 16px) !important;
+}
+.lane-mobile [data-page-scroller] .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
+.lane-mobile .lane-frost-sticky { transition: background-color 0.25s ease, backdrop-filter 0.25s ease; }
+.lane-mobile .lane-frost-sticky[data-frost="true"] {
+  background-color: color-mix(in srgb, var(--bg-primary, #0d0d10) 72%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
 .lane-mobile { --lane-releases-top: 12px; }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

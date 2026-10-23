@@ -106,7 +106,7 @@ export default function HomePage() {
     : "bg-bg-elevated hover:bg-[#dedee3] dark:hover:bg-border-alpha-14 transition-colors duration-150 ease-out";
 
   return (
-    <div className="relative h-full w-full overflow-y-auto overflow-x-hidden bg-transparent">
+    <div data-page-scroller className="relative h-full w-full overflow-y-auto overflow-x-hidden bg-transparent">
       <ScrollBlurEdge height={72} />
 
       <div

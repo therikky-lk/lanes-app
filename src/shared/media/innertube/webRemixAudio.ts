@@ -1,5 +1,10 @@
 import { Innertube, Platform } from "youtubei.js/web";
+import { registerPlugin } from "@capacitor/core";
 import { getClientVisitorData } from "@/shared/api/visitorSession";
+import { isNativeApp } from "@/shared/platform/native";
+
+// Android: BotGuard runs in a hidden native WebView on youtube.com
+const LanePoToken = registerPlugin<{ mint(options: { identifier: string }): Promise<{ token: string }> }>("LanePoToken");
 import { InnertubeError } from "./innertubeClient";
 import { selectBestAudioFormat, toResolvedStream, type AudioFormat, type ResolvedAudioStream } from "./innertubeAudioFormats";
 
@@ -46,6 +51,7 @@ export function resetWebRemixSession(): void {
 }
 
 async function mintContentPoToken(videoId: string): Promise<string> {
+  if (isNativeApp()) return (await LanePoToken.mint({ identifier: videoId })).token;
   const mint = typeof window === "undefined" ? undefined : window.linerElectron?.mintPoToken;
   if (!mint) throw new InnertubeError("PO tokens need a newer Lane app version.", 501);
   return mint(videoId);

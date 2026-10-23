@@ -23,8 +23,17 @@ import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * One ExoPlayer for the whole app process. The Capacitor plugin drives it; the
@@ -48,6 +57,10 @@ public final class PlayerHolder {
     private final Handler main = new Handler(Looper.getMainLooper());
     private Events events;
     private String lastError;
+    private final ExecutorService artworkLoader = Executors.newSingleThreadExecutor();
+    private int loadGeneration;
+    private boolean liked;
+    private Runnable likedListener;
 
     private final Runnable ticker = new Runnable() {
         @Override
@@ -153,7 +166,22 @@ public final class PlayerHolder {
         this.events = events;
     }
 
-    private void remote(String action) {
+    public boolean isLiked() {
+        return liked;
+    }
+
+    /** the like button of the notification reflects this */
+    public void setLiked(boolean liked) {
+        if (this.liked == liked) return;
+        this.liked = liked;
+        if (likedListener != null) likedListener.run();
+    }
+
+    void setLikedListener(Runnable listener) {
+        likedListener = listener;
+    }
+
+    void remote(String action) {
         if (events != null) events.onRemote(action, player.getCurrentPosition());
     }
 
@@ -179,6 +207,8 @@ public final class PlayerHolder {
             .setArtist(artist)
             .setAlbumTitle(album)
             .setIsPlayable(true);
+        final int generation = ++loadGeneration;
+        boolean fetchArtwork = false;
         if (artwork != null && !artwork.isEmpty()) {
             if (artwork.startsWith("data:")) {
                 try {
@@ -186,8 +216,10 @@ public final class PlayerHolder {
                     meta.setArtworkData(Base64.decode(b64, Base64.DEFAULT), MediaMetadata.PICTURE_TYPE_FRONT_COVER);
                 } catch (IllegalArgumentException ignored) {
                 }
-            } else {
-                meta.setArtworkUri(Uri.parse(artwork));
+            } else if (artwork.startsWith("http")) {
+                // loaded here (not by the session's bitmap loader) so it works
+                // for every cover host and stays a sane size
+                fetchArtwork = true;
             }
         }
         MediaItem item = new MediaItem.Builder()
@@ -208,6 +240,49 @@ public final class PlayerHolder {
         player.prepare();
         player.setPlayWhenReady(playWhenReady);
         emit();
+        if (fetchArtwork) loadArtwork(artwork, generation);
+    }
+
+    private void loadArtwork(String url, int generation) {
+        artworkLoader.execute(() -> {
+            byte[] png = null;
+            try {
+                HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+                conn.setConnectTimeout(10_000);
+                conn.setReadTimeout(10_000);
+                conn.setInstanceFollowRedirects(true);
+                if (conn.getResponseCode() / 100 == 2) {
+                    try (InputStream in = conn.getInputStream()) {
+                        Bitmap bitmap = BitmapFactory.decodeStream(in);
+                        if (bitmap != null) {
+                            int max = Math.max(bitmap.getWidth(), bitmap.getHeight());
+                            if (max > 512) {
+                                float k = 512f / max;
+                                bitmap = Bitmap.createScaledBitmap(bitmap,
+                                    Math.round(bitmap.getWidth() * k), Math.round(bitmap.getHeight() * k), true);
+                            }
+                            ByteArrayOutputStream out = new ByteArrayOutputStream();
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
+                            png = out.toByteArray();
+                        }
+                    }
+                }
+                conn.disconnect();
+            } catch (Exception ignored) {
+            }
+            if (png == null) return;
+            final byte[] data = png;
+            main.post(() -> {
+                if (generation != loadGeneration || player.getMediaItemCount() == 0) return;
+                MediaItem current = player.getCurrentMediaItem();
+                if (current == null) return;
+                MediaMetadata updated = current.mediaMetadata.buildUpon()
+                    .setArtworkData(data, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .build();
+                player.replaceMediaItem(player.getCurrentMediaItemIndex(),
+                    current.buildUpon().setMediaMetadata(updated).build());
+            });
+        });
     }
 
     public void setRate(float rate) {
