@@ -40,13 +40,62 @@ let webRemixRetryAt = 0;
 let webRemixFailures = 0;
 let lastWebRemixError = "";
 
-async function assertStreamReachable(url: string, contentLength: number | undefined, signal?: AbortSignal): Promise<void> {
+/**
+ * Other hosts that serve the same googlevideo URL. A stream is assigned to a
+ * cache node inside the viewer's ISP first (the first entry of `mn`); when that
+ * node is blocked or unreachable, YouTube's own player falls back to the next
+ * `mn` node (usually on Google's network) and then to the redirector.
+ */
+export function streamHostCandidates(url: string): string[] {
+  const out = [url];
+  try {
+    const parsed = new URL(url);
+    const match = parsed.hostname.match(/^(rr\d+)---(sn-[a-z0-9-]+)\.googlevideo\.com$/i);
+    const mirrors = (parsed.searchParams.get("mn") ?? "").split(",").map((m) => m.trim()).filter(Boolean);
+    if (match) {
+      const [, rr] = match;
+      for (const node of mirrors) {
+        const host = `${rr}---${node}.googlevideo.com`;
+        if (host.toLowerCase() === parsed.hostname.toLowerCase()) continue;
+        const alt = new URL(url);
+        alt.hostname = host;
+        alt.searchParams.set("fallback_count", String(out.length));
+        out.push(alt.toString());
+      }
+    }
+    if (parsed.hostname.endsWith(".googlevideo.com") && parsed.hostname !== "redirector.googlevideo.com") {
+      const redirector = new URL(url);
+      redirector.hostname = "redirector.googlevideo.com";
+      out.push(redirector.toString());
+    }
+  } catch {}
+  return out;
+}
+
+async function probeStream(url: string, contentLength: number | undefined, signal?: AbortSignal): Promise<void> {
   const probe = new URL(url);
   const offset = contentLength && contentLength > PROBE_OFFSET ? PROBE_OFFSET : 0;
   probe.searchParams.set("range", `${offset}-${offset}`);
   const response = await fetch(probe.toString(), { signal });
   await response.body?.cancel().catch(() => undefined);
   if (!response.ok) throw new InnertubeError(`stream url rejected with ${response.status}`, response.status);
+}
+
+/** checks the stream answers and returns the URL that did (maybe a fallback node) */
+async function assertStreamReachable(url: string, contentLength: number | undefined, signal?: AbortSignal): Promise<string> {
+  let lastError: unknown = null;
+  for (const candidate of streamHostCandidates(url)) {
+    try {
+      await probeStream(candidate, contentLength, signal);
+      return candidate;
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      lastError = error;
+      // a 403 means the URL itself is refused: other nodes won't change that
+      if (error instanceof InnertubeError && error.status === 403) throw error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new InnertubeError("stream unreachable", 502);
 }
 
 async function resolveViaWebRemix(
@@ -59,7 +108,7 @@ async function resolveViaWebRemix(
       const stream = await resolveWebRemixAudioStream(videoId, options);
       // the stream is tied to the client that asked for it: the WebView's own UA
       if (typeof navigator !== "undefined") setStreamUserAgent(navigator.userAgent);
-      await assertStreamReachable(stream.url, stream.contentLength, options.signal);
+      stream.url = await assertStreamReachable(stream.url, stream.contentLength, options.signal);
       webRemixFailures = 0;
       return stream;
     } catch (error) {
@@ -110,7 +159,7 @@ async function resolveWithProfile(
   const stream = toResolvedStream(best);
   // googlevideo checks the stream against the client that asked for it (Android app only)
   setStreamUserAgent(profile.userAgent);
-  await assertStreamReachable(stream.url, stream.contentLength, options.signal);
+  stream.url = await assertStreamReachable(stream.url, stream.contentLength, options.signal);
   return stream;
 }
 
