@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeftLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 export interface StickyHeaderProps {
   isScrolled: boolean;
@@ -28,6 +29,7 @@ export function StickyHeader({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const hasCustomBg = useIsContentTransparent();
+  const isMobile = useIsMobile();
 
   const handleBack = () => {
     if (onBack) {
@@ -43,11 +45,26 @@ export function StickyHeader({
 
   return (
     <div
-      className={`sticky top-0 z-20 w-full pointer-events-none select-none ${className}`}
-      style={{ height: "56px", marginBottom: "-56px" }}
+      className={`sticky ${isMobile ? "" : "top-0"} z-20 w-full pointer-events-none select-none ${className}`}
+      style={
+        isMobile
+          ? {
+              // phones: reaches up under the status bar and frosts once scrolled
+              top: "calc(-1 * var(--lane-safe-top, 0px))",
+              marginTop: "calc(-1 * var(--lane-safe-top, 0px))",
+              height: "calc(56px + var(--lane-safe-top, 0px))",
+              marginBottom: "calc(-56px - var(--lane-safe-top, 0px))",
+              paddingTop: "var(--lane-safe-top, 0px)",
+              transition: "background-color 0.25s ease, backdrop-filter 0.25s ease",
+              backgroundColor: isScrolled ? "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)" : "transparent",
+              backdropFilter: isScrolled ? "blur(24px) saturate(1.5)" : "none",
+              WebkitBackdropFilter: isScrolled ? "blur(24px) saturate(1.5)" : "none",
+            }
+          : { height: "56px", marginBottom: "-56px" }
+      }
       data-window-drag
     >
-      <div className="relative flex items-center justify-between px-[32px] h-[56px] min-w-0">
+      <div className={`relative flex items-center justify-between ${isMobile ? "px-[12px]" : "px-[32px]"} h-[56px] min-w-0`}>
         <div className="flex items-center gap-[8px] min-w-0">
           {showBack && (
             <button
@@ -74,7 +91,7 @@ export function StickyHeader({
           {hasMetadata && (
             <div
               data-no-window-drag
-              className={`inline-flex items-center gap-[8px] h-[32px] pl-[4px] pr-[12px] rounded-md min-w-0 max-w-[calc(100vw-360px)] select-none transition-all duration-200 ease-out ${
+              className={`inline-flex items-center gap-[8px] h-[32px] pl-[4px] pr-[12px] rounded-md min-w-0 ${isMobile ? "max-w-[calc(100vw-130px)]" : "max-w-[calc(100vw-360px)]"} select-none transition-all duration-200 ease-out ${
                 hasCustomBg
                   ? "apple-glass-pill"
                   : "bg-bg-panel/85 backdrop-blur-xl text-text-primary"
