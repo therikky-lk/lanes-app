@@ -31,7 +31,7 @@ describe("letter-by-letter lyrics", () => {
   it("splits timed words into letters and lights them with the song", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => frames.push(cb));
     vi.stubGlobal("cancelAnimationFrame", () => {});
-    const host = document.createElement("div") as HTMLElement & { currentTime: number };
+    const host = document.createElement("div") as unknown as HTMLElement & { currentTime: number };
     host.innerHTML = line(true);
     document.body.appendChild(host);
     host.currentTime = 0;
