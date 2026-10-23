@@ -553,7 +553,7 @@ export function FullscreenPlayer({
           type="button"
           onClick={() => setMobileLyrics((v) => !v)}
           aria-pressed={mobileLyrics}
-          className={`absolute right-[12px] z-30 inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
+          className={`absolute right-[54px] z-30 inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
             mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
           }`}
           style={{ top: "calc(var(--lane-safe-top, 0px) + 10px)" }}
@@ -584,7 +584,7 @@ export function FullscreenPlayer({
         style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 150 }}
         data-no-window-drag
       >
-        <ConnectDevicesButton className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none" />
+        <ConnectDevicesButton className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none" />
       </div>
     </div>
   );
