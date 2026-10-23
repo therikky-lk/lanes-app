@@ -35,6 +35,7 @@ interface LaneAudioPlugin {
   setVolume(options: { volume: number }): Promise<void>;
   setRate(options: { rate: number }): Promise<void>;
   setLiked(options: { liked: boolean }): Promise<void>;
+  setRepeat(options: { mode: number }): Promise<void>;
   writeCacheFile(options: { name: string; base64: string }): Promise<{ url: string }>;
   addListener(event: "state", cb: (s: NativeState) => void): Promise<PluginListenerHandle>;
   addListener(event: "remote", cb: (r: { action: string; positionMs: number }) => void): Promise<PluginListenerHandle>;
@@ -70,6 +71,12 @@ export function onNativeRemote(handler: RemoteHandler): void {
 let likeHandler: (() => void) | null = null;
 export function onNativeLike(handler: (() => void) | null): void {
   likeHandler = handler;
+}
+
+// the notification's repeat button
+let repeatHandler: (() => void) | null = null;
+export function onNativeRepeat(handler: (() => void) | null): void {
+  repeatHandler = handler;
 }
 
 // blob: URLs are page-local; remember the Blob behind each one so it can be
@@ -182,6 +189,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
   });
   void LaneAudio.addListener("remote", (r) => {
     if (r.action === "like") likeHandler?.();
+    else if (r.action === "repeat") repeatHandler?.();
     else remoteHandler?.(r.action, r.positionMs);
   });
 

@@ -1077,5 +1077,29 @@
     "empty_desc": "or click to choose. Title, artist and cover are read from the file tags.",
     "drop_here": "Drop to add to My tracks",
     "unknown_artist": "Unknown artist"
+  },
+  "connect": {
+    "tab": "Connect",
+    "description": "Play on one device and control it from another, like Spotify Connect.",
+    "devices": "Devices",
+    "this_device": "This device",
+    "playing_here": "Playing",
+    "tap_to_play": "Tap to play here",
+    "playing_on": "Playing on {name}",
+    "setup_hint": "Link your devices in Settings ▸ Connect",
+    "no_devices": "No other devices online. Open Lane on another device with the same code.",
+    "offline": "Connecting…",
+    "code_title": "Pairing code",
+    "code_desc": "Use the same code on all your devices. Anyone with the code can control your playback, so keep it to yourself.",
+    "create": "Create code",
+    "join": "Link",
+    "enter_code": "Enter a code from another device",
+    "bad_code": "That code doesn't look right",
+    "unlink": "Unlink this device",
+    "name_title": "Device name",
+    "name_desc": "How this device shows up on your other devices.",
+    "online_title": "Online now",
+    "copy": "Copy",
+    "copied": "Copied"
   }
 }

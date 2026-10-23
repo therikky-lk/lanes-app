@@ -32,6 +32,7 @@ import com.therikky.lane.R;
 public class LanePlaybackService extends MediaSessionService {
 
     private static final SessionCommand LIKE = new SessionCommand("lane.like", Bundle.EMPTY);
+    private static final SessionCommand REPEAT = new SessionCommand("lane.repeat", Bundle.EMPTY);
 
     private MediaSession session;
 
@@ -49,28 +50,39 @@ public class LanePlaybackService extends MediaSessionService {
         session = new MediaSession.Builder(this, holder.sessionPlayer())
             .setSessionActivity(activity)
             .setCallback(new Callback())
-            .setMediaButtonPreferences(buttons(holder.isLiked()))
+            .setMediaButtonPreferences(buttons(holder))
             .build();
-        holder.setLikedListener(() -> {
-            if (session != null) session.setMediaButtonPreferences(buttons(holder.isLiked()));
-        });
+        Runnable refresh = () -> {
+            if (session != null) session.setMediaButtonPreferences(buttons(holder));
+        };
+        holder.setLikedListener(refresh);
+        holder.setRepeatListener(refresh);
     }
 
-    private static ImmutableList<CommandButton> buttons(boolean liked) {
+    private static ImmutableList<CommandButton> buttons(PlayerHolder holder) {
+        boolean liked = holder.isLiked();
+        int repeat = holder.getRepeatMode();
+        CommandButton repeatButton = new CommandButton.Builder(
+                repeat == 2 ? CommandButton.ICON_REPEAT_ONE : repeat == 1 ? CommandButton.ICON_REPEAT_ALL : CommandButton.ICON_REPEAT_OFF)
+            .setDisplayName(repeat == 2 ? "Repeat one" : repeat == 1 ? "Repeat all" : "Repeat off")
+            .setSessionCommand(REPEAT)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build();
+
         CommandButton like = new CommandButton.Builder(
                 liked ? CommandButton.ICON_HEART_FILLED : CommandButton.ICON_HEART_UNFILLED)
             .setDisplayName(liked ? "Remove from Liked" : "Like")
             .setSessionCommand(LIKE)
             .setSlots(CommandButton.SLOT_OVERFLOW)
             .build();
-        return ImmutableList.of(like);
+        return ImmutableList.of(repeatButton, like);
     }
 
     private final class Callback implements MediaSession.Callback {
         @NonNull
         @Override
         public MediaSession.ConnectionResult onConnect(@NonNull MediaSession session, @NonNull MediaSession.ControllerInfo controller) {
-            SessionCommands commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(LIKE).build();
+            SessionCommands commands = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(LIKE).add(REPEAT).build();
             return new MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(commands)
                 .build();
@@ -85,6 +97,12 @@ public class LanePlaybackService extends MediaSessionService {
                 // flip right away so the button reacts; the app confirms via setLiked
                 holder.setLiked(!holder.isLiked());
                 holder.remote("like");
+                return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));
+            }
+            if (REPEAT.customAction.equals(command.customAction)) {
+                PlayerHolder holder = PlayerHolder.get(LanePlaybackService.this);
+                holder.setRepeatMode((holder.getRepeatMode() + 1) % 3);
+                holder.remote("repeat");
                 return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_SUCCESS));
             }
             return Futures.immediateFuture(new SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED));
@@ -109,6 +127,7 @@ public class LanePlaybackService extends MediaSessionService {
     @Override
     public void onDestroy() {
         PlayerHolder.get(this).setLikedListener(null);
+        PlayerHolder.get(this).setRepeatListener(null);
         if (session != null) {
             session.release();
             session = null;

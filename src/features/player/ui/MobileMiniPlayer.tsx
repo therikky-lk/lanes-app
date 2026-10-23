@@ -1,4 +1,6 @@
-import { SkipNext } from "@solar-icons/react";
+import { useConnectStore } from "@/features/connect/connectService";
+import { useTranslation } from "@/languages";
+import { SkipNext, SkipPrevious } from "@solar-icons/react";
 import { usePlayerState } from "../hooks/usePlayerState";
 import { usePlayerStore } from "../store/playerStore";
 import { playerEngine } from "../engine/playerEngine";
@@ -10,6 +12,8 @@ export default function MobileMiniPlayer() {
   const player = usePlayerState();
   const setFullscreen = usePlayerStore((s) => s.setFullscreen);
   const track = player.currentTrack;
+  const { t } = useTranslation();
+  const remoteName = useConnectStore((s) => (s.followingId ? s.devices[s.followingId]?.name ?? "…" : null));
   if (!track) return null;
   const progress = player.durationMs > 0 ? Math.min(1, player.positionMs / player.durationMs) : 0;
 
@@ -25,8 +29,25 @@ export default function MobileMiniPlayer() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="m-0 truncate text-[14px] font-[500] text-text-primary">{track.title}</p>
-        <p className="m-0 truncate text-[12px] text-text-tertiary">{track.artists}</p>
+        {remoteName ? (
+          <p className="m-0 truncate text-[12px] text-accent-primary">
+            {(t("connect.playing_on", { name: remoteName }) || "").includes(remoteName) ? t("connect.playing_on", { name: remoteName }) : `Playing on ${remoteName}`}
+          </p>
+        ) : (
+          <p className="m-0 truncate text-[12px] text-text-tertiary">{track.artists}</p>
+        )}
       </div>
+      <button
+        type="button"
+        aria-label="Previous track"
+        onClick={(e) => {
+          e.stopPropagation();
+          void playerEngine.skipPrevious();
+        }}
+        className="inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+      >
+        <SkipPrevious size={22} weight="Bold" />
+      </button>
       <button
         type="button"
         aria-label={player.status === "playing" ? "Pause" : "Play"}

@@ -1,3 +1,4 @@
+import { startConnect, stopConnect } from "@/features/connect/connectService";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import MobileNav from "./MobileNav";
@@ -688,6 +689,11 @@ export default function AppFrame({ children }: AppFrameProps) {
 
   const isMobile = useIsMobile();
   useNativeMediaSync();
+  // Lane Connect: join the user's other devices when a pairing code is set
+  useEffect(() => {
+    void startConnect();
+    return () => stopConnect(false);
+  }, []);
   useEffect(() => {
     document.documentElement.classList.toggle("lane-mobile", isMobile);
   }, [isMobile]);
