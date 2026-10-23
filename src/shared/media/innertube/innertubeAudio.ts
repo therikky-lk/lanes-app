@@ -1,3 +1,4 @@
+import { setStreamUserAgent } from "@/shared/platform/native";
 import { InnertubeError, postInnertube, type InnertubeProfile } from "./innertubeClient";
 import { PLAYBACK_PROFILES } from "./playbackProfiles";
 import { resetClientVisitorData } from "@/shared/api/visitorSession";
@@ -105,6 +106,8 @@ async function resolveWithProfile(
   const best = selectBestAudioFormat(extractAudioFormats(response), options.preferredCodec);
   if (!best) throw new InnertubeError(`${profile.clientName} returned no direct audio formats.`, 502);
   const stream = toResolvedStream(best);
+  // googlevideo checks the stream against the client that asked for it (Android app only)
+  setStreamUserAgent(profile.userAgent);
   await assertStreamReachable(stream.url, stream.contentLength, options.signal);
   return stream;
 }

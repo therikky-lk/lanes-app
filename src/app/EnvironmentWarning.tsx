@@ -1,3 +1,4 @@
+import { isNativeApp } from "@/shared/platform/native";
 import { useState } from "react";
 import { WarningFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
@@ -16,7 +17,7 @@ export default function EnvironmentWarning() {
     }
   });
 
-  if (typeof window !== "undefined" && window.linerElectron) return null;
+  if (typeof window !== "undefined" && (window.linerElectron || isNativeApp())) return null;
   if (skipped) return null;
 
   const skip = () => {

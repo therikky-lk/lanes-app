@@ -1,8 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { initGlobalErrorHandlers } from "@/shared/utils/globalErrorHandlers";
+import { installNativeFetchHeaders } from "@/shared/platform/native";
+import { installAndroidBackButton } from "@/shared/platform/androidBack";
 
 initGlobalErrorHandlers();
+installNativeFetchHeaders();
+void installAndroidBackButton();
 
 const isOverlay = window.location.hash.startsWith("#/overlay");
 

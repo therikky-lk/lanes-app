@@ -1,3 +1,4 @@
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useState, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import {
@@ -30,7 +31,7 @@ import { useTranslation } from "@/languages";
 const iconButtonClass =
   "inline-flex h-[40px] w-[40px] items-center justify-center text-white opacity-70 transition-all duration-150 ease-out hover:opacity-100 active:scale-[0.94] shrink-0 border-none bg-transparent cursor-pointer";
 
-function PlayPauseIcon({ status }: { status: string }) {
+export function PlayPauseIcon({ status }: { status: string }) {
   const loading = status === "loading";
   const playing = status === "playing";
   // keep the morph icon mounted through the loading state (spinner overlays
@@ -96,7 +97,8 @@ export function PlayerUiElements({
 
   const { t } = useTranslation();
 
-  const S = "clamp(300px, min(36vw, 52vh), 460px)";
+  const isMobile = useIsMobile();
+  const S = isMobile ? "min(84vw, 44vh)" : "clamp(300px, min(36vw, 52vh), 460px)";
 
   return (
     <>
@@ -204,7 +206,7 @@ export function PlayerUiElements({
         showTime
         size="lg"
         className="text-[12px]"
-        style={{ width: `calc(${S} + 72px)` }}
+        style={{ width: `min(calc(${S} + 72px), 92vw)` }}
       />
 
       {/* Primary Playback Controls */}
