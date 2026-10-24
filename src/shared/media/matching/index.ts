@@ -13,4 +13,4 @@ export {
 } from "./artistTitle";
 export { cleanBaseTitle, cleanSearchTitle, cleanTitle, stripJunk } from "./junk";
 export { normalizeWords } from "./phonetic";
-export { findCatalogMatch, type TrackMatchOutcome } from "./findCatalogMatch";
+export { findCatalogMatch, isRateLimit, type TrackMatchOutcome } from "./findCatalogMatch";

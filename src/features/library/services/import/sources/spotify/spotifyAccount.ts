@@ -144,26 +144,65 @@ export async function spotifyLikedCount(signal?: AbortSignal): Promise<number> {
   return (await likedPage(0, 1, signal)).total;
 }
 
+function mapSavedTrack(item: SavedTrackItem, position: number): ClientImportedTrack | null {
+  const t = item.track;
+  if (!t?.name || t.is_local) return null;
+  const artists = (t.artists ?? []).map((a) => a.name ?? "").filter(Boolean);
+  return {
+    sourceId: t.id ?? `${t.name}-${position}`,
+    title: t.name,
+    artists: artists.length ? artists : ["Spotify Artist"],
+    ...(t.album?.name ? { album: t.album.name } : {}),
+    ...(t.album?.images?.[0]?.url ? { coverUrl: t.album.images[0].url } : {}),
+    ...(t.duration_ms ? { durationMs: t.duration_ms } : {}),
+  };
+}
+
+/** one page of Liked Songs (newest first), mapped for import */
+export async function fetchSpotifyLikedPage(
+  offset: number,
+  limit: number,
+  signal?: AbortSignal,
+): Promise<{ total: number; count: number; tracks: ClientImportedTrack[] }> {
+  const page = await likedPage(offset, limit, signal);
+  const tracks: ClientImportedTrack[] = [];
+  page.items.forEach((item, i) => {
+    const mapped = mapSavedTrack(item, offset + i);
+    if (mapped) tracks.push(mapped);
+  });
+  return { total: page.total, count: page.items.length, tracks };
+}
+
+/** the signed-in Spotify account id, so a saved import is resumed for the same account */
+export async function spotifyAccountId(signal?: AbortSignal): Promise<string> {
+  const data = await withRateLimit(
+    async () => {
+      const token = await userToken(signal);
+      const res = await fetch("https://api.spotify.com/v1/me", {
+        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+        signal,
+      });
+      if (res.status === 401) cachedToken = null;
+      return {
+        status: res.status,
+        retryAfter: res.headers.get("retry-after"),
+        value: res.ok ? ((await res.json()) as { id?: string }) : undefined,
+      };
+    },
+    "Spotify account request",
+    signal,
+  );
+  return data.id ?? "";
+}
+
 export async function fetchSpotifyLikedTracks(signal?: AbortSignal): Promise<ClientImportedTrack[]> {
   const out: ClientImportedTrack[] = [];
   let offset = 0;
   for (;;) {
-    const page = await likedPage(offset, 50, signal);
-    for (const item of page.items) {
-      const t = item.track;
-      if (!t?.name || t.is_local) continue;
-      const artists = (t.artists ?? []).map((a) => a.name ?? "").filter(Boolean);
-      out.push({
-        sourceId: t.id ?? `${t.name}-${offset}`,
-        title: t.name,
-        artists: artists.length ? artists : ["Spotify Artist"],
-        ...(t.album?.name ? { album: t.album.name } : {}),
-        ...(t.album?.images?.[0]?.url ? { coverUrl: t.album.images[0].url } : {}),
-        ...(t.duration_ms ? { durationMs: t.duration_ms } : {}),
-      });
-    }
-    offset += page.items.length;
-    if (page.items.length === 0 || offset >= page.total) break;
+    const page = await fetchSpotifyLikedPage(offset, 50, signal);
+    out.push(...page.tracks);
+    offset += page.count;
+    if (page.count === 0 || offset >= page.total) break;
     // stay well under Spotify's rate limit
     await sleep(350, signal);
   }

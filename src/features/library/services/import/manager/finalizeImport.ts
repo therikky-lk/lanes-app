@@ -30,16 +30,33 @@ async function addOneByOne(playlistId: string, tracks: Track[]): Promise<number>
   return saved;
 }
 
-async function addTracks(playlistId: string, tracks: Track[]): Promise<number> {
-  try {
-    const result = await api.addPlaylistTrackSnapshots(playlistId, tracks);
-    return result.added;
-  } catch (error) {
-    if (error instanceof ApiError && (error.status === 404 || error.status === 405)) {
-      return addOneByOne(playlistId, tracks);
+// a single request with a thousand tracks can hit the server's body limit or
+// time out, losing the whole import at the very end: send it in chunks
+const SAVE_CHUNK = 100;
+
+async function addChunk(playlistId: string, tracks: Track[]): Promise<number> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const result = await api.addPlaylistTrackSnapshots(playlistId, tracks);
+      return result.added;
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 404 || error.status === 405 || error.status === 413)) {
+        return addOneByOne(playlistId, tracks);
+      }
+      const status = (error as { status?: number })?.status;
+      const retryable = status === undefined || status === 0 || status === 408 || status === 429 || status >= 500;
+      if (!retryable || attempt >= 3) throw error;
+      await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
     }
-    throw error;
   }
+}
+
+async function addTracks(playlistId: string, tracks: Track[]): Promise<number> {
+  let saved = 0;
+  for (let i = 0; i < tracks.length; i += SAVE_CHUNK) {
+    saved += await addChunk(playlistId, tracks.slice(i, i + SAVE_CHUNK));
+  }
+  return saved;
 }
 
 export async function finalizeImportedPlaylist(

@@ -710,6 +710,14 @@ export const api = {
     );
   },
 
+  /** like a track whose metadata is already known (imports): no extra lookup */
+  likeTrackSnapshot(id: string, track: ApiTrackBase): Promise<void> {
+    return request<void>(
+      `/v1/me/library/tracks/${encodeURIComponent(id)}`,
+      { method: "PUT", body: JSON.stringify({ track, trackSnapshot: track }) },
+    );
+  },
+
   unlikeTrack(id: string): Promise<void> {
     return request<void>(
       `/v1/me/library/tracks/${encodeURIComponent(id)}`,
