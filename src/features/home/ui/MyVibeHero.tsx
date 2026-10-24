@@ -1,12 +1,13 @@
 import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PauseFill, PlayFill, Refresh2Line } from "@mingcute/react";
+import { PauseFill, PlayFill } from "@mingcute/react";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import { useCoverSrc } from "@/features/covers";
 import { useTranslation } from "@/languages";
 import type { Track } from "@/shared/types/track";
 import { BeatTracker } from "../vibe/audioAnalyser";
-import { isVibeContext, pickVibeSeed, startVibe } from "../vibe/vibeController";
+import { isVibeContext, startVibe, storedMood, storeMood, vibeMoodOf, type VibeMood } from "../vibe/vibeController";
+import { VIBE_MOODS } from "../vibe/vibeTaste";
 import {
   DEFAULT_VIBE_PALETTE,
   lerpPalette,
@@ -97,10 +98,11 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const cover = useCoverSrc(currentTrack?.coverUrl);
   const [starting, setStarting] = useState(false);
+  const [mood, setMood] = useState<VibeMood | null>(() => storedMood());
 
   const vibeActive = isVibeContext(playbackContext) && !!currentTrack;
   const isPlaying = status === "playing" || status === "loading";
-  const vibePlaying = vibeActive && isPlaying;
+  const vibePlaying = vibeActive && isPlaying && vibeMoodOf(playbackContext) === mood;
 
   const hasSeeds = useMemo(
     () => (liked?.length ?? 0) + (recent?.length ?? 0) + (trending?.length ?? 0) > 0,
@@ -292,31 +294,37 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     };
   }, []);
 
-  const launch = async () => {
-    const seed = pickVibeSeed({ liked, recent, trending });
-    if (!seed) return;
+  const launch = async (nextMood: VibeMood | null) => {
     setStarting(true);
     try {
-      await startVibe(seed);
+      await startVibe(nextMood, { liked, recent, trending });
     } finally {
       setStarting(false);
     }
   };
 
   const onMainClick = () => {
-    if (vibeActive) {
+    if (vibeActive && vibeMoodOf(playbackContext) === mood) {
       if (isPlaying) playerEngine.pause();
       else playerEngine.resume();
       return;
     }
-    void launch();
+    void launch(mood);
   };
 
-  const subtitle = vibeActive && currentTrack
-    ? `${currentTrack.title}${currentTrack.artists ? ` — ${currentTrack.artists}` : ""}`
-    : hasSeeds
-      ? t("home.vibe.subtitle") || "Personal stream"
-      : t("home.vibe.empty") || "Play a few tracks and your vibe will tune in";
+  const onMoodClick = (next: VibeMood) => {
+    const chosen = mood === next ? null : next;
+    setMood(chosen);
+    storeMood(chosen);
+    void launch(chosen);
+  };
+
+  const moodLabel = (m: VibeMood) =>
+    m === "happy"
+      ? t("home.vibe.mood_happy") || "Happy"
+      : m === "calm"
+        ? t("home.vibe.mood_calm") || "Calm"
+        : t("home.vibe.mood_sad") || "Sad";
 
   return (
     <section
@@ -343,7 +351,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         <button
           type="button"
           onClick={onMainClick}
-          disabled={!hasSeeds || starting}
+          disabled={starting}
           aria-label={vibePlaying ? t("player.pause") || "Pause" : t("home.vibe.play") || "Play My Vibe"}
           className="w-[80px] h-[80px] rounded-full bg-white text-black flex items-center justify-center shadow-[0_8px_40px_rgba(0,0,0,0.35)] transition-transform duration-200 ease-out hover:scale-[1.07] active:scale-95 disabled:opacity-60 disabled:hover:scale-100 cursor-pointer"
         >
@@ -355,23 +363,23 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         >
           {t("home.vibe.title") || "My Vibe"}
         </h2>
-        <p
-          className="mt-[10px] mb-0 max-w-[80%] truncate text-white/85 text-[14px]"
-          style={{ textShadow: "0 1px 10px rgba(0,0,0,0.5)" }}
-        >
-          {subtitle}
-        </p>
-        {vibeActive && (
-          <button
-            type="button"
-            onClick={() => void launch()}
-            disabled={starting}
-            className="mt-[12px] inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/40 md:backdrop-blur-md px-3 py-1.5 text-[12px] text-white/90 transition-colors cursor-pointer"
-          >
-            <Refresh2Line size={14} />
-            {t("home.vibe.another") || "Another vibe"}
-          </button>
-        )}
+        <div className="mt-[16px] flex items-center gap-[8px]" role="radiogroup" aria-label={t("home.vibe.mood") || "Mood"}>
+          {VIBE_MOODS.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mood === m}
+              onClick={() => onMoodClick(m)}
+              disabled={starting}
+              className={`h-[32px] rounded-full px-[14px] text-[13px] font-[500] transition-colors cursor-pointer border-none ${
+                mood === m ? "bg-white text-black" : "bg-black/30 hover:bg-black/40 text-white/90 md:backdrop-blur-md"
+              }`}
+            >
+              {moodLabel(m)}
+            </button>
+          ))}
+        </div>
       </div>
     </section>
   );

@@ -55,6 +55,8 @@ interface RemoteState {
   volume: number;
   /** when the sender became the player (see the epoch note at the top) */
   epoch?: number;
+  /** grows with every state a device sends: relays can deliver out of order */
+  seq?: number;
 }
 
 type Command = RemoteAction | { type: "transfer"; to: string };
@@ -65,6 +67,8 @@ type WireCommand =
 type Message = { clock?: number } & (
   | { t: "hello"; from: ConnectDevice }
   | { t: "bye"; from: ConnectDevice }
+  /** likes / playlists changed on the sender: refresh the library */
+  | { t: "library"; from: ConnectDevice }
   | { t: "state"; from: ConnectDevice; state: RemoteState }
   | { t: "cmd"; from: ConnectDevice; to: string; action: WireCommand }
   | {
@@ -215,8 +219,19 @@ function queueWindow(queue: Track[], index: number): WireTrack[] {
   return queue.slice(start, start + 8).map(toWire);
 }
 
+let stateSeq = 0;
+/** newest state seq seen per device */
+const lastSeq = new Map<string, number>();
+let lastRemoteUpdate = 0;
+let lastStateNudge = 0;
+let resendTimer: ReturnType<typeof setTimeout> | null = null;
+
 async function send(message: Message): Promise<void> {
   if (!relay || !keys) return;
+  if (message.t === "state") {
+    stateSeq = Math.max(Date.now(), stateSeq + 1);
+    message = { ...message, state: { ...message.state, seq: stateSeq } };
+  }
   try {
     await relay.publish(await seal(keys.key, { ...message, clock }));
   } catch (error) {
@@ -266,6 +281,17 @@ function broadcastState(force = false): void {
   broadcastTimer = null;
   if (urgent) {
     void send({ t: "state", from: me(), state });
+    // a single dropped message must not leave the other device stuck on a
+    // stale status: repeat the settled state once shortly after
+    if (resendTimer) clearTimeout(resendTimer);
+    resendTimer = setTimeout(() => {
+      resendTimer = null;
+      if (useConnectStore.getState().followingId) return;
+      const settled = localState();
+      if (!settled.track) return;
+      lastBroadcastState = settled;
+      void send({ t: "state", from: me(), state: settled });
+    }, 1500);
   } else {
     // a volume slider fires many times a second: send the last value
     broadcastTimer = setTimeout(() => {
@@ -341,6 +367,11 @@ function startTicker(): void {
   if (ticker) return;
   ticker = setInterval(() => {
     const { remote, followingId } = useConnectStore.getState();
+    // the player hasn't reported for a while after a change: ask for its state
+    if (followingId && remote && remote.status === "loading" && Date.now() - lastRemoteUpdate > 3000 && Date.now() - lastStateNudge > 3000) {
+      lastStateNudge = Date.now();
+      void send({ t: "hello", from: me() });
+    }
     if (!followingId || !remote || remote.status !== "playing") return;
     const store = usePlayerStore.getState();
     const pos = remote.positionMs + (Date.now() - remote.at);
@@ -429,6 +460,7 @@ function forwardLoad(targetId: string, action: Extract<RemoteAction, { type: "lo
   };
   useConnectStore.setState({ remote: optimistic });
   applyRemote(optimistic);
+  lastRemoteUpdate = Date.now();
   void fitQueue(
     (queue): Message => ({ t: "cmd", from: me(), to: targetId, action: { type: "load", queue, index: 0, context: action.context } }),
     upcoming.length ? upcoming : [toWire(track)],
@@ -557,6 +589,10 @@ async function onRelayMessage(text: string): Promise<void> {
     case "hello":
       if (!followingId) broadcastState(true);
       break;
+    case "library":
+      // the server already has the change; give it a moment, then reload
+      setTimeout(() => window.dispatchEvent(new Event("library:changed")), 600);
+      break;
     case "bye":
       if (followingId === message.from.id) stopFollowing();
       useConnectStore.setState((s) => {
@@ -566,6 +602,10 @@ async function onRelayMessage(text: string): Promise<void> {
       });
       break;
     case "state": {
+      const seq = message.state.seq ?? 0;
+      if (seq && seq <= (lastSeq.get(message.from.id) ?? 0)) break; // older than what we have
+      if (seq) lastSeq.set(message.from.id, seq);
+      lastRemoteUpdate = Date.now();
       const local = usePlayerStore.getState();
       const playingHere = !followingId && isActive(local.status);
       const theirs = message.state;
@@ -600,6 +640,16 @@ async function onRelayMessage(text: string): Promise<void> {
 }
 
 // ---- lifecycle ----------------------------------------------------------------
+
+let libraryTimer: ReturnType<typeof setTimeout> | null = null;
+function onLibraryChange(): void {
+  // several quick likes in a row: one message
+  if (libraryTimer) clearTimeout(libraryTimer);
+  libraryTimer = setTimeout(() => {
+    libraryTimer = null;
+    void send({ t: "library", from: me() });
+  }, 400);
+}
 
 /** devices signed in to the same account find each other on their own */
 function accountSecret(): string | null {
@@ -643,6 +693,7 @@ export async function startConnect(): Promise<void> {
   // already playing when Connect comes up: this device is the current player
   if (isActive(usePlayerStore.getState().status)) becomePlayer();
   unsubscribeStore = usePlayerStore.subscribe(onPlayerChange);
+  window.addEventListener("library:local-change", onLibraryChange);
   heartbeat = setInterval(() => {
     const now = Date.now();
     useConnectStore.setState((s) => ({
@@ -664,8 +715,12 @@ export function stopConnect(sayBye = true): void {
   heartbeat = null;
   unsubscribeStore?.();
   unsubscribeStore = null;
+  window.removeEventListener("library:local-change", onLibraryChange);
   if (broadcastTimer) clearTimeout(broadcastTimer);
   broadcastTimer = null;
+  if (resendTimer) clearTimeout(resendTimer);
+  resendTimer = null;
+  lastSeq.clear();
   lastBroadcast = "";
   lastBroadcastState = null;
   stopFollowing();

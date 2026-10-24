@@ -14,6 +14,8 @@ export interface CollectionPageData {
   coverUrl: string;
   tracks: Track[];
   isDailyMix?: boolean;
+  /** Lane daily mix: drawn cover (number + mosaic) instead of an image */
+  mixCover?: { index: number; covers: string[]; label: string };
 }
 
 export function useCollection(type: string | null, id: string | null) {

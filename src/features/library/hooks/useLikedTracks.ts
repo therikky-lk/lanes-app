@@ -129,6 +129,19 @@ if (typeof window !== "undefined") {
   };
   window.addEventListener("library:changed", handleRefresh);
   window.addEventListener("auth:changed", handleRefresh);
+
+  // likes made on another device: pick them up when the app comes back to the
+  // front and every couple of minutes while it's in use
+  let lastRefresh = Date.now();
+  const refreshIfStale = (minAgeMs: number) => {
+    if (!loaded || document.visibilityState !== "visible" || Date.now() - lastRefresh < minAgeMs) return;
+    lastRefresh = Date.now();
+    void load(true);
+  };
+  window.addEventListener("library:changed", () => (lastRefresh = Date.now()));
+  window.addEventListener("focus", () => refreshIfStale(15_000));
+  document.addEventListener("visibilitychange", () => refreshIfStale(15_000));
+  setInterval(() => refreshIfStale(120_000), 30_000);
 }
 
 export function useLikedTracks(_params?: { limit?: number; offset?: number }) {

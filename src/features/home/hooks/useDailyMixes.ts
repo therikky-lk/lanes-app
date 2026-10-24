@@ -15,6 +15,29 @@ export interface DailyMix {
   coverUrl?: string;
   trackCount: number;
   tracks: Track[];
+  /** number shown on the cover */
+  mixIndex?: number;
+  /** up to four covers from different artists for the cover mosaic */
+  mosaic?: string[];
+}
+
+export function mixMosaic(tracks: Track[]): string[] {
+  const seen = new Set<string>();
+  const covers: string[] = [];
+  for (const track of tracks) {
+    const artist = (track.artistList?.[0]?.name || track.artists || "").toLowerCase();
+    if (!track.coverUrl || seen.has(artist) || covers.includes(track.coverUrl)) continue;
+    seen.add(artist);
+    covers.push(track.coverUrl);
+    if (covers.length === 4) break;
+  }
+  return covers;
+}
+
+function mixLabel(): string {
+  const t = createTranslatorSync(getStoredLocale());
+  const label = t("home.mix_label");
+  return label && label !== "home.mix_label" ? label : "Mix";
 }
 
 export function getDailyMixArtists(
@@ -66,7 +89,7 @@ const cache = { data: [] as DailyMix[], timestamp: 0, owner: "" };
 
 // ---- client-built mixes (Lane) -------------------------------------------
 
-const LANE_MIXES_KEY = "lane_daily_mixes_v1";
+const LANE_MIXES_KEY = "lane_daily_mixes_v2";
 const today = () => new Date().toLocaleDateString("en-CA");
 
 interface StoredMixes {
@@ -92,17 +115,19 @@ function cacheCollection(mix: DailyMix) {
     description: mix.description,
     coverUrl: mix.coverUrl || "",
     tracks: mix.tracks,
+    isDailyMix: true,
+    ...(mix.mixIndex ? { mixCover: { index: mix.mixIndex, covers: mix.mosaic ?? [], label: mixLabel() } } : {}),
   };
   queryCache.set(`collection:playlist:${mix.id}`, collectionData);
 }
 
 let building: Promise<DailyMix[]> | null = null;
 
-/** liked tracks + history -> six long mixes grown with the radio engine */
+/** liked tracks + history -> ten long mixes grown with the radio engine */
 async function buildClientMixes(owner: string): Promise<DailyMix[]> {
   const [history, liked] = await Promise.all([
-    api.getHistory(undefined, 100).catch(() => ({ items: [] as { track?: unknown }[] })),
-    api.listLikedTracks(200).catch(() => ({ items: [] as { track?: unknown }[] })),
+    api.getHistory(undefined, 200).catch(() => ({ items: [] as { track?: unknown }[] })),
+    api.listLikedTracks(300).catch(() => ({ items: [] as { track?: unknown }[] })),
   ]);
   const seeds: MixSeedTrack[] = [];
   for (const entry of (liked.items || []) as { track?: Parameters<typeof toClientTrack>[0] }[]) {
@@ -115,6 +140,7 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
 
   const t = createTranslatorSync(getStoredLocale());
   const built = await buildDailyMixes(seeds, {
+    mixCount: 10,
     radio: (seed) => api.getRadio(seed.id, { k: 30 }).then((r) => (r.items || []).map((item) => toClientTrack(item))),
   });
   const mixes: DailyMix[] = built.map((mix) => {
@@ -127,6 +153,8 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
       coverUrl: mix.tracks.find((tr) => tr.coverUrl)?.coverUrl,
       trackCount: mix.tracks.length,
       tracks: mix.tracks,
+      mixIndex: mix.index,
+      mosaic: mixMosaic(mix.tracks),
     };
   });
   if (mixes.length > 0) {
@@ -167,7 +195,7 @@ export function useDailyMixes() {
     loadWithRetry(() => api.getDailyMixes(), () => active)
       .then((res) => {
         if (!active) return;
-        const mixes: DailyMix[] = (res.items || []).map((mix) => {
+        const mixes: DailyMix[] = (res.items || []).map((mix, mixPosition) => {
           const clientTracks = (mix.tracks || []).map((t) => toClientTrack(t));
           const primaryCover =
             mix.cover?.url ? mediaUrl(mix.cover.url) :
@@ -184,6 +212,8 @@ export function useDailyMixes() {
             coverUrl: primaryCover,
             trackCount: mix.trackCount || clientTracks.length,
             tracks: clientTracks,
+            mixIndex: mixPosition + 1,
+            mosaic: mixMosaic(clientTracks),
           };
 
           // Pre-cache collection playlist page so clicking opens instantly
@@ -194,6 +224,8 @@ export function useDailyMixes() {
             description: mix.description,
             coverUrl: primaryCover || "",
             tracks: clientTracks,
+            isDailyMix: true,
+            mixCover: { index: mixPosition + 1, covers: mixMosaic(clientTracks), label: mixLabel() },
           };
           queryCache.set(`collection:playlist:${mix.id}`, collectionData);
 
