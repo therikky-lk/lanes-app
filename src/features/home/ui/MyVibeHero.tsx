@@ -455,11 +455,11 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
             top: -BLEED,
             left: 0,
             width: "100%",
-            height: HERO_HEIGHT + BLEED * 4,
+            height: HERO_HEIGHT + BLEED,
             filter: layer === "glow" ? "blur(20px) saturate(1.4)" : layer === "bloom" ? "blur(9px) saturate(1.3)" : "none",
             // the light fades out downward: a smooth hand-off into the page
-            WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
-            maskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
           }}
           aria-hidden="true"
         />
@@ -470,12 +470,12 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         aria-hidden="true"
         style={{
           top: -BLEED,
-          height: HERO_HEIGHT + BLEED * 4,
+          height: HERO_HEIGHT + BLEED,
           backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>")`,
           opacity: 0.07,
           mixBlendMode: "overlay",
-          WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
-          maskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
         }}
       />
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-[18px]">

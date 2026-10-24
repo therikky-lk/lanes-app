@@ -1,4 +1,5 @@
 import type { ImportSource } from "@/shared/contracts";
+import { withCoverMarker } from "../playlistCoverMarker";
 
 // The server keeps only title/description for playlists. What a playlist was
 // imported from (and the original cover art) is remembered on this device so the
@@ -49,6 +50,16 @@ export function saveImportedPlaylistMeta(playlistId: string, source: ImportSourc
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     window.dispatchEvent(new Event("library:changed"));
   } catch {}
+  // keep the cover with the playlist on the server too, for the other devices
+  const cover = pending?.coverUrl;
+  if (cover) {
+    void import("@/shared/api").then(({ api }) =>
+      api
+        .getUserPlaylist(playlistId)
+        .then((detail) => api.updatePlaylist(playlistId, { description: withCoverMarker(detail.playlist.description, cover) }))
+        .catch(() => undefined),
+    );
+  }
 }
 
 export function getImportedPlaylistMeta(playlistId: string | null | undefined): ImportedPlaylistMeta | null {

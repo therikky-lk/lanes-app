@@ -1,0 +1,159 @@
+import { useEffect, useState } from "react";
+import { FireFill } from "@mingcute/react";
+import { useTranslation } from "@/languages";
+import { playerEngine, usePlayerStore } from "@/features/player";
+import CoverImage from "@/features/covers/ui/CoverImage";
+import { loadChart, type ChartEntry, type ChartRegion, type Movement } from "../trends/charts";
+
+const PREVIEW = 10;
+
+/** the little sign under a rank: crown for #1, otherwise how the song moved */
+function RankMark({ rank, movement }: { rank: number; movement: Movement }) {
+  if (rank === 1) {
+    return (
+      <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true" className="text-[#f6c544]">
+        <path d="M1 3.2 4 6l3-4.6L10 6l3-2.8-1.3 6.8H2.3L1 3.2Z" fill="currentColor" />
+        <rect x="2.3" y="10.4" width="9.4" height="1.4" rx="0.7" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (movement === "up" || movement === "new") {
+    return (
+      <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true" className="text-[#2bd46b]">
+        <path d="M1 8.5 5 4.5l2.5 2.5L12.5 2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9.2 1.6h3.6v3.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (movement === "down") {
+    return (
+      <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true" className="text-[#ff4d5e]">
+        <path d="M1 1.5 5 5.5l2.5-2.5L12.5 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9.2 8.4h3.6V4.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return <span className="block h-[2px] w-[9px] rounded-full bg-text-tertiary/70" aria-hidden="true" />;
+}
+
+export default function TrendsSection() {
+  const { t } = useTranslation();
+  const [region, setRegion] = useState<ChartRegion>(() => {
+    try {
+      return localStorage.getItem("lane_trends_region") === "world" ? "world" : "russia";
+    } catch {
+      return "russia";
+    }
+  });
+  const [entries, setEntries] = useState<ChartEntry[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [all, setAll] = useState(false);
+  const currentId = usePlayerStore((s) => s.currentTrack?.id);
+
+  useEffect(() => {
+    let active = true;
+    setEntries(null);
+    setFailed(false);
+    setAll(false);
+    loadChart(region)
+      .then((list) => active && setEntries(list))
+      .catch(() => active && setFailed(true));
+    return () => {
+      active = false;
+    };
+  }, [region]);
+
+  const pick = (r: ChartRegion) => {
+    setRegion(r);
+    try {
+      localStorage.setItem("lane_trends_region", r);
+    } catch {}
+  };
+
+  if (failed) return null;
+  const shown = entries ? (all ? entries : entries.slice(0, PREVIEW)) : [];
+  const tracks = entries?.map((e) => e.track) ?? [];
+  const movementLabel = (e: ChartEntry) =>
+    e.rank === 1
+      ? t("trends.first")
+      : e.movement === "up"
+        ? t("trends.up", { n: e.delta })
+        : e.movement === "down"
+          ? t("trends.down", { n: -e.delta })
+          : e.movement === "new"
+            ? t("trends.new")
+            : t("trends.same");
+
+  return (
+    <div className="flex flex-col" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+      <div className="mt-[26px] px-8 flex items-center justify-between gap-[12px]">
+        <div className="flex items-center gap-2.5">
+          <FireFill className="w-5 h-5 text-[#ff6a3d]" />
+          <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>
+        </div>
+        <div className="flex items-center gap-[4px] rounded-full bg-white/[0.06] p-[3px]" role="tablist">
+          {(["russia", "world"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              role="tab"
+              aria-selected={region === r}
+              onClick={() => pick(r)}
+              className={`h-[28px] rounded-full border-0 px-[12px] text-[12.5px] font-[600] cursor-pointer transition-colors ${
+                region === r ? "bg-white text-black" : "bg-transparent text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {r === "russia" ? t("trends.russia") : t("trends.world")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-[10px] grid grid-cols-1 gap-x-[16px] px-[24px] md:grid-cols-2">
+        {entries === null
+          ? Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="flex h-[60px] items-center gap-[12px] px-[8px]">
+                <span className="h-[44px] w-[44px] animate-pulse rounded-md bg-border-alpha-14" />
+                <span className="h-[12px] w-[50%] animate-pulse rounded bg-border-alpha-14" />
+              </div>
+            ))
+          : shown.map((e) => (
+              <button
+                key={e.track.id}
+                type="button"
+                onClick={() => void playerEngine.playTrack(e.track, tracks, `trends:${region}`, null, e.rank - 1)}
+                className="group flex h-[60px] min-w-0 items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
+              >
+                <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]" title={movementLabel(e)} aria-label={movementLabel(e)}>
+                  <span className={`text-[15px] font-[700] tabular-nums leading-none ${currentId === e.track.id ? "text-accent-primary" : "text-text-primary"}`}>
+                    {e.rank}
+                  </span>
+                  <RankMark rank={e.rank} movement={e.movement} />
+                </span>
+                <span className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
+                  {e.track.coverUrl && <CoverImage src={e.track.coverUrl} alt="" fill sizes="44px" className="object-cover" />}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block truncate text-[14.5px] font-[550] ${currentId === e.track.id ? "text-accent-primary" : "text-text-primary"}`}>
+                    {e.track.title}
+                  </span>
+                  <span className="block truncate text-[12.5px] text-text-tertiary">{e.track.artists}</span>
+                </span>
+              </button>
+            ))}
+      </div>
+
+      {entries && entries.length > PREVIEW && (
+        <div className="mt-[6px] px-8">
+          <button
+            type="button"
+            onClick={() => setAll((v) => !v)}
+            className="h-[34px] rounded-full border border-white/10 bg-white/[0.04] px-[16px] text-[13px] font-[550] text-text-primary hover:bg-white/[0.08] cursor-pointer"
+          >
+            {all ? t("trends.less") : t("trends.all", { n: entries.length })}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
