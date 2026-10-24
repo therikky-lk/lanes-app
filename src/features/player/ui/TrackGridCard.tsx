@@ -42,7 +42,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
 
   return (
     <div
-      className="group flex min-w-0 flex-col gap-[8px] cursor-pointer select-none"
+      className={`group flex min-w-0 flex-col gap-[8px] cursor-pointer select-none ${track.onlyOnDevice ? "opacity-[0.42]" : ""}`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 220px", fontFamily: "var(--font-inter), sans-serif" }}
       onClick={onPlay}
       onContextMenu={onContextMenu}

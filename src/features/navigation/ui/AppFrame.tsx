@@ -17,13 +17,14 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
 import {
-  Search3Line,
+  SearchLine,
   CloseCircleFill,
   GridFill,
   Music2Fill,
   User2Fill,
   AlbumFill,
   PlaylistFill,
+  BookmarksFill,
 } from "@mingcute/react";
 import Sidebar from "./Sidebar";
 import WindowControls from "./WindowControls";
@@ -38,6 +39,7 @@ import {
   useSearchArtists,
   useSearchAlbums,
   useSearchPlaylists,
+  useLibrarySearch,
 } from "@/features/search/hooks";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
 import {
@@ -62,6 +64,7 @@ import {
 } from "@/features/library";
 import { SettingsModal, useCustomizationStore, getBlockStyle } from "@/features/settings";
 import { UpdateModal, UpdateToastBridge } from "@/features/updater";
+import ArtistSheet from "@/features/artist/ui/ArtistSheet";
 
 
 interface AppFrameProps {
@@ -197,9 +200,10 @@ export default function AppFrame({ children }: AppFrameProps) {
   const searchScrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  type SearchFilterKey = "all" | "tracks" | "artists" | "albums" | "playlists";
+  type SearchFilterKey = "all" | "library" | "tracks" | "artists" | "albums" | "playlists";
   const filterKeys: SearchFilterKey[] = [
     "all",
+    "library",
     "tracks",
     "artists",
     "albums",
@@ -207,6 +211,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   ];
   const filterLabels: Record<SearchFilterKey, string> = {
     all: t("common.all"),
+    library: t("search.library"),
     tracks: t("common.songs"),
     artists: t("common.artists"),
     albums: t("common.albums"),
@@ -219,6 +224,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   const isArtistSearchFilter = activeFilter === "artists";
   const isAlbumSearchFilter = activeFilter === "albums";
   const isPlaylistSearchFilter = activeFilter === "playlists";
+  const isLibrarySearchFilter = activeFilter === "library";
   const hasSearchQuery = searchQuery.trim().length > 0;
   const isFullscreenRoute = pathname === "/player";
   const isFullscreenPlayer = isFullscreenRoute || fullscreenPlayerOpen;
@@ -353,7 +359,13 @@ export default function AppFrame({ children }: AppFrameProps) {
     debounceMs: 320,
   });
 
-  const searchResults = useMemo(() => {
+  const libraryResults = useLibrarySearch(
+    searchQuery,
+    searchOpen && (isAllSearchFilter || isLibrarySearchFilter),
+  );
+
+  const catalogResults = useMemo(() => {
+    if (isLibrarySearchFilter) return [];
     if (isAllSearchFilter) {
       return allResults.map((item: any) => {
         const coverUrl = item.cover
@@ -449,6 +461,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       }));
     return [];
   }, [
+    isLibrarySearchFilter,
     isAllSearchFilter,
     isTrackSearchFilter,
     isArtistSearchFilter,
@@ -461,7 +474,50 @@ export default function AppFrame({ children }: AppFrameProps) {
     playlistResults,
   ]);
 
-  const searchLoading = isAllSearchFilter
+  // results come in sections ("In your library", "Songs", "Playlists"…) with
+  // a heading each, so a playlist doesn't look like one more song
+  const searchResults = useMemo(() => {
+    const sectionTitles: Record<string, string> = {
+      track: t("search.section.tracks"),
+      artist: t("search.section.artists"),
+      album: t("search.section.albums"),
+      playlist: t("search.section.playlists"),
+    };
+    const grouped = (items: any[], keyPrefix: string) => {
+      const order: string[] = [];
+      const byType = new Map<string, any[]>();
+      for (const item of items) {
+        const type = item._type ?? "track";
+        if (!byType.has(type)) {
+          byType.set(type, []);
+          order.push(type);
+        }
+        byType.get(type)!.push(item);
+      }
+      return order.flatMap((type) => [
+        { _type: "header", id: `${keyPrefix}header:${type}`, title: sectionTitles[type] ?? type },
+        ...byType.get(type)!,
+      ]);
+    };
+    if (isLibrarySearchFilter) return grouped(libraryResults, "lib:");
+    if (!isAllSearchFilter) return catalogResults;
+    const fromLibrary = libraryResults.slice(0, 5);
+    const libraryIds = new Set(fromLibrary.map((it) => `${it._type}:${it.id}`));
+    const catalog = catalogResults.filter((it: any) => !libraryIds.has(`${it._type}:${it.id}`));
+    return [
+      ...(fromLibrary.length
+        ? [
+            { _type: "header", id: "header:library", title: t("search.section.library") },
+            ...fromLibrary,
+          ]
+        : []),
+      ...grouped(catalog, ""),
+    ];
+  }, [isAllSearchFilter, isLibrarySearchFilter, libraryResults, catalogResults, t]);
+
+  const searchLoading = isLibrarySearchFilter
+    ? false
+    : isAllSearchFilter
     ? allLoading
     : isTrackSearchFilter
       ? trackLoading
@@ -471,7 +527,9 @@ export default function AppFrame({ children }: AppFrameProps) {
           ? albumLoading
           : playlistLoading;
 
-  const searchHasLoaded = isAllSearchFilter
+  const searchHasLoaded = isLibrarySearchFilter
+    ? true
+    : isAllSearchFilter
     ? allHasLoaded
     : isTrackSearchFilter
       ? trackHasLoaded
@@ -488,6 +546,7 @@ export default function AppFrame({ children }: AppFrameProps) {
     searchResults.length === 0;
 
   const runSearchNow = () => {
+    if (isLibrarySearchFilter) return;
     if (isAllSearchFilter) {
       runAllSearchNow();
       return;
@@ -583,8 +642,15 @@ export default function AppFrame({ children }: AppFrameProps) {
         explicit: track.explicit,
         duration: durationStr,
         durationMs,
-        itemData: track,
+        // the list a library song came with is not worth keeping in history
+        itemData: Array.isArray(track._queue) ? { ...track, _queue: undefined } : track,
       });
+      if (Array.isArray(track._queue) && track._queue.length > 0) {
+        // a song from the library plays on through the list it lives in
+        const { _queue: queue, _context: context, _fromLibrary: _lib, _type: _kind, ...plain } = track;
+        void playerEngine.playTrack(plain, queue, context ?? null, plain.coverUrl);
+        return;
+      }
       void playerEngine.playTrack(
         track,
         [track],
@@ -598,6 +664,18 @@ export default function AppFrame({ children }: AppFrameProps) {
   const handleNavigateItem = useCallback(
     (it: any) => {
       closeSearch();
+      if (typeof it._href === "string") {
+        addHistoryItem({
+          id: it.id,
+          type: it._type === "artist" ? "artist" : it._type === "album" ? "album" : "playlist",
+          title: it.name || it.title,
+          subtitle: it.artists || t("search.library"),
+          coverUrl: it.coverUrl,
+          itemData: it,
+        });
+        navigate(it._href);
+        return;
+      }
       if (
         it._type === "artist" ||
         it.followers !== undefined ||
@@ -1002,7 +1080,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                       transition={{ duration: 0.1 }}
                       className="inline-flex text-text-tertiary"
                     >
-                      <Search3Line size={19} />
+                      <SearchLine size={19} />
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -1068,6 +1146,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                       const isActive = activeFilter === key;
                       let Icon = GridFill;
                       if (key === "tracks") Icon = Music2Fill;
+                      else if (key === "library") Icon = BookmarksFill;
                       else if (key === "artists") Icon = User2Fill;
                       else if (key === "albums") Icon = AlbumFill;
                       else if (key === "playlists") Icon = PlaylistFill;
@@ -1193,6 +1272,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       )}
     </AnimatePresence>
 
+      {isMobile && <ArtistSheet />}
       <AddToPlaylistModal />
       <AddToLibraryModal />
       <RemoveFromPlaylistModal />

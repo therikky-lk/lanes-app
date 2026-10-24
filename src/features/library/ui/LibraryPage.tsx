@@ -20,7 +20,7 @@ import {
   useExternalItems,
   useLikedTrackCount,
 } from "../hooks";
-import { MusicLine, HeartFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line } from "@mingcute/react";
+import { MusicLine, HeartFill, HistoryFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "../store/modalStore";
 import { useImportStore } from "../store/importStore";
@@ -64,8 +64,10 @@ function LikesPlaylistCard({
   onClick,
   viewMode = "grid",
   title,
+  subtitle,
   Icon = HeartFill,
 }: {
+  subtitle?: string;
   count?: number;
   isLoading?: boolean;
   onClick: () => void;
@@ -111,7 +113,9 @@ function LikesPlaylistCard({
                 fontWeight: 350,
               }}
             >
-              {isLoading || count === undefined ? (
+              {subtitle ? (
+                subtitle
+              ) : isLoading || count === undefined ? (
                 <span className="h-[12px] w-[60px] animate-pulse rounded bg-border-alpha-14" />
               ) : (
                 t("common.songs", { count })
@@ -143,7 +147,9 @@ function LikesPlaylistCard({
         <span className="truncate text-[14px] font-[500] text-text-primary">
           {title ?? t("library.liked_songs")}
         </span>
-        {isLoading || count === undefined ? (
+        {subtitle ? (
+          <span className="truncate text-[13px] text-text-tertiary">{subtitle}</span>
+        ) : isLoading || count === undefined ? (
           <div className="h-[13px] w-[56%] animate-pulse rounded bg-border-alpha-14" />
         ) : (
           <span className="truncate text-[13px] text-text-tertiary">
@@ -581,6 +587,15 @@ export default function LibraryPage() {
                             title={t("local.title") || "My tracks"}
                             Icon={MusicLine}
                             onClick={() => navigate("/local")}
+                          />,
+                          // what you've listened to, kept as its own list in the library
+                          <LikesPlaylistCard
+                            key="history-card"
+                            viewMode={viewMode}
+                            title={t("library.history")}
+                            subtitle={t("library.history_subtitle")}
+                            Icon={HistoryFill}
+                            onClick={() => navigate("/recent")}
                           />,
                           ...(isImporting && importJob
                             ? [

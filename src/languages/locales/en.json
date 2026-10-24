@@ -27,7 +27,9 @@
     "album": "Album",
     "single": "Single",
     "all_releases": "All",
-    "discography": "Discography"
+    "discography": "Discography",
+    "your_tracks": "In your liked songs: {count}",
+    "open": "Open artist"
   },
   "collection": {
     "unknown_album": "Unknown Album",
@@ -59,7 +61,8 @@
       "library": "Library",
       "settings": "Settings",
       "pin": "Pin to menu",
-      "unpin": "Unpin from menu"
+      "unpin": "Unpin from menu",
+      "liked": "Liked"
     },
     "minimize": "Minimize",
     "exitFullscreen": "Exit fullscreen",
@@ -325,7 +328,9 @@
     "no_artists_title": "No saved artists",
     "no_artists_desc": "Save artists to quickly access their discography",
     "search_music": "Search music",
-    "import_spotify": "Import from Spotify"
+    "import_spotify": "Import from Spotify",
+    "history": "Listening history",
+    "history_subtitle": "Everything you played"
   },
   "login": {
     "welcome_back": "Welcome back",
@@ -537,7 +542,15 @@
     "albums": "Albums",
     "playlists": "Playlists",
     "no_results": "No results found",
-    "type_to_search": "Type to search"
+    "type_to_search": "Type to search",
+    "library": "Library",
+    "section": {
+      "library": "In your library",
+      "tracks": "Songs",
+      "artists": "Artists",
+      "albums": "Albums",
+      "playlists": "Playlists"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -1157,7 +1170,11 @@
     "empty_title": "Drop MP3 files here",
     "empty_desc": "or click to choose. Title, artist and cover are read from the file tags.",
     "drop_here": "Drop to add to My tracks",
-    "unknown_artist": "Unknown artist"
+    "unknown_artist": "Unknown artist",
+    "only_on_device": "Only on “{device}”",
+    "only_on_device_toast": "This track only plays on “{device}”",
+    "added_from_device": "Your file from this device",
+    "add_failed": "Couldn’t add your track to the playlist"
   },
   "connect": {
     "code_section": "Pair by code",

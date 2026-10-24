@@ -34,7 +34,7 @@ export const SearchResultsList = memo(function SearchResultsList({
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => 64,
+    estimateSize: (index) => (items[index]?._type === "header" ? 36 : 64),
     getItemKey: (index) => items[index]?.id || index,
     gap: 6,
     overscan: 5,
@@ -56,6 +56,33 @@ export const SearchResultsList = memo(function SearchResultsList({
         {rowVirtualizer.getVirtualItems().map((virtualRow) => {
           const it = items[virtualRow.index];
           if (!it) return null;
+
+          if (it._type === "header") {
+            return (
+              <div
+                key={virtualRow.key}
+                ref={rowVirtualizer.measureElement}
+                data-index={virtualRow.index}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <div
+                  className={`flex items-center gap-[10px] px-[8px] pb-[2px] ${virtualRow.index === 0 ? "pt-[2px]" : "pt-[14px]"}`}
+                  style={{ fontFamily: "var(--font-inter), sans-serif" }}
+                >
+                  <span className="shrink-0 text-[12px] font-[600] uppercase tracking-[0.06em] text-text-tertiary">
+                    {it.title}
+                  </span>
+                  <span className="h-px flex-1 bg-border-alpha-14" aria-hidden />
+                </div>
+              </div>
+            );
+          }
 
           const isArtist =
             isArtistSearchFilter ||

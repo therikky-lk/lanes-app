@@ -11,7 +11,7 @@
     "play": "Воспроизвести",
     "remove_from_library": "Удалить из библиотеки",
     "save_to_library": "Сохранить в библиотеку",
-    "add_to_queue": "Добавить в очередь",
+    "add_to_queue": "В очередь",
     "share": "Поделиться",
     "no_popular_songs": "Нет популярных треков.",
     "no_singles_available": "Нет синглов.",
@@ -27,7 +27,9 @@
     "album": "Альбом",
     "single": "Сингл",
     "all_releases": "Все",
-    "discography": "Дискография"
+    "discography": "Дискография",
+    "your_tracks": "У вас в любимых: {count}",
+    "open": "Открыть исполнителя"
   },
   "collection": {
     "unknown_album": "Неизвестный альбом",
@@ -56,10 +58,11 @@
     "sidebar": {
       "home": "Главная",
       "search": "Поиск",
-      "library": "Библиотека",
+      "library": "Медиатека",
       "settings": "Настройки",
       "pin": "Закрепить в меню",
-      "unpin": "Открепить из меню"
+      "unpin": "Открепить из меню",
+      "liked": "Любимые"
     },
     "loading": "Загрузка",
     "signed_in": "В системе",
@@ -71,7 +74,7 @@
     "account": "Аккаунт",
     "coming_soon": "Скоро",
     "play_all": "Слушать все",
-    "add_to_queue": "Добавить в очередь",
+    "add_to_queue": "В очередь",
     "shuffle": "Перемешать",
     "remove_from_library": "Удалить из библиотеки",
     "save_to_library": "Сохранить в библиотеку",
@@ -325,7 +328,9 @@
     "no_artists_title": "Нет сохранённых исполнителей",
     "no_artists_desc": "Сохраняйте исполнителей, чтобы быстро переходить к их дискографии",
     "search_music": "Найти музыку",
-    "import_spotify": "Импорт из Spotify"
+    "import_spotify": "Импорт из Spotify",
+    "history": "История прослушивания",
+    "history_subtitle": "Всё, что вы слушали"
   },
   "login": {
     "welcome_back": "С возвращением",
@@ -501,7 +506,7 @@
     "liked_songs": "Понравившиеся",
     "untitled_playlist": "Плейлист без названия",
     "play_all": "Играть все",
-    "add_to_queue": "Добавить плейлист в очередь",
+    "add_to_queue": "В очередь",
     "added_to_queue": "Плейлист добавлен в очередь",
     "import": "Импорт",
     "error_loading": "Ошибка загрузки плейлиста",
@@ -532,7 +537,15 @@
     "albums": "Альбомы",
     "playlists": "Плейлисты",
     "no_results": "Ничего не найдено",
-    "type_to_search": "Начните ввод"
+    "type_to_search": "Начните ввод",
+    "library": "Медиатека",
+    "section": {
+      "library": "В медиатеке",
+      "tracks": "Треки",
+      "artists": "Исполнители",
+      "albums": "Альбомы",
+      "playlists": "Плейлисты"
+    }
   },
   "settings": {
     "title": "Настройки",
@@ -1185,7 +1198,11 @@
     "empty_title": "Перетащите сюда MP3",
     "empty_desc": "или нажмите, чтобы выбрать. Название, исполнитель и обложка берутся из тегов файла.",
     "drop_here": "Отпустите, чтобы добавить в «Мои треки»",
-    "unknown_artist": "Неизвестный исполнитель"
+    "unknown_artist": "Неизвестный исполнитель",
+    "only_on_device": "Только на «{device}»",
+    "only_on_device_toast": "Этот трек можно включить только на устройстве «{device}»",
+    "added_from_device": "Свой файл с этого устройства",
+    "add_failed": "Не удалось добавить свой трек в плейлист"
   },
   "connect": {
     "code_section": "Связь по коду",

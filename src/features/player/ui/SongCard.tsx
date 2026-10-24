@@ -49,6 +49,8 @@ export interface SongCardProps {
   onGrabStart?: (e: React.PointerEvent<HTMLDivElement>) => void;
   /** search query whose matches get marked in the title */
   highlight?: string;
+  /** greyed-out row that can't be played here, with the reason */
+  unavailableNote?: string;
 }
 
 function SongCard({
@@ -82,11 +84,39 @@ function SongCard({
   showReorderHandle,
   onGrabStart,
   highlight,
+  unavailableNote,
 }: SongCardProps) {
   const shownTitle = cleanTrackTitle(title, artists);
   const { t } = useTranslation();
   const [imageLoaded, setImageLoaded] = useState(() => isCoverReady(coverUrl));
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // right click opens the same menu as the ⋯ button, also on rows whose
+  // owner doesn't manage the menu itself (my files, the queue)
+  const [ownMenuOpen, setOwnMenuOpen] = useState(false);
+  const [ownMenuPosition, setOwnMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const hasMenu = Boolean(menuItems && menuItems.length > 0);
+  const managesOwnMenu = hasMenu && !onContextMenu;
+  const resolvedMenuOpen = managesOwnMenu ? ownMenuOpen : menuOpen;
+  const resolvedMenuPosition = managesOwnMenu ? ownMenuPosition : menuPosition;
+  const handleMenuOpenChange = (open: boolean) => {
+    if (managesOwnMenu) {
+      setOwnMenuOpen(open);
+      if (!open) setOwnMenuPosition(null);
+    }
+    onMenuOpenChange?.(open);
+  };
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onContextMenu) {
+      onContextMenu(e);
+      return;
+    }
+    if (!hasMenu) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setOwnMenuPosition({ x: e.clientX, y: e.clientY });
+    setOwnMenuOpen(true);
+  };
 
   useEffect(() => {
     setImageLoaded(isCoverReady(coverUrl));
@@ -131,7 +161,7 @@ function SongCard({
     <div
       className={`group w-full flex items-center justify-between rounded-md ${paddingClass} outline-none transition-colors duration-150 ease-out ${
         className ?? ""
-      } ${onPlay ? "cursor-pointer" : ""} ${onPlay && !className?.includes("hover:bg-") ? "hover:bg-border-alpha-14" : ""}`}
+      } ${unavailableNote ? "opacity-[0.42]" : ""} ${onPlay ? "cursor-pointer" : ""} ${onPlay && !className?.includes("hover:bg-") ? "hover:bg-border-alpha-14" : ""}`}
       onClick={handleClick}
       onPointerDown={(e) => {
         if (clickTimerRef.current) {
@@ -151,7 +181,7 @@ function SongCard({
         }
         onGrabStart(e);
       }}
-      onContextMenu={onContextMenu}
+      onContextMenu={handleContextMenu}
       onKeyDown={(event) => {
         if (!onPlay) return;
         if (event.key === "Enter" || event.key === " ") {
@@ -249,6 +279,9 @@ function SongCard({
             ) : (
               <span className="truncate select-none">{artists}</span>
             )}
+            {unavailableNote && (
+              <span className="ml-[6px] shrink-0 truncate select-none text-text-tertiary">· {unavailableNote}</span>
+            )}
           </p>
         </div>
       </div>
@@ -298,9 +331,9 @@ function SongCard({
               </button>
             }
             items={menuItems}
-            open={menuOpen}
-            onOpenChange={onMenuOpenChange}
-            position={menuPosition}
+            open={resolvedMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            position={resolvedMenuPosition}
           />
         )}
       </div>
