@@ -11,6 +11,11 @@ type SearchFilter = "track" | "all" | "video";
 
 const MATCH_CONFIDENCE_FLOOR = 75;
 
+export function isRateLimit(error: unknown): boolean {
+  const status = (error as { status?: unknown } | null)?.status;
+  return status === 429 || /\b429\b/.test(String((error as Error | null)?.message ?? ""));
+}
+
 function toTrack(item: Extract<SearchResult, { type: "track" }>): Track {
   const { type: _type, viewer: _viewer, ...track } = item;
   return track;
@@ -35,6 +40,9 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
       return extractTracks(await searchRaw(query, filter === "all" ? undefined : filter, signal));
     } catch (error) {
       if (signal?.aborted) throw error;
+      // rate-limited: let the caller wait and retry; swallowing it here made
+      // big imports drop tracks silently as "not found"
+      if (isRateLimit(error)) throw error;
       searchFailed = true;
       return [];
     }
