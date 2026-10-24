@@ -25,6 +25,9 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
     (state) => state.trackDoubleClickBehavior,
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const isPlayingMix = usePlayerStore(
+    (s) => s.playbackContext === `playlist:${mix.id}` || (s.playbackContext === mix.title && mix.tracks.some((tr) => tr.id === s.currentTrack?.id)),
+  );
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -32,10 +35,11 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
     if (mix.tracks.length === 0) return;
     const firstTrack = mix.tracks[0];
     if (!firstTrack) return;
+    // same context as the mix page, so both show it as playing
     void playerEngine.playTrack(
       firstTrack,
       mix.tracks,
-      mix.title,
+      `playlist:${mix.id}`,
       mix.coverUrl || firstTrack.coverUrl,
     );
   }, [mix]);
@@ -116,7 +120,11 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14">
+      <div
+        className={`relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14 transition-shadow ${
+          isPlayingMix ? "ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary" : ""
+        }`}
+      >
         {mix.mixIndex ? (
           <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={t("home.mix_label") || "Mix"} />
         ) : mix.coverUrl && (
@@ -134,7 +142,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       </div>
 
       <div className="flex flex-col mt-[8px]">
-        <span className="truncate text-[14px] font-[500] text-text-primary">
+        <span className={`truncate text-[14px] font-[500] ${isPlayingMix ? "text-accent-primary" : "text-text-primary"}`}>
           {mix.title}
         </span>
         <ScrollableText

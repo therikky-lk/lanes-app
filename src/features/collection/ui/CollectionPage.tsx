@@ -6,6 +6,7 @@ import CollectionPageSkeleton from "./CollectionPageSkeleton";
 import {
   AddLine,
   PlayFill,
+  PauseFill,
   NewFolderLine,
   FolderCheckFill,
   ShareForwardLine,
@@ -24,7 +25,7 @@ import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import MixCover from "@/features/home/ui/MixCover";
-import { playerEngine } from "@/features/player";
+import { playerEngine, usePlayerStore } from "@/features/player";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   useToast,
@@ -163,8 +164,22 @@ function CollectionContent() {
   const { toast } = useToast();
   const [addedToQueue, setAddedToQueue] = useState(false);
 
+  const currentTrackId = usePlayerStore((s) => s.currentTrack?.id ?? null);
+  const currentContext = usePlayerStore((s) => s.playbackContext);
+  const playerStatus = usePlayerStore((s) => s.status);
+  // this collection is what plays now (same context, or the playing track is one of ours)
+  const isThisPlaying =
+    !!data &&
+    (currentContext === playbackContext ||
+      (!!currentTrackId && currentContext === data.title && data.tracks.some((t) => t.id === currentTrackId)));
+  const isThisActive = isThisPlaying && (playerStatus === "playing" || playerStatus === "loading");
+
   const handlePlayAll = () => {
     if (!data || data.tracks.length === 0) return;
+    if (isThisPlaying) {
+      playerEngine.togglePlayPause();
+      return;
+    }
     const [first] = data.tracks;
     playerEngine.clearQueue();
     playerEngine.playTrack(first, data.tracks, playbackContext, data.coverUrl);
@@ -469,8 +484,8 @@ function CollectionContent() {
                         disabled={!data || data.tracks.length === 0}
                         className="!h-[36px] w-full !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px]"
                       >
-                        <PlayFill size={16} />
-                        <span>{t("common.play_all")}</span>
+                        {isThisActive ? <PauseFill size={16} /> : <PlayFill size={16} />}
+                        <span>{isThisActive ? t("player.pause") || "Pause" : t("common.play_all")}</span>
                       </Button>
 
                       <div className="flex items-center gap-[8px] w-full">
@@ -618,6 +633,7 @@ function CollectionContent() {
                       }
                       durationMs={track.durationMs}
                       explicit={track.explicit}
+                      isCurrent={currentTrackId === track.id}
                       onPlay={() =>
                         playerEngine.playTrack(
                           track,
