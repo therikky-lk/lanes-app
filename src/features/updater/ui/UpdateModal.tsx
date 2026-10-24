@@ -18,7 +18,7 @@ export default function UpdateModal() {
   const releaseTag = updateInfo.version.startsWith("v")
     ? updateInfo.version
     : `v${updateInfo.version}`;
-  const changelogUrl = `https://github.com/therikky-lk/lane_app/releases/tag/releases`;
+  const changelogUrl = `https://github.com/therikky-lk/lanes-app/releases/tag/releases`;
 
   return (
     <Dialog

@@ -46,6 +46,7 @@
     "sec": "sec"
   },
   "common": {
+    "source": "Source",
     "app": {
       "name": "Lane",
       "description": "More of what you like",

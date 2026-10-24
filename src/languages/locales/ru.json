@@ -46,6 +46,7 @@
     "sec": "сек"
   },
   "common": {
+    "source": "Источник",
     "app": {
       "name": "Lane",
       "description": "Больше того, что тебе нравится",

@@ -46,6 +46,7 @@
     "sec": "sn"
   },
   "common": {
+    "source": "Source",
     "app": {
       "name": "Lane",
       "description": "Sevdiklerinden daha fazlası",

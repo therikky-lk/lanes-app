@@ -13,6 +13,7 @@ import {
 import { findYoutubeStandIn } from "./youtubeStandIn";
 import { findSoundCloudStandIn } from "./soundcloudStandIn";
 import { getLocalTrack, isLocalTrackId } from "@/shared/media/local/localTracks";
+import { audiusStreamUrl, isAudiusId } from "@/shared/media/audius";
 
 export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlaybackStream } from "./playbackStream";
 
@@ -79,6 +80,11 @@ export async function resolvePlaybackStream(track: PlayableTrack, signal?: Abort
     return { blob: record.blob, mimeType: record.mimeType, codec: "", bitrate: 0, expiresAtMs: null, contentLength: record.size };
   }
   if (toSoundCloudTrackId(track.id)) return resolveSoundCloud(track, signal);
+  if (isAudiusId(track.id)) {
+    // the API answers with a redirect to the artist's mp3 on a content node
+    log("cyan", "playback", `playing "${track.title}" from Audius`);
+    return { url: audiusStreamUrl(track.id), mimeType: "audio/mpeg", codec: "mp3", bitrate: 320, expiresAtMs: null };
+  }
   const videoId = toVideoId(track.id);
   if (videoId) return resolveYoutubeTrack(track, videoId, signal);
   return withSoundCloudFallback(track, () => resolveYoutubeStandIn(track, signal), signal);
