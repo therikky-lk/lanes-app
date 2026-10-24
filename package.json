@@ -1,6 +1,6 @@
 {
   "name": "lane",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "type": "module",
   "private": true,
   "description": "Lane Music Player",

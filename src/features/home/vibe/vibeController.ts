@@ -1,6 +1,7 @@
 import { playerEngine, setRadioRefillProvider } from "@/features/player/engine/playerEngine";
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import { api, toClientTrack } from "@/shared/api";
+import { loadListeningSignals } from "../hooks/listeningSignals";
 import type { Track } from "@/shared/types/track";
 import { languageFilter } from "./trackLanguage";
 import {
@@ -98,14 +99,8 @@ export function vibeSettingsOf(playbackContext: string | null | undefined): Vibe
 
 type ApiTrackInput = Parameters<typeof toClientTrack>[0];
 
-async function loadSignals(): Promise<{ liked: Track[]; history: Track[] }> {
-  const [liked, history] = await Promise.all([
-    api.listLikedTracks(200).catch(() => ({ items: [] as { track?: unknown }[] })),
-    api.getHistory(undefined, 200).catch(() => ({ items: [] as { track?: unknown }[] })),
-  ]);
-  const tracks = (items: { track?: unknown }[] | undefined) =>
-    (items ?? []).flatMap((entry) => (entry.track ? [toClientTrack(entry.track as ApiTrackInput)] : []));
-  return { liked: tracks(liked.items), history: tracks(history.items) };
+function loadSignals(): Promise<{ liked: Track[]; history: Track[] }> {
+  return loadListeningSignals(300, 200);
 }
 
 /** what happened during the current vibe: plays that were skipped early */
@@ -161,7 +156,8 @@ function moodPool(mood: PoolKey): Promise<Track[]> {
             .catch(() => [] as Track[]),
         ),
       );
-      return lists.flat();
+      // songs only: music videos come with frame thumbnails from i.ytimg.com
+      return lists.flat().filter((t) => !/ytimg\.com/.test(t.coverUrl || ""));
     })();
     pool.then((tracks) => tracks.length === 0 && moodPools.delete(mood)).catch(() => moodPools.delete(mood));
     moodPools.set(mood, pool);

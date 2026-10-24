@@ -6,6 +6,7 @@
 // engine are drawn from that taste; what comes back is filtered to music the
 // listener has not heard yet, with only an occasional familiar track.
 import type { Track } from "@/shared/types/track";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
 
 export type VibeMood = "energetic" | "happy" | "calm" | "sad";
 export type VibeCharacter = "favorite" | "unfamiliar" | "popular";
@@ -145,7 +146,7 @@ export function selectFresh(candidates: Track[], taste: TasteProfile, options: S
   const random = options.random ?? Math.random;
   const seen = new Set<string>();
   const unique = candidates.filter((t) => {
-    if (!t?.id || seen.has(t.id) || options.exclude.has(t.id)) return false;
+    if (!t?.id || seen.has(t.id) || options.exclude.has(t.id) || isVideoTrack(t)) return false;
     seen.add(t.id);
     return true;
   });

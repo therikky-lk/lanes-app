@@ -2,6 +2,7 @@
 // and history are clustered by artist, and each cluster is grown into a long
 // mix with the radio engine (similar tracks), keeping a share of familiar songs.
 import type { Track } from "@/shared/types";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
 
 export interface MixSeedTrack extends Track {
   /** listening weight: likes count more than plays */
@@ -106,7 +107,7 @@ export async function buildDailyMixes(seeds: MixSeedTrack[], options: BuildMixes
 
     const picked: Track[] = [];
     const take = (t: Track) => {
-      if (!t?.id || used.has(t.id) || picked.some((p) => p.id === t.id)) return;
+      if (!t?.id || used.has(t.id) || isVideoTrack(t) || picked.some((p) => p.id === t.id)) return;
       picked.push(t);
     };
     // interleave: about one familiar song per four new ones

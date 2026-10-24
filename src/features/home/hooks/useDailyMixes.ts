@@ -6,6 +6,9 @@ import type { CollectionPageData } from "@/features/collection/hooks/useCollecti
 import { loadWithRetry, useSessionOwner } from "./sessionAwareLoad";
 import { buildDailyMixes, type MixSeedTrack } from "../mixes/buildDailyMixes";
 import { createTranslatorSync, getStoredLocale } from "@/languages";
+import { diag } from "@/shared/platform/diag";
+import { loadListeningSignals } from "./listeningSignals";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
 
 export interface DailyMix {
   id: string;
@@ -26,7 +29,7 @@ export function mixMosaic(tracks: Track[]): string[] {
   const covers: string[] = [];
   for (const track of tracks) {
     const artist = (track.artistList?.[0]?.name || track.artists || "").toLowerCase();
-    if (!track.coverUrl || seen.has(artist) || covers.includes(track.coverUrl)) continue;
+    if (!track.coverUrl || isVideoTrack(track) || seen.has(artist) || covers.includes(track.coverUrl)) continue;
     seen.add(artist);
     covers.push(track.coverUrl);
     if (covers.length === 4) break;
@@ -85,7 +88,7 @@ export function getDailyMixArtists(
   return result;
 }
 
-const cache = { data: [] as DailyMix[], timestamp: 0, owner: "" };
+const cache = { data: [] as DailyMix[], timestamp: 0, owner: "", client: false };
 
 // ---- client-built mixes (Lane) -------------------------------------------
 
@@ -125,17 +128,12 @@ let building: Promise<DailyMix[]> | null = null;
 
 /** liked tracks + history -> ten long mixes grown with the radio engine */
 async function buildClientMixes(owner: string): Promise<DailyMix[]> {
-  const [history, liked] = await Promise.all([
-    api.getHistory(undefined, 200).catch(() => ({ items: [] as { track?: unknown }[] })),
-    api.listLikedTracks(300).catch(() => ({ items: [] as { track?: unknown }[] })),
-  ]);
-  const seeds: MixSeedTrack[] = [];
-  for (const entry of (liked.items || []) as { track?: Parameters<typeof toClientTrack>[0] }[]) {
-    if (entry.track) seeds.push({ ...toClientTrack(entry.track), weight: 3 });
-  }
-  for (const entry of (history.items || []) as { track?: Parameters<typeof toClientTrack>[0] }[]) {
-    if (entry.track) seeds.push({ ...toClientTrack(entry.track), weight: 1 });
-  }
+  const { liked, history } = await loadListeningSignals(300, 200);
+  const seeds: MixSeedTrack[] = [
+    ...liked.map((t) => ({ ...t, weight: 3 })),
+    ...history.map((t) => ({ ...t, weight: 1 })),
+  ];
+  diag(`mixes: building from ${liked.length} likes and ${history.length} plays`);
   if (seeds.length < 5) return [];
 
   const t = createTranslatorSync(getStoredLocale());
@@ -196,6 +194,31 @@ export function useDailyMixes() {
 
     let active = true;
     setIsLoading(cached.length === 0);
+
+    // longer mixes built from the listener's own taste: started at once, next
+    // to the server request; kept in the module cache even if this screen is
+    // left meanwhile, and shown as soon as they're richer than what's shown
+    const total = (list: DailyMix[]) => list.reduce((n, m) => n + m.tracks.length, 0);
+    building = building ?? buildClientMixes(owner).finally(() => {
+      building = null;
+    });
+    void building
+      .then((mixes) => {
+        diag(`mixes: built ${mixes.length} mixes, ${total(mixes)} tracks`);
+        if (mixes.length < 2) return;
+        if (cache.owner === owner && cache.data.length && total(mixes) <= total(cache.data) && !cache.client) return;
+        mixes.forEach(cacheCollection);
+        cache.data = mixes;
+        cache.timestamp = Date.now();
+        cache.owner = owner;
+        cache.client = true;
+        if (active) {
+          setData(mixes);
+          setIsLoading(false);
+        }
+      })
+      .catch((error) => diag(`mixes: build failed (${error instanceof Error ? error.message : String(error)})`));
+
     loadWithRetry(() => api.getDailyMixes(), () => active)
       .then((res) => {
         if (!active) return;
@@ -236,32 +259,18 @@ export function useDailyMixes() {
           return mixItem;
         });
 
+        // the client set is already in: keep it
+        if (cache.client && cache.owner === owner) return;
         cache.data = mixes;
         cache.timestamp = Date.now();
         cache.owner = owner;
         setData(mixes);
       })
       .catch(() => {
-        if (active) setData([]);
+        if (active && !(cache.client && cache.owner === owner)) setData([]);
       })
       .finally(() => {
         if (active) setIsLoading(false);
-        // then replace them with longer mixes built from the listener's taste
-        building = building ?? buildClientMixes(owner).finally(() => {
-          building = null;
-        });
-        void building
-          .then((mixes) => {
-            if (!active || mixes.length < 2) return;
-            // never swap fuller server mixes for a thinner client set
-            if (mixes.length < cache.data.length && cache.owner === owner) return;
-            mixes.forEach(cacheCollection);
-            cache.data = mixes;
-            cache.timestamp = Date.now();
-            cache.owner = owner;
-            setData(mixes);
-          })
-          .catch(() => undefined);
       });
 
     return () => {
