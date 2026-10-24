@@ -1,4 +1,6 @@
 import { useMemo, useState, useCallback } from "react";
+import { PinLine } from "@mingcute/react";
+import { usePinsStore, type PinKind } from "@/features/navigation/store/pinsStore";
 import { useNavigate } from "react-router-dom";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import PlaylistCard from "./PlaylistCard";
@@ -59,8 +61,14 @@ function LoadingSkeletonList() {
   );
 }
 
+function tr(t: (key: string) => string, key: string, fallback: string): string {
+  const v = t(key);
+  return v && v !== key ? v : fallback;
+}
+
 function useItemMenuItems(item: LibraryItemViewModel): DropdownMenuItem[] {
   const { t } = useTranslation();
+  const pinsVersion = usePinsStore((s) => s.pins);
   return useMemo(() => {
     const entityType =
       item.kind === "artist"
@@ -68,7 +76,22 @@ function useItemMenuItems(item: LibraryItemViewModel): DropdownMenuItem[] {
         : item.kind === "album"
           ? "album"
           : "playlist";
+    const pinKind: PinKind = entityType;
+    const pinned = usePinsStore.getState().isPinned(pinKind, item.id);
     return [
+      {
+        id: "pin",
+        label: pinned ? tr(t, "common.sidebar.unpin", "Unpin from menu") : tr(t, "common.sidebar.pin", "Pin to menu"),
+        icon: <PinLine size={15} />,
+        onClick: () =>
+          usePinsStore.getState().toggle({
+            kind: pinKind,
+            id: item.id,
+            title: item.title,
+            imageUrl: item.coverUrls?.[0] || item.imageUrl || undefined,
+            href: item.href,
+          }),
+      },
       {
         id: "remove-from-library",
         label: t("common.remove_from_library"),
@@ -86,7 +109,7 @@ function useItemMenuItems(item: LibraryItemViewModel): DropdownMenuItem[] {
         },
       },
     ];
-  }, [item.id, item.title, item.imageUrl, item.subtitle, item.kind, item.isOwned, item.href, t]);
+  }, [item.id, item.title, item.imageUrl, item.coverUrls, item.subtitle, item.kind, item.isOwned, item.href, t, pinsVersion]);
 }
 
 function LibraryItemCard({ item }: { item: LibraryItemViewModel }) {
