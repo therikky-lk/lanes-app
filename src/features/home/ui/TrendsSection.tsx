@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FireFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import CoverImage from "@/features/covers/ui/CoverImage";
-import { loadChart, type ChartEntry, type ChartRegion, type Movement } from "../trends/charts";
+import { loadChart, resolveSong, type ChartEntry, type ChartRegion, type Movement } from "../trends/charts";
+import type { Track } from "@/shared/types/track";
 
 const PREVIEW = 10;
 
@@ -49,6 +50,50 @@ export default function TrendsSection() {
   const [failed, setFailed] = useState(false);
   const [all, setAll] = useState(false);
   const currentId = usePlayerStore((s) => s.currentTrack?.id);
+  const [opening, setOpening] = useState<string | null>(null);
+  const entriesRef = useRef<ChartEntry[] | null>(null);
+  entriesRef.current = entries;
+
+  const setTrack = (songId: string, track: Track | null) =>
+    setEntries((prev) => prev?.map((e) => (e.song.id === songId ? { ...e, track: track ?? undefined } : e)) ?? prev);
+
+  // find the shown songs on YouTube Music in the background, top first, a
+  // couple at a time; stops quietly when YouTube asks to slow down
+  useEffect(() => {
+    if (!entries) return;
+    const wanted = (all ? entries : entries.slice(0, PREVIEW)).filter((e) => !e.track).map((e) => e.song);
+    if (wanted.length === 0) return;
+    const ctrl = new AbortController();
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < wanted.length && !ctrl.signal.aborted) {
+        const song = wanted[cursor++];
+        try {
+          setTrack(song.id, await resolveSong(song, ctrl.signal));
+        } catch {
+          return;
+        }
+      }
+    };
+    void Promise.all([worker(), worker()]);
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries === null, region, all]);
+
+  const play = async (e: ChartEntry) => {
+    let track = e.track;
+    if (!track) {
+      setOpening(e.song.id);
+      track = (await resolveSong(e.song).catch(() => null)) ?? undefined;
+      setOpening(null);
+      setTrack(e.song.id, track ?? null);
+      if (!track) return;
+    }
+    // the queue: the chart from here on, with what's already found
+    const list = (entriesRef.current ?? []).filter((x) => x.rank >= e.rank);
+    const queue = list.map((x) => (x.song.id === e.song.id ? track : x.track)).filter((x): x is Track => Boolean(x));
+    void playerEngine.playTrack(track, queue, `trends:${region}`, null, 0);
+  };
 
   useEffect(() => {
     let active = true;
@@ -72,7 +117,6 @@ export default function TrendsSection() {
 
   if (failed) return null;
   const shown = entries ? (all ? entries : entries.slice(0, PREVIEW)) : [];
-  const tracks = entries?.map((e) => e.track) ?? [];
   const movementLabel = (e: ChartEntry) =>
     e.rank === 1
       ? t("trends.first")
@@ -90,6 +134,7 @@ export default function TrendsSection() {
         <div className="flex items-center gap-2.5">
           <FireFill className="w-5 h-5 text-[#ff6a3d]" />
           <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>
+          <span className="text-[12px] text-text-tertiary" title={t("trends.source_hint")}>{t("trends.source")}</span>
         </div>
         <div className="flex items-center gap-[4px] rounded-full bg-white/[0.06] p-[3px]" role="tablist">
           {(["russia", "world"] as const).map((r) => (
@@ -119,25 +164,32 @@ export default function TrendsSection() {
             ))
           : shown.map((e) => (
               <button
-                key={e.track.id}
+                key={e.song.id}
                 type="button"
-                onClick={() => void playerEngine.playTrack(e.track, tracks, `trends:${region}`, null, e.rank - 1)}
+                onClick={() => void play(e)}
                 className="group flex h-[60px] min-w-0 items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
               >
                 <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]" title={movementLabel(e)} aria-label={movementLabel(e)}>
-                  <span className={`text-[15px] font-[700] tabular-nums leading-none ${currentId === e.track.id ? "text-accent-primary" : "text-text-primary"}`}>
+                  <span className={`text-[15px] font-[700] tabular-nums leading-none ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
                     {e.rank}
                   </span>
                   <RankMark rank={e.rank} movement={e.movement} />
                 </span>
                 <span className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
-                  {e.track.coverUrl && <CoverImage src={e.track.coverUrl} alt="" fill sizes="44px" className="object-cover" />}
+                  {(e.song.coverUrl || e.track?.coverUrl) && (
+                    <CoverImage src={e.song.coverUrl || e.track!.coverUrl} alt="" fill sizes="44px" className="object-cover" />
+                  )}
+                  {opening === e.song.id && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <span className="h-[16px] w-[16px] animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    </span>
+                  )}
                 </span>
                 <span className="min-w-0">
-                  <span className={`block truncate text-[14.5px] font-[550] ${currentId === e.track.id ? "text-accent-primary" : "text-text-primary"}`}>
-                    {e.track.title}
+                  <span className={`block truncate text-[14.5px] font-[550] ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
+                    {e.song.title}
                   </span>
-                  <span className="block truncate text-[12.5px] text-text-tertiary">{e.track.artists}</span>
+                  <span className="block truncate text-[12.5px] text-text-tertiary">{e.song.artist}</span>
                 </span>
               </button>
             ))}

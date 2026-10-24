@@ -23,6 +23,8 @@ import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack, type ApiTrack } fr
 import { buildShareUrl } from "@/shared/utils/share";
 import { useExternalItems } from "@/features/library/hooks";
 import ArtistProfileModal from "./ArtistProfileModal";
+import { PinFill, PinLine } from "@mingcute/react";
+import { usePinsStore } from "@/features/navigation/store/pinsStore";
 import ArtistPageSkeleton from "./ArtistPageSkeleton";
 import ArtistReleasesView, { type ReleaseFilter } from "./ArtistReleasesView";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
@@ -59,6 +61,7 @@ function ArtistContent() {
   const hasCustomBg = useIsContentTransparent();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
+  const pinned = usePinsStore((st) => Boolean(id && st.pins.some((p) => p.kind === "artist" && p.id === id)));
 
   const { data, loading } = useArtist(id);
   const [showAllTracks, setShowAllTracks] = useState(false);
@@ -404,6 +407,28 @@ function ArtistContent() {
                           </motion.span>
                         )}
                       </AnimatePresence>
+                    </Button>
+
+                    <Button
+                      variant={hasCustomBg ? "glass-action" : "outline"}
+                      onClick={() =>
+                        id &&
+                        usePinsStore.getState().toggle({
+                          kind: "artist",
+                          id,
+                          title: data.title,
+                          imageUrl: data.coverUrl || undefined,
+                          href: `/artist?id=${encodeURIComponent(id)}`,
+                        })
+                      }
+                      className={`!h-[38px] !w-[38px] !p-0 flex items-center justify-center transition-colors ${
+                        hasCustomBg
+                          ? ""
+                          : "text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm"
+                      }`}
+                      title={pinned ? (t("common.sidebar.unpin") || "Unpin from menu") : (t("common.sidebar.pin") || "Pin to menu")}
+                    >
+                      {pinned ? <PinFill size={18} /> : <PinLine size={18} />}
                     </Button>
 
                     <Button

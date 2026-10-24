@@ -10,6 +10,7 @@ import {
   spotifyLikedCount,
   spotifyLogin,
   spotifyLogout,
+  SpotifyRateLimitError,
 } from "../services/import/sources/spotify/spotifyAccount";
 import { BATCH_SIZE, type BatchLog, type ImportItem } from "../services/import/likedImport/likedImportRunner";
 import { useLikedImportStore } from "../store/likedImportStore";
@@ -125,6 +126,8 @@ export default function SpotifyLikedImportDialog({ open, onClose }: { open: bool
   const tr = useTr();
   const [step, setStep] = useState<Step>("checking");
   const [count, setCount] = useState(0);
+  /** Spotify asked to wait before counting: the transfer can still start and wait itself */
+  const [limited, setLimited] = useState<{ minutes: number } | null>(null);
   const [loginError, setLoginError] = useState("");
   const s = useLikedImportStore();
   const seconds = useSecondsLeft(s.waitUntil);
@@ -132,9 +135,17 @@ export default function SpotifyLikedImportDialog({ open, onClose }: { open: bool
   const loadCount = async () => {
     setStep("counting");
     try {
+      setLimited(null);
       setCount(await spotifyLikedCount());
       setStep("ready");
     } catch (e) {
+      if (e instanceof SpotifyRateLimitError) {
+        // not a dead end: the transfer waits out the limit on its own
+        setLimited({ minutes: Math.max(1, Math.ceil((e.retryAfterMs ?? 60_000) / 60_000)) });
+        setCount(-1);
+        setStep("ready");
+        return;
+      }
       setLoginError(e instanceof Error ? e.message : String(e));
       setStep("error");
     }
@@ -146,9 +157,16 @@ export default function SpotifyLikedImportDialog({ open, onClose }: { open: bool
       setStep("unsupported");
       return;
     }
-    void s.restore();
     setStep("checking");
-    void spotifyHasLogin().then((ok) => (ok ? loadCount() : setStep("signin")));
+    void s.restore().then(() => {
+      const st = useLikedImportStore.getState();
+      // a saved or running transfer already has the list: no extra Spotify request
+      if (st.job?.collected || RUNNING.has(st.phase)) {
+        setStep("ready");
+        return;
+      }
+      void spotifyHasLogin().then((ok) => (ok ? loadCount() : setStep("signin")));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -220,7 +238,13 @@ export default function SpotifyLikedImportDialog({ open, onClose }: { open: bool
         {/* a fresh start: how many tracks there are and how it works */}
         {step === "ready" && !hasJob && !running && (
           <>
-            <p className="m-0 text-[14px] text-text-primary">{tr("count", "You can import {count} tracks", { count })}</p>
+            {limited ? (
+              <p className="m-0 text-[13px] text-[#F5A524]">
+                {tr("limited", "Spotify asked to wait about {minutes} min before the next request. You can start now: the transfer waits and continues by itself.", limited)}
+              </p>
+            ) : (
+              <p className="m-0 text-[14px] text-text-primary">{tr("count", "You can import {count} tracks", { count })}</p>
+            )}
             <p className="m-0 text-[12.5px] text-text-secondary">{tr("how", "Tracks go into your Lane likes in batches of {size}, oldest first. Progress is saved: you can close this window or the app and continue later.", { size: BATCH_SIZE })}</p>
             <BatteryHint tr={tr} />
             <Button
@@ -268,7 +292,9 @@ export default function SpotifyLikedImportDialog({ open, onClose }: { open: bool
               <p className="m-0 text-[13px] text-[#F5A524]">
                 {s.waitReason === "network"
                   ? tr("wait_network", "No connection, retrying in {sec} s", { sec: seconds })
-                  : tr("wait_rate", "Hit a rate limit, resuming in {sec} s", { sec: seconds })}
+                  : seconds >= 120
+                    ? tr("wait_rate_min", "Spotify asked to wait, resuming in {min} min", { min: Math.ceil(seconds / 60) })
+                    : tr("wait_rate", "Hit a rate limit, resuming in {sec} s", { sec: seconds })}
               </p>
             )}
             {s.phase === "paused" && (

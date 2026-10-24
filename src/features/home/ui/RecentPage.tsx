@@ -23,12 +23,31 @@ function useHistoryPlays() {
   const loadMore = async (from?: string) => {
     setLoading(true);
     try {
-      const page = await api.getHistory(from, PAGE);
-      const next = (page.items ?? []).flatMap((item) =>
-        item.track ? [{ track: toClientTrack(item.track), listenedAt: item.listenedAt, context: item.context }] : [],
-      );
-      setPlays((prev) => (from ? [...prev, ...next] : next));
-      setCursor(page.nextCursor ?? null);
+      const all: HistoryPlay[] = [];
+      let at = from;
+      let next: string | null = null;
+      // the first view loads the whole of today (for today's total), a page
+      // at a time, up to a sane limit
+      const startOfToday = new Date(new Date().toDateString()).getTime();
+      for (let i = 0; i < (from ? 1 : 15); i++) {
+        const page = await api.getHistory(at, PAGE);
+        for (const item of page.items ?? []) {
+          if (item.track) {
+            all.push({
+              track: toClientTrack(item.track),
+              listenedAt: item.listenedAt,
+              context: item.context,
+              playedMs: item.playedDurationMs,
+            });
+          }
+        }
+        next = page.nextCursor ?? null;
+        const oldest = all.length ? new Date(all[all.length - 1].listenedAt).getTime() : 0;
+        if (!next || oldest < startOfToday) break;
+        at = next;
+      }
+      setPlays((prev) => (from ? [...prev, ...all] : all));
+      setCursor(next);
     } catch {
       if (!from) setPlays([]);
       setCursor(null);
@@ -52,6 +71,22 @@ export default function RecentPage() {
   const { data: playlists } = usePlaylistsList();
   const days = useMemo(() => groupHistory(plays), [plays]);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
+
+  const tr = (key: string, fallback: string, vars?: Record<string, string | number>) => {
+    const v = t(key, vars);
+    return v && v !== key ? v : fallback;
+  };
+  const formatDuration = (ms: number) => {
+    const minutes = Math.round(ms / 60_000);
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? tr("history.hours_minutes", `${h} h ${m} min`, { h, m }) : tr("history.minutes", `${m} min`, { m });
+  };
+  const todayStats = useMemo(() => {
+    const today = new Date().toDateString();
+    const day = days.find((d) => d.date.toDateString() === today);
+    return { plays: day?.plays ?? 0, playedMs: day?.playedMs ?? 0 };
+  }, [days]);
 
   const playlistById = useMemo(() => new Map((playlists?.playlists ?? []).map((p) => [p.id, p])), [playlists]);
 
@@ -120,12 +155,32 @@ export default function RecentPage() {
           {t("common.back")}
         </button>
         <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{t("home.history")}</h1>
+        {!loading && (
+          <div className="mt-[14px] flex flex-wrap gap-[10px]">
+            <div className="rounded-xl bg-bg-panel/85 px-[14px] py-[10px]">
+              <div className="text-[12px] text-text-tertiary">{tr("history.today_time", "Listened today")}</div>
+              <div className="text-[20px] font-[700] tabular-nums text-text-primary">{formatDuration(todayStats.playedMs)}</div>
+            </div>
+            <div className="rounded-xl bg-bg-panel/85 px-[14px] py-[10px]">
+              <div className="text-[12px] text-text-tertiary">{tr("history.today_tracks", "Tracks today")}</div>
+              <div className="text-[20px] font-[700] tabular-nums text-text-primary">{todayStats.plays}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-[8px] px-[24px]">
         {days.map((day) => (
           <section key={day.key} className="mt-[22px]">
-            <h2 className="m-0 mb-[8px] px-[8px] text-[18px] font-[700] tracking-tight text-text-primary">{dayLabel(day.date)}</h2>
+            <h2 className="m-0 mb-[8px] flex items-baseline gap-[10px] px-[8px] text-[18px] font-[700] tracking-tight text-text-primary">
+              {dayLabel(day.date)}
+              {/* the oldest day may be cut off by paging: no total for it */}
+              {(!hasMore || day !== days[days.length - 1]) && (
+                <span className="text-[13px] font-[500] text-text-tertiary tabular-nums">
+                  {formatDuration(day.playedMs)} · {t("history.tracks_count", { count: day.plays })}
+                </span>
+              )}
+            </h2>
             <div className="flex flex-col">
               {day.groups.map((g) => {
                 const d = describe(g);
