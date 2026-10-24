@@ -235,7 +235,9 @@
       "mood_energetic": "Бадьоре",
       "language_russian": "Російська",
       "language_foreign": "Іноземна",
-      "language_instrumental": "Без слів"
+      "language_instrumental": "Без слів",
+      "customize": "Налаштувати Мою хвилю",
+      "reset": "Скинути"
     },
     "daily_mix": "Мікс дня {n}",
     "mix_label": "Мікс"

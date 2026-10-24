@@ -235,7 +235,9 @@
       "mood_energetic": "Бодрое",
       "language_russian": "Русский",
       "language_foreign": "Иностранный",
-      "language_instrumental": "Без слов"
+      "language_instrumental": "Без слов",
+      "customize": "Настроить Мою волну",
+      "reset": "Сбросить"
     },
     "daily_mix": "Микс дня {n}",
     "mix_label": "Микс"

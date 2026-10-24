@@ -235,7 +235,9 @@
       "mood_energetic": "Energetic",
       "language_russian": "Russian",
       "language_foreign": "Foreign",
-      "language_instrumental": "No vocals"
+      "language_instrumental": "No vocals",
+      "customize": "Tune My Vibe",
+      "reset": "Reset"
     },
     "daily_mix": "Daily Mix {n}",
     "mix_label": "Mix"

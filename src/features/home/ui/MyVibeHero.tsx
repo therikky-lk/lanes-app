@@ -2,7 +2,9 @@ import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
-import { CloseLine, HeartFill, LightningFill, PauseFill, PlayFill, Settings6Line, Sparkles2Fill } from "@mingcute/react";
+import { CloseLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill } from "@mingcute/react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import { useTranslation } from "@/languages";
 import type { Track } from "@/shared/types/track";
@@ -17,7 +19,8 @@ import {
   type VibeMood,
   type VibeSettings,
 } from "../vibe/vibeTaste";
-import { lerpPalette, rgba, type VibePalette } from "../vibe/vibePalette";
+import { lerpPalette, loadVibePalette, rgba, type VibePalette } from "../vibe/vibePalette";
+import { useCoverSrc } from "@/features/covers";
 
 // My Vibe: a dark stage with a smoky ring of light that breathes with the
 // music, in the picked mood's colour (violet with no mood); a like on the
@@ -116,6 +119,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
   const [starting, setStarting] = useState(false);
   const [settings, setSettings] = useState<VibeSettings>(() => storedSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const isMobile = useIsMobile();
   const mood = settings.mood;
 
   const vibeActive = isVibeContext(playbackContext) && !!currentTrack;
@@ -127,10 +131,26 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
   const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0 });
   live.current.playing = status === "playing" && vibeActive;
 
-  // colours: the mood's own, a violet glow when no mood is picked
+  // colours: the mood's own; with no mood, the playing track's cover (violet
+  // when nothing plays)
+  const cover = useCoverSrc(currentTrack?.coverUrl);
   useEffect(() => {
-    live.current.target = mood ? MOOD_PALETTES[mood] : NEUTRAL_PALETTE;
-  }, [mood]);
+    if (mood) {
+      live.current.target = MOOD_PALETTES[mood];
+      return;
+    }
+    if (!currentTrack) {
+      live.current.target = NEUTRAL_PALETTE;
+      return;
+    }
+    let cancelled = false;
+    void loadVibePalette(cover || currentTrack.coverUrl).then((p) => {
+      if (!cancelled) live.current.target = p;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mood, cover, currentTrack]);
 
   // a like on the playing track sends a pulse through the ring
   const currentLiked = useIsTrackLiked(currentTrack?.id);
@@ -259,7 +279,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
 
       const { bass, level } = tracker.next(dt, live.current.playing);
       const motion = reduced ? 0.3 : 1;
-      time += dt * (0.3 + level * 0.7) * motion;
+      time += dt * (0.8 + level * 1.4) * motion;
       palette = lerpPalette(palette, live.current.target, Math.min(1, dt * 2.5));
       live.current.pulse *= Math.exp(-dt * 2.6);
       const pulse = live.current.pulse;
@@ -334,17 +354,17 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         // bloom: the tube's light spilling into the air
         strand(bc, ox, oy, r, t, b);
         bc.strokeStyle = lit(bc, cx, cy, t, (k) => blend(main, hi, k * 0.6), 0.75 * fade);
-        bc.lineWidth = 7 * thick;
+        bc.lineWidth = 10 * thick;
         bc.stroke();
 
         strand(sc, ox, oy, r, t, b);
         // tube
         sc.strokeStyle = lit(sc, cx, cy, t, (k) => blend(main, hi, k), 0.9 * fade);
-        sc.lineWidth = 2.2 * thick;
+        sc.lineWidth = 3.2 * thick;
         sc.stroke();
         // white-hot core
         sc.strokeStyle = lit(sc, cx, cy, t, (k) => blend(hi, white, k), 0.95 * fade);
-        sc.lineWidth = 0.9 * thick;
+        sc.lineWidth = 1.4 * thick;
         sc.stroke();
       }
       sc.globalCompositeOperation = "source-over";
@@ -406,6 +426,12 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     ...(settings.mood ? [{ key: "mood" as const, text: label.mood(settings.mood) }] : []),
     ...(settings.language ? [{ key: "language" as const, text: label.language(settings.language) }] : []),
   ];
+  const resetSettings = () => {
+    const next = { character: null, mood: null, language: null };
+    setSettings(next);
+    storeSettings(next);
+    if (vibeActive) void launch(next);
+  };
   const clear = (key: keyof VibeSettings) => {
     const next = { ...settings, [key]: null };
     setSettings(next);
@@ -503,23 +529,69 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         </div>
       </div>
 
-      {settingsOpen &&
-        createPortal(
+      {createPortal(
+        <AnimatePresence>
+          {settingsOpen && (
+            <motion.div
+              key="vibe-settings"
+              className="fixed inset-0 z-[200]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="absolute inset-0 bg-black/45" onClick={() => setSettingsOpen(false)} />
+              <motion.div
+                role="dialog"
+                aria-label={t("home.vibe.settings")}
+                className={
+                  isMobile
+                    ? "absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1d] px-[16px] pt-[10px]"
+                    : "absolute right-[12px] top-[12px] bottom-[12px] w-[440px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-white/[0.06] bg-[#1a1a1d] px-[18px] pt-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                }
+                style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 20px)", fontFamily: "var(--font-inter), sans-serif" }}
+                initial={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
+                animate={isMobile ? { y: 0 } : { x: 0 }}
+                exit={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
+                transition={{ type: "spring", stiffness: 380, damping: 38 }}
+                // phones: pull the sheet down to close it
+                drag={isMobile ? "y" : false}
+                dragConstraints={{ top: 0, bottom: 0 }}
+                dragElastic={{ top: 0, bottom: 0.8 }}
+                dragListener={isMobile}
+                onDragEnd={(_, info) => {
+                  if (info.offset.y > 110 || info.velocity.y > 600) setSettingsOpen(false);
+                }}
+              >
+                {isMobile && <div className="mx-auto mb-[10px] h-[4px] w-[38px] rounded-full bg-white/25" />}
+                <div className="mb-[14px] flex items-center justify-between gap-[12px]">
+                  <h3 className="m-0 text-[20px] font-[700] tracking-tight text-white">{t("home.vibe.customize")}</h3>
+                  <div className="flex items-center gap-[8px]">
+                    <button
+                      type="button"
+                      onClick={resetSettings}
+                      disabled={!settings.character && !settings.mood && !settings.language}
+                      aria-label={t("home.vibe.reset")}
+                      title={t("home.vibe.reset")}
+                      className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-white/[0.08] text-white/80 hover:bg-white/[0.14] disabled:opacity-35 cursor-pointer"
+                    >
+                      <Refresh2Line size={17} />
+                    </button>
+                    {/* phones close it with a swipe down (or a tap outside) */}
+                    {!isMobile && (
+                      <button
+                        type="button"
+                        onClick={() => setSettingsOpen(false)}
+                        aria-label={t("common.close") || "Close"}
+                        className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-white/[0.08] text-white/80 hover:bg-white/[0.14] cursor-pointer"
+                      >
+                        <CloseLine size={17} />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-        <div
-          className="fixed inset-0 z-[200] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center"
-          onClick={() => setSettingsOpen(false)}
-        >
-          <div
-            role="dialog"
-            aria-label={t("home.vibe.settings")}
-            className="w-full max-w-[520px] rounded-t-3xl bg-[#121214] px-[16px] pt-[14px] sm:rounded-3xl"
-            style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 20px)", fontFamily: "var(--font-inter), sans-serif" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mb-[8px] h-[4px] w-[36px] rounded-full bg-white/20 sm:hidden" />
-
-            <p className="m-0 mt-[8px] mb-[12px] text-center text-[15px] font-[600] text-white/55">{t("home.vibe.by_character")}</p>
+            <p className="m-0 mt-[6px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_character")}</p>
             <div className="grid grid-cols-3 gap-[8px]">
               {VIBE_CHARACTERS.map((c) => {
                 const on = settings.character === c;
@@ -541,7 +613,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
               })}
             </div>
 
-            <p className="m-0 mt-[22px] mb-[12px] text-center text-[15px] font-[600] text-white/55">{t("home.vibe.by_mood")}</p>
+            <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_mood")}</p>
             <div className="grid grid-cols-4 gap-[8px]">
               {VIBE_MOODS.map((m) => {
                 const on = settings.mood === m;
@@ -563,7 +635,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
               })}
             </div>
 
-            <p className="m-0 mt-[22px] mb-[12px] text-center text-[15px] font-[600] text-white/55">{t("home.vibe.by_language")}</p>
+            <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_language")}</p>
             <div className="grid grid-cols-3 gap-[8px]">
               {VIBE_LANGUAGES.map((l) => {
                 const on = settings.language === l;
@@ -582,10 +654,12 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
                 );
               })}
             </div>
-          </div>
-        </div>,
-          document.body,
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </section>
   );
 }

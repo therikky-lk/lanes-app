@@ -106,3 +106,28 @@ export function mapInnertubeTrack(raw: unknown, fallbackArtists: TrackArtist[] =
     explicit: hasExplicitBadge(renderer),
   };
 }
+
+// YouTube Music marks every playable item: MUSIC_VIDEO_TYPE_ATV is the song
+// itself (album artwork, studio audio); OMV is an official music video, UGC a
+// user upload, both with video frames for covers and often a different cut.
+const VIDEO_TYPES = new Set(["MUSIC_VIDEO_TYPE_OMV", "MUSIC_VIDEO_TYPE_UGC", "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC"]);
+
+/** the musicVideoType of a raw item, looked up a few levels deep */
+export function musicVideoType(raw: unknown): string | undefined {
+  const stack: { node: unknown; depth: number }[] = [{ node: raw, depth: 0 }];
+  while (stack.length) {
+    const { node, depth } = stack.pop()!;
+    if (!node || typeof node !== "object" || depth > 12) continue;
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      if (key === "musicVideoType" && typeof value === "string") return value;
+      if (value && typeof value === "object") stack.push({ node: value, depth: depth + 1 });
+    }
+  }
+  return undefined;
+}
+
+/** a music video or user upload rather than the song itself */
+export function isMusicVideo(raw: unknown): boolean {
+  const type = musicVideoType(raw);
+  return !!type && VIDEO_TYPES.has(type);
+}

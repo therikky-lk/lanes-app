@@ -15,7 +15,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
 import {
   Search3Line,
   CloseCircleFill,
@@ -689,6 +689,47 @@ export default function AppFrame({ children }: AppFrameProps) {
   );
 
   const isMobile = useIsMobile();
+
+  // phones: the fullscreen player follows the finger down and folds away
+  // (it shrinks a little and rounds its corners as it goes)
+  const sheetY = useMotionValue(0);
+  const sheetScale = useTransform(sheetY, [0, 600], [1, 0.9]);
+  const sheetRadius = useTransform(sheetY, [0, 160], [0, 28]);
+  const sheetDrag = useRef<{ startY: number; startT: number; active: boolean; pointer: number } | null>(null);
+  const onSheetPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isMobile) return;
+    const target = e.target as HTMLElement;
+    // lyrics scroll, sliders and inputs keep their own gestures
+    if (target.closest('braccato-lyrics, [role="slider"], input, textarea, [data-no-sheet-drag]')) return;
+    sheetDrag.current = { startY: e.clientY, startT: performance.now(), active: false, pointer: e.pointerId };
+  };
+  const onSheetPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = sheetDrag.current;
+    if (!d || d.pointer !== e.pointerId) return;
+    const dy = e.clientY - d.startY;
+    if (!d.active) {
+      if (dy < 10) return;
+      d.active = true;
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
+    sheetY.set(Math.max(0, dy));
+  };
+  const onSheetPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = sheetDrag.current;
+    sheetDrag.current = null;
+    if (!d?.active) return;
+    const dy = e.clientY - d.startY;
+    const speed = dy / Math.max(1, performance.now() - d.startT); // px per ms
+    if (dy > 140 || speed > 0.6) {
+      // let go far / fast enough: fold away the rest of the way
+      void animate(sheetY, window.innerHeight, { duration: 0.22, ease: [0.4, 0, 1, 1] }).then(() => {
+        closeFullscreenPlayer();
+        sheetY.set(0);
+      });
+    } else {
+      void animate(sheetY, 0, { type: "spring", stiffness: 420, damping: 36 });
+    }
+  };
   useNativeMediaSync();
   // Lane Connect: join the user's other devices when a pairing code is set
   const connectUserId = useAuthStore((s) => s.user?.id ?? null);
@@ -897,12 +938,21 @@ export default function AppFrame({ children }: AppFrameProps) {
             exit={{ y: "100%" }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             onAnimationComplete={() => setFullscreenEffectsReady(fullscreenPlayerOpen)}
-            className="dark absolute inset-0 z-[70] overflow-hidden bg-black will-change-transform"
+            className="dark absolute inset-0 z-[70] overflow-hidden will-change-transform"
           >
-            <FullscreenPlayer
-              onClose={closeFullscreenPlayer}
-              effectsReady={fullscreenEffectsReady}
-            />
+            <motion.div
+              className="absolute inset-0 overflow-hidden bg-black"
+              style={isMobile ? { y: sheetY, scale: sheetScale, borderRadius: sheetRadius, transformOrigin: "50% 0%" } : undefined}
+              onPointerDown={onSheetPointerDown}
+              onPointerMove={onSheetPointerMove}
+              onPointerUp={onSheetPointerUp}
+              onPointerCancel={onSheetPointerUp}
+            >
+              <FullscreenPlayer
+                onClose={closeFullscreenPlayer}
+                effectsReady={fullscreenEffectsReady}
+              />
+            </motion.div>
           </motion.div>
         ) : isFullscreenRoute ? (
           <div data-theme="dark" className="dark absolute inset-0 z-[70] overflow-hidden bg-black">
