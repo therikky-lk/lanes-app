@@ -46,6 +46,7 @@ jobs:
         with:
           name: linux
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/*.AppImage
             release/*.deb
@@ -80,6 +81,7 @@ jobs:
         with:
           name: windows
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/*.exe
             release/*.zip
@@ -137,6 +139,7 @@ jobs:
         with:
           name: android
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/*.apk
             release/SHA256SUMS-android.txt
