@@ -485,7 +485,7 @@ function CollectionContent() {
                         className="!h-[36px] w-full !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px]"
                       >
                         {isThisActive ? <PauseFill size={16} /> : <PlayFill size={16} />}
-                        <span>{isThisActive ? t("player.pause") || "Pause" : t("common.play_all")}</span>
+                        <span>{isThisActive ? t("common.pause") : t("common.play_all")}</span>
                       </Button>
 
                       <div className="flex items-center gap-[8px] w-full">

@@ -2,7 +2,20 @@ import { playerEngine, setRadioRefillProvider } from "@/features/player/engine/p
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import { api, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types/track";
-import { buildTaste, pickWeighted, selectFresh, affinity, type TasteProfile, type VibeMood } from "./vibeTaste";
+import {
+  affinity,
+  buildTaste,
+  fitsLanguage,
+  NO_VIBE_SETTINGS,
+  pickWeighted,
+  selectFresh,
+  VIBE_CHARACTERS,
+  VIBE_LANGUAGES,
+  VIBE_MOODS,
+  type TasteProfile,
+  type VibeMood,
+  type VibeSettings,
+} from "./vibeTaste";
 
 // "My Vibe": an endless personal stream. Every batch is grown with the radio
 // engine from a few seeds drawn from what the listener likes and plays (and
@@ -10,11 +23,11 @@ import { buildTaste, pickWeighted, selectFresh, affinity, type TasteProfile, typ
 // With a mood picked, seeds and picks lean on tracks from mood playlists by
 // artists the listener likes, and radio from those keeps the mood.
 
-export type { VibeMood } from "./vibeTaste";
+export type { VibeMood, VibeCharacter, VibeLanguage, VibeSettings } from "./vibeTaste";
 
 const VIBE_CONTEXT_KEY = "lane_vibe_context";
 const RECENT_SEEDS_KEY = "lane_vibe_recent_seeds";
-const MOOD_KEY = "lane_vibe_mood";
+const SETTINGS_KEY = "lane_vibe_settings";
 const BATCH = 20;
 
 let vibeContext: string | null = (() => {
@@ -40,30 +53,45 @@ function rememberSeeds(ids: string[]): void {
   } catch {}
 }
 
-export function storedMood(): VibeMood | null {
+function pick<T extends string>(value: unknown, allowed: readonly T[]): T | null {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : null;
+}
+
+function cleanSettings(raw: Partial<Record<keyof VibeSettings, unknown>> | null | undefined): VibeSettings {
+  return {
+    character: pick(raw?.character, VIBE_CHARACTERS),
+    mood: pick(raw?.mood, VIBE_MOODS),
+    language: pick(raw?.language, VIBE_LANGUAGES),
+  };
+}
+
+export function storedSettings(): VibeSettings {
   try {
-    const v = localStorage.getItem(MOOD_KEY);
-    return v === "happy" || v === "calm" || v === "sad" ? v : null;
+    return cleanSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null"));
   } catch {
-    return null;
+    return NO_VIBE_SETTINGS;
   }
 }
 
-export function storeMood(mood: VibeMood | null): void {
+export function storeSettings(settings: VibeSettings): void {
   try {
-    if (mood) localStorage.setItem(MOOD_KEY, mood);
-    else localStorage.removeItem(MOOD_KEY);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch {}
+}
+
+export function sameSettings(a: VibeSettings, b: VibeSettings): boolean {
+  return a.character === b.character && a.mood === b.mood && a.language === b.language;
 }
 
 export function isVibeContext(playbackContext: string | null | undefined): boolean {
   return !!vibeContext && playbackContext === vibeContext;
 }
 
-export function vibeMoodOf(playbackContext: string | null | undefined): VibeMood | null {
+/** the settings a vibe context was started with: radio:vibe:<character>:<mood>:<language>:<id> */
+export function vibeSettingsOf(playbackContext: string | null | undefined): VibeSettings | null {
   if (!isVibeContext(playbackContext)) return null;
-  const mood = playbackContext!.split(":")[2];
-  return mood === "happy" || mood === "calm" || mood === "sad" ? mood : null;
+  const [, , character, mood, language] = playbackContext!.split(":");
+  return cleanSettings({ character, mood, language });
 }
 
 // ---- signals ----------------------------------------------------------------
@@ -99,14 +127,19 @@ usePlayerStore.subscribe((state, prev) => {
 
 // ---- mood pools ---------------------------------------------------------------
 
-const MOOD_QUERIES: Record<VibeMood, string[]> = {
+type PoolKey = VibeMood | "instrumental" | "popular";
+
+const MOOD_QUERIES: Record<PoolKey, string[]> = {
+  energetic: ["энергичная музыка", "workout hits", "upbeat songs"],
   happy: ["весёлые песни", "feel good hits", "happy songs"],
+  instrumental: ["музыка без слов", "instrumental music", "lofi beats"],
+  popular: ["хиты", "top hits", "trending songs"],
   calm: ["спокойная музыка", "chill vibes", "relaxing songs"],
   sad: ["грустные песни", "sad songs", "melancholic"],
 };
-const moodPools = new Map<VibeMood, Promise<Track[]>>();
+const moodPools = new Map<PoolKey, Promise<Track[]>>();
 
-function moodPool(mood: VibeMood): Promise<Track[]> {
+function moodPool(mood: PoolKey): Promise<Track[]> {
   let pool = moodPools.get(mood);
   if (!pool) {
     pool = (async () => {
@@ -151,7 +184,8 @@ async function radioFor(seed: Track, k = 25): Promise<Track[]> {
     .catch(() => []);
 }
 
-async function nextBatch(mood: VibeMood | null, exclude: Set<string>, fallback?: Fallback): Promise<Track[]> {
+async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?: Fallback): Promise<Track[]> {
+  const { mood, character, language } = settings;
   const loaded = await loadSignals();
   const liked = loaded.liked.length ? loaded.liked : fallback?.liked ?? [];
   const history = loaded.history.length ? loaded.history : [...(fallback?.recent ?? [])];
@@ -168,47 +202,64 @@ async function nextBatch(mood: VibeMood | null, exclude: Set<string>, fallback?:
   }
   const avoid = new Set(recentSeeds());
 
+  // pools of tracks that carry the mood / "no words" / popularity
+  const [moodTracks, instrumentalTracks, popularTracks] = await Promise.all([
+    mood ? moodPool(mood) : Promise.resolve([] as Track[]),
+    language === "instrumental" ? moodPool("instrumental") : Promise.resolve([] as Track[]),
+    character === "popular" ? moodPool("popular") : Promise.resolve([] as Track[]),
+  ]);
+  const instrumentalIds = new Set(instrumentalTracks.map((t) => t.id));
+  const fits = (t: Track) => fitsLanguage(t, language, instrumentalIds, t.id) && !session.skipped.has(t.id);
+
+  // the pool that defines the stream, if any: mood first, then the others
+  const pool = (mood ? moodTracks : language === "instrumental" ? instrumentalTracks : character === "popular" ? popularTracks : []).filter(fits);
+  const poolIds = pool.length ? new Set(pool.map((t) => t.id)) : undefined;
+
   let seeds: Track[];
-  let moodIds: Set<string> | undefined;
   let extra: Track[] = [];
-  if (mood) {
-    const pool = (await moodPool(mood)).filter((t) => !session.skipped.has(t.id));
-    moodIds = new Set(pool.map((t) => t.id));
-    // mood tracks by artists the listener likes make the best seeds
+  const tasteSeeds = taste.seeds.filter((s) => fits(s.track));
+  if (pool.length) {
+    // pool tracks by artists the listener likes make the best seeds
     const ranked = pool.map((track) => ({ track, weight: 0.25 + Math.max(0, affinity(taste, track)) * 4 }));
     seeds = pickWeighted(ranked, 3, avoid);
-    // liked songs that are themselves in the mood keep it personal
-    const likedInMood = taste.seeds.filter((s) => moodIds!.has(s.track.id)).map((s) => s.track);
-    seeds.push(...pickWeighted(likedInMood.map((track) => ({ track, weight: 1 })), 1, avoid));
-    extra = pool.filter((t) => affinity(taste, t) > 0);
-    if (seeds.length === 0) seeds = pickWeighted(taste.seeds, 3, avoid);
+    const likedInPool = tasteSeeds.filter((s) => poolIds!.has(s.track.id)).map((s) => s.track);
+    seeds.push(...pickWeighted(likedInPool.map((track) => ({ track, weight: 1 })), 1, avoid));
+    extra = character === "unfamiliar" ? pool.filter((t) => affinity(taste, t) <= 0) : pool.filter((t) => affinity(taste, t) > 0);
+    if (character === "popular") extra.push(...popularTracks.filter(fits).slice(0, 30));
+    if (seeds.length === 0) seeds = pickWeighted(tasteSeeds.length ? tasteSeeds : taste.seeds, 3, avoid);
   } else {
-    seeds = pickWeighted(taste.seeds.slice(0, 250), 4, avoid);
+    seeds = pickWeighted((tasteSeeds.length ? tasteSeeds : taste.seeds).slice(0, 250), 4, avoid);
   }
   if (seeds.length === 0) return [];
   rememberSeeds(seeds.map((s) => s.id));
 
-  const candidates = [...(await Promise.all(seeds.map((s) => radioFor(s)))).flat(), ...extra];
-  return selectFresh(candidates, taste, {
+  let candidates = [...(await Promise.all(seeds.map((s) => radioFor(s)))).flat(), ...extra];
+  // "favorite": the listener's own liked songs make up a good part of it
+  if (character === "favorite") candidates.push(...liked.filter(fits).sort(() => Math.random() - 0.5).slice(0, 30));
+  // "unfamiliar": artists the listener already knows are left out
+  if (character === "unfamiliar") candidates = candidates.filter((t) => affinity(taste, t) <= 0);
+  const filtered = candidates.filter(fits);
+  return selectFresh(filtered.length >= 8 ? filtered : candidates, taste, {
     count: BATCH,
     exclude: new Set([...exclude, ...session.played.keys()]),
-    moodIds,
-    familiarShare: mood ? 0.1 : 0.15,
+    moodIds: poolIds,
+    familiarShare: character === "favorite" ? 0.6 : character === "unfamiliar" ? 0 : mood ? 0.1 : 0.15,
   });
 }
 
 setRadioRefillProvider((context, queue) => {
   if (!isVibeContext(context)) return null;
-  return nextBatch(vibeMoodOf(context), new Set(queue.map((t) => t.id)));
+  return nextBatch(vibeSettingsOf(context) ?? NO_VIBE_SETTINGS, new Set(queue.map((t) => t.id)));
 });
 
-/** start (or restart) the vibe, optionally tuned to a mood */
-export async function startVibe(mood: VibeMood | null, fallback?: Fallback): Promise<boolean> {
+/** start (or restart) the vibe with the given settings */
+export async function startVibe(settings: VibeSettings, fallback?: Fallback): Promise<boolean> {
   session.played.clear();
   session.skipped.clear();
-  const batch = await nextBatch(mood, new Set(), fallback);
+  const batch = await nextBatch(settings, new Set(), fallback);
   if (batch.length === 0) return false;
-  vibeContext = `radio:vibe:${mood ?? "all"}:${Date.now().toString(36)}`;
+  const { character, mood, language } = settings;
+  vibeContext = `radio:vibe:${character ?? "-"}:${mood ?? "-"}:${language ?? "-"}:${Date.now().toString(36)}`;
   try {
     sessionStorage.setItem(VIBE_CONTEXT_KEY, vibeContext);
   } catch {}

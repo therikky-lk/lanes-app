@@ -46,6 +46,7 @@
     "sec": "сек"
   },
   "common": {
+    "pause": "Пауза",
     "source": "Джерело",
     "app": {
       "name": "Lane",
@@ -221,9 +222,20 @@
       "another": "Інший вайб",
       "empty": "Послухайте кілька треків — і вайб налаштується",
       "mood": "Настрій",
-      "mood_happy": "Радісний",
-      "mood_calm": "Спокійний",
-      "mood_sad": "Сумний"
+      "mood_happy": "Веселе",
+      "mood_calm": "Спокійне",
+      "mood_sad": "Сумне",
+      "settings": "Налаштування хвилі",
+      "by_character": "за характером",
+      "by_mood": "під настрій",
+      "by_language": "за мовою",
+      "character_favorite": "Улюблене",
+      "character_unfamiliar": "Незнайоме",
+      "character_popular": "Популярне",
+      "mood_energetic": "Бадьоре",
+      "language_russian": "Російська",
+      "language_foreign": "Іноземна",
+      "language_instrumental": "Без слів"
     },
     "daily_mix": "Мікс дня {n}",
     "mix_label": "Мікс"
@@ -716,7 +728,6 @@
       "file_too_large": "Розмір файлу не повинен перевищувати 30 МБ",
       "read_error": "Не вдалося прочитати файл зображення"
     },
-
     "audio_data": {
       "description": "Якість стрімінгу, офлайн-кеш та діагностика з'єднання."
     },

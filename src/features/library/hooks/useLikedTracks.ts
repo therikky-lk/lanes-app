@@ -12,6 +12,9 @@ const listeners = new Set<() => void>();
 let view = { data: cache, isLoading: true };
 
 const optimisticOverrides = new Map<string, boolean>();
+/** when each override was set: a reload that started earlier can't know about it */
+const overrideAt = new Map<string, number>();
+let reloadQueued = false;
 
 // liked uploads live on this device and are shown first
 let localLiked: Track[] = [];
@@ -58,7 +61,12 @@ function snapshot() {
 const SERVER_SNAPSHOT = { data: EMPTY, isLoading: true };
 
 function load(force = false): Promise<void> {
-  if (request) return request;
+  if (request) {
+    // a reload asked for while one is running (a like / unlike just went
+    // through): the running one may predate it, so run once more afterwards
+    if (force) reloadQueued = true;
+    return request;
+  }
   const session = getAuthSession();
   if (!session?.accessToken) {
     cache = EMPTY;
@@ -70,6 +78,7 @@ function load(force = false): Promise<void> {
 
   if (!loaded) emit(true);
 
+  const startedAt = Date.now();
   request = (async () => {
     const tracks: Track[] = [];
     let cursor: string | undefined;
@@ -80,7 +89,17 @@ function load(force = false): Promise<void> {
     } while (cursor);
     cache = { tracks, total: tracks.length };
     loaded = true;
-    optimisticOverrides.clear();
+    // keep the optimistic state the server doesn't show yet: overrides made
+    // after this reload started, or that it doesn't agree with yet
+    const serverIds = new Set(tracks.map((t) => t.id));
+    for (const [id, liked] of [...optimisticOverrides]) {
+      const at = overrideAt.get(id) ?? 0;
+      const agrees = serverIds.has(id) === liked;
+      if (agrees || (at < startedAt && Date.now() - at > 30_000)) {
+        optimisticOverrides.delete(id);
+        overrideAt.delete(id);
+      }
+    }
   })()
     .catch(() => {
       if (!loaded) cache = EMPTY;
@@ -89,6 +108,10 @@ function load(force = false): Promise<void> {
     .finally(() => {
       request = null;
       emit(false);
+      if (reloadQueued) {
+        reloadQueued = false;
+        void load(true);
+      }
     });
   return request;
 }
@@ -96,6 +119,7 @@ function load(force = false): Promise<void> {
 export function applyOptimisticLike(trackId: string): () => void {
   const prev = optimisticOverrides.get(trackId);
   optimisticOverrides.set(trackId, true);
+  overrideAt.set(trackId, Date.now());
   emit(false);
   return () => {
     if (prev === undefined) optimisticOverrides.delete(trackId);
@@ -107,6 +131,7 @@ export function applyOptimisticLike(trackId: string): () => void {
 export function applyOptimisticUnlike(trackId: string): () => void {
   const prev = optimisticOverrides.get(trackId);
   optimisticOverrides.set(trackId, false);
+  overrideAt.set(trackId, Date.now());
   emit(false);
   return () => {
     if (prev === undefined) optimisticOverrides.delete(trackId);
@@ -122,6 +147,7 @@ if (typeof window !== "undefined") {
       cache = EMPTY;
       loaded = false;
       optimisticOverrides.clear();
+      overrideAt.clear();
       emit(false);
     } else {
       void load(true);

@@ -89,7 +89,7 @@ const cache = { data: [] as DailyMix[], timestamp: 0, owner: "" };
 
 // ---- client-built mixes (Lane) -------------------------------------------
 
-const LANE_MIXES_KEY = "lane_daily_mixes_v2";
+const LANE_MIXES_KEY = "lane_daily_mixes_v3";
 const today = () => new Date().toLocaleDateString("en-CA");
 
 interface StoredMixes {
@@ -141,6 +141,10 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
   const t = createTranslatorSync(getStoredLocale());
   const built = await buildDailyMixes(seeds, {
     mixCount: 10,
+    artistTracks: (name) =>
+      api.search(name, "track").then((r) =>
+        r.items.flatMap((item) => (item.type === "track" ? [toClientTrack(item as Parameters<typeof toClientTrack>[0])] : [])).slice(0, 15),
+      ),
     radio: (seed) => api.getRadio(seed.id, { k: 30 }).then((r) => (r.items || []).map((item) => toClientTrack(item))),
   });
   const mixes: DailyMix[] = built.map((mix) => {
@@ -249,6 +253,8 @@ export function useDailyMixes() {
         void building
           .then((mixes) => {
             if (!active || mixes.length < 2) return;
+            // never swap fuller server mixes for a thinner client set
+            if (mixes.length < cache.data.length && cache.owner === owner) return;
             mixes.forEach(cacheCollection);
             cache.data = mixes;
             cache.timestamp = Date.now();
