@@ -1177,7 +1177,13 @@
     "expand": "Показати треки",
     "collapse": "Сховати треки",
     "empty": "Тут з'явиться все, що ви слухаєте",
-    "more": "Показати ще"
+    "more": "Показати ще",
+    "songs_played_zero": "Прослухано треків: {count}",
+    "songs_played_one": "Прослухано треків: {count}",
+    "songs_played_two": "Прослухано треків: {count}",
+    "songs_played_few": "Прослухано треків: {count}",
+    "songs_played_many": "Прослухано треків: {count}",
+    "songs_played_other": "Прослухано треків: {count}"
   },
   "trends": {
     "title": "У трендах",

@@ -1106,7 +1106,13 @@
     "expand": "Show tracks",
     "collapse": "Hide tracks",
     "empty": "Everything you listen to will show up here",
-    "more": "Show more"
+    "more": "Show more",
+    "songs_played_zero": "{count} songs played",
+    "songs_played_one": "{count} songs played",
+    "songs_played_two": "{count} songs played",
+    "songs_played_few": "{count} songs played",
+    "songs_played_many": "{count} songs played",
+    "songs_played_other": "{count} songs played"
   },
   "trends": {
     "title": "Trending",

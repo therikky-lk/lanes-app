@@ -57,7 +57,9 @@
       "home": "Главная",
       "search": "Поиск",
       "library": "Библиотека",
-      "settings": "Настройки"
+      "settings": "Настройки",
+      "pin": "Закрепить в меню",
+      "unpin": "Открепить из меню"
     },
     "loading": "Загрузка",
     "signed_in": "В системе",
@@ -292,7 +294,9 @@
       "notif_progress": "Добавлено {liked} · обработано {done} из {total}",
       "notif_wait_rate": "Пауза из-за лимитов, скоро продолжим…",
       "notif_wait_network": "Нет связи, ждём сеть…",
-      "pill": "Spotify → лайки: {done} из {total}"
+      "pill": "Spotify → лайки: {done} из {total}",
+      "limited": "Spotify попросил подождать около {minutes} мин перед следующим запросом. Можно начать сейчас: перенос сам дождётся и продолжит.",
+      "wait_rate_min": "Попросили подождать, продолжим через {min} мин"
     },
     "title": "Библиотека",
     "liked_songs": "Понравившиеся",
@@ -1222,7 +1226,20 @@
     "expand": "Показать треки",
     "collapse": "Скрыть треки",
     "empty": "Здесь появится всё, что вы слушаете",
-    "more": "Показать ещё"
+    "more": "Показать ещё",
+    "songs_played_one": "{count} трек",
+    "songs_played_few": "{count} трека",
+    "songs_played_many": "{count} треков",
+    "songs_played_other": "{count} трека",
+    "tracks_count_one": "{count} трек",
+    "tracks_count_few": "{count} трека",
+    "tracks_count_many": "{count} треков",
+    "tracks_count_other": "{count} трека",
+    "today_time": "Сегодня послушано",
+    "today_tracks": "Треков сегодня",
+    "hours_minutes": "{h} ч {m} мин",
+    "minutes": "{m} мин",
+    "tracks_count": "{count} трека"
   },
   "trends": {
     "title": "В трендах",
@@ -1234,6 +1251,8 @@
     "new": "Новинка в чарте",
     "same": "Без изменений",
     "all": "Все {n}",
-    "less": "Свернуть"
+    "less": "Свернуть",
+    "source": "Apple Music · каждый день",
+    "source_hint": "Самые прослушиваемые песни Apple Music, обновляются каждый день. Мир — чарты 10 крупных стран вместе."
   }
 }

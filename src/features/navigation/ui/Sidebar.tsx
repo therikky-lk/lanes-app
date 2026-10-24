@@ -21,6 +21,7 @@ import { usePlayerStore, type AccentVariant } from "@/features/player";
 import { useModalStore } from "@/features/library";
 import { useCustomizationStore, getBlockStyle } from "@/features/settings";
 import { Tooltip } from "@/shared/ui";
+import SidebarPins from "./SidebarPins";
 
 
 const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
@@ -187,9 +188,14 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
           />
         </div>
 
-        <nav className="relative flex-1 flex flex-col items-center gap-[24px] pt-[12px]">
+        <nav className="relative shrink-0 flex flex-col items-center gap-[24px] pt-[12px] pb-[18px]">
           {renderNavItems()}
         </nav>
+
+        {/* pinned playlists / artists, under a line, filling the space down to settings */}
+        <div className="flex min-h-0 flex-1 flex-col items-center">
+          <SidebarPins />
+        </div>
 
         <div className="pt-[16px] pb-[16px] shrink-0 flex justify-center items-center">
           {renderSettingsButton()}
