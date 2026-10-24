@@ -21,4 +21,36 @@ describe("history grouping", () => {
     ]);
     expect(days[1].groups.map((g) => [g.source, g.tracks.length])).toEqual([["vibe", 2]]);
   });
+
+  it("glues a playlist back together when lone tracks come in between (the screenshot case)", () => {
+    const pl = { type: "playlist", id: "top" };
+    const days = groupHistory([
+      { track: tr("vibe1"), listenedAt: "2026-10-24T14:00:00", context: { type: "radio", id: "vibe:-:-:-:a" }, playedMs: 180_000 },
+      { track: tr("lone"), listenedAt: "2026-10-24T13:57:00", playedMs: 180_000 },
+      { track: tr("vibe2"), listenedAt: "2026-10-24T13:54:00", context: { type: "radio", id: "vibe:-:-:-:b" }, playedMs: 180_000 },
+      { track: tr("p1"), listenedAt: "2026-10-24T12:00:00", context: pl, playedMs: 200_000 },
+      { track: tr("s1"), listenedAt: "2026-10-24T11:57:00", playedMs: 200_000 },
+      { track: tr("p2"), listenedAt: "2026-10-24T11:54:00", context: pl, playedMs: 200_000 },
+      { track: tr("s2"), listenedAt: "2026-10-24T11:51:00", playedMs: 200_000 },
+      { track: tr("p3"), listenedAt: "2026-10-24T11:48:00", context: pl, playedMs: 200_000 },
+    ]);
+    expect(days[0].groups.map((g) => [g.source, g.tracks.map((t) => t.id).join(",")])).toEqual([
+      ["vibe", "vibe1,lone,vibe2"],
+      ["playlist", "p1,s1,p2,s2,p3"],
+    ]);
+    expect(days[0].plays).toBe(8);
+    expect(days[0].playedMs).toBe(3 * 180_000 + 5 * 200_000);
+  });
+
+  it("keeps sessions apart across a long break or another source in between", () => {
+    const pl = { type: "playlist", id: "top" };
+    const days = groupHistory([
+      { track: tr("p1"), listenedAt: "2026-10-24T20:00:00", context: pl },
+      { track: tr("x"), listenedAt: "2026-10-24T19:57:00", context: { type: "album", id: "al" } },
+      { track: tr("p2"), listenedAt: "2026-10-24T19:54:00", context: pl },
+      { track: tr("lone"), listenedAt: "2026-10-24T15:00:00" },
+      { track: tr("p3"), listenedAt: "2026-10-24T14:57:00", context: pl },
+    ]);
+    expect(days[0].groups.map((g) => g.source)).toEqual(["playlist", "album", "playlist", "track", "playlist"]);
+  });
 });
