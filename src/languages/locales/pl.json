@@ -242,7 +242,8 @@
       "reset": "Reset"
     },
     "daily_mix": "Daily Mix {n}",
-    "mix_label": "Mix"
+    "mix_label": "Mix",
+    "history": "Historia"
   },
   "library": {
     "title": "Biblioteka",
@@ -1043,5 +1044,30 @@
     "empty_desc": "or click to choose. Title, artist and cover are read from the file tags.",
     "drop_here": "Drop to add to My tracks",
     "unknown_artist": "Unknown artist"
+  },
+  "history": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "songs_played": "{count} songs played",
+    "playlist": "Playlist",
+    "album": "Album",
+    "daily_mix": "Daily Mix",
+    "radio": "Radio: {title}",
+    "expand": "Show tracks",
+    "collapse": "Hide tracks",
+    "empty": "Everything you listen to will show up here",
+    "more": "Show more"
+  },
+  "trends": {
+    "title": "Trending",
+    "russia": "Russia",
+    "world": "Worldwide",
+    "first": "Number one",
+    "up": "Up {n}",
+    "down": "Down {n}",
+    "new": "New in the chart",
+    "same": "No change",
+    "all": "All {n}",
+    "less": "Show less"
   }
 }

@@ -1,18 +1,112 @@
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeftLine } from "@mingcute/react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeftLine, DownLine, HeartFill, RadioFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
+import { api, toClientTrack } from "@/shared/api";
 import { playerEngine } from "@/features/player";
+import CoverImage from "@/features/covers/ui/CoverImage";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
-import type { Track } from "@/shared/types/track";
-import { useRecentlyPlayed } from "../hooks/useRecentlyPlayed";
+import { usePlaylistsList } from "@/features/library/hooks/usePlaylists";
+import { useSessionOwner } from "../hooks/sessionAwareLoad";
+import { groupHistory, type HistoryGroup, type HistoryPlay } from "../history/groupHistory";
 
-/** everything played lately, newest first */
+const PAGE = 100;
+
+/** the listening history, page by page */
+function useHistoryPlays() {
+  const owner = useSessionOwner();
+  const [plays, setPlays] = useState<HistoryPlay[]>([]);
+  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  const loadMore = async (from?: string) => {
+    setLoading(true);
+    try {
+      const page = await api.getHistory(from, PAGE);
+      const next = (page.items ?? []).flatMap((item) =>
+        item.track ? [{ track: toClientTrack(item.track), listenedAt: item.listenedAt, context: item.context }] : [],
+      );
+      setPlays((prev) => (from ? [...prev, ...next] : next));
+      setCursor(page.nextCursor ?? null);
+    } catch {
+      if (!from) setPlays([]);
+      setCursor(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadMore(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner]);
+
+  return { plays, loading, hasMore: !!cursor, more: () => cursor && void loadMore(cursor) };
+}
+
 export default function RecentPage() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const navigate = useNavigate();
-  const { data, isLoading } = useRecentlyPlayed(100);
-  const tracks: Track[] = (data ?? []).flatMap((e) => (e.type === "track" ? [e.item as Track] : []));
-  const title = t("home.recent") && t("home.recent") !== "home.recent" ? t("home.recent") : "Recently played";
+  const { plays, loading, hasMore, more } = useHistoryPlays();
+  const { data: playlists } = usePlaylistsList();
+  const days = useMemo(() => groupHistory(plays), [plays]);
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+
+  const playlistById = useMemo(() => new Map((playlists?.playlists ?? []).map((p) => [p.id, p])), [playlists]);
+
+  const dayLabel = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+    if (date.toDateString() === today.toDateString()) return t("history.today");
+    if (date.toDateString() === yesterday.toDateString()) return t("history.yesterday");
+    const label = new Intl.DateTimeFormat(locale, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      ...(date.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
+    }).format(date);
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  };
+
+  const describe = (g: HistoryGroup) => {
+    const first = g.tracks[0];
+    const count = t("history.songs_played", { count: g.tracks.length });
+    switch (g.source) {
+      case "playlist": {
+        const p = g.id ? playlistById.get(g.id) : undefined;
+        return { title: p?.title ?? t("history.playlist"), sub: `${count} · ${t("history.playlist")}`, cover: p?.coverUrl || first.coverUrl };
+      }
+      case "album":
+        return { title: first.album?.title ?? first.title, sub: `${count} · ${t("history.album")}`, cover: first.coverUrl };
+      case "liked":
+        return { title: t("library.liked_songs"), sub: count, cover: undefined, icon: "liked" as const };
+      case "mix":
+        return { title: t("history.daily_mix"), sub: count, cover: first.coverUrl };
+      case "vibe":
+        return { title: t("home.vibe.title"), sub: count, cover: undefined, icon: "vibe" as const };
+      case "radio":
+        return { title: t("history.radio", { title: first.title }), sub: count, cover: first.coverUrl };
+      default:
+        return { title: first.title, sub: first.artists, cover: first.coverUrl };
+    }
+  };
+
+  const openSource = (g: HistoryGroup) => {
+    if (g.source === "playlist" && g.id) navigate(`/library/playlist?id=${encodeURIComponent(g.id)}`);
+    else if (g.source === "liked") navigate("/library/playlist?id=likes");
+    else if (g.source === "album" && g.id) navigate(`/collection?type=album&id=${encodeURIComponent(g.id)}`);
+    else if (g.source === "mix" && g.id) navigate(`/collection?type=playlist&id=${encodeURIComponent(g.id)}`);
+    else void playerEngine.playTrack(g.tracks[0], g.tracks, "recent", null, 0);
+  };
+
+  const toggle = (key: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <div data-page-scroller className="h-full w-full overflow-y-auto pb-[32px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
@@ -25,23 +119,103 @@ export default function RecentPage() {
           <ArrowLeftLine size={16} />
           {t("common.back")}
         </button>
-        <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{title}</h1>
-        <p className="m-0 mt-[4px] text-[13px] text-text-tertiary">{tracks.length ? t("common.tracks", { count: tracks.length }) : isLoading ? "…" : ""}</p>
+        <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{t("home.history")}</h1>
       </div>
-      <div className="mt-[16px] flex flex-col gap-[2px] px-[24px]">
-        {tracks.map((track, index) => (
-          <SongCardWithMenu
-            key={`${track.id}-${index}`}
-            id={track.id}
-            title={track.title}
-            artists={track.artists}
-            coverUrl={track.coverUrl ?? ""}
-            durationMs={track.durationMs}
-            explicit={track.explicit}
-            onPlay={() => void playerEngine.playTrack(track, tracks, "recent", null, index)}
-            searchType="track"
-          />
+
+      <div className="mt-[8px] px-[24px]">
+        {days.map((day) => (
+          <section key={day.key} className="mt-[22px]">
+            <h2 className="m-0 mb-[8px] px-[8px] text-[18px] font-[700] tracking-tight text-text-primary">{dayLabel(day.date)}</h2>
+            <div className="flex flex-col">
+              {day.groups.map((g) => {
+                const d = describe(g);
+                const expandable = g.tracks.length > 1;
+                const isOpen = open.has(g.key);
+                return (
+                  <div key={g.key} className="rounded-xl transition-colors hover:bg-white/[0.035]">
+                    <div className="flex items-center gap-[12px] px-[8px] py-[7px]">
+                      <button
+                        type="button"
+                        onClick={() => openSource(g)}
+                        className="flex min-w-0 flex-1 items-center gap-[12px] border-0 bg-transparent p-0 text-left cursor-pointer"
+                      >
+                        <span className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
+                          {d.icon === "liked" ? (
+                            <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "linear-gradient(140deg,#ff5f7a,#d6143f)" }}>
+                              <HeartFill size={24} />
+                            </span>
+                          ) : d.icon === "vibe" ? (
+                            <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "radial-gradient(circle at 50% 50%, #111 38%, #d22ad2 70%, #6a0f96)" }}>
+                              <RadioFill size={20} />
+                            </span>
+                          ) : d.cover ? (
+                            <CoverImage src={d.cover} alt="" fill sizes="52px" className="object-cover" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[15px] font-[550] text-text-primary">{d.title}</span>
+                          <span className="block truncate text-[13px] text-text-tertiary">{d.sub}</span>
+                        </span>
+                      </button>
+                      {expandable && (
+                        <button
+                          type="button"
+                          onClick={() => toggle(g.key)}
+                          aria-expanded={isOpen}
+                          aria-label={isOpen ? t("history.collapse") : t("history.expand")}
+                          className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-tertiary hover:bg-white/[0.06] hover:text-text-primary cursor-pointer"
+                        >
+                          <DownLine size={20} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                        </button>
+                      )}
+                    </div>
+                    <AnimatePresence initial={false}>
+                      {expandable && isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                          className="overflow-hidden pl-[20px] pb-[6px]"
+                        >
+                          {g.tracks.map((track, index) => (
+                            <SongCardWithMenu
+                              key={`${track.id}-${index}`}
+                              id={track.id}
+                              title={track.title}
+                              artists={track.artists}
+                              coverUrl={track.coverUrl ?? ""}
+                              durationMs={track.durationMs}
+                              explicit={track.explicit}
+                              onPlay={() => void playerEngine.playTrack(track, g.tracks, "recent", null, index)}
+                              searchType="track"
+                            />
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         ))}
+
+        {!loading && days.length === 0 && (
+          <p className="mt-[40px] text-center text-[14px] text-text-tertiary">{t("history.empty")}</p>
+        )}
+        {hasMore && (
+          <div className="mt-[18px] flex justify-center">
+            <button
+              type="button"
+              onClick={more}
+              disabled={loading}
+              className="h-[38px] rounded-full border border-white/10 bg-white/[0.05] px-[18px] text-[13.5px] font-[550] text-text-primary hover:bg-white/[0.09] disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? "…" : t("history.more")}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
