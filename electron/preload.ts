@@ -144,6 +144,8 @@ export interface LinerElectronApi {
   spotifyLogin?: () => Promise<boolean>;
   spotifyLogout?: () => Promise<boolean>;
   spotifyFetch?: (request: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ status: number; body: string }>;
+  /** keep the app (not the screen) from being suspended while a long job runs */
+  keepAwake?: (on: boolean) => Promise<boolean>;
 }
 
 const isHyprland = Boolean(
@@ -390,6 +392,7 @@ const api: LinerElectronApi = {
   spotifyLogin: () => ipcRenderer.invoke("spotify:login"),
   spotifyLogout: () => ipcRenderer.invoke("spotify:logout"),
   spotifyFetch: (request) => ipcRenderer.invoke("spotify:fetch", request),
+  keepAwake: (on) => ipcRenderer.invoke("power:keep-awake", on),
 };
 
 if (location.hostname === "www.youtube.com") {
