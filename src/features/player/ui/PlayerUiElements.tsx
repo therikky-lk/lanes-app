@@ -1,5 +1,5 @@
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
   SkipNext,
@@ -75,6 +75,7 @@ export function PlayerUiElements({
   const trackTitle = track?.title || "";
   const trackArtists = track?.artists || "";
 
+  const isMobile = useIsMobile();
   const isLiked = useIsTrackLiked(track?.id);
   const likeMutation = useLikeTrack();
   const unlikeMutation = useUnlikeTrack();
@@ -95,9 +96,43 @@ export function PlayerUiElements({
 
   const isCoverLoaded = useCoverReady(coverUrl);
 
+  // phones: no hover, so a tap on the cover shows the heart for a moment and a
+  // double tap likes the track (with a burst)
+  const [heartShown, setHeartShown] = useState(false);
+  const [burst, setBurst] = useState(0);
+  const lastTapRef = useRef(0);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showHeart = useCallback(() => {
+    setHeartShown(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setHeartShown(false), 2500);
+  }, []);
+  useEffect(() => () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+  }, []);
+  const onCoverTap = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isMobile || (e.target as HTMLElement).closest("button")) return;
+      const now = Date.now();
+      if (now - lastTapRef.current < 320) {
+        lastTapRef.current = 0;
+        setBurst((n) => n + 1);
+        if (track && !isLiked && !togglingRef.current) {
+          togglingRef.current = true;
+          likeMutation.mutate(track.id, { onSettled: () => (togglingRef.current = false) });
+        }
+        showHeart();
+        return;
+      }
+      lastTapRef.current = now;
+      showHeart();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [track, isLiked, likeMutation, showHeart],
+  );
+
   const { t } = useTranslation();
 
-  const isMobile = useIsMobile();
   const S = isMobile ? "min(84vw, 44vh)" : "clamp(300px, min(36vw, 52vh), 460px)";
 
   return (
@@ -108,6 +143,7 @@ export function PlayerUiElements({
         className={`group/cover relative shrink-0 overflow-hidden rounded-2xl bg-black/20 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${
           coverUrl && !isCoverLoaded ? "animate-pulse" : ""
         }`}
+        onPointerUp={onCoverTap}
       >
         <AnimatePresence>
           <motion.div
@@ -136,14 +172,34 @@ export function PlayerUiElements({
             )}
           </motion.div>
         </AnimatePresence>
-        {/* like button: centred on the cover, shown on hover (phones: in the top bar) */}
-        {!isMobile && <button
+        {/* double-tap burst (phones) */}
+        <AnimatePresence>
+          {burst > 0 && (
+            <motion.div
+              key={burst}
+              initial={{ scale: 0.4, opacity: 0 }}
+              animate={{ scale: [0.4, 1.15, 1], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 0.9, times: [0, 0.35, 0.6, 1], ease: "easeOut" }}
+              onAnimationComplete={() => setBurst(0)}
+              className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center text-[#ff3b5c] drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)]"
+            >
+              <HeartFill size={110} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* like button: centred on the cover; desktop shows it on hover, phones after a tap */}
+        {<button
           type="button"
           aria-label={isLiked ? t("common.unlike") : t("common.like")}
-          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex h-[72px] w-[72px] items-center justify-center rounded-full opacity-0 group-hover/cover:opacity-100 focus-visible:opacity-100 transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] bg-black/35 backdrop-blur-md border-none hover:bg-black/50 ${
+          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex h-[72px] w-[72px] items-center justify-center rounded-full ${
+            isMobile ? (heartShown && burst === 0 ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover/cover:opacity-100"
+          } focus-visible:opacity-100 transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] bg-black/35 backdrop-blur-md border-none hover:bg-black/50 ${
             isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"
           }`}
-          onClick={handleLikeToggle}
+          onClick={() => {
+            handleLikeToggle();
+            if (isMobile) showHeart();
+          }}
           style={{ cursor: "pointer" }}
         >
           {/* subtle crossfade: outline heart out, filled heart in with a slight scale */}

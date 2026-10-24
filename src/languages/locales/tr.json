@@ -216,9 +216,14 @@
       "subtitle": "Personal stream",
       "play": "Play My Vibe",
       "another": "Another vibe",
-      "empty": "Play a few tracks and your vibe will tune in"
+      "empty": "Play a few tracks and your vibe will tune in",
+      "mood": "Mood",
+      "mood_happy": "Happy",
+      "mood_calm": "Calm",
+      "mood_sad": "Sad"
     },
-    "daily_mix": "Daily Mix {n}"
+    "daily_mix": "Daily Mix {n}",
+    "mix_label": "Mix"
   },
   "library": {
     "title": "Kitaplık",

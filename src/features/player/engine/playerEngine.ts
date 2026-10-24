@@ -69,6 +69,16 @@ export function setRemoteHooks(
   localPlayListener = onLocalPlay;
 }
 
+// ---- custom radio sources ---------------------------------------------------
+// A radio context can be refilled by its own source (My Vibe picks fresh seeds
+// from the listener's taste on every refill) instead of "similar to one track".
+type RadioRefill = (context: string, queue: Track[]) => Promise<Track[]> | null;
+let radioRefill: RadioRefill | null = null;
+
+export function setRadioRefillProvider(provider: RadioRefill | null): void {
+  radioRefill = provider;
+}
+
 function forwarded(action: RemoteAction): boolean {
   return remoteInterceptor ? remoteInterceptor(action) : false;
 }
@@ -1133,14 +1143,16 @@ class PlayerEngine {
     if (!this.radioWaveId) this.radioWaveId = newRadioWaveId();
     const waveId = this.radioWaveId;
 
-    let items: ApiRadioTrack[];
+    const custom = radio && startContext ? radioRefill?.(startContext, currentState.queue) : null;
+    let items: ApiRadioTrack[] | null = null;
+    let customTracks: Track[] | null = null;
     try {
-      const response = await api.getRadio(seedTrackId, {
+      if (custom) customTracks = await custom;
+      else items = (await api.getRadio(seedTrackId, {
         history: historyIds.slice(-20),
         k: 20,
         wave_id: waveId,
-      });
-      items = response.items;
+      })).items;
     } catch (error) {
       log(
         "yellow",
@@ -1157,8 +1169,7 @@ class PlayerEngine {
     if (!radio && !state.autoplaySimilar) return;
 
     const queuedIds = new Set(state.queue.map((track) => track.id));
-    const additions = items
-      .map(toClientTrack)
+    const additions = (customTracks ?? (items ?? []).map(toClientTrack))
       .filter((track) => !queuedIds.has(track.id));
     if (additions.length === 0) return;
 

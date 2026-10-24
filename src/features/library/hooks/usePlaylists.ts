@@ -59,6 +59,8 @@ let view = { data: cache, error: undefined as unknown, isLoading: true };
 
 export function notifyLibraryChanged() {
   window.dispatchEvent(new Event("library:changed"));
+  // a change made on this device: Lane Connect tells the user's other devices
+  window.dispatchEvent(new Event("library:local-change"));
 }
 
 // optimistically drop playlist from store so ui reacts instantly without waiting on network
