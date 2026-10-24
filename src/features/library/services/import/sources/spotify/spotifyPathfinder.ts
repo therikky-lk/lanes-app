@@ -64,8 +64,17 @@ export function mapPathfinderItem(item: JsonRecord): ClientImportedTrack | undef
   };
 }
 
-async function fetchPage(playlistId: string, offset: number, signal?: AbortSignal): Promise<JsonRecord | undefined> {
-  let session = await getSpotifyGuestSession(signal);
+async function fetchPage(
+  playlistId: string,
+  offset: number,
+  signal?: AbortSignal,
+  userToken?: () => Promise<string>,
+): Promise<JsonRecord | undefined> {
+  // personal playlists ("Your Top Songs", Daily Mix…) are visible only to their
+  // owner: those are read with the signed-in user's token instead of a guest one
+  const sessionFor = async (): Promise<SpotifySession> =>
+    userToken ? ({ accessToken: await userToken() } as SpotifySession) : getSpotifyGuestSession(signal);
+  let session = await sessionFor();
   for (let attempt = 1; attempt <= PAGE_ATTEMPTS; attempt += 1) {
     try {
       const response = await fetch(pathfinderUrl(playlistId, offset), { headers: pathfinderHeaders(session), signal });
@@ -74,8 +83,8 @@ async function fetchPage(playlistId: string, offset: number, signal?: AbortSigna
         continue;
       }
       if (response.status === 401 || response.status === 403) {
-        resetSpotifySessionCache();
-        session = await getSpotifyGuestSession(signal);
+        if (!userToken) resetSpotifySessionCache();
+        session = await sessionFor();
         continue;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -98,13 +107,17 @@ async function fetchPage(playlistId: string, offset: number, signal?: AbortSigna
   return undefined;
 }
 
-export async function fetchSpotifyPlaylistTracks(playlistId: string, signal?: AbortSignal): Promise<PathfinderResult> {
+export async function fetchSpotifyPlaylistTracks(
+  playlistId: string,
+  signal?: AbortSignal,
+  userToken?: () => Promise<string>,
+): Promise<PathfinderResult> {
   const tracks: ClientImportedTrack[] = [];
   let total: number | undefined;
   let offset = 0;
 
   for (let page = 0; page < MAX_PAGES && (total === undefined || offset < total); page += 1) {
-    const content = await fetchPage(playlistId, offset, signal);
+    const content = await fetchPage(playlistId, offset, signal, userToken);
     if (!content) {
       if (page === 0) throw new Error("spotify pathfinder returned nothing");
       break;

@@ -46,6 +46,7 @@
     "sec": "сек"
   },
   "common": {
+    "pause": "Пауза",
     "source": "Источник",
     "app": {
       "name": "Lane",
@@ -221,9 +222,20 @@
       "another": "Другой вайб",
       "empty": "Послушайте пару треков — и вайб настроится",
       "mood": "Настроение",
-      "mood_happy": "Радостный",
-      "mood_calm": "Спокойный",
-      "mood_sad": "Грустный"
+      "mood_happy": "Весёлое",
+      "mood_calm": "Спокойное",
+      "mood_sad": "Грустное",
+      "settings": "Настройки волны",
+      "by_character": "по характеру",
+      "by_mood": "под настроение",
+      "by_language": "по языку",
+      "character_favorite": "Любимое",
+      "character_unfamiliar": "Незнакомое",
+      "character_popular": "Популярное",
+      "mood_energetic": "Бодрое",
+      "language_russian": "Русский",
+      "language_foreign": "Иностранный",
+      "language_instrumental": "Без слов"
     },
     "daily_mix": "Микс дня {n}",
     "mix_label": "Микс"
@@ -716,7 +728,6 @@
       "file_too_large": "Размер файла не должен превышать 30 МБ",
       "read_error": "Не удалось прочитать файл изображения"
     },
-
     "audio_data": {
       "description": "Качество стриминга, офлайн-кеш и диагностика соединения."
     },

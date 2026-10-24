@@ -5,6 +5,7 @@ import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
+import { applyLyricsLatency, lyricsOutputLatencyMs } from "@/features/lyrics/engine/lyricsLatency";
 import { AddLine, Edit2Line } from "@mingcute/react";
 import {
   useCallback,
@@ -32,6 +33,8 @@ import "@braccato/core/styles/variables.css";
 import "@braccato/core/styles/lyrics.css";
 import "@braccato/core/styles/instrumental.css";
 import KawarpWrapper from "./KawarpWrapper";
+import { SpeedPitchPicker } from "./SpeedPitchPicker";
+import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 
 const BRACCATO_TAG = "braccato-lyrics";
@@ -198,7 +201,7 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
     const checkActiveLine = () => {
       const audioEl = document.getElementById("liner-audio") as HTMLAudioElement | null;
       if (audioEl && !Number.isNaN(audioEl.currentTime)) {
-        const currentMs = audioEl.currentTime * 1000;
+        const currentMs = audioEl.currentTime * 1000 - Math.max(appliedLatency, 0);
         const lines = useLyricsStore.getState().syncedLines;
         let idx = -1;
         for (let i = 0; i < lines.length; i++) {
@@ -225,6 +228,16 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
 
     syncRafId = requestAnimationFrame(checkActiveLine);
     const detachLetters = attachLetterAnimation(el);
+    // keep the lyrics on the sound that is heard, not on the element's clock
+    let appliedLatency = -1;
+    const syncLatency = () => {
+      const lat = lyricsOutputLatencyMs();
+      if (Math.abs(lat - appliedLatency) < 10) return;
+      appliedLatency = lat;
+      applyLyricsLatency(el, lat);
+    };
+    syncLatency();
+    const latencyTimer = setInterval(syncLatency, 2000);
 
     el.addEventListener("braccato:lyrics-loaded", onLyricsLoaded);
     el.addEventListener("braccato:line-click", handleBraccatoLineClick);
@@ -234,6 +247,7 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
     return () => {
       cancelAnimationFrame(syncRafId);
       detachLetters();
+      clearInterval(latencyTimer);
       useLyricsStore.getState().setActiveLineIndex(null);
       el.removeEventListener("braccato:lyrics-loaded", onLyricsLoaded);
       el.removeEventListener("braccato:line-click", handleBraccatoLineClick);
@@ -343,6 +357,10 @@ export function FullscreenPlayer({
   const [customLyricsOpen, setCustomLyricsOpen] = useState(false);
   const isMobile = useIsMobile();
   const [mobileLyrics, setMobileLyrics] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
+  const speedChanged = usePlayerStore(
+    (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
+  );
   const coverUrl = player.currentTrack?.coverUrl;
   const kawarpSrc = useCoverSrc(coverUrl);
 
@@ -562,6 +580,32 @@ export function FullscreenPlayer({
         trackTitle={player.currentTrack?.title}
       />
 
+      <AnimatePresence>
+        {isMobile && speedOpen && (
+          <motion.div
+            key="speed-sheet"
+            className="absolute inset-0 z-40 flex items-end bg-black/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSpeedOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40 }}
+              animate={{ y: 0 }}
+              exit={{ y: 40 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full rounded-t-2xl bg-bg-primary p-[16px]"
+              style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 16px)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-[12px] h-[4px] w-[36px] rounded-full bg-white/20" />
+              <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <button
         type="button"
         aria-label={t("player.close_fullscreen")}
@@ -589,6 +633,18 @@ export function FullscreenPlayer({
             }`}
           >
             {t("player.lyrics") || "Lyrics"}
+          </button>
+        )}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setSpeedOpen(true)}
+            aria-label={t("player.speed")}
+            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer ${
+              speedChanged ? "bg-white text-black" : "bg-black/45 text-white/85"
+            }`}
+          >
+            <PlaybackSpeed size={18} weight={speedChanged ? "Bold" : "Outline"} />
           </button>
         )}
         <ConnectDevicesButton
