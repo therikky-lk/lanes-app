@@ -3,6 +3,7 @@ import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
 import PopularTracksSection from "./PopularTracksSection";
 import DailyMixesSection from "./DailyMixesSection";
+import TrendsSection from "./TrendsSection";
 import HomePageSkeleton from "./HomePageSkeleton";
 import MyVibeHero from "./MyVibeHero";
 import type { Track } from "@/shared/types/track";
@@ -27,7 +28,10 @@ import {
   PlaylistFill,
   HeartFill,
   FlashCircleFill,
+  HistoryLine,
+  RightLine,
 } from "@mingcute/react";
+import CoverImage from "@/features/covers/ui/CoverImage";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -130,40 +134,60 @@ export default function HomePage() {
         {/* Real Content Layer */}
         {isReady && (
           <div className="col-start-1 row-start-1 w-full pb-[16px]">
-            {/* two big shortcuts: liked songs and recently played */}
-            <div className="mt-[20px] px-8 grid grid-cols-2 gap-[10px]">
-              <button
-                type="button"
-                onClick={() => navigate("/library/playlist?id=likes")}
-                className="group relative flex h-[84px] items-center gap-[12px] overflow-hidden rounded-2xl border-0 px-[16px] text-left cursor-pointer transition-transform active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg, rgba(255,59,92,0.30), rgba(255,59,92,0.08))" }}
-              >
-                <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-[#ff3b5c] text-white shadow-[0_6px_18px_rgba(255,59,92,0.35)]">
-                  <HeartFill size={22} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-[600] text-text-primary">{t("library.liked_songs")}</span>
-                  <span className="block truncate text-[12.5px] text-text-tertiary">
-                    {likedData.total} {likedData.total === 1 ? t("library.song") : t("library.songs")}
+            {/* two shortcuts: liked songs and history. A tile, the name with a
+                chevron, one line under it, and the latest track's cover */}
+            <div className="mt-[18px] px-8 grid grid-cols-1 gap-x-[10px] gap-y-[2px] min-[460px]:grid-cols-2">
+              {(
+                [
+                  {
+                    key: "liked",
+                    onClick: () => navigate("/library/playlist?id=likes"),
+                    tile: (
+                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] text-white" style={{ background: "linear-gradient(140deg,#ff5f7a,#d6143f)" }}>
+                        <HeartFill size={22} />
+                      </span>
+                    ),
+                    title: t("library.liked_songs"),
+                    sub: `${likedData.total} ${likedData.total === 1 ? t("library.song") : t("library.songs")}`,
+                    thumb: likedData.tracks.find((tr) => tr.coverUrl)?.coverUrl,
+                  },
+                  {
+                    key: "history",
+                    onClick: () => navigate("/recent"),
+                    tile: (
+                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] text-text-primary">
+                        <HistoryLine size={22} />
+                      </span>
+                    ),
+                    title: t("home.history"),
+                    sub:
+                      [...new Set(vibeRecent.map((tr) => tr.artists.split(",")[0]?.trim()).filter(Boolean))].slice(0, 3).join(", ") ||
+                      t("home.jumpBackIn"),
+                    thumb: vibeRecent.find((tr) => tr.coverUrl)?.coverUrl,
+                  },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={item.onClick}
+                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-xl border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05] active:bg-white/[0.08]"
+                >
+                  {item.tile}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-[2px] text-[15px] font-[650] text-text-primary">
+                      <span className="truncate">{item.title}</span>
+                      <RightLine size={16} className="shrink-0 text-text-tertiary" />
+                    </span>
+                    <span className="block truncate text-[12.5px] text-text-tertiary">{item.sub}</span>
                   </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/recent")}
-                className="group relative flex h-[84px] items-center gap-[12px] overflow-hidden rounded-2xl border-0 px-[16px] text-left cursor-pointer transition-transform active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(56,189,248,0.07))" }}
-              >
-                <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white shadow-[0_6px_18px_rgba(56,189,248,0.35)]">
-                  <TimeFill size={22} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[15px] font-[600] text-text-primary">
-                    {t("home.recent") && t("home.recent") !== "home.recent" ? t("home.recent") : "Recently played"}
-                  </span>
-                  <span className="block truncate text-[12.5px] text-text-tertiary">{t("home.jumpBackIn")}</span>
-                </span>
-              </button>
+                  {item.thumb && (
+                    <span className="relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-md">
+                      <CoverImage src={item.thumb} alt="" fill sizes="40px" className="object-cover" />
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
 
             {/* Daily Mixes (Made For You) */}
@@ -173,6 +197,9 @@ export default function HomePage() {
                 headingMarginTop="mt-[22px]"
               />
             )}
+
+          {/* Trending: top 50 for Russia / worldwide */}
+          <TrendsSection />
 
           {/* Listening Right Now (Trending Chart) */}
           {popularTracksOnly && popularTracksOnly.length > 0 && (

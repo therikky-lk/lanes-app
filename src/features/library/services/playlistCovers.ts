@@ -14,9 +14,17 @@ function readAll(): Record<string, string> {
 }
 
 /** custom cover, else the original artwork of an imported playlist */
+/** covers stored with the playlist on the server (see playlistCoverMarker) */
+const serverCovers = new Map<string, string>();
+
+export function rememberServerCover(playlistId: string, coverUrl: string | undefined): void {
+  if (coverUrl) serverCovers.set(playlistId, coverUrl);
+  else serverCovers.delete(playlistId);
+}
+
 export function getPlaylistCover(playlistId: string | null | undefined): string | undefined {
   if (!playlistId) return undefined;
-  return readAll()[playlistId] ?? getImportedPlaylistMeta(playlistId)?.coverUrl;
+  return readAll()[playlistId] ?? getImportedPlaylistMeta(playlistId)?.coverUrl ?? serverCovers.get(playlistId);
 }
 
 export function hasCustomPlaylistCover(playlistId: string | null | undefined): boolean {

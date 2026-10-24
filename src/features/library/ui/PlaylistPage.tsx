@@ -27,6 +27,7 @@ import { FaSpotify } from "react-icons/fa";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
+import { readCoverMarker, stripCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
 import { getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { buildShareUrl } from "@/shared/utils/share";
 import Button from "@/shared/ui/Button";
@@ -198,7 +199,7 @@ function LibraryPlaylistContent() {
       };
     }
     if (!playlistDetail) return null;
-    const bio = playlistDetail.description?.trim() ?? "";
+    const bio = stripCoverMarker(playlistDetail.description);
     return {
       title: playlistDetail.title || t("playlist.untitled_playlist"),
       bio,
@@ -718,7 +719,8 @@ function LibraryPlaylistContent() {
                           const next = e.currentTarget.textContent?.trim() ?? "";
                           if (decodedId && next !== viewData.bio) {
                             void api
-                              .updatePlaylist(decodedId, { description: next })
+                              // keep the synced cover marker behind the edited text
+                              .updatePlaylist(decodedId, { description: withCoverMarker(next, readCoverMarker(playlistDetail?.description)) })
                               .then(() =>
                                 window.dispatchEvent(new Event("library:changed")),
                               );

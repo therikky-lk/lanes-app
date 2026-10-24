@@ -1,4 +1,6 @@
-import { getPlaylistCover } from "../services/playlistCovers";
+import { getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
+import { readCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
+import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
@@ -145,7 +147,19 @@ function load(force = false): Promise<void> {
     }
     writeCoverCache(coverCache);
 
-    // imported playlists show their original artwork (e.g. the Spotify cover)
+    // imported playlists show their original artwork (e.g. the Spotify cover);
+    // it travels with the playlist's description so every device has it
+    for (const playlist of playlists) {
+      const fromServer = readCoverMarker(playlist.description);
+      rememberServerCover(playlist.id, fromServer);
+      const local = getImportedPlaylistMeta(playlist.id)?.coverUrl;
+      if (local && !fromServer) {
+        // imported on this device before the cover was synced: send it up once
+        void api
+          .updatePlaylist(playlist.id, { description: withCoverMarker(playlist.description, local) })
+          .catch(() => undefined);
+      }
+    }
     for (const playlist of playlists) {
       const importedCover = getPlaylistCover(playlist.id);
       if (importedCover) {
