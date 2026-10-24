@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home7Fill, SearchLine, BookmarksFill, HeartFill, Settings4Fill } from "@mingcute/react";
-import { LIKED_HREF, navSectionOf } from "../data/navigation";
+import { Home7Fill, SearchLine, BookmarksFill, Settings4Fill } from "@mingcute/react";
+import { navSectionOf } from "../data/navigation";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "@/features/library/store/modalStore";
 
@@ -22,7 +22,7 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
     }`;
   const label = "text-[10.5px] font-[500] leading-none";
   const section = navSectionOf(pathname, search);
-  const onSection = (id: "home" | "library" | "liked") => !searchOpen && !settingsOpen && section === id;
+  const onSection = (id: "home" | "library") => !searchOpen && !settingsOpen && section === id;
 
   return (
     <nav
@@ -41,13 +41,9 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
         <SearchLine size={23} />
         <span className={label}>{t("common.sidebar.search") || "Search"}</span>
       </button>
-      <Link to="/library" className={item(onSection("library"))}>
+      <Link to="/library" className={item(onSection("library") || (!searchOpen && !settingsOpen && section === "liked"))}>
         <BookmarksFill size={23} />
         <span className={label}>{t("common.sidebar.library") || "Library"}</span>
-      </Link>
-      <Link to={LIKED_HREF} className={item(onSection("liked"))}>
-        <HeartFill size={23} />
-        <span className={label}>{t("common.sidebar.liked") || "Liked"}</span>
       </Link>
       <button type="button" onClick={toggleSettings} className={item(settingsOpen)}>
         <Settings4Fill size={23} />
