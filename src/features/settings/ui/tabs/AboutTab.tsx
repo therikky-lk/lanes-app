@@ -172,7 +172,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => openUrl("https://github.com/therikky-lk/lane_app/releases")}
+            onClick={() => openUrl("https://github.com/therikky-lk/lanes-app/releases")}
             disabled={checkingUpdate}
             className="!h-[32px] !px-[16px] !text-[12.5px] !gap-[7px] !rounded-lg"
           >

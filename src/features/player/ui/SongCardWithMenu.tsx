@@ -175,6 +175,7 @@ function SongCardWithMenu({
       rowNumber={rowNumber}
       albumTitle={albumTitle}
       isCurrent={isCurrent}
+      trackId={id}
       repostedBy={repostedBy}
       menuItems={menuItems}
       menuOpen={menuOpen}

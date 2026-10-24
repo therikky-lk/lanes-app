@@ -7,6 +7,7 @@ import { useTranslation } from "@/languages";
 import { ArtistLink } from "@/features/artist";
 import HighlightedText from "@/shared/ui/HighlightedText";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
+import SourceBadge from "@/shared/ui/SourceBadge";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { isCoverReady } from "@/features/covers/lib/coverArt";
 import type { TrackArtist } from "@/shared/types";
@@ -33,6 +34,8 @@ export interface SongCardProps {
   albumTitle?: string;
   /** highlight the row as the one playing now */
   isCurrent?: boolean;
+  /** shows where the track streams from */
+  trackId?: string;
   repostedBy?: string;
   menuItems?: DropdownMenuItem[];
   menuOpen?: boolean;
@@ -66,6 +69,7 @@ function SongCard({
   rowNumber,
   albumTitle,
   isCurrent = false,
+  trackId,
   repostedBy,
   menuItems,
   menuOpen,
@@ -232,6 +236,7 @@ function SongCard({
               fontWeight: 350,
             }}
           >
+            {trackId && <SourceBadge trackId={trackId} className="mr-[5px]" />}
             {explicit && <ExplicitBadge size="md" className="mr-[6px] shrink-0" />}
             {artistsClickable ? (
               <ArtistLink

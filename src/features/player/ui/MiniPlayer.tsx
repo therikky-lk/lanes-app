@@ -42,6 +42,7 @@ import { useTheme } from "next-themes";
 import { useCoverReady, CoverImage } from "@/features/covers";
 import { useCustomizationStore, getBlockStyle } from "@/features/settings";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
+import SourceBadge from "@/shared/ui/SourceBadge";
 import { ArtistLink } from "@/features/artist";
 
 
@@ -786,6 +787,7 @@ function MiniPlayer({
                   lineHeight: "15px",
                 }}
               >
+                {player.currentTrack && <SourceBadge trackId={player.currentTrack.id} className="mr-[2px]" />}
                 {player.currentTrack?.explicit && <ExplicitBadge />}
                 <ArtistLink
                   name={trackArtists}

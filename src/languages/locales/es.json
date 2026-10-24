@@ -46,6 +46,7 @@
     "sec": "s"
   },
   "common": {
+    "source": "Source",
     "app": {
       "name": "Lane",
       "description": "Más de lo que te gusta",

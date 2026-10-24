@@ -23,6 +23,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArtistLink } from "@/features/artist";
 import { useCoverReady, CoverImage } from "@/features/covers";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
+import SourceBadge from "@/shared/ui/SourceBadge";
 import { VolumePicker } from "./VolumePicker";
 import { TimelineSlider } from "./TimelineSlider";
 
@@ -236,6 +237,7 @@ export function PlayerUiElements({
             <span className="min-w-0 truncate">{trackTitle}</span>
           </p>
           <p className="m-0 mt-[2px] flex items-center justify-center gap-[5px] text-[15px] text-white/65 leading-snug max-w-full overflow-hidden">
+            {track && <SourceBadge trackId={track.id} size={15} />}
             {track?.explicit && (
               <ExplicitBadge className="!bg-white/60 !text-black !pb-0 !leading-none shrink-0" />
             )}
