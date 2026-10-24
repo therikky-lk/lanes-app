@@ -65,6 +65,7 @@ jobs:
         with:
           name: android
           if-no-files-found: error
+          retention-days: 1
           path: |
             release/*.apk
             release/SHA256SUMS-android.txt
