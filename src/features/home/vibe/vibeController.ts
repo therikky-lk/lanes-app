@@ -2,10 +2,10 @@ import { playerEngine, setRadioRefillProvider } from "@/features/player/engine/p
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import { api, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types/track";
+import { languageFilter } from "./trackLanguage";
 import {
   affinity,
   buildTaste,
-  fitsLanguage,
   NO_VIBE_SETTINGS,
   pickWeighted,
   selectFresh,
@@ -208,10 +208,11 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
     language === "instrumental" ? moodPool("instrumental") : Promise.resolve([] as Track[]),
     character === "popular" ? moodPool("popular") : Promise.resolve([] as Track[]),
   ]);
-  const instrumentalIds = new Set(instrumentalTracks.map((t) => t.id));
-  const fits = (t: Track) => fitsLanguage(t, language, instrumentalIds, t.id) && !session.skipped.has(t.id);
+  const fits = (t: Track) => !session.skipped.has(t.id);
 
   // the pool that defines the stream, if any: mood first, then the others
+  // (for "no vocals" the instrumental search only seeds the radio: every pick
+  // still has to be marked instrumental, see the language filter below)
   const pool = (mood ? moodTracks : language === "instrumental" ? instrumentalTracks : character === "popular" ? popularTracks : []).filter(fits);
   const poolIds = pool.length ? new Set(pool.map((t) => t.id)) : undefined;
 
@@ -231,6 +232,10 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
     seeds = pickWeighted((tasteSeeds.length ? tasteSeeds : taste.seeds).slice(0, 250), 4, avoid);
   }
   if (seeds.length === 0) return [];
+  // a language filter drops many candidates: start from more seeds
+  if (language && seeds.length < 6) {
+    seeds.push(...pickWeighted((pool.length ? pool : taste.seeds.map((s) => s.track)).map((track) => ({ track, weight: 1 })), 6 - seeds.length, new Set([...avoid, ...seeds.map((s) => s.id)])));
+  }
   rememberSeeds(seeds.map((s) => s.id));
 
   let candidates = [...(await Promise.all(seeds.map((s) => radioFor(s)))).flat(), ...extra];
@@ -238,7 +243,18 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
   if (character === "favorite") candidates.push(...liked.filter(fits).sort(() => Math.random() - 0.5).slice(0, 30));
   // "unfamiliar": artists the listener already knows are left out
   if (character === "unfamiliar") candidates = candidates.filter((t) => affinity(taste, t) <= 0);
-  const filtered = candidates.filter(fits);
+  let filtered = candidates.filter(fits);
+  if (language) {
+    // the language is decided by the lyrics (LRCLIB), not by the name
+    const speaks = await languageFilter(filtered, language, liked);
+    filtered = filtered.filter(speaks);
+    if (filtered.length < 8) return selectFresh(filtered, taste, {
+      count: BATCH,
+      exclude: new Set([...exclude, ...session.played.keys()]),
+      moodIds: poolIds,
+      familiarShare: character === "favorite" ? 0.6 : 0.2,
+    });
+  }
   return selectFresh(filtered.length >= 8 ? filtered : candidates, taste, {
     count: BATCH,
     exclude: new Set([...exclude, ...session.played.keys()]),

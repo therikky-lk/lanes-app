@@ -118,6 +118,21 @@ export async function buildDailyMixes(seeds: MixSeedTrack[], options: BuildMixes
       else if (n < fresh.length) take(fresh[n++]);
       else break;
     }
+    // still short of a full mix: grow it from its own new songs (radio of
+    // radio), a few seeds per round, until it's full or nothing new comes back
+    const seeded = new Set<string>(radioSeeds.map((t) => t.id));
+    for (let round = 0; picked.length < perMix && round < 4; round++) {
+      const nextSeeds = shuffle(picked.filter((t) => !seeded.has(t.id)), random).slice(0, 3);
+      if (nextSeeds.length === 0) break;
+      nextSeeds.forEach((t) => seeded.add(t.id));
+      const more = shuffle((await Promise.all(nextSeeds.map(radioOnce))).flat(), random);
+      const before = picked.length;
+      for (const t of more) {
+        if (picked.length >= perMix) break;
+        take(t);
+      }
+      if (picked.length === before) break;
+    }
     if (picked.length < 5) continue; // not enough material for a real mix
     picked.forEach((t) => used.add(t.id));
     mixes.push({

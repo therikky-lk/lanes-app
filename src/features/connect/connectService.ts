@@ -57,6 +57,9 @@ interface RemoteState {
   epoch?: number;
   /** grows with every state a device sends: relays can deliver out of order */
   seq?: number;
+  /** speed and pitch the player uses */
+  rate?: number;
+  pitch?: number;
 }
 
 type Command = RemoteAction | { type: "transfer"; to: string };
@@ -173,7 +176,7 @@ let lastBroadcast = "";
 let lastBroadcastState: RemoteState | null = null;
 let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 let savedLocalVolume: number | null = null;
-let volumeTimer: ReturnType<typeof setTimeout> | null = null;
+const sliderTimers = new Map<string, ReturnType<typeof setTimeout>>();
 let handOverTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ---- epoch (hybrid logical clock) --------------------------------------------
@@ -258,6 +261,8 @@ function localState(): RemoteState {
     at: Date.now(),
     volume: p.volume,
     epoch: myEpoch,
+    rate: p.playbackRate ?? 1,
+    pitch: p.pitchSemitones ?? 0,
   };
 }
 
@@ -269,7 +274,7 @@ function broadcastState(force = false): void {
   // drifting from where followers would extrapolate it). Followers move the
   // position on their own, so a playing device doesn't need to keep publishing
   // (ntfy rate-limits chatty clients, and dropped messages are what desyncs).
-  const signature = `${state.track.id}|${state.status}|${myEpoch}`;
+  const signature = `${state.track.id}|${state.status}|${myEpoch}|${state.rate}|${state.pitch}`;
   const prev = lastBroadcastState;
   const volumeChanged = !!prev && Math.abs(prev.volume - state.volume) > 0.005;
   const seeked = !!prev && Math.abs(livePosition(prev) - state.positionMs) > 2500;
@@ -325,6 +330,9 @@ function applyRemote(state: RemoteState): void {
   const elapsed = state.status === "playing" ? Date.now() - state.at : 0;
   store.setPosition(Math.max(0, state.positionMs + elapsed));
   if (Math.abs(store.volume - state.volume) > 0.001) store.setVolume(state.volume);
+  // the mirrored speed / pitch (shown in this device's controls)
+  if (typeof state.rate === "number" && state.rate !== store.playbackRate) store.setPlaybackRate(state.rate);
+  if (typeof state.pitch === "number" && state.pitch !== store.pitchSemitones) store.setPitchSemitones(state.pitch);
 }
 
 // the lyrics view follows the <audio> element; while mirroring another device
@@ -428,15 +436,19 @@ function intercept(action: RemoteAction): boolean {
     if (action.type === "pause") next = { ...remote, status: "paused", positionMs: livePosition(remote), at: Date.now() };
     if (action.type === "seek") next = { ...remote, positionMs: action.positionMs, at: Date.now() };
     if (action.type === "volume") next = { ...remote, volume: action.volume };
+    if (action.type === "rate") next = { ...remote, rate: action.rate };
+    if (action.type === "pitch") next = { ...remote, pitch: action.semitones };
     if (next) {
       useConnectStore.setState({ remote: next });
       applyRemote(next);
     }
   }
-  if (action.type === "volume") {
+  if (action.type === "volume" || action.type === "rate" || action.type === "pitch") {
     // a slider fires many times a second: send the last value
-    if (volumeTimer) clearTimeout(volumeTimer);
-    volumeTimer = setTimeout(() => void send({ t: "cmd", from: me(), to: followingId, action }), 180);
+    // one timer per control, so a volume drag doesn't swallow a speed change
+    const pending = sliderTimers.get(action.type);
+    if (pending) clearTimeout(pending);
+    sliderTimers.set(action.type, setTimeout(() => void send({ t: "cmd", from: me(), to: followingId, action }), 180));
     return true;
   }
   void send({ t: "cmd", from: me(), to: followingId, action });
@@ -509,6 +521,12 @@ function runCommand(action: WireCommand): void {
       break;
     case "volume":
       playerEngine.setVolume(action.volume);
+      break;
+    case "rate":
+      playerEngine.setPlaybackRate(action.rate);
+      break;
+    case "pitch":
+      playerEngine.setPitchSemitones(action.semitones);
       break;
     case "transfer":
       void handOver(action.to);

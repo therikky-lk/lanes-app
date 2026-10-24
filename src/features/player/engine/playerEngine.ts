@@ -55,6 +55,8 @@ export type RemoteAction =
   | { type: "prev" }
   | { type: "seek"; positionMs: number }
   | { type: "volume"; volume: number }
+  | { type: "rate"; rate: number }
+  | { type: "pitch"; semitones: number }
   /** a new track / queue picked while mirroring: start it over there */
   | { type: "load"; queue: Track[]; index: number; context: string | null };
 
@@ -779,6 +781,7 @@ class PlayerEngine {
   }
 
   public setPlaybackRate(rate: number): void {
+    if (forwarded({ type: "rate", rate })) return;
     pitchShifter.resumeContext();
     const clampedRate = Math.min(2.0, Math.max(0.5, Number(rate.toFixed(2))));
     const store = usePlayerStore.getState();
@@ -790,6 +793,7 @@ class PlayerEngine {
   }
 
   public setPitchSemitones(semitones: number): void {
+    if (forwarded({ type: "pitch", semitones })) return;
     pitchShifter.resumeContext();
     const clampedSemitones = Math.min(12, Math.max(-12, Number(semitones.toFixed(1))));
     const store = usePlayerStore.getState();
