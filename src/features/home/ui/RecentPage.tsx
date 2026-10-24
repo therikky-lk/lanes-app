@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftLine, DownLine, HeartFill, RadioFill } from "@mingcute/react";
+import { ArrowLeftLine, DownLine, HeartFill, PlayFill, RadioFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { api, toClientTrack } from "@/shared/api";
 import { playerEngine } from "@/features/player";
@@ -135,6 +135,18 @@ export default function RecentPage() {
     else void playerEngine.playTrack(g.tracks[0], g.tracks, "recent", null, 0);
   };
 
+  // the whole history as one list, newest first, each song once
+  const historyTracks = useMemo(() => {
+    const seen = new Set<string>();
+    return plays
+      .map((p) => p.track)
+      .filter((track) => {
+        if (!track.id || seen.has(track.id)) return false;
+        seen.add(track.id);
+        return true;
+      });
+  }, [plays]);
+
   const toggle = (key: string) =>
     setOpen((prev) => {
       const next = new Set(prev);
@@ -165,6 +177,16 @@ export default function RecentPage() {
               <div className="text-[12px] text-text-tertiary">{tr("history.today_tracks", "Tracks today")}</div>
               <div className="text-[20px] font-[700] tabular-nums text-text-primary">{todayStats.plays}</div>
             </div>
+            {historyTracks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void playerEngine.playTrack(historyTracks[0], historyTracks, "history", historyTracks[0].coverUrl)}
+                className="inline-flex items-center gap-[8px] self-center rounded-full border-0 bg-btn-primary-bg px-[18px] py-[10px] text-[14px] font-[600] text-btn-primary-text cursor-pointer active:scale-[0.97] transition-transform"
+              >
+                <PlayFill size={16} />
+                {t("common.play_all")}
+              </button>
+            )}
           </div>
         )}
       </div>

@@ -46,6 +46,8 @@ import type { Track } from "@/shared/types";
 import { useTranslation } from "@/languages";
 import { api } from "@/shared/api";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
+import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
+import { withLocalAvailability } from "@/features/local/localPlaylistTracks";
 import {
   useTrackSearch,
   useTrackSearchButtonLabel,
@@ -85,8 +87,14 @@ const TrackItem = memo(function TrackItem({
   highlight,
   isCurrent,
 }: TrackItemProps) {
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const handlePlay = useCallback(() => {
     if (typeof window !== "undefined" && window.__linerWasDragging) return;
+    if (track.onlyOnDevice) {
+      toast(t("local.only_on_device_toast", { device: track.onlyOnDevice }), "info", { description: track.title });
+      return;
+    }
     const context = playlistId ? `playlist:${playlistId}` : playlistTitle;
     playerEngine.playTrack(
       track,
@@ -94,7 +102,7 @@ const TrackItem = memo(function TrackItem({
       context,
       playlistCoverUrl,
     );
-  }, [track, allTracks, playlistId, playlistTitle, playlistCoverUrl]);
+  }, [track, allTracks, playlistId, playlistTitle, playlistCoverUrl, toast, t]);
 
   return (
     <div style={style} data-reorder-item>
@@ -123,6 +131,9 @@ const TrackItem = memo(function TrackItem({
         durationMs={track.durationMs}
         explicit={track.explicit}
         onPlay={handlePlay}
+        unavailableNote={
+          track.onlyOnDevice ? t("local.only_on_device", { device: track.onlyOnDevice }) : undefined
+        }
       />
     </div>
   );
@@ -181,7 +192,11 @@ function LibraryPlaylistContent() {
     } catch {}
   }, []);
 
-  const viewData = (() => {
+  const { records: localRecords } = useLocalTracks();
+
+  // memoized: a fresh track array on every render made every row, the search
+  // and the reorder hook redo their work, which froze big liked lists
+  const viewData = useMemo(() => {
     if (isLikesMode) {
       if (!likesData) return null;
       const tracks: Track[] = (likesData.tracks ?? []).map((t) => ({
@@ -208,10 +223,10 @@ function LibraryPlaylistContent() {
       coverUrls:
         playlistDetail.coverUrls ??
         (playlistDetail.coverUrl ? [playlistDetail.coverUrl] : []),
-      tracks: playlistDetail.tracks,
+      tracks: withLocalAvailability(playlistDetail.tracks, localRecords),
       revision: playlistDetail.revision,
     };
-  })();
+  }, [isLikesMode, likesData, playlistDetail, localRecords, t]);
 
   useEffect(() => {
     if (isEditingTitle && titleRef.current) {
@@ -248,6 +263,12 @@ function LibraryPlaylistContent() {
     return optimisticTracks ?? viewData?.tracks ?? [];
   }, [optimisticTracks, viewData?.tracks]);
 
+  // tracks from another device's files are shown but never queued here
+  const playableTracks = useMemo(
+    () => (currentTracks.some((track) => track.onlyOnDevice) ? currentTracks.filter((track) => !track.onlyOnDevice) : currentTracks),
+    [currentTracks],
+  );
+
   const search = useTrackSearch(currentTracks, id);
   const searchButtonLabel = useTrackSearchButtonLabel();
   const isFiltering = search.matches !== null;
@@ -256,47 +277,68 @@ function LibraryPlaylistContent() {
     [search.matches, currentTracks],
   );
 
+  // the grid mounts tiles a screenful at a time: hundreds of tiles with a
+  // menu each at once froze the page on big liked lists
+  const GRID_PAGE = 60;
+  const [gridLimit, setGridLimit] = useState(GRID_PAGE);
+  useEffect(() => {
+    setGridLimit(GRID_PAGE);
+  }, [visibleTracks]);
+  const gridObserverRef = useRef<IntersectionObserver | null>(null);
+  const gridSentinelRef = useCallback((node: HTMLDivElement | null) => {
+    gridObserverRef.current?.disconnect();
+    if (!node) return;
+    gridObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setGridLimit((n) => n + GRID_PAGE);
+      },
+      { root: scrollRef.current, rootMargin: "800px 0px" },
+    );
+    gridObserverRef.current.observe(node);
+  }, []);
+  useEffect(() => () => gridObserverRef.current?.disconnect(), []);
+
   // results start at the top, not wherever the full list was scrolled to
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [search.activeQuery]);
 
   const handleSearchSubmit = useCallback(() => {
-    const first = search.matches?.[0];
+    const first = search.matches?.find((match) => !match.track.onlyOnDevice);
     if (!first || !viewData) return;
     const context = decodedId ? `playlist:${decodedId}` : viewData.title;
-    playerEngine.playTrack(first.track, currentTracks, context, viewData.coverUrl);
-  }, [search.matches, viewData, decodedId, currentTracks]);
+    playerEngine.playTrack(first.track, playableTracks, context, viewData.coverUrl);
+  }, [search.matches, viewData, decodedId, playableTracks]);
 
   const handlePlayAll = useCallback(() => {
-    if (!currentTracks.length || !viewData) return;
+    if (!playableTracks.length || !viewData) return;
     const context = decodedId ? `playlist:${decodedId}` : viewData.title;
     playerEngine.clearQueue();
     playerEngine.playTrack(
-      currentTracks[0],
-      currentTracks,
+      playableTracks[0],
+      playableTracks,
       context,
       viewData.coverUrl,
     );
-  }, [currentTracks, viewData, decodedId]);
+  }, [playableTracks, viewData, decodedId]);
 
   const handleShufflePlay = useCallback(() => {
-    if (!currentTracks.length || !viewData) return;
+    if (!playableTracks.length || !viewData) return;
     const context = decodedId ? `playlist:${decodedId}` : viewData.title;
     playerEngine.clearQueue();
     void playerEngine.playShuffled(
-      currentTracks,
+      playableTracks,
       context,
       viewData.coverUrl,
     );
-  }, [currentTracks, viewData, decodedId]);
+  }, [playableTracks, viewData, decodedId]);
 
   const { toast } = useToast();
   const [addedToQueue, setAddedToQueue] = useState(false);
 
   const handleAddToQueue = useCallback(() => {
-    if (!currentTracks.length || !viewData) return;
-    for (const track of currentTracks) {
+    if (!playableTracks.length || !viewData) return;
+    for (const track of playableTracks) {
       playerEngine.addToQueue(track);
     }
     const playlistTitle = viewData.title || t("playlist.untitled_playlist");
@@ -308,7 +350,7 @@ function LibraryPlaylistContent() {
       setAddedToQueue(false);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [currentTracks, viewData, toast, t]);
+  }, [playableTracks, viewData, toast, t]);
 
   const handleShare = useCallback(() => {
     if (typeof navigator !== "undefined" && navigator.clipboard && decodedId) {
@@ -1013,7 +1055,7 @@ function LibraryPlaylistContent() {
                   className="grid gap-x-[16px] gap-y-[18px] px-[8px] pb-[8px]"
                   style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}
                 >
-                  {visibleTracks.map(({ track, index }) => (
+                  {visibleTracks.slice(0, gridLimit).map(({ track, index }) => (
                     <TrackGridCard
                       key={track.playlistItemId ?? `${track.id}-${index}`}
                       track={track}
@@ -1022,15 +1064,22 @@ function LibraryPlaylistContent() {
                       playlistId={isLikesMode ? undefined : (decodedId ?? undefined)}
                       playlistTitle={viewData.title}
                       onPlay={() =>
-                        playerEngine.playTrack(
-                          track,
-                          currentTracks,
-                          decodedId && !isLikesMode ? `playlist:${decodedId}` : viewData.title,
-                          viewData.coverUrl,
-                        )
+                        track.onlyOnDevice
+                          ? toast(t("local.only_on_device_toast", { device: track.onlyOnDevice }), "info", {
+                              description: track.title,
+                            })
+                          : playerEngine.playTrack(
+                              track,
+                              playableTracks,
+                              decodedId && !isLikesMode ? `playlist:${decodedId}` : viewData.title,
+                              viewData.coverUrl,
+                            )
                       }
                     />
                   ))}
+                  {gridLimit < visibleTracks.length && (
+                    <div ref={gridSentinelRef} className="col-span-full h-[1px]" aria-hidden />
+                  )}
                 </div>
               ) : (
               <div
@@ -1091,7 +1140,7 @@ function LibraryPlaylistContent() {
                       playlistId={isLikesMode ? undefined : (decodedId ?? undefined)}
                       playlistTitle={viewData.title}
                       playlistCoverUrl={viewData.coverUrl}
-                      allTracks={currentTracks}
+                      allTracks={playableTracks}
                       showReorderHandle={canReorder}
                       highlight={search.activeQuery || undefined}
                       onGrabStart={

@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftLine, PlayFill, UploadLine, MusicLine, Edit2Line, DeleteLine, HeartLine, HeartFill } from "@mingcute/react";
+import { ArrowLeftLine, PlayFill, UploadLine, MusicLine, Edit2Line, DeleteLine, HeartLine, HeartFill, AddLine } from "@mingcute/react";
+import { useModalStore } from "@/features/library/store/modalStore";
+import { usePlaylistsList } from "@/features/library/hooks/usePlaylists";
 import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
@@ -36,6 +38,7 @@ export default function LocalTracksPage() {
   const [uploading, setUploading] = useState(false);
   const [lyricsFor, setLyricsFor] = useState<Track | null>(null);
   const dragDepth = useRef(0);
+  const { data: playlistsData } = usePlaylistsList();
 
   const upload = useCallback(
     async (files: FileList | File[] | null) => {
@@ -194,6 +197,21 @@ export default function LocalTracksPage() {
                         label: t("common.like"),
                         onClick: () => void setLocalTrackLiked(track.id, true),
                       },
+                  {
+                    // the file stays here; other devices see it greyed out in the playlist
+                    id: "add-to-playlist",
+                    icon: <AddLine size={15} />,
+                    label: t("common.add_to_playlist"),
+                    onClick: () =>
+                      useModalStore.getState().openAddToPlaylist({
+                        id: track.id,
+                        title: track.title,
+                        artists: track.artists,
+                        coverUrl: track.coverUrl,
+                        duration: formatDuration(track.durationMs),
+                        playlists: playlistsData?.playlists ?? [],
+                      }),
+                  },
                   {
                     id: "lyrics",
                     icon: <Edit2Line size={15} />,

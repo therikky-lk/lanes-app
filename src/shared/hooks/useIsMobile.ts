@@ -5,11 +5,12 @@ const QUERY = "(max-width: 720px)";
 
 function getSnapshot(): boolean {
   if (typeof window === "undefined") return false;
-  return isNativeApp() || window.matchMedia(QUERY).matches;
+  if (isNativeApp()) return true;
+  return typeof window.matchMedia === "function" && window.matchMedia(QUERY).matches;
 }
 
 function subscribe(onChange: () => void): () => void {
-  if (typeof window === "undefined") return () => {};
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
   const mq = window.matchMedia(QUERY);
   mq.addEventListener("change", onChange);
   return () => mq.removeEventListener("change", onChange);

@@ -38,6 +38,8 @@ export interface SongCardWithMenuProps {
   showReorderHandle?: boolean;
   onGrabStart?: (e: React.PointerEvent<HTMLDivElement>) => void;
   highlight?: string;
+  /** greyed-out row that can't be played here, with the reason */
+  unavailableNote?: string;
 }
 
 function SongCardWithMenu({
@@ -70,6 +72,7 @@ function SongCardWithMenu({
   showReorderHandle,
   onGrabStart,
   highlight,
+  unavailableNote,
 }: SongCardWithMenuProps) {
   const resolvedDurationMs = useMemo(() => {
     if (durationMs !== undefined) return durationMs;
@@ -187,6 +190,7 @@ function SongCardWithMenu({
       icon={icon}
       showReorderHandle={showReorderHandle}
       onGrabStart={onGrabStart}
+      unavailableNote={unavailableNote}
     />
   );
 }

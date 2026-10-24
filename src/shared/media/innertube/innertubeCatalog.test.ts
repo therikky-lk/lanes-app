@@ -110,6 +110,13 @@ describe("innertubeCatalog", () => {
     expect(results.map((item) => item.id)).toEqual(["blinding001", "unrelated01"]);
   });
 
+  it("never searches for music videos when looking for songs", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json(searchResponse([])));
+    await innertubeCatalog.search("weeknd blinding lights", "track");
+    const params = fetchSpy.mock.calls.map((call) => (bodyOf(call) as { params?: string }).params);
+    expect(params.some((p) => p?.startsWith("EgWKAQIQA"))).toBe(false);
+  });
+
   it("throws when every search request fails", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("blocked", { status: 429 }));
     await expect(innertubeCatalog.search("anything", "all")).rejects.toThrow(/HTTP 429/);

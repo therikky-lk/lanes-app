@@ -1,7 +1,7 @@
 import { memo } from "react";
 import AppImage from "@/features/covers/ui/AppImage";
 import { Link, useLocation } from "react-router-dom";
-import { sidebarNavItems } from "../data/navigation";
+import { navSectionOf, sidebarNavItems } from "../data/navigation";
 import logo from "@/assets/logo.svg";
 import spotifyLogo from "@/assets/branding/logo-spotify.svg";
 import discordLogo from "@/assets/branding/logo-discord.svg";
@@ -46,18 +46,13 @@ interface SidebarProps {
 }
 
 function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarProps) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { t } = useTranslation();
   const accentVariant = usePlayerStore((state) => state.accentVariant);
   const settingsOpen = useModalStore((state) => state.settingsOpen);
   const toggleSettings = useModalStore((state) => state.toggleSettings);
 
-  const isRouteActive = (href: string) => {
-    if (href === "/") {
-      return pathname === "/" || pathname === "/home";
-    }
-    return pathname === href || pathname?.startsWith(`${href}/`);
-  };
+  const section = navSectionOf(pathname, search);
   const isItemActive = (id: string, href?: string) => {
     if (id === "search") {
       return searchOpen;
@@ -65,7 +60,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
     if (id === "settings") {
       return settingsOpen;
     }
-    return href ? isRouteActive(href) : false;
+    return href ? section === id : false;
   };
 
   const renderNavItems = () =>
