@@ -29,26 +29,30 @@ export default function MixCover({ index, covers, label, sizes = "175px", classN
   const tiles = covers.length >= 4 ? covers.slice(0, 4) : covers.slice(0, 1);
   return (
     <div
-      className={`absolute inset-0 flex flex-col overflow-hidden ${className}`}
+      className={`absolute inset-0 overflow-hidden ${className}`}
       style={{ background: `linear-gradient(135deg, ${from}, ${to})`, containerType: "inline-size" }}
     >
-      {/* artwork on top, nothing written over it */}
-      <div className={`relative min-h-0 flex-1 grid ${tiles.length === 4 ? "grid-cols-2 grid-rows-2" : ""}`}>
+      {/* artwork across the whole cover */}
+      <div className={`absolute inset-0 grid ${tiles.length === 4 ? "grid-cols-2 grid-rows-2" : ""}`}>
         {tiles.map((src, i) => (
           <div key={`${src}-${i}`} className="relative overflow-hidden">
             <CoverImage src={src} alt="" fill sizes={sizes} className="object-cover" draggable={false} />
           </div>
         ))}
       </div>
-      {/* the mix's colour band with its name */}
+      {/* the mix's colour rises smoothly from the bottom; the name sits on it */}
       <div
-        className="flex shrink-0 items-center justify-between px-[8%] text-white"
-        style={{ height: "26%", background: `linear-gradient(90deg, ${from}, ${to})` }}
-      >
-        <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}>
+        className="absolute inset-x-0 bottom-0"
+        style={{
+          height: "58%",
+          background: `linear-gradient(to top, ${to} 0%, ${to}f2 22%, ${from}b3 52%, ${from}00 100%)`,
+        }}
+      />
+      <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-white">
+        <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
           {label}
         </span>
-        <span className="text-[clamp(16px,15cqw,44px)] font-[800] leading-none tracking-tight" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}>
+        <span className="text-[clamp(18px,17cqw,52px)] font-[800] leading-[0.8] tracking-tight" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
           {index}
         </span>
       </div>

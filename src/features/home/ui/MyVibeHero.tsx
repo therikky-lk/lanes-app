@@ -1,8 +1,9 @@
 import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useRef, useState } from "react";
+import { useIsTrackLiked } from "@/features/library/hooks";
+import { createPortal } from "react-dom";
 import { CloseLine, HeartFill, LightningFill, PauseFill, PlayFill, Settings6Line, Sparkles2Fill } from "@mingcute/react";
 import { playerEngine, usePlayerStore } from "@/features/player";
-import { useCoverSrc } from "@/features/covers";
 import { useTranslation } from "@/languages";
 import type { Track } from "@/shared/types/track";
 import { BeatTracker } from "../vibe/audioAnalyser";
@@ -16,49 +17,53 @@ import {
   type VibeMood,
   type VibeSettings,
 } from "../vibe/vibeTaste";
-import { DEFAULT_VIBE_PALETTE, lerpPalette, loadVibePalette, rgba, type VibePalette } from "../vibe/vibePalette";
+import { lerpPalette, rgba, type VibePalette } from "../vibe/vibePalette";
 
 // My Vibe: a dark stage with a smoky ring of light that breathes with the
-// music. Its colours follow the picked mood (or the playing cover when no
-// mood is picked); the title doubles as the play / pause control.
+// music, in the picked mood's colour (violet with no mood); a like on the
+// playing track sends a pulse through it. The title is the play / pause control.
 
-const HERO_HEIGHT = 340;
+const HERO_HEIGHT = 400;
 // the glow spills a little past the section instead of being cut off
-const BLEED = 60;
+const BLEED = 70;
 
+/** one hue per mood: [highlight, main colour, deep shade] */
 export const MOOD_PALETTES: Record<VibeMood, VibePalette> = {
-  // energetic: hot orange into red
   energetic: [
-    [255, 196, 90],
-    [255, 112, 40],
-    [232, 40, 40],
+    [255, 150, 120],
+    [255, 40, 60],
+    [150, 0, 50],
   ],
-  // happy: sunny yellow into lime
   happy: [
-    [255, 240, 130],
-    [214, 230, 60],
-    [120, 200, 60],
+    [255, 240, 120],
+    [255, 176, 0],
+    [200, 80, 0],
   ],
-  // calm: soft teal and grey-blue
   calm: [
-    [180, 236, 226],
-    [70, 190, 190],
-    [60, 120, 170],
+    [210, 240, 232],
+    [120, 170, 160],
+    [50, 80, 84],
   ],
-  // sad: blue into violet
   sad: [
-    [150, 170, 255],
-    [96, 92, 230],
-    [140, 60, 200],
+    [170, 175, 255],
+    [90, 70, 255],
+    [50, 20, 160],
   ],
 };
 
+/** no mood picked: a violet-magenta glow */
+const NEUTRAL_PALETTE: VibePalette = [
+  [255, 170, 245],
+  [210, 40, 210],
+  [100, 10, 150],
+];
+
 /** the swatch for each mood in the settings */
 const MOOD_SWATCH: Record<VibeMood, string> = {
-  energetic: "linear-gradient(160deg,#ffb347,#ff5a1f 55%,#e8282a)",
-  happy: "linear-gradient(160deg,#fff27a,#c6e43a 55%,#58c43c)",
-  calm: "linear-gradient(160deg,#a8f0e0,#3fc4c0 55%,#2f78b4)",
-  sad: "linear-gradient(160deg,#8fa4ff,#5a55e6 55%,#8a3fd1)",
+  energetic: "linear-gradient(160deg,#ff9a8a,#ff3c46 55%,#aa143c)",
+  happy: "linear-gradient(160deg,#ffec96,#ffaa1e 55%,#dc640a)",
+  calm: "linear-gradient(160deg,#e1ebe8,#96afaa 55%,#506468)",
+  sad: "linear-gradient(160deg,#bebeff,#685af5 55%,#4628aa)",
 };
 
 const CHARACTER_ICON: Record<VibeCharacter, { Icon: typeof HeartFill; color: string }> = {
@@ -101,12 +106,13 @@ function traceRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
 export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const silkRef = useRef<HTMLCanvasElement>(null);
+  const bloomRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const status = usePlayerStore((s) => s.status);
   const playbackContext = usePlayerStore((s) => s.playbackContext);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
-  const cover = useCoverSrc(currentTrack?.coverUrl);
   const [starting, setStarting] = useState(false);
   const [settings, setSettings] = useState<VibeSettings>(() => storedSettings());
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -118,33 +124,39 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
   const sameAsPlaying = !!playingSettings && sameSettings(playingSettings, settings);
   const vibePlaying = vibeActive && isPlaying && sameAsPlaying;
 
-  const live = useRef({ playing: false, target: DEFAULT_VIBE_PALETTE as VibePalette });
+  const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0 });
   live.current.playing = status === "playing" && vibeActive;
 
-  // colours: the mood's own, or the playing cover's when no mood is picked
+  // colours: the mood's own, a violet glow when no mood is picked
   useEffect(() => {
-    if (mood) {
-      live.current.target = MOOD_PALETTES[mood];
-      return;
-    }
-    let cancelled = false;
-    void loadVibePalette(currentTrack ? cover || currentTrack.coverUrl : null).then((p) => {
-      if (!cancelled) live.current.target = p;
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [mood, cover, currentTrack]);
+    live.current.target = mood ? MOOD_PALETTES[mood] : NEUTRAL_PALETTE;
+  }, [mood]);
+
+  // a like on the playing track sends a pulse through the ring
+  const currentLiked = useIsTrackLiked(currentTrack?.id);
+  const likedRef = useRef<{ id?: string; liked: boolean }>({ liked: false });
+  useEffect(() => {
+    const prev = likedRef.current;
+    if (prev.id === currentTrack?.id && !prev.liked && currentLiked) live.current.pulse = 1;
+    likedRef.current = { id: currentTrack?.id, liked: currentLiked };
+  }, [currentLiked, currentTrack?.id]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const glowCanvas = canvasRef.current;
+    const silkCanvas = silkRef.current;
+    const bloomCanvas = bloomRef.current;
     const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!glowCanvas || !silkCanvas || !bloomCanvas || !wrap) return;
+    const glow = glowCanvas.getContext("2d");
+    const silk = silkCanvas.getContext("2d");
+    const bloom = bloomCanvas.getContext("2d");
+    if (!glow || !silk || !bloom) return;
+    const gc: CanvasRenderingContext2D = glow;
+    const sc: CanvasRenderingContext2D = silk;
+    const bc: CanvasRenderingContext2D = bloom;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    // phones: no canvas shadows (expensive there), 1x pixels, ~30 fps
+    // phones: fewer pixels and ~30 fps; both layers are blurred by CSS anyway
     const lite = isNativeApp() || window.innerWidth < 700;
     const tracker = new BeatTracker();
     let palette: VibePalette = live.current.target;
@@ -155,19 +167,28 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     let visible = true;
     let w = 0;
     let h = 0;
-    let dpr = 1;
+    let glowScale = 1;
+    let silkScale = 1;
+    let bloomScale = 1;
 
     const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      dpr = lite ? 1 : Math.min(2, window.devicePixelRatio || 1);
+      const rect = glowCanvas.getBoundingClientRect();
       w = rect.width;
       h = rect.height;
-      canvas.width = Math.max(1, Math.round(w * dpr));
-      canvas.height = Math.max(1, Math.round(h * dpr));
+      // the glow and bloom layers are blurred by CSS: they need fewer pixels
+      glowScale = lite ? 0.5 : 0.75;
+      bloomScale = lite ? 0.5 : 0.6;
+      silkScale = Math.min(lite ? 2 : 2.5, window.devicePixelRatio || 1);
+      bloomCanvas.width = Math.max(1, Math.round(w * bloomScale));
+      bloomCanvas.height = Math.max(1, Math.round(h * bloomScale));
+      glowCanvas.width = Math.max(1, Math.round(w * glowScale));
+      glowCanvas.height = Math.max(1, Math.round(h * glowScale));
+      silkCanvas.width = Math.max(1, Math.round(w * silkScale));
+      silkCanvas.height = Math.max(1, Math.round(h * silkScale));
     };
     resize();
     const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    ro.observe(glowCanvas);
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
       if (visible && !raf) {
@@ -176,6 +197,54 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
       }
     });
     io.observe(wrap);
+
+    /** how lit the ring is at angle `a`: two soft lobes drifting around */
+    const light = (a: number, t: number) => {
+      const lobe = (center: number, width: number) => Math.pow(Math.max(0, Math.cos(a - center)), width);
+      return 0.12 + 0.88 * Math.max(lobe(-1.9 + Math.sin(t * 0.23) * 0.7, 2), 0.85 * lobe(1.3 + Math.cos(t * 0.19) * 0.8, 3));
+    };
+
+    /** one smooth closed curve (quadratic through midpoints: no corners) */
+    const strand = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number, t: number, b: number) => {
+      const n = 72;
+      const pts: [number, number][] = [];
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const rr = r * ringRadius(a, t, b);
+        pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.9]);
+      }
+      c.beginPath();
+      const mid = (i: number) => {
+        const [x0, y0] = pts[i % n];
+        const [x1, y1] = pts[(i + 1) % n];
+        return [(x0 + x1) / 2, (y0 + y1) / 2] as const;
+      };
+      const [sx, sy] = mid(n - 1);
+      c.moveTo(sx, sy);
+      for (let i = 0; i < n; i++) {
+        const [mx, my] = mid(i);
+        c.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
+      }
+      c.closePath();
+    };
+
+    /** colour that brightens and fades around the circle, smoothly (conic gradient) */
+    const lit = (c: CanvasRenderingContext2D, cx: number, cy: number, t: number, color: (k: number) => [number, number, number], alpha: number) => {
+      if (typeof c.createConicGradient !== "function") return rgba(color(0.7), alpha * 0.7);
+      const g = c.createConicGradient(0, cx, cy);
+      const stops = 36;
+      for (let i = 0; i <= stops; i++) {
+        const k = light((i / stops) * Math.PI * 2, t);
+        g.addColorStop(i / stops, rgba(color(k), Math.min(1, alpha * k)));
+      }
+      return g;
+    };
+
+    const blend = (from: [number, number, number], to: [number, number, number], k: number): [number, number, number] => [
+      from[0] + (to[0] - from[0]) * k,
+      from[1] + (to[1] - from[1]) * k,
+      from[2] + (to[2] - from[2]) * k,
+    ];
 
     function frame(now: number) {
       raf = 0;
@@ -190,59 +259,96 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
 
       const { bass, level } = tracker.next(dt, live.current.playing);
       const motion = reduced ? 0.3 : 1;
-      time += dt * (0.35 + level * 0.8) * motion;
-      palette = lerpPalette(palette, live.current.target, Math.min(1, dt * 2.2));
-      const [core, mid, edge] = palette;
-      const b = bass * motion;
-
-      const c = ctx!;
-      c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      c.clearRect(0, 0, w, h);
-      c.globalCompositeOperation = "lighter";
+      time += dt * (0.3 + level * 0.7) * motion;
+      palette = lerpPalette(palette, live.current.target, Math.min(1, dt * 2.5));
+      live.current.pulse *= Math.exp(-dt * 2.6);
+      const pulse = live.current.pulse;
+      const [hi, main, deep] = palette;
+      const b = bass * motion + pulse * 0.9;
 
       const cx = w / 2;
-      const cy = h / 2;
-      const R = Math.min(w * 0.36, (h - BLEED * 2) * 0.42, 260);
-      const squash = 0.82;
+      const cy = BLEED + HERO_HEIGHT / 2;
+      const R = Math.min(w * 0.4, HERO_HEIGHT * 0.42, 280) * (1 + pulse * 0.07);
+      const white: [number, number, number] = [255, 255, 255];
 
-      // a few offset passes of the ring, each wider and fainter: reads as
-      // smoke / light rather than a hard line
-      const passes = lite ? 4 : 6;
-      for (let i = 0; i < passes; i++) {
-        const k = i / (passes - 1);
-        const color = i % 3 === 0 ? core : i % 3 === 1 ? mid : edge;
-        const offsetT = time + i * 0.35;
-        const r = R * (0.94 + k * 0.12);
-        traceRing(c, cx + Math.sin(offsetT * 0.6 + i) * R * 0.03, cy + Math.cos(offsetT * 0.5 + i) * R * 0.03, r, offsetT, b, squash);
-        c.strokeStyle = rgba(color, (0.5 - k * 0.32) * (0.75 + b * 0.5));
-        c.lineWidth = (lite ? 10 : 6) + k * (lite ? 26 : 34) + b * 10;
-        if (!lite) {
-          c.shadowColor = rgba(color, 0.9);
-          c.shadowBlur = 24 + k * 30 + b * 30;
-        }
-        c.stroke();
+      // ---- glow layer (low-res, blurred by CSS): coloured light around a dark centre
+      gc.setTransform(glowScale, 0, 0, glowScale, 0, 0);
+      gc.clearRect(0, 0, w, h);
+      const field = gc.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 3.2);
+      field.addColorStop(0, rgba(main, 1));
+      field.addColorStop(0.25, rgba(main, 0.8 + pulse * 0.2));
+      field.addColorStop(0.55, rgba(deep, 0.55));
+      field.addColorStop(1, rgba(deep, 0));
+      gc.fillStyle = field;
+      gc.fillRect(0, 0, w, h);
+      gc.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 3; i++) {
+        const a = time * (0.18 + i * 0.07) + i * 2.1;
+        const px = cx + Math.cos(a) * R * (1.25 + 0.25 * Math.sin(time * 0.3 + i));
+        const py = cy + Math.sin(a) * R * (1.05 + 0.2 * Math.cos(time * 0.27 + i));
+        const patch = gc.createRadialGradient(px, py, 0, px, py, R * 0.9);
+        patch.addColorStop(0, rgba(hi, 0.5 + b * 0.25));
+        patch.addColorStop(1, rgba(hi, 0));
+        gc.fillStyle = patch;
+        gc.fillRect(px - R, py - R, R * 2, R * 2);
       }
-      c.shadowBlur = 0;
+      // a broad band of light along the edge of the dark shape
+      strand(gc, cx, cy, R * 1.02, time + 0.6, b);
+      gc.strokeStyle = lit(gc, cx, cy, time, (k) => blend(main, hi, k), 1);
+      gc.lineWidth = R * 0.34;
+      gc.stroke();
+      if (pulse > 0.02) {
+        // the like: a wave of light running outward
+        strand(gc, cx, cy, R * (1.1 + (1 - pulse) * 0.6), time, 0);
+        gc.strokeStyle = rgba(hi, pulse);
+        gc.lineWidth = R * 0.18;
+        gc.stroke();
+      }
+      gc.globalCompositeOperation = "destination-out";
+      strand(gc, cx, cy, R * 0.92, time, b);
+      gc.fillStyle = "rgba(0,0,0,0.97)";
+      gc.fill();
+      gc.globalCompositeOperation = "source-over";
 
-      // brighter flare that slides around the ring
-      const fa = time * 0.7;
-      const fr = R * ringRadius(fa, time, b);
-      const fx = cx + Math.cos(fa) * fr;
-      const fy = cy + Math.sin(fa) * fr * squash;
-      const flare = c.createRadialGradient(fx, fy, 0, fx, fy, R * 0.45);
-      flare.addColorStop(0, rgba(core, 0.55 + b * 0.3));
-      flare.addColorStop(1, rgba(core, 0));
-      c.fillStyle = flare;
-      c.fillRect(fx - R, fy - R, R * 2, R * 2);
+      // ---- neon layer (full resolution, sharp) + its bloom (blurred copy):
+      // fine tubes of light with a white-hot core, folded around the centre
+      sc.setTransform(silkScale, 0, 0, silkScale, 0, 0);
+      sc.clearRect(0, 0, w, h);
+      bc.setTransform(bloomScale, 0, 0, bloomScale, 0, 0);
+      bc.clearRect(0, 0, w, h);
+      sc.globalCompositeOperation = "lighter";
+      bc.globalCompositeOperation = "lighter";
+      sc.lineJoin = "round";
+      bc.lineJoin = "round";
+      const strands = lite ? 6 : 9;
+      for (let i = 0; i < strands; i++) {
+        const t = time + i * 0.31;
+        // strands bunch near the dark edge and spread outward
+        const spread = Math.pow(i / (strands - 1), 1.35);
+        const r = R * (0.93 + spread * 0.42);
+        const ox = cx + Math.sin(time * 0.45 + i * 1.7) * R * 0.035;
+        const oy = cy + Math.cos(time * 0.38 + i * 1.3) * R * 0.025;
+        const fade = 1 - spread * 0.72;
+        const thick = i % 3 === 0 ? 1.6 : 1; // a few stronger tubes among fine threads
 
-      // keep the middle dark so the title reads
-      c.globalCompositeOperation = "destination-out";
-      const hole = c.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 0.86);
-      hole.addColorStop(0, "rgba(0,0,0,0.9)");
-      hole.addColorStop(1, "rgba(0,0,0,0)");
-      c.fillStyle = hole;
-      c.fillRect(0, 0, w, h);
-      c.globalCompositeOperation = "source-over";
+        // bloom: the tube's light spilling into the air
+        strand(bc, ox, oy, r, t, b);
+        bc.strokeStyle = lit(bc, cx, cy, t, (k) => blend(main, hi, k * 0.6), 0.75 * fade);
+        bc.lineWidth = 7 * thick;
+        bc.stroke();
+
+        strand(sc, ox, oy, r, t, b);
+        // tube
+        sc.strokeStyle = lit(sc, cx, cy, t, (k) => blend(main, hi, k), 0.9 * fade);
+        sc.lineWidth = 2.2 * thick;
+        sc.stroke();
+        // white-hot core
+        sc.strokeStyle = lit(sc, cx, cy, t, (k) => blend(hi, white, k), 0.95 * fade);
+        sc.lineWidth = 0.9 * thick;
+        sc.stroke();
+      }
+      sc.globalCompositeOperation = "source-over";
+      bc.globalCompositeOperation = "source-over";
 
       raf = requestAnimationFrame(frame);
     }
@@ -314,11 +420,37 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
       style={{ height: HERO_HEIGHT, marginTop: "var(--lane-safe-top, 0px)" }}
       aria-label={t("home.vibe.title")}
     >
-      <canvas
-        ref={canvasRef}
-        className="pointer-events-none absolute"
-        style={{ top: -BLEED, bottom: -BLEED, left: 0, right: 0, width: "100%", height: `calc(100% + ${BLEED * 2}px)` }}
+      {(["glow", "bloom", "silk"] as const).map((layer) => (
+        <canvas
+          key={layer}
+          ref={layer === "glow" ? canvasRef : layer === "bloom" ? bloomRef : silkRef}
+          className="pointer-events-none absolute"
+          style={{
+            top: -BLEED,
+            left: 0,
+            width: "100%",
+            height: HERO_HEIGHT + BLEED * 4,
+            filter: layer === "glow" ? "blur(20px) saturate(1.4)" : layer === "bloom" ? "blur(9px) saturate(1.3)" : "none",
+            // the light fades out downward: a smooth hand-off into the page
+            WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
+          }}
+          aria-hidden="true"
+        />
+      ))}
+      {/* a whisper of grain: keeps the big gradients from banding */}
+      <div
+        className="pointer-events-none absolute inset-x-0"
         aria-hidden="true"
+        style={{
+          top: -BLEED,
+          height: HERO_HEIGHT + BLEED * 4,
+          backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>")`,
+          opacity: 0.07,
+          mixBlendMode: "overlay",
+          WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)",
+        }}
       />
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-[18px]">
         <button
@@ -371,7 +503,9 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         </div>
       </div>
 
-      {settingsOpen && (
+      {settingsOpen &&
+        createPortal(
+
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center"
           onClick={() => setSettingsOpen(false)}
@@ -449,8 +583,9 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
               })}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </section>
   );
 }

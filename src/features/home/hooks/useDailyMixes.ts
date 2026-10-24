@@ -89,7 +89,7 @@ const cache = { data: [] as DailyMix[], timestamp: 0, owner: "" };
 
 // ---- client-built mixes (Lane) -------------------------------------------
 
-const LANE_MIXES_KEY = "lane_daily_mixes_v3";
+const LANE_MIXES_KEY = "lane_daily_mixes_v4";
 const today = () => new Date().toLocaleDateString("en-CA");
 
 interface StoredMixes {
