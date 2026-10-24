@@ -57,7 +57,9 @@
       "home": "Home",
       "search": "Search",
       "library": "Library",
-      "settings": "Settings"
+      "settings": "Settings",
+      "pin": "Pin to menu",
+      "unpin": "Unpin from menu"
     },
     "minimize": "Minimize",
     "exitFullscreen": "Exit fullscreen",
@@ -292,7 +294,9 @@
       "notif_progress": "Added {liked} · {done} of {total} processed",
       "notif_wait_rate": "Waiting out a rate limit…",
       "notif_wait_network": "No connection, waiting…",
-      "pill": "Spotify → likes: {done} of {total}"
+      "pill": "Spotify → likes: {done} of {total}",
+      "limited": "Spotify asked to wait about {minutes} min before the next request. You can start now: the transfer waits and continues by itself.",
+      "wait_rate_min": "Asked to wait, resuming in {min} min"
     },
     "title": "Library",
     "liked_songs": "Liked Songs",
@@ -1194,7 +1198,16 @@
     "expand": "Show tracks",
     "collapse": "Hide tracks",
     "empty": "Everything you listen to will show up here",
-    "more": "Show more"
+    "more": "Show more",
+    "songs_played_one": "{count} song played",
+    "songs_played_other": "{count} songs played",
+    "tracks_count_one": "{count} track",
+    "tracks_count_other": "{count} tracks",
+    "today_time": "Listened today",
+    "today_tracks": "Tracks today",
+    "hours_minutes": "{h} h {m} min",
+    "minutes": "{m} min",
+    "tracks_count": "{count} tracks"
   },
   "trends": {
     "title": "Trending",
@@ -1206,6 +1219,8 @@
     "new": "New in the chart",
     "same": "No change",
     "all": "All {n}",
-    "less": "Show less"
+    "less": "Show less",
+    "source": "Apple Music · daily",
+    "source_hint": "The most played songs on Apple Music, updated every day. World: the charts of 10 big countries combined."
   }
 }

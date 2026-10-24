@@ -192,8 +192,12 @@ export class LikedImportRunner {
         return await run();
       } catch (error) {
         if (isAbort(error, signal) || !this.deps.isRateLimit(error)) throw error;
-        this.emit({ type: "waiting", ms: wait, reason: "rate_limit" }, state);
-        await this.deps.sleep(wait, signal);
+        // the service said how long to wait (Spotify can ask for many minutes):
+        // wait exactly that, asking earlier only extends the block
+        const told = (error as { retryAfterMs?: unknown } | null)?.retryAfterMs;
+        const ms = typeof told === "number" && told > 0 ? told + 1_000 : wait;
+        this.emit({ type: "waiting", ms, reason: "rate_limit" }, state);
+        await this.deps.sleep(ms, signal);
         wait = Math.min(wait * 2, MAX_WAIT_MS);
       }
     }
