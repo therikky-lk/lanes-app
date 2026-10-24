@@ -21,6 +21,8 @@ export interface BuildMixesOptions {
   familiarShare?: number;
   /** similar tracks for a seed (the radio engine) */
   radio: (seed: Track) => Promise<Track[]>;
+  /** more tracks by an artist, to fill a mix the radio left short */
+  artistTracks?: (artistName: string) => Promise<Track[]>;
   random?: () => number;
 }
 
@@ -91,8 +93,16 @@ export async function buildDailyMixes(seeds: MixSeedTrack[], options: BuildMixes
     const familiar = shuffle(group.flatMap((a) => a.tracks), random)
       .sort((a, b) => b.weight - a.weight)
       .slice(0, Math.max(3, Math.round(perMix * familiarShare)));
-    const radioSeeds = familiar.slice(0, 3);
-    const similar = (await Promise.all(radioSeeds.map((s) => options.radio(s).catch(() => [] as Track[])))).flat();
+    // seeds from every artist of the group; a failed radio call is retried once
+    const radioSeeds = [...new Map(familiar.map((t) => [primaryArtistKey(t), t])).values(), ...familiar].slice(0, 4);
+    const radioOnce = (seed: Track) =>
+      options.radio(seed).catch(() => options.radio(seed)).catch(() => [] as Track[]);
+    const similar = (await Promise.all(radioSeeds.map(radioOnce))).flat();
+    // radio came back thin: top up with more songs by the mix's artists
+    if (similar.length < perMix && options.artistTracks) {
+      const extra = await Promise.all(group.map((a) => options.artistTracks!(a.name).catch(() => [] as Track[])));
+      similar.push(...extra.flat());
+    }
 
     const picked: Track[] = [];
     const take = (t: Track) => {
@@ -108,7 +118,7 @@ export async function buildDailyMixes(seeds: MixSeedTrack[], options: BuildMixes
       else if (n < fresh.length) take(fresh[n++]);
       else break;
     }
-    if (picked.length < 8) continue; // not enough material for a real mix
+    if (picked.length < 5) continue; // not enough material for a real mix
     picked.forEach((t) => used.add(t.id));
     mixes.push({
       id: `lane-mix-${i + 1}`,

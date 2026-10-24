@@ -28,28 +28,29 @@ export default function MixCover({ index, covers, label, sizes = "175px", classN
   const [from, to] = PALETTE[(Math.max(1, index) - 1) % PALETTE.length];
   const tiles = covers.length >= 4 ? covers.slice(0, 4) : covers.slice(0, 1);
   return (
-    <div className={`absolute inset-0 overflow-hidden ${className}`} style={{ background: `linear-gradient(135deg, ${from}, ${to})`, containerType: "inline-size" }}>
-      {tiles.length > 0 && (
-        <div className={`absolute inset-0 grid ${tiles.length === 4 ? "grid-cols-2 grid-rows-2" : ""}`}>
-          {tiles.map((src, i) => (
-            <div key={`${src}-${i}`} className="relative overflow-hidden">
-              <CoverImage src={src} alt="" fill sizes={sizes} className="object-cover" draggable={false} />
-            </div>
-          ))}
-        </div>
-      )}
-      {/* colour wash: strong at the bottom where the label sits */}
+    <div
+      className={`absolute inset-0 flex flex-col overflow-hidden ${className}`}
+      style={{ background: `linear-gradient(135deg, ${from}, ${to})`, containerType: "inline-size" }}
+    >
+      {/* artwork on top, nothing written over it */}
+      <div className={`relative min-h-0 flex-1 grid ${tiles.length === 4 ? "grid-cols-2 grid-rows-2" : ""}`}>
+        {tiles.map((src, i) => (
+          <div key={`${src}-${i}`} className="relative overflow-hidden">
+            <CoverImage src={src} alt="" fill sizes={sizes} className="object-cover" draggable={false} />
+          </div>
+        ))}
+      </div>
+      {/* the mix's colour band with its name */}
       <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(to top, ${to} 0%, ${to}cc 22%, ${from}55 55%, ${from}22 100%)`,
-          mixBlendMode: "normal",
-        }}
-      />
-      <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${from}66, transparent 60%)`, mixBlendMode: "soft-light" }} />
-      <div className="absolute left-[9%] bottom-[8%] right-[9%] flex items-end justify-between text-white" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
-        <span className="text-[clamp(11px,7.5cqw,22px)] font-[700] uppercase tracking-[0.08em] leading-none opacity-95">{label}</span>
-        <span className="text-[clamp(28px,26cqw,84px)] font-[800] leading-[0.8] tracking-tight">{index}</span>
+        className="flex shrink-0 items-center justify-between px-[8%] text-white"
+        style={{ height: "26%", background: `linear-gradient(90deg, ${from}, ${to})` }}
+      >
+        <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}>
+          {label}
+        </span>
+        <span className="text-[clamp(16px,15cqw,44px)] font-[800] leading-none tracking-tight" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}>
+          {index}
+        </span>
       </div>
     </div>
   );

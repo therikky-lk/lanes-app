@@ -7,6 +7,8 @@
 // "highlight run" laid over them, a lit copy. Both copies of a word are split
 // the same way so the lift moves the letter and its light together.
 
+import { lyricsOutputLatencyMs } from "../engine/lyricsLatency";
+
 const WORD = "blyrics--word";
 const HIGHLIGHT_RUN = "blyrics-highlight-run";
 const ACTIVE_LINE = "blyrics--active";
@@ -70,6 +72,8 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
   let touched = new Set<WordLetters>();
   let raf = 0;
   let scanQueued = false;
+  let latencyS = lyricsOutputLatencyMs() / 1000;
+  const latencyTimer = setInterval(() => (latencyS = lyricsOutputLatencyMs() / 1000), 2000);
 
   const scan = () => {
     scanQueued = false;
@@ -118,7 +122,7 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
 
   const frame = () => {
     raf = requestAnimationFrame(frame);
-    const now = (host.currentTime ?? 0) + RICHSYNC_LEAD_S;
+    const now = (host.currentTime ?? 0) + RICHSYNC_LEAD_S - latencyS;
     const next = new Set<WordLetters>();
     for (const line of Array.from(host.querySelectorAll<HTMLElement>(`.${ACTIVE_LINE}`))) {
       for (const litWord of Array.from(line.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} [${SPLIT_ATTR}]`))) {
@@ -142,6 +146,7 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
 
   return () => {
     cancelAnimationFrame(raf);
+    clearInterval(latencyTimer);
     observer.disconnect();
     words.clear();
     touched.clear();

@@ -149,8 +149,22 @@ export function createNativeAudioElement(): HTMLAudioElement {
     const wasPlaying = playing;
     const wasActive = playWhenReady;
     const hadDuration = Number.isFinite(durationMs);
-    positionMs = s.positionMs;
-    positionAt = performance.now();
+    // native ticks arrive every ~250 ms with a variable bridge delay; snapping
+    // to each one makes the clock jitter back and forth (lyrics stutter, run
+    // early / late). While playing steadily, keep the running clock unless it
+    // has drifted noticeably; seeks, pauses and starts still snap.
+    const now = performance.now();
+    const running = playing && s.playing && !s.buffering;
+    const expected = playing ? positionMs + (now - positionAt) * rate : positionMs;
+    const drift = s.positionMs - expected;
+    if (!running || Math.abs(drift) > 150) {
+      positionMs = s.positionMs;
+      positionAt = now;
+    } else {
+      // ease toward the native position: a quarter of the gap per tick
+      positionMs = expected + drift * 0.25;
+      positionAt = now;
+    }
     seekable = s.seekable !== false;
     if (s.durationMs > 0 && s.durationMs !== durationMs) {
       durationMs = s.durationMs;

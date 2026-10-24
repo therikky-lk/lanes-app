@@ -46,6 +46,7 @@
     "sec": "s"
   },
   "common": {
+    "pause": "Pausa",
     "source": "Source",
     "app": {
       "name": "Lane",
@@ -221,7 +222,18 @@
       "mood": "Mood",
       "mood_happy": "Happy",
       "mood_calm": "Calm",
-      "mood_sad": "Sad"
+      "mood_sad": "Sad",
+      "settings": "Vibe settings",
+      "by_character": "by character",
+      "by_mood": "by mood",
+      "by_language": "by language",
+      "character_favorite": "Favorites",
+      "character_unfamiliar": "Unfamiliar",
+      "character_popular": "Popular",
+      "mood_energetic": "Energetic",
+      "language_russian": "Russian",
+      "language_foreign": "Foreign",
+      "language_instrumental": "No vocals"
     },
     "daily_mix": "Daily Mix {n}",
     "mix_label": "Mix"
@@ -619,7 +631,6 @@
       "file_too_large": "Il file deve essere inferiore a 30 MB",
       "read_error": "Impossibile leggere il file immagine"
     },
-
     "audio_data": {
       "description": "Qualità dello streaming, cache offline e diagnostica della connessione."
     },

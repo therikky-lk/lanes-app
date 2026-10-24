@@ -970,7 +970,7 @@ function LibraryPlaylistContent() {
                 style={{ willChange: "scroll-position" }}
               >
               <ScrollBlurEdge height={60} />
-              {currentTracks.length > 0 && (
+              {currentTracks.length > 0 && !isMobile && (
                 <div className="flex items-center justify-between gap-[12px] px-[8px] pb-[10px]">
                   <span className="text-[13px] text-text-tertiary" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
                     {viewData.countLabel}
@@ -1006,7 +1006,7 @@ function LibraryPlaylistContent() {
                 </div>
               ) : search.matches && search.matches.length === 0 ? (
                 <TrackSearchEmpty query={search.activeQuery} onClear={() => search.setQuery("")} />
-              ) : trackView === "grid" ? (
+              ) : trackView === "grid" && !isMobile ? (
                 <div
                   className="grid gap-x-[16px] gap-y-[18px] px-[8px] pb-[8px]"
                   style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}

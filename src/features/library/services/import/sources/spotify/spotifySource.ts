@@ -1,4 +1,4 @@
-import { fetchSpotifyLikedTracks } from "./spotifyAccount";
+import { fetchSpotifyLikedTracks, spotifyAccountSupported, spotifyHasLogin, spotifyUserToken } from "./spotifyAccount";
 import type { ClientImportedPlaylist, ClientImportedTrack } from "../../importTypes";
 import { rethrowIfAborted } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
@@ -47,7 +47,13 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
   }
   const resolvedUrl = await resolveSpotifyUrl(rawUrl, signal);
   const { type: entityType, id: entityId } = parseSpotifyUrl(resolvedUrl);
-  const embed = await fetchSpotifyEmbed(entityType, entityId, defaultTitle(entityType), signal);
+  // personal playlists have no public embed: carry on without it
+  const embed = await fetchSpotifyEmbed(entityType, entityId, defaultTitle(entityType), signal).catch((error) => {
+    rethrowIfAborted(signal);
+    if (entityType !== "playlist") throw error;
+    log("yellow", "import", `spotify embed failed: ${String(error)}`);
+    return { title: undefined, description: undefined, coverUrl: undefined, tracks: [] as ClientImportedTrack[] };
+  });
   const title = embed.title ?? defaultTitle(entityType);
   rememberSourceMeta(rawUrl, { coverUrl: embed.coverUrl, owner: embed.description });
   const base = {
@@ -60,6 +66,20 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
   if (entityType === "playlist") {
     const tracks = pickPlaylistTracks(await tryPathfinder(entityId, signal), embed.tracks);
     if (tracks.length > 0) return { ...base, tracks };
+    // nothing for a guest: a personal playlist ("Your Top Songs 2022", Daily
+    // Mix…) that only its owner can open; read it as the signed-in user
+    if (spotifyAccountSupported() && (await spotifyHasLogin().catch(() => false))) {
+      const mine = await fetchSpotifyPlaylistTracks(entityId, signal, () => spotifyUserToken(signal)).catch((error) => {
+        rethrowIfAborted(signal);
+        log("yellow", "import", `spotify playlist as the signed-in user failed: ${String(error)}`);
+        return { tracks: [] as ClientImportedTrack[], total: undefined };
+      });
+      if (mine.tracks.length > 0) return { ...base, tracks: mine.tracks };
+    } else if (spotifyAccountSupported()) {
+      throw new Error(
+        "This looks like a personal Spotify playlist (like Your Top Songs or Daily Mix) that only its owner can open. Sign in to Spotify in the import dialog, then import it again.",
+      );
+    }
   }
   if (embed.tracks.length > 0) return { ...base, tracks: embed.tracks };
   throw new Error("No tracks found in the Spotify playlist.");

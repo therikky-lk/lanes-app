@@ -87,6 +87,11 @@ async function withRateLimit<T>(
   }
 }
 
+/** the signed-in user's web player token (for playlists only they can see) */
+export function spotifyUserToken(signal?: AbortSignal): Promise<string> {
+  return userToken(signal);
+}
+
 async function userToken(signal?: AbortSignal): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) return cachedToken.token;
   const text = await withRateLimit(
