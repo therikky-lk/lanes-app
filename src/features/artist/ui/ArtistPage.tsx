@@ -9,6 +9,7 @@ import {
 } from "@mingcute/react";
 import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
+import { useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
 import ScrollableRow from "@/shared/ui/ScrollableRow";
@@ -346,6 +347,8 @@ function ArtistContent() {
                       {t("artist.followers")}
                     </p>
                   ) : null}
+
+                  <YourArtistTracks id={id} name={data.title} />
 
                   <div className="mt-[16px] flex items-center gap-[8px]">
                     <Button
@@ -714,5 +717,17 @@ export default function ArtistPage() {
     <Suspense fallback={<ArtistPageSkeleton />}>
       <ArtistContent />
     </Suspense>
+  );
+}
+
+/** how many of this artist's songs you have in your liked songs */
+function YourArtistTracks({ id, name }: { id: string | null; name: string }) {
+  const { t } = useTranslation();
+  const { count, isLoading } = useYourArtistTrackCount({ id, name });
+  if (isLoading || count === 0) return null;
+  return (
+    <p className="m-0 mt-[4px] text-[13px] text-text-tertiary font-[400]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+      {t("artist.your_tracks", { count })}
+    </p>
   );
 }

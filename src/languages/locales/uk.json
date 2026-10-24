@@ -27,7 +27,9 @@
     "album": "Альбом",
     "single": "Сингл",
     "all_releases": "Усі",
-    "discography": "Дискографія"
+    "discography": "Дискографія",
+    "your_tracks": "У вас в улюблених: {count}",
+    "open": "Відкрити виконавця"
   },
   "collection": {
     "unknown_album": "Невідомий альбом",
@@ -57,7 +59,8 @@
       "home": "Головна",
       "search": "Пошук",
       "library": "Бібліотека",
-      "settings": "Налаштування"
+      "settings": "Налаштування",
+      "liked": "Улюблені"
     },
     "loading": "Завантаження",
     "signed_in": "У системі",
@@ -282,7 +285,9 @@
     "no_artists_title": "Немає збережених виконавців",
     "no_artists_desc": "Зберігайте виконавців, щоб швидко переходити до їхньої дискографії",
     "search_music": "Знайти музику",
-    "import_spotify": "Імпорт зі Spotify"
+    "import_spotify": "Імпорт зі Spotify",
+    "history": "Історія прослуховування",
+    "history_subtitle": "Усе, що ви слухали"
   },
   "login": {
     "welcome_back": "З поверненням",
@@ -489,7 +494,15 @@
     "albums": "Альбоми",
     "playlists": "Плейлісти",
     "no_results": "Нічого не знайдено",
-    "type_to_search": "Почніть вводити"
+    "type_to_search": "Почніть вводити",
+    "library": "Медіатека",
+    "section": {
+      "library": "У медіатеці",
+      "tracks": "Треки",
+      "artists": "Виконавці",
+      "albums": "Альбоми",
+      "playlists": "Плейлисти"
+    }
   },
   "settings": {
     "title": "Налаштування",
@@ -1136,7 +1149,11 @@
     "empty_title": "Перетягніть сюди MP3",
     "empty_desc": "або натисніть, щоб вибрати. Назву, виконавця й обкладинку взято з тегів файлу.",
     "drop_here": "Відпустіть, щоб додати до «Мої треки»",
-    "unknown_artist": "Невідомий виконавець"
+    "unknown_artist": "Невідомий виконавець",
+    "only_on_device": "Лише на «{device}»",
+    "only_on_device_toast": "Цей трек можна увімкнути лише на пристрої «{device}»",
+    "added_from_device": "Ваш файл з цього пристрою",
+    "add_failed": "Не вдалося додати свій трек до плейлиста"
   },
   "connect": {
     "code_section": "Зв'язок за кодом",

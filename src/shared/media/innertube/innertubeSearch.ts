@@ -2,6 +2,7 @@ import type { SearchResult, SearchType } from "@/shared/contracts";
 import { postInnertube } from "./innertubeClient";
 import { mapSearchResponse } from "./innertubeSearchMapper";
 import { isJunkVideo, matchesQueryWell } from "./innertubeSearchRanking";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
 
 export type InnertubeSearchFilter = SearchType | "video";
 
@@ -57,16 +58,20 @@ function createCollector(enrichment: Map<string, TrackResult>) {
   return { results, add };
 }
 
+// a clip / upload rather than the song: those carry a frame of the video
+// (i.ytimg.com/vi/...) instead of album artwork
+function isVideoResult(item: SearchResult): boolean {
+  return item.type === "track" && isVideoTrack({ coverUrl: item.cover?.url });
+}
+
 async function searchTracksAndMixed(query: string, includeMixed: boolean, signal?: AbortSignal): Promise<SearchResult[]> {
-  const settled = await Promise.allSettled([
-    searchRaw(query, undefined, signal),
-    searchRaw(query, "track", signal),
-    searchRaw(query, "video", signal),
-  ]);
+  // songs only: music videos, clips and uploads are not searched for at all
+  const settled = await Promise.allSettled([searchRaw(query, undefined, signal), searchRaw(query, "track", signal)]);
   throwIfAllFailed(settled);
-  const [mixed, tracks, videos] = [settledOrEmpty(settled[0]), onlyTracks(settledOrEmpty(settled[1])), onlyTracks(settledOrEmpty(settled[2]))];
-  const enrichment = new Map([...tracks, ...videos].map((track) => [track.id, track] as const));
-  const qualifiedVideos = videos.filter((video) => !isJunkVideo(video.title, query) && matches(query, video));
+  const mixed = settledOrEmpty(settled[0]).filter((item) => !isVideoResult(item));
+  // the "Songs" filter only returns songs; the mixed results also carry clips
+  const tracks = onlyTracks(settledOrEmpty(settled[1]));
+  const enrichment = new Map(tracks.map((track) => [track.id, track] as const));
   const { results, add } = createCollector(enrichment);
   const topResult = mixed[0];
 
@@ -77,7 +82,6 @@ async function searchTracksAndMixed(query: string, includeMixed: boolean, signal
   } else if (topResult?.type === "track" && matches(query, topResult) && !isJunkVideo(topResult.title, query)) {
     add(topResult);
   }
-  qualifiedVideos.forEach(add);
   tracks.filter((track) => !matches(query, track)).forEach(add);
   return results;
 }

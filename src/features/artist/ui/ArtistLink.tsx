@@ -8,6 +8,8 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import type { TrackArtist } from "@/shared/types";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
 
 export interface ArtistLinkProps {
   name?: string;
@@ -29,6 +31,7 @@ export default function ArtistLink({
   onNavigate,
 }: ArtistLinkProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const outerRef = useRef<HTMLSpanElement>(null);
   const innerRef = useRef<HTMLSpanElement>(null);
   const [delta, setDelta] = useState(0);
@@ -48,6 +51,43 @@ export default function ArtistLink({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
+
+  // every artist of this line, for the phone's artist sheet
+  const sheetArtists: ArtistSheetArtist[] = (() => {
+    if (artistList && artistList.length > 0) {
+      return artistList
+        .map((artist) => ({
+          id:
+            artist.id && artist.id !== "unknown"
+              ? artist.id
+              : artistList.length === 1 && artistId && artistId !== "unknown"
+                ? artistId
+                : artist.name,
+          name: artist.name,
+        }))
+        .filter((a) => a.id && a.id !== "unknown");
+    }
+    const text = name ?? artists ?? "";
+    if (artistId && artistId !== "unknown") return [{ id: artistId, name: text }];
+    return text
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((part) => ({ id: part, name: part }));
+  })();
+
+  /** desktop: open the artist; phone: slide up the artist sheet first */
+  const goArtist = (targetId: string) => {
+    if (isMobile) {
+      const list = sheetArtists.some((a) => a.id === targetId)
+        ? sheetArtists
+        : [{ id: targetId, name: targetId }, ...sheetArtists];
+      useArtistSheetStore.getState().open(list, targetId, onNavigate);
+      return;
+    }
+    onNavigate?.();
+    navigate(`/artist?id=${encodeURIComponent(targetId)}`);
+  };
 
   let innerContent: React.ReactNode = null;
 
@@ -86,8 +126,7 @@ export default function ArtistLink({
               isClickable
                 ? (e) => {
                     e.stopPropagation();
-                    onNavigate?.();
-                    navigate(`/artist?id=${encodeURIComponent(targetId)}`);
+                    goArtist(targetId);
                   }
                 : undefined
             }
@@ -97,8 +136,7 @@ export default function ArtistLink({
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       e.stopPropagation();
-                      onNavigate?.();
-                      navigate(`/artist?id=${encodeURIComponent(targetId)}`);
+                      goArtist(targetId);
                     }
                   }
                 : undefined
@@ -124,15 +162,13 @@ export default function ArtistLink({
           }}
           onClick={(e) => {
             e.stopPropagation();
-            onNavigate?.();
-            navigate(`/artist?id=${encodeURIComponent(artistId)}`);
+            goArtist(artistId);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
-              onNavigate?.();
-              navigate(`/artist?id=${encodeURIComponent(artistId)}`);
+              goArtist(artistId);
             }
           }}
         >
@@ -161,15 +197,13 @@ export default function ArtistLink({
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                onNavigate?.();
-                navigate(`/artist?id=${encodeURIComponent(part)}`);
+                goArtist(part);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   e.stopPropagation();
-                  onNavigate?.();
-                  navigate(`/artist?id=${encodeURIComponent(part)}`);
+                  goArtist(part);
                 }
               }}
             >
@@ -188,15 +222,13 @@ export default function ArtistLink({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              onNavigate?.();
-              navigate(`/artist?id=${encodeURIComponent(text)}`);
+              goArtist(text);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 e.stopPropagation();
-                onNavigate?.();
-                navigate(`/artist?id=${encodeURIComponent(text)}`);
+                goArtist(text);
               }
             }}
           >

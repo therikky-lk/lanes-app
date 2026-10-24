@@ -312,7 +312,7 @@ function MiniPlayer({
   const miniPlayerRootRef = useRef<HTMLDivElement>(null);
   const queuePopupRef = useRef<HTMLDivElement>(null);
   const volumePopupRef = useRef<HTMLDivElement>(null);
-  const volumeToggleRef = useRef<HTMLButtonElement>(null);
+  const volumeToggleRef = useRef<HTMLDivElement>(null);
   const speedPopupRef = useRef<HTMLDivElement>(null);
   const speedToggleRef = useRef<HTMLButtonElement>(null);
   const volumeHoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -579,36 +579,6 @@ function MiniPlayer({
       ref={miniPlayerRootRef}
       className="relative h-[64px] w-full select-none"
     >
-      <AnimatePresence>
-        {volumeOpen && (
-          <motion.div
-            key="volume-popup"
-            ref={volumePopupRef}
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute bottom-[52px] z-[99] w-[38px] rounded-xl bg-bg-surface/90 dark:bg-[#161618]/95 backdrop-blur-2xl pt-[6px] pb-[8px] px-[4px] shadow-[0_8px_24px_rgba(0,0,0,0.14)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.5)] prevent-seek"
-            style={volumePopupStyle}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseEnter={clearVolumeHoverTimer}
-            onMouseLeave={handleVolumeMouseLeave}
-          >
-            {/* Seamless invisible hit zone bridging popup and toggle button */}
-            <div className="absolute -inset-x-3 -bottom-[22px] top-0 pointer-events-auto" />
-
-            <VolumePicker
-              orientation="vertical"
-              showValue
-              showIcon={false}
-              onDraggingChange={handleVolumeDraggingChange}
-              trackClassName="bg-black/[0.08] dark:bg-white/[0.12]"
-              fillClassName="bg-text-primary dark:bg-white"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <AnimatePresence>
         {speedOpen && (
           <motion.div
@@ -887,34 +857,21 @@ function MiniPlayer({
                   />
                 </motion.div>
               </button>
-              <button
+              {/* volume right in the bar: icon ── slider ── 100% */}
+              <div
                 ref={volumeToggleRef}
-                type="button"
-                aria-label="Volume"
-                className={`${iconButtonClass} ${
-                  volumeOpen ? "bg-bg-toolbox-active text-text-primary" : ""
-                }`}
+                className="flex items-center px-[4px]"
                 onPointerDown={(e) => e.stopPropagation()}
-                onMouseEnter={handleVolumeMouseEnter}
-                onMouseLeave={handleVolumeMouseLeave}
-                onWheel={handleVolumeWheel}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSpeedOpen(false);
-                  onQueueOpenChange?.(false);
-                  handleToggleMute();
-                  setVolumeOpen(true);
-                }}
-                style={{ cursor: "pointer" }}
+                onClick={(e) => e.stopPropagation()}
               >
-                {volumeLevel === 0 ? (
-                  <VolumeCross size={18} weight="Outline" />
-                ) : volumeLevel < 0.33 ? (
-                  <VolumeSmall size={18} weight="Outline" />
-                ) : (
-                  <VolumeLoud size={18} weight="Outline" />
-                )}
-              </button>
+                <VolumePicker
+                  size="sm"
+                  showIcon
+                  showValue
+                  style={{ width: 170 }}
+                  iconClassName="text-text-secondary hover:text-text-primary"
+                />
+              </div>
               <ConnectDevicesButton className={iconButtonClass} />
               <button
                 type="button"

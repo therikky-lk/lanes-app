@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home7Fill, Search3Fill, BookmarksFill, Settings4Fill } from "@mingcute/react";
+import { Home7Fill, SearchLine, BookmarksFill, HeartFill, Settings4Fill } from "@mingcute/react";
+import { LIKED_HREF, navSectionOf } from "../data/navigation";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "@/features/library/store/modalStore";
 
@@ -11,7 +12,7 @@ interface MobileNavProps {
 /** bottom tab bar of the phone layout */
 export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps) {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const settingsOpen = useModalStore((s) => s.settingsOpen);
   const toggleSettings = useModalStore((s) => s.toggleSettings);
 
@@ -20,7 +21,8 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
       active ? "text-text-primary opacity-100" : "text-text-primary opacity-50"
     }`;
   const label = "text-[10.5px] font-[500] leading-none";
-  const onRoute = (href: string) => !searchOpen && !settingsOpen && (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const section = navSectionOf(pathname, search);
+  const onSection = (id: "home" | "library" | "liked") => !searchOpen && !settingsOpen && section === id;
 
   return (
     <nav
@@ -31,17 +33,21 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
         fontFamily: "var(--font-inter), sans-serif",
       }}
     >
-      <Link to="/" className={item(onRoute("/"))}>
+      <Link to="/" className={item(onSection("home"))}>
         <Home7Fill size={23} />
         <span className={label}>{t("common.sidebar.home") || "Home"}</span>
       </Link>
       <button type="button" onClick={onSearchToggle} className={item(searchOpen)}>
-        <Search3Fill size={23} />
+        <SearchLine size={23} />
         <span className={label}>{t("common.sidebar.search") || "Search"}</span>
       </button>
-      <Link to="/library" className={item(onRoute("/library") || onRoute("/local"))}>
+      <Link to="/library" className={item(onSection("library"))}>
         <BookmarksFill size={23} />
         <span className={label}>{t("common.sidebar.library") || "Library"}</span>
+      </Link>
+      <Link to={LIKED_HREF} className={item(onSection("liked"))}>
+        <HeartFill size={23} />
+        <span className={label}>{t("common.sidebar.liked") || "Liked"}</span>
       </Link>
       <button type="button" onClick={toggleSettings} className={item(settingsOpen)}>
         <Settings4Fill size={23} />

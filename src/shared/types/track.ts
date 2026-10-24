@@ -21,4 +21,6 @@ export interface Track {
     id: string;
     title: string;
   };
+  /** the user's own file, kept on another device: the name of that device */
+  onlyOnDevice?: string;
 }
