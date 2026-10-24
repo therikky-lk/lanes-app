@@ -23,6 +23,7 @@ import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import CoverImage from "@/features/covers/ui/CoverImage";
+import MixCover from "@/features/home/ui/MixCover";
 import { playerEngine } from "@/features/player";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -367,7 +368,9 @@ function CollectionContent() {
                     : undefined
                 }
                 cover={
-                  data.coverUrl ? (
+                  data.mixCover ? (
+                    <MixCover index={data.mixCover.index} covers={data.mixCover.covers} label={data.mixCover.label} sizes="280px" />
+                  ) : data.coverUrl ? (
                     <CoverImage
                       src={data.coverUrl}
                       alt={data.title}

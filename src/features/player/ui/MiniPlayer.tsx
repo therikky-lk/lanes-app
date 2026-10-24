@@ -799,7 +799,7 @@ function MiniPlayer({
               type="button"
               aria-label={isLiked ? "Unlike" : "Like"}
               className={`${iconButtonClass} shrink-0 transition-colors duration-150 pointer-events-auto prevent-seek ${
-                isLiked ? "text-accent-primary" : "text-text-secondary hover:text-text-primary"
+                isLiked ? "text-[#ff3b5c]" : "text-text-secondary hover:text-text-primary"
               }`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={handleLikeToggle}

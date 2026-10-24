@@ -2,6 +2,7 @@ import { memo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import ScrollableRow from "@/shared/ui/ScrollableRow";
 import CoverImage from "@/features/covers/ui/CoverImage";
+import MixCover from "./MixCover";
 import { playerEngine } from "@/features/player";
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import { useToast, ScrollableText } from "@/shared/ui";
@@ -116,7 +117,9 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onMouseLeave={() => setIsCardHovered(false)}
     >
       <div className="relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14">
-        {mix.coverUrl && (
+        {mix.mixIndex ? (
+          <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={t("home.mix_label") || "Mix"} />
+        ) : mix.coverUrl && (
           <CoverImage
             src={mix.coverUrl}
             alt={mix.title}

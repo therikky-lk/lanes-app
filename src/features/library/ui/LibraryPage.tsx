@@ -223,7 +223,7 @@ export default function LibraryPage() {
       isOwned: true,
       href: `/library/playlist?id=${encodeURIComponent(playlist.id)}`,
       addedAt:
-        playlist.updatedAt || playlist.createdAt || new Date().toISOString(),
+        playlist.createdAt || playlist.updatedAt || new Date().toISOString(),
     }));
   }, [playlistsData, t]);
 

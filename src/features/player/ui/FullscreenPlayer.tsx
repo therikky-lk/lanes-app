@@ -579,7 +579,6 @@ export function FullscreenPlayer({
         style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 108 }}
         data-no-window-drag
       >
-        {isMobile && <MobileLikeButton />}
         {isMobile && (
           <button
             type="button"
@@ -597,27 +596,6 @@ export function FullscreenPlayer({
         />
       </div>
     </div>
-  );
-}
-
-function MobileLikeButton() {
-  const { t } = useTranslation();
-  const track = usePlayerStore((s) => s.currentTrack);
-  const isLiked = useIsTrackLiked(track?.id);
-  const like = useLikeTrack();
-  const unlike = useUnlikeTrack();
-  if (!track) return null;
-  return (
-    <button
-      type="button"
-      aria-label={isLiked ? t("common.unlike") : t("common.like")}
-      onClick={() => (isLiked ? unlike.mutate(track.id) : like.mutate(track.id))}
-      className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-black/45 backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer ${
-        isLiked ? "text-[#ff3b5c]" : "text-white/85"
-      }`}
-    >
-      {isLiked ? <HeartFill size={18} /> : <HeartLine size={18} />}
-    </button>
   );
 }
 
