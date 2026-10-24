@@ -1,3 +1,4 @@
+import { isMusicVideo } from "./innertubeTrackMapper";
 import type {
   AlbumDetails,
   ArtistDetails,
@@ -68,6 +69,8 @@ async function getRadio(trackId: string, options: RadioOptions = {}): Promise<Ra
   const limit = options.k ?? DEFAULT_RADIO_SIZE;
   const items: Track[] = [];
   for (const raw of queue) {
+    // songs only: radio, mixes and My Vibe skip music videos and uploads
+    if (isMusicVideo(raw)) continue;
     const track = mapInnertubeRadioTrack(raw);
     if (track) items.push(track);
     if (items.length >= limit) break;
