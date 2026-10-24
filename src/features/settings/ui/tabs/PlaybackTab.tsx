@@ -4,6 +4,54 @@ import { useTranslation } from "@/languages";
 import { usePlayerStore } from "@/features/player";
 import { ToggleSwitch } from "@/shared/ui";
 import { SettingRow, SettingSection, SegmentedControl } from "../controls";
+import Button from "@/shared/ui/Button";
+import { batteryOptimizationStatus, requestBatteryExemption } from "@/shared/platform/keepAwake";
+
+/**
+ * Android: battery optimization freezes Lane in the background on many phones
+ * (playback stops between tracks, imports stall). Shows whether Lane is
+ * exempt and asks the system to exempt it.
+ */
+function BackgroundWorkRow({ searchQuery }: { searchQuery?: string }) {
+  const { t } = useTranslation();
+  const tr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v && v !== key ? v : fallback;
+  };
+  const [status, setStatus] = useState<{ supported: boolean; ignoring: boolean } | null>(null);
+
+  useEffect(() => {
+    const check = () => void batteryOptimizationStatus().then(setStatus);
+    check();
+    // the system prompt returns to the app: read the answer
+    document.addEventListener("visibilitychange", check);
+    return () => document.removeEventListener("visibilitychange", check);
+  }, []);
+
+  if (!status?.supported) return null;
+  return (
+    <SettingRow
+      title={tr("settings.background.title", "Background work")}
+      description={
+        status.ignoring
+          ? tr("settings.background.ok", "Lane runs without battery restrictions: music and imports keep going in the background.")
+          : tr("settings.background.restricted", "The system may put Lane to sleep in the background: music stops between tracks and imports stall. Allow unrestricted background work.")
+      }
+      titleKey="settings.background.title"
+      descKey="settings.background.restricted"
+      searchQuery={searchQuery}
+      control={
+        status.ignoring ? (
+          <span className="text-[13px] text-text-secondary">✓</span>
+        ) : (
+          <Button onClick={() => void requestBatteryExemption().then(() => batteryOptimizationStatus().then(setStatus))}>
+            {tr("settings.background.allow", "Allow")}
+          </Button>
+        )
+      }
+    />
+  );
+}
 
 export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
@@ -123,6 +171,8 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
           />
         }
       />}
+
+      {isNativeApp() && <BackgroundWorkRow searchQuery={searchQuery} />}
     </SettingSection>
   );
 }

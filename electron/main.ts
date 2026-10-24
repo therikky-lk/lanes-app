@@ -774,6 +774,17 @@ if (!gotTheLock) {
     });
 
     registerSpotifyAccount(() => mainWindow);
+    // long jobs (importing thousands of liked songs) keep running with the
+    // window hidden or the laptop idle: the system must not suspend the app
+    let jobBlockerId: number | null = null;
+    ipcMain.handle("power:keep-awake", (_event, on: boolean) => {
+      if (on && jobBlockerId === null) jobBlockerId = powerSaveBlocker.start("prevent-app-suspension");
+      if (!on && jobBlockerId !== null) {
+        powerSaveBlocker.stop(jobBlockerId);
+        jobBlockerId = null;
+      }
+      return jobBlockerId !== null;
+    });
     registerConnectRelay();
 
     ipcMain.handle("dialog:save-dump", async (_event, { filename, content }: { filename: string; content: string }) => {

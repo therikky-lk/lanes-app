@@ -1,4 +1,4 @@
-import SpotifyLikedImportDialog from "./SpotifyLikedImportDialog";
+import SpotifyLikedImportDialog, { SpotifyLikedImportPill } from "./SpotifyLikedImportDialog";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
@@ -627,6 +627,7 @@ export default function LibraryPage() {
       )}
 
       <SpotifyLikedImportDialog open={spotifyLikedOpen} onClose={() => setSpotifyLikedOpen(false)} />
+      {!spotifyLikedOpen && <SpotifyLikedImportPill onOpen={() => setSpotifyLikedOpen(true)} />}
 
       {activeTab === "playlists" && !isMobile && (
         <button
