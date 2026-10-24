@@ -1,6 +1,6 @@
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { memo, useEffect, useRef, useState } from "react";
-import { More2Fill, RepeatFill } from "@mingcute/react";
+import { HeartFill, HeartLine, More2Fill, RepeatFill } from "@mingcute/react";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import { useTranslation } from "@/languages";
@@ -51,6 +51,9 @@ export interface SongCardProps {
   highlight?: string;
   /** greyed-out row that can't be played here, with the reason */
   unavailableNote?: string;
+  /** shows a heart button in the row (your own files, liked on this device) */
+  liked?: boolean;
+  onToggleLike?: () => void;
 }
 
 function SongCard({
@@ -85,6 +88,8 @@ function SongCard({
   onGrabStart,
   highlight,
   unavailableNote,
+  liked,
+  onToggleLike,
 }: SongCardProps) {
   const shownTitle = cleanTrackTitle(title, artists);
   const { t } = useTranslation();
@@ -307,6 +312,23 @@ function SongCard({
           >
             {releaseDate}
           </span>
+        )}
+        {onToggleLike && (
+          <button
+            type="button"
+            aria-label={liked ? t("common.unlike") : t("common.like")}
+            aria-pressed={Boolean(liked)}
+            data-prevent-drag
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleLike();
+            }}
+            className={`flex items-center justify-center border-0 bg-transparent p-0 cursor-pointer transition-colors ${
+              liked ? "text-[#ff3b5c]" : "text-text-tertiary hover:text-text-primary"
+            }`}
+          >
+            {liked ? <HeartFill size={18} /> : <HeartLine size={18} />}
+          </button>
         )}
         {duration && (
           <span

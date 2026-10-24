@@ -695,7 +695,7 @@ function MiniPlayer({
         <div
           className={`relative grid h-full pointer-events-none ${
             embedded
-              ? "grid-cols-[280px_minmax(0,1fr)_260px]"
+              ? "grid-cols-[280px_minmax(0,1fr)_auto]"
               : "grid-cols-[286px_minmax(0,1fr)]"
           } ${!usesRoundedStyle && !embedded ? "pb-[4px]" : ""}`}
         >
@@ -868,7 +868,7 @@ function MiniPlayer({
                   size="sm"
                   showIcon
                   showValue
-                  style={{ width: 170 }}
+                  style={{ width: 132 }}
                   iconClassName="text-text-secondary hover:text-text-primary"
                 />
               </div>
