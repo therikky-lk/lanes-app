@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useLongPress } from "@/shared/hooks/useLongPress";
 import { memo, useCallback, useState } from "react";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
@@ -48,6 +49,12 @@ function AlbumCard({
     if (!isOpen) setMenuPosition(null);
   }, []);
 
+  // phones: touch and hold opens the same menu (pin, delete…)
+  const longPress = useLongPress((point) => {
+    setMenuPosition(point);
+    setMenuOpen(true);
+  }, Boolean(menuItems && menuItems.length > 0));
+
   const menu =
     menuItems && menuItems.length > 0 ? (
       <DropdownMenu
@@ -60,7 +67,7 @@ function AlbumCard({
     ) : null;
 
   return (
-    <div onContextMenu={handleContextMenu}>
+    <div onContextMenu={handleContextMenu} {...longPress}>
       <Link
         to={`/collection?type=album&id=${encodeURIComponent(id)}`}
         className={`group flex flex-col gap-[8px] no-underline cursor-pointer ${className}`}

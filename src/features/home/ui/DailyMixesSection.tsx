@@ -194,7 +194,8 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixes
         </div>
       </div>
 
-      <ScrollableRow className="flex gap-[28px] pl-8 pr-8 mt-[12px] overflow-x-auto pb-[2px]">
+      {/* room above and below so the playing mix's ring isn't clipped by the scroller */}
+      <ScrollableRow className="flex gap-[28px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[5px] pb-[6px]">
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}

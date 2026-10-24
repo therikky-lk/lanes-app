@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { PinLine } from "@mingcute/react";
 import { usePinsStore, type PinKind } from "@/features/navigation/store/pinsStore";
 import { useNavigate } from "react-router-dom";
@@ -370,6 +371,7 @@ export default function LibraryGrid({
   prependNode,
   prependNodes,
 }: LibraryGridProps) {
+  const isMobile = useIsMobile();
   const prepends = useMemo(() => {
     if (prependNodes && prependNodes.length > 0) return prependNodes;
     if (prependNode) return [prependNode];
@@ -411,7 +413,14 @@ export default function LibraryGrid({
   }
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(165px,1fr))] gap-[24px] pb-[24px]">
+    <div
+      className={
+        isMobile
+          ? // phones: three covers a row
+            "grid grid-cols-3 gap-x-[12px] gap-y-[16px] pb-[24px]"
+          : "grid grid-cols-[repeat(auto-fill,minmax(165px,1fr))] gap-[24px] pb-[24px]"
+      }
+    >
       {prepends.map((node, index) => (
         <div
           key={`prepend-${index}`}

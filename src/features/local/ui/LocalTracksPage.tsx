@@ -183,6 +183,8 @@ export default function LocalTracksPage() {
                 duration={formatDuration(track.durationMs)}
                 isCurrent={currentTrackId === track.id}
                 onPlay={() => play(track)}
+                liked={likedIds.has(track.id)}
+                onToggleLike={() => void setLocalTrackLiked(track.id, !likedIds.has(track.id))}
                 menuItems={[
                   likedIds.has(track.id)
                     ? {

@@ -137,7 +137,7 @@ export function useLikeTrack() {
     const trackId = trackIdFrom(input);
     setIsPending(true);
     if (isLocalTrackId(trackId)) {
-      await setLocalTrackLiked(trackId, true);
+      await setLocalTrackLiked(trackId, true).finally(() => setIsPending(false));
       return undefined as unknown as Awaited<ReturnType<typeof api.likeTrack>>;
     }
     const rollback = applyOptimisticLike(trackId);
@@ -173,7 +173,7 @@ export function useUnlikeTrack() {
     const trackId = trackIdFrom(input);
     setIsPending(true);
     if (isLocalTrackId(trackId)) {
-      await setLocalTrackLiked(trackId, false);
+      await setLocalTrackLiked(trackId, false).finally(() => setIsPending(false));
       return undefined as unknown as Awaited<ReturnType<typeof api.unlikeTrack>>;
     }
     const rollback = applyOptimisticUnlike(trackId);
