@@ -20,7 +20,7 @@ import {
   useExternalItems,
   useLikedTrackCount,
 } from "../hooks";
-import { MusicLine, HeartFill, HistoryFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line } from "@mingcute/react";
+import { MusicLine, HeartFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "../store/modalStore";
 import { useImportStore } from "../store/importStore";
@@ -587,15 +587,6 @@ export default function LibraryPage() {
                             title={t("local.title") || "My tracks"}
                             Icon={MusicLine}
                             onClick={() => navigate("/local")}
-                          />,
-                          // what you've listened to, kept as its own list in the library
-                          <LikesPlaylistCard
-                            key="history-card"
-                            viewMode={viewMode}
-                            title={t("library.history")}
-                            subtitle={t("library.history_subtitle")}
-                            Icon={HistoryFill}
-                            onClick={() => navigate("/recent")}
                           />,
                           ...(isImporting && importJob
                             ? [

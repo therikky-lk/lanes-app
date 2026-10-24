@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useLongPress } from "@/shared/hooks/useLongPress";
 import { memo, useCallback, useState } from "react";
 import { PlaylistFill } from "@mingcute/react";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
@@ -103,6 +104,12 @@ function PlaylistCard({
     if (!isOpen) setMenuPosition(null);
   }, []);
 
+  // phones: touch and hold opens the same menu (pin, delete…)
+  const longPress = useLongPress((point) => {
+    setMenuPosition(point);
+    setMenuOpen(true);
+  }, Boolean(menuItems && menuItems.length > 0));
+
   const cardContent = (
     <>
       <div
@@ -162,7 +169,7 @@ function PlaylistCard({
 
   if (href) {
     return (
-      <div onContextMenu={handleContextMenu}>
+      <div onContextMenu={handleContextMenu} {...longPress}>
         <Link
           to={href}
           className={`group flex flex-col gap-[8px] no-underline ${className}`}
@@ -178,7 +185,7 @@ function PlaylistCard({
 
   if (onClick) {
     return (
-      <div onContextMenu={handleContextMenu}>
+      <div onContextMenu={handleContextMenu} {...longPress}>
         <button
           type="button"
           onClick={onClick}
@@ -194,7 +201,7 @@ function PlaylistCard({
   }
 
   return (
-    <div onContextMenu={handleContextMenu}>
+    <div onContextMenu={handleContextMenu} {...longPress}>
       <div
         className={`group flex flex-col gap-[8px] ${className}`}
         draggable={false}
