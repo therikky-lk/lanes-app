@@ -68,6 +68,29 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     }, { once: true });
   });
 
+/**
+ * Spotify said "too many requests". `retryAfterMs` is how long it asked to
+ * wait (when it said so). Callers that can wait (the transfer) wait exactly
+ * that long and go on; asking again sooner only extends the block.
+ */
+export class SpotifyRateLimitError extends Error {
+  readonly status = 429;
+  constructor(
+    what: string,
+    readonly retryAfterMs: number | undefined,
+  ) {
+    super(
+      retryAfterMs
+        ? `${what}: Spotify is rate-limiting (429), asked to wait ${Math.ceil(retryAfterMs / 60_000)} min`
+        : `${what}: Spotify is rate-limiting (429)`,
+    );
+    this.name = "SpotifyRateLimitError";
+  }
+}
+
+/** short waits are taken here; a longer one is handed to the caller */
+const INLINE_WAIT_LIMIT_MS = 30_000;
+
 /** Spotify answers 429 when asked too fast: wait as told (or back off) and retry */
 async function withRateLimit<T>(
   run: () => Promise<{ status: number; retryAfter?: string | null; value?: T }>,
@@ -80,9 +103,16 @@ async function withRateLimit<T>(
       if (res.value === undefined) throw new Error(`${what} failed (${res.status})`);
       return res.value;
     }
-    if (attempt >= 6) throw new Error(`${what} failed (${res.status}): Spotify is rate-limiting, try again in a few minutes`);
     const told = Number(res.retryAfter);
-    const wait = Number.isFinite(told) && told > 0 ? Math.min(told, 60) * 1000 : Math.min(2000 * 2 ** attempt, 30_000);
+    const toldMs = Number.isFinite(told) && told > 0 ? told * 1000 : undefined;
+    if (res.status === 429) {
+      // asked to wait long, or still blocked after a few tries: don't keep
+      // knocking (every early request extends Spotify's block)
+      if ((toldMs ?? 0) > INLINE_WAIT_LIMIT_MS || attempt >= 3) throw new SpotifyRateLimitError(what, toldMs);
+    } else if (attempt >= 4) {
+      throw new Error(`${what} failed (${res.status})`);
+    }
+    const wait = toldMs ?? Math.min(3000 * 2 ** attempt, INLINE_WAIT_LIMIT_MS);
     await sleep(wait + Math.random() * 500, signal);
   }
 }

@@ -117,6 +117,21 @@ describe("LikedImportRunner", () => {
     expect(deps.sleep).toHaveBeenCalledWith(5_000, undefined);
   });
 
+  it("waits as long as Spotify asked when it names the time", async () => {
+    let calls = 0;
+    const { runner, deps } = setup({
+      fetchSpotifyPage: vi.fn(async (offset: number) => {
+        if (calls++ === 0) throw Object.assign(new Error("429"), { status: 429, retryAfterMs: 600_000 });
+        const tracks = offset === 0 ? [sp(1)] : [];
+        return { total: 1, count: tracks.length, tracks };
+      }),
+    });
+    const state = newImportState("me", "spot");
+    await runner.run(state);
+    expect(deps.sleep).toHaveBeenCalledWith(601_000, undefined);
+    expect(countItems(state).liked).toBe(1);
+  });
+
   it("goes in batches, saves after each, and a stopped import continues without liking anything twice", async () => {
     const total = BATCH_SIZE * 2 + 5;
     const controller = new AbortController();
