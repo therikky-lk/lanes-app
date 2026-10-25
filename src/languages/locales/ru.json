@@ -1259,7 +1259,8 @@
     "today_tracks": "Треков сегодня",
     "hours_minutes": "{h} ч {m} мин",
     "minutes": "{m} мин",
-    "tracks_count": "{count} трека"
+    "tracks_count": "{count} трека",
+    "just_tracks": "Просто треки"
   },
   "trends": {
     "title": "В трендах",
@@ -1284,7 +1285,6 @@
     "rock": "Рок",
     "electronic": "Электроника",
     "jazz": "Джаз",
-    "classical": "Классика",
-    "plain": "Просто треки"
+    "classical": "Классика"
   }
 }

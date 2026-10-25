@@ -115,18 +115,15 @@ export function mergeSessions(groups: HistoryGroup[]): HistoryGroup[] {
 
 /**
  * One entry per place a day: "My Vibe · 13" instead of "My Vibe · 10",
- * "Liked · 2", "My Vibe · 3". The entry stays where its newest part was; lone
- * tracks stay as they are.
+ * "Liked · 2", "My Vibe · 3"; the day's lone tracks make one "Just tracks"
+ * folder (each song once). An entry stays where its newest part was.
  */
 export function consolidate(groups: HistoryGroup[]): HistoryGroup[] {
   const out: HistoryGroup[] = [];
   const bySource = new Map<string, HistoryGroup>();
   for (const group of groups) {
-    if (group.source === "track") {
-      out.push(group);
-      continue;
-    }
-    const key = `${group.source}:${group.id ?? ""}`;
+    // lone tracks of the day go into one "Just tracks" folder too
+    const key = group.source === "track" ? "track:" : `${group.source}:${group.id ?? ""}`;
     const first = bySource.get(key);
     if (first) {
       absorb(first, group);

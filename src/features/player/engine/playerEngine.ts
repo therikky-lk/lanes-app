@@ -1221,7 +1221,7 @@ class PlayerEngine {
 
     if (!nextTrack) {
       this.lastPreloadKey = null;
-      if (state.currentTrack) playerRuntime?.queueNextNatively(state.currentTrack.id, null);
+      if (state.currentTrack) playerRuntime?.queueNextNatively(state.currentTrack.id, []);
       return;
     }
 
@@ -1244,12 +1244,26 @@ class PlayerEngine {
 
     if (playerRuntime) {
       void playerRuntime.preloadTrack(nextTrack);
-      // Android: the native player moves on to it by itself (not on repeat-one,
-      // which plays the same track again)
+      // Android: the native player moves on through the next few by itself
+      // (not on repeat-one, which plays the same track again)
       if (state.currentTrack) {
-        playerRuntime.queueNextNatively(state.currentTrack.id, state.repeat === "one" ? null : nextTrack);
+        playerRuntime.queueNextNatively(state.currentTrack.id, state.repeat === "one" ? [] : this.upcoming(state, 4));
       }
     }
+  }
+
+  /** the next `count` tracks of the queue (wrapping on repeat-all, not on radio) */
+  private upcoming(state: PlayerState, count: number): Track[] {
+    const { queue, currentIndex } = state;
+    const out: Track[] = [];
+    const wrap = state.repeat === "all" && !isRadioContext(state.playbackContext);
+    for (let i = 1; out.length < count && i < queue.length + 1; i++) {
+      const at = currentIndex + i;
+      if (at < queue.length) out.push(queue[at]);
+      else if (wrap) out.push(queue[at % queue.length]);
+      else break;
+    }
+    return out.filter((t) => t.id !== state.currentTrack?.id);
   }
 
   /** Android: the native player already started the queued next track */
