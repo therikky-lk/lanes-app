@@ -66,6 +66,14 @@ function absorb(into: HistoryGroup, other: HistoryGroup): void {
 }
 
 /**
+ * a short detour inside a session: a lone track, or a single song from some
+ * other playlist (My Vibe often reports the playlist a song came from)
+ */
+function isFiller(group: HistoryGroup): boolean {
+  return group.source === "track" || group.tracks.length === 1;
+}
+
+/**
  * Plays from a playlist or My Vibe often come back from the server with a few
  * lone tracks in between (a play reported without its context, a track picked
  * by hand in the middle): "Playlist · Song · Playlist · Song …". A lone track
@@ -79,9 +87,9 @@ export function mergeSessions(groups: HistoryGroup[]): HistoryGroup[] {
     for (let i = 0; i < out.length - 1; i++) {
       const a = out[i];
       if (a.source === "track") continue;
-      // newer part, lone tracks…, older part of the same source
+      // newer part, detours…, older part of the same source
       let j = i + 1;
-      while (j < out.length && out[j].source === "track") j++;
+      while (j < out.length && isFiller(out[j]) && !sameSource(a, out[j])) j++;
       if (j >= out.length) continue;
       const b = out[j];
       if (!sameSource(a, b)) continue;

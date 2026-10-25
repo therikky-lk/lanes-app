@@ -867,8 +867,7 @@ function MiniPlayer({
                 <VolumePicker
                   size="sm"
                   showIcon
-                  showValue
-                  style={{ width: 132 }}
+                  style={{ width: 112 }}
                   iconClassName="text-text-secondary hover:text-text-primary"
                 />
               </div>

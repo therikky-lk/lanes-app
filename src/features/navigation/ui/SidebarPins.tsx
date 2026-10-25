@@ -25,9 +25,7 @@ function PinCover({ pin, active }: { pin: SidebarPin; active: boolean }) {
     <span
       className={`relative block h-[36px] w-[36px] overflow-hidden bg-border-alpha-14 ${
         round ? "rounded-full" : "rounded-[8px]"
-      } transition-[box-shadow,opacity] duration-150 ${
-        active ? "opacity-100 shadow-[0_0_0_2px_var(--accent-primary,#ff4d5e)]" : "opacity-80 group-hover:opacity-100"
-      }`}
+      } transition-opacity duration-150 ${active ? "opacity-100" : "opacity-80 group-hover:opacity-100"}`}
     >
       {pin.imageUrl ? (
         <CoverImage src={pin.imageUrl} alt={pin.title} fill className="object-cover" draggable={false} unoptimized />
@@ -35,6 +33,16 @@ function PinCover({ pin, active }: { pin: SidebarPin; active: boolean }) {
         <span className="absolute inset-0 flex items-center justify-center text-text-tertiary">
           {round ? <User1Fill size={18} /> : <PlaylistFill size={18} />}
         </span>
+      )}
+      {/* the "open now" ring is drawn inside the cover: the narrow, scrolling
+          sidebar clipped a ring drawn around it */}
+      {active && (
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 z-[1] shadow-[inset_0_0_0_2px_var(--accent-primary,#ff4d5e)] ${
+            round ? "rounded-full" : "rounded-[8px]"
+          }`}
+        />
       )}
     </span>
   );
@@ -69,7 +77,7 @@ export default function SidebarPins() {
         axis="y"
         values={order}
         onReorder={setLocalOrder}
-        className="flex min-h-0 flex-1 flex-col items-center gap-[10px] overflow-y-auto overflow-x-hidden py-[4px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 p-0"
+        className="flex min-h-0 w-full flex-1 flex-col items-center gap-[10px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 px-0 py-[4px]"
       >
         {order.map((pin) => {
           const active = samePlace(pin.href, pathname, search);

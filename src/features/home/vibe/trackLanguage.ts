@@ -12,12 +12,19 @@ import type { VibeLanguage } from "./vibeTaste";
 
 const LRCLIB = "https://lrclib.net/api";
 const HEADERS = { "Lrclib-Client": "Lane (https://github.com/therikky-lk)" };
-const CACHE_KEY = "lane_track_language_v1";
+// v2: Cyrillic that isn't Russian (Ukrainian, Belarusian, Kazakh…) has its own verdict
+const CACHE_KEY = "lane_track_language_v2";
 const MAX_CACHE = 4000;
 const CYRILLIC = /[Ѐ-ӿ]/g;
 const LATIN = /[A-Za-z]/g;
+// letters Russian doesn't have: Ukrainian і ї є ґ, Belarusian ў, Kazakh/Tatar
+// ә ғ қ ң ө ұ ү һ, Serbian/Macedonian ђ ј љ њ ћ џ ѓ ќ ѕ
+const NOT_RUSSIAN = /[іїєґўәғқңөұүһђјљњћџѓќѕІЇЄҐЎӘҒҚҢӨҰҮҺЂЈЉЊЋЏЃЌЅ]/g;
+// letters only Russian (of these) has
+const RUSSIAN_ONLY = /[ыэъёЫЭЪЁ]/g;
 
-type Verdict = VibeLanguage | "unknown";
+/** "other": sung in a language none of the filters stands for (Ukrainian, Kazakh…) */
+type Verdict = VibeLanguage | "unknown" | "other";
 
 interface Rec {
   trackName: string;
@@ -57,7 +64,12 @@ export function scriptVerdict(text: string, minLetters = 20): Verdict {
   const cyr = text.match(CYRILLIC)?.length ?? 0;
   const lat = text.match(LATIN)?.length ?? 0;
   if (cyr + lat < minLetters) return "unknown";
-  return cyr / (cyr + lat) >= 0.35 ? "russian" : "foreign";
+  if (cyr / (cyr + lat) < 0.35) return "foreign";
+  const notRussian = text.match(NOT_RUSSIAN)?.length ?? 0;
+  const russianOnly = text.match(RUSSIAN_ONLY)?.length ?? 0;
+  // a few stray letters (a name, a quote) don't make a Ukrainian song
+  if (notRussian >= Math.max(2, Math.ceil(cyr * 0.01)) && notRussian > russianOnly * 0.5) return "other";
+  return "russian";
 }
 
 async function getJson<T>(url: string, signal: AbortSignal): Promise<T | null> {
@@ -116,7 +128,7 @@ export async function languageFilter(
   language: VibeLanguage,
   known: Track[] = [],
   budgetMs = 7000,
-): Promise<(t: Track) => boolean> {
+): Promise<(t: Track, strict?: boolean) => boolean> {
   const todo = tracks.filter((t) => !(t.id in cache) && !t.id.startsWith("local:"));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
@@ -132,13 +144,16 @@ export async function languageFilter(
   clearTimeout(timer);
 
   const byArtist = artistVerdicts([...known, ...tracks]);
-  return (t: Track) => {
+  // strict (the default): only tracks whose language is actually known, from
+  // their lyrics or their artist's other songs. Loose: when that leaves too
+  // little, the script of the title / artist name decides the rest.
+  return (t: Track, strict = true) => {
     const own = cache[t.id];
     if (own && own !== "unknown") return own === language;
     if (language === "instrumental") return false; // only tracks marked as such
     const artist = byArtist.get(artistKey(t));
     if (artist) return artist === language;
-    // nothing better: the script of the title / artist name
+    if (strict) return false;
     const v = scriptVerdict(`${t.title} ${t.artists}`, 3);
     return v === "unknown" ? language === "foreign" : v === language;
   };

@@ -18,6 +18,10 @@ const SPLIT_ATTR = "data-lane-letters";
 const LIT = "lane-ch-lit";
 // braccato runs word-timed lines this much ahead of the audio
 const RICHSYNC_LEAD_S = 0.15;
+// a line that stops being current is usually still finishing its last word
+// (our clock follows the speakers, braccato's runs ahead of them): its letters
+// are completed and held this long before going dark, instead of being cut off
+const FINISH_HOLD_MS = 650;
 
 interface WordLetters {
   time: number;
@@ -70,6 +74,8 @@ function splittable(word: HTMLElement): boolean {
 export function attachLetterAnimation(host: LyricsHost): () => void {
   const words = new Map<HTMLElement, WordLetters>(); // keyed by the lit copy
   let touched = new Set<WordLetters>();
+  /** words of lines that just stopped being current: when to let them go dark */
+  const finishing = new Map<WordLetters, number>();
   let raf = 0;
   let scanQueued = false;
   let latencyS = lyricsOutputLatencyMs() / 1000;
@@ -125,17 +131,38 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
     const now = (host.currentTime ?? 0) + RICHSYNC_LEAD_S - latencyS;
     const next = new Set<WordLetters>();
     for (const line of Array.from(host.querySelectorAll<HTMLElement>(`.${ACTIVE_LINE}`))) {
-      for (const litWord of Array.from(line.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} [${SPLIT_ATTR}]`))) {
-        const word = words.get(litWord);
-        if (!word) continue;
+      const lineWords = Array.from(line.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} [${SPLIT_ATTR}]`))
+        .map((el) => words.get(el))
+        .filter((w): w is WordLetters => Boolean(w));
+      lineWords.forEach((word, i) => {
         const progress = word.duration > 0 ? (now - word.time) / word.duration : now >= word.time ? 1 : 0;
-        const count = Math.max(0, Math.min(word.lit.length, Math.ceil(progress * word.lit.length)));
+        let count = Math.max(0, Math.min(word.lit.length, Math.ceil(progress * word.lit.length)));
+        // the next word has begun: this one is done, even if its timing ran long
+        const later = lineWords[i + 1];
+        if (later && now >= later.time) count = word.lit.length;
         setCount(word, count);
         next.add(word);
+      });
+    }
+    const wall = performance.now();
+    for (const word of touched) {
+      if (next.has(word)) continue;
+      // moving on: finish what was being sung; a jump back: go dark right away
+      if (now >= word.time - 0.05 || word.count > 0) {
+        setCount(word, word.lit.length);
+        finishing.set(word, wall + FINISH_HOLD_MS);
+      } else {
+        setCount(word, 0);
       }
     }
-    // lines that just stopped being current go back to unlit letters
-    for (const word of touched) if (!next.has(word)) setCount(word, 0);
+    for (const [word, until] of finishing) {
+      if (next.has(word)) {
+        finishing.delete(word);
+      } else if (wall >= until) {
+        setCount(word, 0);
+        finishing.delete(word);
+      }
+    }
     touched = next;
   };
 
@@ -150,5 +177,6 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
     observer.disconnect();
     words.clear();
     touched.clear();
+    finishing.clear();
   };
 }

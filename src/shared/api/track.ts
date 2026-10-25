@@ -2,6 +2,36 @@ import { mediaUrl } from "./api";
 import type { ApiTrack } from "../contracts";
 import type { Track } from "../types";
 
+// "Koss & ПЛУТТО", "A feat. B", "A x B": several artists in one name
+const ARTIST_SEPARATOR = /\s*,\s*|\s+(?:&|×|x|feat\.?|ft\.?|featuring)\s+/i;
+
+/**
+ * One entry per artist. Names that came joined ("Koss & ПЛУТТО") are split,
+ * unless the catalog links the whole name to one artist (a band such as
+ * "Simon & Garfunkel" has its own page, so its id stays with the full name).
+ */
+export function splitJoinedArtists(list: { id?: string; name: string }[]): { id: string; name: string }[] {
+  const out: { id: string; name: string }[] = [];
+  const seen = new Set<string>();
+  const push = (id: string, name: string) => {
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) return;
+    seen.add(key);
+    out.push({ id, name });
+  };
+  for (const artist of list) {
+    const name = (artist.name ?? "").trim();
+    const id = artist.id ?? "";
+    const linked = Boolean(id && id !== "unknown");
+    if (linked || !ARTIST_SEPARATOR.test(name)) {
+      push(id, name);
+      continue;
+    }
+    for (const part of name.split(ARTIST_SEPARATOR)) push("", part.trim());
+  }
+  return out;
+}
+
 export function toClientTrack(source: any): Track {
   if (!source) {
     return {
@@ -49,12 +79,9 @@ export function toClientTrack(source: any): Track {
     ];
   }
 
-  const artistsString =
-    typeof source.artists === "string"
-      ? source.artists
-      : typeof source.artist === "string"
-        ? source.artist
-        : artistsList.map((artist) => artist.name).filter(Boolean).join(", ");
+  artistsList = splitJoinedArtists(artistsList);
+  // always "A, B": the same look everywhere, whatever the source wrote
+  const artistsString = artistsList.map((artist) => artist.name).filter(Boolean).join(", ");
 
   const primaryArtistId =
     artistsList.find((artist) => Boolean(artist.id && artist.id !== "unknown"))?.id ||

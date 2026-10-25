@@ -4,7 +4,8 @@ vi.mock("@/features/connect/connectService", () => ({
   useConnectStore: { getState: () => ({ me: { id: "dev-1", name: "PC (Windows)" } }) },
 }));
 
-import { DEVICE_ALBUM_PREFIX, withLocalAvailability } from "./localPlaylistTracks";
+import { DEVICE_ALBUM_PREFIX, localEntryToTrack, withLocalAvailability } from "./localPlaylistTracks";
+import { readLocalEntries, withLocalEntries, withCoverMarker, readCoverMarker, stripCoverMarker } from "@/features/library/services/playlistCoverMarker";
 import type { Track } from "@/shared/types";
 import type { LocalTrackRecord } from "@/shared/media/local/localTracks";
 
@@ -29,5 +30,21 @@ describe("withLocalAvailability", () => {
   it("returns the same list when there are no local tracks", () => {
     const tracks: Track[] = [{ ...base, id: "yt1", title: "A" }];
     expect(withLocalAvailability(tracks, [])).toBe(tracks);
+  });
+
+  it("keeps the files in the description next to the cover, invisibly", () => {
+    const entry = { id: "local:abc", title: "Кредитов понабрал", artists: "PWGood", durationMs: 123000, deviceId: "dev-2", deviceName: "Phone (Pixel 7)", addedAt: 1 };
+    let description = withCoverMarker("my words", "https://example.com/c.jpg");
+    description = withLocalEntries(description, [entry]);
+    expect(stripCoverMarker(description)).toBe("my words");
+    expect(readCoverMarker(description)).toBe("https://example.com/c.jpg");
+    expect(readLocalEntries(description)).toEqual([entry]);
+    // changing the cover keeps the files
+    description = withCoverMarker(description, "https://example.com/d.jpg");
+    expect(readLocalEntries(description)).toEqual([entry]);
+    const track = localEntryToTrack(entry);
+    const [shown] = withLocalAvailability([track], []);
+    expect(shown.onlyOnDevice).toBe("Phone (Pixel 7)");
+    expect(withLocalEntries(description, [])).not.toContain("lane-local");
   });
 });

@@ -51,6 +51,19 @@ describe("history grouping", () => {
       { track: tr("lone"), listenedAt: "2026-10-24T15:00:00" },
       { track: tr("p3"), listenedAt: "2026-10-24T14:57:00", context: pl },
     ]);
-    expect(days[0].groups.map((g) => g.source)).toEqual(["playlist", "album", "playlist", "track", "playlist"]);
+    // a single song from an album in between is a detour; the long break still splits
+    expect(days[0].groups.map((g) => g.source)).toEqual(["playlist", "track", "playlist"]);
+  });
+
+  it("doesn't chop My Vibe into pieces around one-song playlists", () => {
+    const vibe = (id: string, at: string) => ({ track: tr(id), listenedAt: at, context: { type: "radio", id: "vibe:-:-:-:a" } });
+    const days = groupHistory([
+      vibe("v1", "2026-10-24T14:00:00"),
+      { track: tr("a"), listenedAt: "2026-10-24T13:57:00", context: { type: "playlist", id: "pl-a" } },
+      vibe("v2", "2026-10-24T13:54:00"),
+      { track: tr("b"), listenedAt: "2026-10-24T13:51:00", context: { type: "playlist", id: "pl-b" } },
+      vibe("v3", "2026-10-24T13:48:00"),
+    ]);
+    expect(days[0].groups.map((g) => [g.source, g.tracks.length])).toEqual([["vibe", 5]]);
   });
 });
