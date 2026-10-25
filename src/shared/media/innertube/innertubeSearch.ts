@@ -82,8 +82,29 @@ async function searchTracksAndMixed(query: string, includeMixed: boolean, signal
   } else if (topResult?.type === "track" && matches(query, topResult) && !isJunkVideo(topResult.title, query)) {
     add(topResult);
   }
+  // the song isn't on YouTube Music as a song (small artists, sped up /
+  // remixed versions): then an upload that clearly is that song is better than
+  // nothing. Clips never push songs out, they only fill this gap.
+  const matchingSongs = results.filter((item) => item.type === "track" && matches(query, item as TrackResult)).length;
+  if (matchingSongs < 2) {
+    const videos = onlyTracks(await searchRaw(query, "video", signal).catch(() => [] as SearchResult[]));
+    const songKeys = new Set(results.flatMap((r) => (r.type === "track" ? [sameSongKey(r)] : [])));
+    videos
+      .filter((video) => !isJunkVideo(video.title, query) && matches(query, video) && !songKeys.has(sameSongKey(video)))
+      .slice(0, 6)
+      .forEach(add);
+  }
   tracks.filter((track) => !matches(query, track)).forEach(add);
   return results;
+}
+
+function sameSongKey(track: TrackResult): string {
+  const title = track.title
+    .toLowerCase()
+    .replace(/[([][^)\]]*[)\]]/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+  return `${title}|${(track.artists[0]?.name ?? "").toLowerCase()}`;
 }
 
 async function searchTyped(query: string, type: Exclude<SearchType, "all" | "track">, signal?: AbortSignal): Promise<SearchResult[]> {

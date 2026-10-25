@@ -1,5 +1,6 @@
 import type { ImportedTrack, ImportReviewReason, SearchResult, Track } from "@/shared/contracts";
 import { searchRaw, videoThumbnailCover } from "@/shared/media/innertube";
+import { soundcloudCatalog } from "@/shared/media/soundcloud/soundcloudCatalog";
 import { cleanSoundCloudMetadata } from "./artistTitle";
 import { evaluateImportedTrack, type MatchDecision } from "./evaluate";
 
@@ -66,6 +67,22 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
   if (!isMatch(decision) || decision.score < MATCH_CONFIDENCE_FLOOR) await attempt(meta.searchQuery, "all");
   if (!isMatch(decision) && meta.title && meta.title !== meta.searchQuery) await attempt(meta.title, "track");
   if (!isMatch(decision)) await attempt(meta.searchQuery, "video");
+  if (!isMatch(decision)) {
+    // not on YouTube at all (small Russian artists, sped up versions…): SoundCloud often has it
+    const extra = await soundcloudCatalog.search(meta.searchQuery, 10, signal).catch((error) => {
+      if (signal?.aborted) throw error;
+      return [] as Track[];
+    });
+    const full = extra.filter((t) => t.durationMs > 60_000);
+    if (full.length > 0) {
+      const combined = mergeCandidates(candidates, full);
+      const next = evaluateImportedTrack(source, combined);
+      if (isMatch(next) || !decision) {
+        candidates = combined;
+        decision = next;
+      }
+    }
+  }
 
   if (isMatch(decision)) {
     const track = { ...decision.track, cover: decision.track.cover ?? videoThumbnailCover(decision.track.id) };

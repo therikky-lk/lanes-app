@@ -110,11 +110,24 @@ describe("innertubeCatalog", () => {
     expect(results.map((item) => item.id)).toEqual(["blinding001", "unrelated01"]);
   });
 
-  it("never searches for music videos when looking for songs", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => json(searchResponse([])));
+  it("doesn't look for clips when the song itself is found", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      json(searchResponse([songRow("blinding001", "Blinding Lights"), songRow("blinding002", "Blinding Lights (Remix)")])),
+    );
     await innertubeCatalog.search("weeknd blinding lights", "track");
     const params = fetchSpy.mock.calls.map((call) => (bodyOf(call) as { params?: string }).params);
     expect(params.some((p) => p?.startsWith("EgWKAQIQA"))).toBe(false);
+  });
+
+  it("falls back to an upload when there's no such song", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      const params = (JSON.parse(String(init?.body)) as { params?: string }).params;
+      if (params?.startsWith("EgWKAQIQA")) return json(searchResponse([songRow("upload00001", "Blinding Lights")]));
+      return json(searchResponse([]));
+    });
+    const results = await innertubeCatalog.search("weeknd blinding lights", "track");
+    expect(results.map((r) => r.id)).toEqual(["upload00001"]);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
   });
 
   it("throws when every search request fails", async () => {

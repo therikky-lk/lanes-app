@@ -178,14 +178,22 @@ export async function addLocalFiles(files: Iterable<File>): Promise<{ added: Loc
 }
 
 export function localRecordToTrack(record: LocalTrackRecord): Track {
+  // "A & B" from the file's tags reads as two artists, like everywhere else
+  const artistList = record.artists
+    ? record.artists
+        .split(/\s*,\s*|\s+(?:&|×|x|feat\.?|ft\.?|featuring)\s+/i)
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .map((name) => ({ id: "", name }))
+    : [];
   return {
     id: record.id,
     title: record.title,
-    artists: record.artists,
+    artists: artistList.map((a) => a.name).join(", "),
     coverUrl: record.coverDataUrl ?? "",
     durationMs: record.durationMs,
     playCount: 0,
-    artistList: record.artists ? [{ name: record.artists }] : [],
+    artistList,
     ...(record.album ? { album: { id: "local", title: record.album } } : {}),
   };
 }

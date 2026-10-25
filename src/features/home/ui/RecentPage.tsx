@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import LikedCover from "@/features/library/ui/LikedCover";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftLine, DownLine, HeartFill, PlayFill, RadioFill } from "@mingcute/react";
+import { ArrowLeftLine, DownLine, HeartFill, RadioFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { api, toClientTrack } from "@/shared/api";
 import { playerEngine } from "@/features/player";
@@ -82,11 +83,6 @@ export default function RecentPage() {
     const m = minutes % 60;
     return h > 0 ? tr("history.hours_minutes", `${h} h ${m} min`, { h, m }) : tr("history.minutes", `${m} min`, { m });
   };
-  const todayStats = useMemo(() => {
-    const today = new Date().toDateString();
-    const day = days.find((d) => d.date.toDateString() === today);
-    return { plays: day?.plays ?? 0, playedMs: day?.playedMs ?? 0 };
-  }, [days]);
 
   const playlistById = useMemo(() => new Map((playlists?.playlists ?? []).map((p) => [p.id, p])), [playlists]);
 
@@ -135,18 +131,6 @@ export default function RecentPage() {
     else void playerEngine.playTrack(g.tracks[0], g.tracks, "recent", null, 0);
   };
 
-  // the whole history as one list, newest first, each song once
-  const historyTracks = useMemo(() => {
-    const seen = new Set<string>();
-    return plays
-      .map((p) => p.track)
-      .filter((track) => {
-        if (!track.id || seen.has(track.id)) return false;
-        seen.add(track.id);
-        return true;
-      });
-  }, [plays]);
-
   const toggle = (key: string) =>
     setOpen((prev) => {
       const next = new Set(prev);
@@ -167,28 +151,6 @@ export default function RecentPage() {
           {t("common.back")}
         </button>
         <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{t("home.history")}</h1>
-        {!loading && (
-          <div className="mt-[14px] flex flex-wrap gap-[10px]">
-            <div className="rounded-xl bg-bg-panel/85 px-[14px] py-[10px]">
-              <div className="text-[12px] text-text-tertiary">{tr("history.today_time", "Listened today")}</div>
-              <div className="text-[20px] font-[700] tabular-nums text-text-primary">{formatDuration(todayStats.playedMs)}</div>
-            </div>
-            <div className="rounded-xl bg-bg-panel/85 px-[14px] py-[10px]">
-              <div className="text-[12px] text-text-tertiary">{tr("history.today_tracks", "Tracks today")}</div>
-              <div className="text-[20px] font-[700] tabular-nums text-text-primary">{todayStats.plays}</div>
-            </div>
-            {historyTracks.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void playerEngine.playTrack(historyTracks[0], historyTracks, "history", historyTracks[0].coverUrl)}
-                className="inline-flex items-center gap-[8px] self-center rounded-full border-0 bg-btn-primary-bg px-[18px] py-[10px] text-[14px] font-[600] text-btn-primary-text cursor-pointer active:scale-[0.97] transition-transform"
-              >
-                <PlayFill size={16} />
-                {t("common.play_all")}
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="mt-[8px] px-[24px]">
@@ -218,9 +180,7 @@ export default function RecentPage() {
                       >
                         <span className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
                           {d.icon === "liked" ? (
-                            <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "linear-gradient(140deg,#ff5f7a,#d6143f)" }}>
-                              <HeartFill size={24} />
-                            </span>
+                            <LikedCover heartRatio={0.5} />
                           ) : d.icon === "vibe" ? (
                             <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "radial-gradient(circle at 50% 50%, #111 38%, #d22ad2 70%, #6a0f96)" }}>
                               <RadioFill size={20} />

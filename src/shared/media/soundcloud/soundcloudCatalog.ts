@@ -125,7 +125,16 @@ async function getRadio(trackId: string, k = DEFAULT_RADIO_SIZE, signal?: AbortS
   return { items: mapSoundCloudTracks(related).slice(0, k) };
 }
 
+/** full tracks only: Go+ previews ("SNIP") play 30 seconds */
+async function search(query: string, limit = 10, signal?: AbortSignal): Promise<ApiTrack[]> {
+  const body = await getJson("/search/tracks", { q: query, limit: String(limit) }, signal);
+  return asArray(body.collection)
+    .filter((raw) => (raw as { policy?: string } | null)?.policy !== "SNIP")
+    .flatMap((raw) => mapSoundCloudCatalogTrack(raw) ?? []);
+}
+
 export const soundcloudCatalog = {
+  search,
   getArtist,
   getArtistImage,
   getAlbum,

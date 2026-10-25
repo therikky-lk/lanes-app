@@ -1,8 +1,9 @@
 import { getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
-import { readCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
+import { readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
+import { buildLocalPlaylistEntry, localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { api, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
+import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
 
@@ -115,10 +116,12 @@ function load(force = false): Promise<void> {
       response.items.map(async (playlist) => {
         const cached = coverCache[playlist.id];
 
+        // the user's own files ride in the description
+        const localCount = readLocalEntries(playlist.description).length;
         if (cached && cached.updatedAt === playlist.updatedAt) {
           return {
             ...playlist,
-            trackCount: cached.trackCount,
+            trackCount: cached.trackCount + localCount,
             coverUrl: cached.coverUrls[0] ?? "",
             coverUrls: cached.coverUrls,
           };
@@ -134,7 +137,7 @@ function load(force = false): Promise<void> {
         coverCache[playlist.id] = entry;
         return {
           ...playlist,
-          trackCount: detail.items.length,
+          trackCount: detail.items.length + localCount,
           coverUrl: covers[0] ?? "",
           coverUrls: covers,
         };
@@ -253,15 +256,16 @@ export function usePlaylist(id: string | null) {
         };
         writeCoverCache(coverCache);
 
+        const localTracks = readLocalEntries(response.playlist.description).map(localEntryToTrack);
         const detail: LibraryPlaylistDetail = {
           id: response.playlist.id,
           title: response.playlist.title,
           description: response.playlist.description,
-          trackCount: response.items.length,
+          trackCount: response.items.length + localTracks.length,
           coverUrl: covers[0] ?? "",
           coverUrls: covers,
           revision: response.playlist.revision,
-          tracks: response.items.map(toTrack),
+          tracks: [...response.items.map(toTrack), ...localTracks],
         };
         queryCache.set(cacheKey, detail);
         setData(detail);
@@ -282,4 +286,27 @@ export function usePlaylist(id: string | null) {
   }, [id, cacheKey]);
 
   return { data, error, isLoading };
+}
+
+/** add one of the user's own files: it's kept in the playlist's description */
+export async function addLocalTrackToPlaylist(playlistId: string, trackId: string): Promise<void> {
+  const entry = await buildLocalPlaylistEntry(trackId);
+  if (!entry) throw new ApiError(404, "Local track was not found.");
+  const { playlist } = await api.getUserPlaylist(playlistId);
+  const entries = readLocalEntries(playlist.description);
+  if (entries.some((e) => e.id === entry.id)) throw new ApiError(409, "Track is already in the playlist.");
+  await api.updatePlaylist(playlistId, { description: withLocalEntries(playlist.description, [...entries, entry]) });
+  queryCache.delete(`playlist:detail:${playlistId}`);
+}
+
+export async function removeLocalTrackFromPlaylist(playlistId: string, trackId: string): Promise<void> {
+  const { playlist } = await api.getUserPlaylist(playlistId);
+  const entries = readLocalEntries(playlist.description);
+  await api.updatePlaylist(playlistId, {
+    description: withLocalEntries(
+      playlist.description,
+      entries.filter((e) => e.id !== trackId),
+    ),
+  });
+  queryCache.delete(`playlist:detail:${playlistId}`);
 }

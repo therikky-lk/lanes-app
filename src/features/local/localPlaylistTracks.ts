@@ -1,16 +1,20 @@
-import type { Track as ApiTrack } from "@/shared/contracts";
 import type { Track } from "@/shared/types";
-import { registerLocalTrackSnapshotResolver } from "@/shared/api/localTrackSnapshots";
 import { getLocalTrack, isLocalTrackId, type LocalTrackRecord } from "@/shared/media/local/localTracks";
-import { useConnectStore } from "@/features/connect/connectService";
+import type { LocalPlaylistEntry } from "@/features/library/services/playlistCoverMarker";
 
 // A file from "My tracks" can be added to any playlist. The audio stays on the
-// device it was uploaded on; the playlist (on the server) only keeps a
-// snapshot that says which device that is. Other devices show the row greyed
-// out: "only on <device>".
+// device it was uploaded on; the playlist only remembers (in its description,
+// which every device gets from the server) the title and which device has it.
+// Other devices show the row greyed out: "only on <device>".
 
-/** the snapshot's album marks the device the file lives on */
+/** a playlist row's album marks the device the file lives on */
 export const DEVICE_ALBUM_PREFIX = "lane-device:";
+/** playlist item ids of these rows (they aren't server items) */
+export const LOCAL_ITEM_PREFIX = "lane-local:";
+
+export function isLocalPlaylistItemId(itemId: string | null | undefined): boolean {
+  return typeof itemId === "string" && itemId.startsWith(LOCAL_ITEM_PREFIX);
+}
 
 function deviceOf(track: { album?: { id?: string; title?: string } }): string | undefined {
   const album = track.album;
@@ -18,23 +22,37 @@ function deviceOf(track: { album?: { id?: string; title?: string } }): string | 
   return album.title || undefined;
 }
 
-export async function buildLocalTrackSnapshot(trackId: string): Promise<ApiTrack | undefined> {
+export async function buildLocalPlaylistEntry(trackId: string): Promise<LocalPlaylistEntry | undefined> {
   if (!isLocalTrackId(trackId)) return undefined;
   const record = await getLocalTrack(trackId);
   if (!record) return undefined;
+  // loaded on demand: the playlist code shouldn't pull Lane Connect in with it
+  const { useConnectStore } = await import("@/features/connect/connectService");
   const me = useConnectStore.getState().me;
   return {
     id: record.id,
     title: record.title,
-    artists: record.artists
-      ? record.artists
-          .split(/\s*,\s*/)
-          .filter(Boolean)
-          .map((name) => ({ id: "", name }))
-      : [],
+    artists: record.artists,
     durationMs: record.durationMs,
-    // no cover: the artwork stays on the device with the file
-    album: { id: `${DEVICE_ALBUM_PREFIX}${me.id}`, title: me.name },
+    deviceId: me.id,
+    deviceName: me.name,
+    addedAt: Date.now(),
+  };
+}
+
+export function localEntryToTrack(entry: LocalPlaylistEntry): Track {
+  return {
+    id: entry.id,
+    playlistItemId: `${LOCAL_ITEM_PREFIX}${entry.id}`,
+    title: entry.title,
+    artists: entry.artists,
+    artistList: entry.artists
+      ? entry.artists.split(/\s*,\s*/).filter(Boolean).map((name) => ({ id: "", name }))
+      : [],
+    coverUrl: "",
+    durationMs: entry.durationMs,
+    playCount: 0,
+    album: { id: `${DEVICE_ALBUM_PREFIX}${entry.deviceId}`, title: entry.deviceName },
   };
 }
 
@@ -57,8 +75,4 @@ export function withLocalAvailability(tracks: Track[], records: LocalTrackRecord
     }
     return { ...track, album: undefined, onlyOnDevice: deviceOf(track) ?? "?" };
   });
-}
-
-export function initLocalPlaylistTracks(): void {
-  registerLocalTrackSnapshotResolver(buildLocalTrackSnapshot);
 }

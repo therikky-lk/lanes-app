@@ -53,10 +53,17 @@ describe("letter-by-letter lyrics", () => {
     flush();
     expect(lit()).toBe("111111");
 
-    // line no longer current: letters go dark again
+    // line no longer current: the letters finish, then go dark again
+    let wall = 1000;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => wall);
+    host.currentTime = 10.6; // braccato moved on while "xy" was still being sung
     host.querySelector(".blyrics--line")!.classList.remove("blyrics--active");
     flush();
+    expect(lit()).toBe("111111");
+    wall = 2000;
+    flush();
     expect(lit()).toBe("000000");
+    clock.mockRestore();
     detach();
   });
 });

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import LikedCover from "@/features/library/ui/LikedCover";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
 import PopularTracksSection from "./PopularTracksSection";
@@ -143,8 +144,8 @@ export default function HomePage() {
                     key: "liked",
                     onClick: () => navigate("/library/playlist?id=likes"),
                     tile: (
-                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] text-white" style={{ background: "linear-gradient(140deg,#ff5f7a,#d6143f)" }}>
-                        <HeartFill size={22} />
+                      <span className="relative inline-flex h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[10px]">
+                        <LikedCover heartRatio={0.5} />
                       </span>
                     ),
                     title: t("library.liked_songs"),

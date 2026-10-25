@@ -11,7 +11,6 @@ import {
 import { syncServerTime } from "./serverTime";
 import { clientCatalog } from "./clientCatalog";
 import { getLocalImportHandler } from "./localImports";
-import { resolveLocalTrackSnapshot } from "./localTrackSnapshots";
 import { streamFallbackLyrics } from "@/shared/media/lyrics/fallbackLyrics";
 import type { Track } from "@/shared/contracts";
 import { telemetry } from "@/shared/telemetry";
@@ -194,6 +193,12 @@ async function executeRequest<T>(
     }
   }
 
+  // Android sends requests through the native HTTP client, which marks a
+  // body-less DELETE as JSON; the server then refuses the empty body. An
+  // explicit "{}" works the same everywhere.
+  if ((init?.method ?? "GET").toUpperCase() === "DELETE" && init?.body == null) {
+    init = { ...init, body: "{}" };
+  }
   const hasBody = init?.body != null;
   const extraHeaders = (init?.headers as Record<string, string>) ?? {};
   const { Authorization: _ignoredAuth, ...restHeaders } = extraHeaders;
@@ -797,11 +802,7 @@ export const api = {
     trackId: string,
     snapshot?: ApiTrackBase,
   ): Promise<ApiUserPlaylistItem> {
-    // the user's own files: the catalog can't describe them, the device can
-    const track =
-      snapshot ??
-      (await resolveLocalTrackSnapshot(trackId)) ??
-      (await clientCatalog.resolveSnapshot(trackId));
+    const track = snapshot ?? (await clientCatalog.resolveSnapshot(trackId));
     return request<ApiUserPlaylistItem>(
       `/v1/me/playlists/${encodeURIComponent(playlistId)}/tracks/${encodeURIComponent(trackId)}`,
       { method: "POST", ...(track ? { body: JSON.stringify({ track, trackSnapshot: track }) } : {}) },

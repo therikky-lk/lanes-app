@@ -346,8 +346,16 @@ function CollectionContent() {
       </button>
       {/* track search sits centred in the page header */}
       {data && isReady && (
-        <div className="absolute top-[12px] left-0 right-0 z-20 flex justify-center pointer-events-none">
+        <div
+          className={
+            isMobile
+              ? // phones: under the Back button, full width, so it never covers it
+                "absolute top-[52px] left-[12px] right-[12px] z-20 flex justify-center pointer-events-none"
+              : "absolute top-[12px] left-0 right-0 z-20 flex justify-center pointer-events-none"
+          }
+        >
           <TrackSearchField
+            className={isMobile ? "!w-full !h-[38px]" : ""}
             search={search}
             totalCount={data.tracks.length}
             placeholder={t(isAlbum ? "track_search.placeholder_album" : "track_search.placeholder_playlist")}
