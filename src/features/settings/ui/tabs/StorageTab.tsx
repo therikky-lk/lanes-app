@@ -284,9 +284,9 @@ export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string
         {clearing ? (
           <motion.div
             key="clearing"
-            initial={{ opacity: 0, filter: "blur(3px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, filter: "blur(3px)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="flex-1 flex flex-col items-center justify-center my-auto py-6 text-center px-4 w-full h-full"
           >
@@ -310,9 +310,9 @@ export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string
         ) : clearedSuccess ? (
           <motion.div
             key="cleared"
-            initial={{ opacity: 0, filter: "blur(3px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, filter: "blur(3px)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="flex-1 flex flex-col items-center justify-center my-auto py-6 text-center px-4 w-full h-full"
           >
@@ -338,9 +338,9 @@ export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string
         ) : (
           <motion.div
             key="main"
-            initial={{ opacity: 0, filter: "blur(3px)" }}
-            animate={{ opacity: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, filter: "blur(3px)" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="flex-1 flex flex-col gap-[20px] pt-[8px] w-full"
           >

@@ -149,9 +149,9 @@ export function PlayerUiElements({
         <AnimatePresence>
           <motion.div
             key={track?.id || coverUrl || "empty"}
-            initial={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(8px)" }}
-            animate={isMobile ? { opacity: 1 } : { opacity: 1, filter: "blur(0px)" }}
-            exit={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(8px)" }}
+            initial={isMobile ? { opacity: 0 } : { opacity: 0 }}
+            animate={isMobile ? { opacity: 1 } : { opacity: 1 }}
+            exit={isMobile ? { opacity: 0 } : { opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute inset-0"
           >
