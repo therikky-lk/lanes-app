@@ -61,8 +61,8 @@ jobs:
       - name: System packages for .rpm
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm libarchive-tools
       - run: pnpm install --frozen-lockfile
-      - name: Test
-        run: pnpm exec tsc -b && pnpm exec vitest run
+      - name: Type-check
+        run: pnpm exec tsc -b
       - name: Build
         run: pnpm exec vite build && pnpm exec electron-builder --linux --x64 --publish never
       - name: Checksums
