@@ -165,18 +165,22 @@ export async function languageFilter(
   // strict (the default): only tracks whose language is actually known, from
   // their lyrics or their artist's other songs. Loose: when that leaves too
   // little, the script of the title / artist name decides the rest.
+  // the "english" (US flag) filter means anything but Russian and Ukrainian:
+  // English, Spanish, Kazakh… all count
+  const fits = (v: Verdict) => v === language || (language === "english" && v === "other");
   return (t: Track, strict = true) => {
     const own = cache[t.id];
-    if (own && own !== "unknown") return own === language;
+    if (own && own !== "unknown") return fits(own);
     if (language === "instrumental") return false; // only tracks marked as such
     const artist = byArtist.get(artistKey(t));
-    if (artist) return artist === language;
+    if (artist) return fits(artist);
     if (strict) return false;
     // the name alone: Cyrillic says Russian / Ukrainian, Latin is taken as English
     const name = `${t.title} ${t.artists}`;
     const cyr = name.match(CYRILLIC)?.length ?? 0;
     if (cyr === 0) return language === "english";
     if (/[іїєґІЇЄҐ]/.test(name)) return language === "ukrainian";
+    if (/[ўәғқңөұүһђјљњћџ]/i.test(name)) return language === "english";
     return language === "russian";
   };
 }
