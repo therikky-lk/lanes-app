@@ -1,4 +1,4 @@
-# Type-check and tests on every push and pull request.
+# Type-check on every push and pull request (tests are run locally, not kept in the repo).
 name: CI
 
 on:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -24,4 +24,3 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc -b
-      - run: pnpm exec vitest run

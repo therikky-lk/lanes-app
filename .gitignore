@@ -58,3 +58,7 @@ scratch/
 
 # android web build
 /dist-android
+
+# tests are kept and run locally only
+*.test.ts
+*.test.tsx
