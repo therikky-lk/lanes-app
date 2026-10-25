@@ -1,9 +1,8 @@
 import { isNativeApp } from "@/shared/platform/native";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
 import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine, MicOffLine } from "@mingcute/react";
-import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import { Emoji } from "react-apple-emojis";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -658,23 +657,59 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             {/* one switch for the language (tap the picked one again to clear it),
                 and "no vocals" on its own */}
             <div className="flex flex-wrap items-center gap-[8px]">
-              <SegmentedTabs
-                iconOnly
-                value={(settings.language ?? "") as "russian" | "ukrainian" | "english" | "instrumental"}
-                onChange={(l) => toggle("language", l)}
-                options={[
-                  ...(["russian", "ukrainian", "english"] as const).map((l) => ({
-                    id: l,
-                    title: label.language(l),
-                    label: <Emoji name={LANGUAGE_FLAG[l]} width={22} />,
-                  })),
-                  {
-                    id: "instrumental" as const,
-                    title: label.language("instrumental"),
-                    label: <MicOffLine size={20} />,
-                  },
-                ]}
-              />
+              {/* library-style switch, flags only, with dividers */}
+              <div className="inline-flex items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+                {(["russian", "ukrainian", "english"] as const).map((l, i) => {
+                  const on = settings.language === l;
+                  return (
+                    <Fragment key={l}>
+                      {i > 0 && (
+                        <span
+                          aria-hidden
+                          className={`mx-[2px] h-[18px] w-px bg-white/15 transition-opacity ${
+                            on || settings.language === (["russian", "ukrainian", "english"] as const)[i - 1] ? "opacity-0" : ""
+                          }`}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={on}
+                        title={label.language(l)}
+                        aria-label={label.language(l)}
+                        onClick={() => toggle("language", l)}
+                        className="relative inline-flex h-[36px] min-w-[76px] items-center justify-center rounded-lg border-0 bg-transparent px-[22px] cursor-pointer select-none active:scale-[0.97]"
+                      >
+                        {on && (
+                          <motion.span
+                            layoutId="vibeLanguagePill"
+                            className="absolute inset-0 rounded-lg bg-border-alpha-14"
+                            transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                          />
+                        )}
+                        <span className={`relative z-10 transition-opacity ${on ? "" : "opacity-75"}`}>
+                          <Emoji name={LANGUAGE_FLAG[l]} width={24} />
+                        </span>
+                      </button>
+                    </Fragment>
+                  );
+                })}
+              </div>
+              {/* "no vocals" on its own */}
+              <button
+                type="button"
+                aria-pressed={settings.language === "instrumental"}
+                title={label.language("instrumental")}
+                aria-label={label.language("instrumental")}
+                onClick={() => toggle("language", "instrumental")}
+                className={`inline-flex h-[44px] w-[52px] items-center justify-center rounded-xl border-0 cursor-pointer transition-colors active:scale-[0.97] ${
+                  settings.language === "instrumental"
+                    ? "bg-white text-black"
+                    : "bg-bg-elevated text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <MicOffLine size={21} />
+              </button>
             </div>
               </motion.div>
             </motion.div>

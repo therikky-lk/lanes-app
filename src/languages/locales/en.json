@@ -1227,7 +1227,8 @@
     "today_tracks": "Tracks today",
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
-    "tracks_count": "{count} tracks"
+    "tracks_count": "{count} tracks",
+    "just_tracks": "Just tracks"
   },
   "trends": {
     "title": "Trending",
@@ -1252,7 +1253,6 @@
     "rock": "Rock",
     "electronic": "Electronic",
     "jazz": "Jazz",
-    "classical": "Classical",
-    "plain": "Just tracks"
+    "classical": "Classical"
   }
 }

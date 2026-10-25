@@ -131,6 +131,8 @@ export default function RecentPage() {
       case "radio":
         return { title: t("history.radio", { title: first.title }), sub: count, cover: first.coverUrl };
       default:
+        // the day's lone tracks, gathered in one folder
+        if (g.tracks.length > 1) return { title: tr("history.just_tracks", "Просто треки"), sub: count, cover: first.coverUrl };
         return { title: first.title, sub: first.artists, cover: first.coverUrl };
     }
   };

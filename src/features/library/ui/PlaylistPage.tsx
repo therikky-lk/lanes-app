@@ -267,17 +267,12 @@ function LibraryPlaylistContent() {
   }, [optimisticTracks, viewData?.tracks]);
 
   // liked songs: tags (fast, rap, pop…) narrow the list down
-  const [activeTag, setActiveTag] = useState<TrackTag | "plain" | null>(null);
+  const [activeTag, setActiveTag] = useState<TrackTag | null>(null);
   useEffect(() => setActiveTag(null), [decodedId]);
   const trackTags = useTrackTags(allTracks, isLikesMode);
   const currentTracks = useMemo(
     () => {
       if (!isLikesMode || !activeTag) return allTracks;
-      if (activeTag === "plain") {
-        // songs in none of the tags, each once
-        const seen = new Set<string>();
-        return allTracks.filter((track) => trackTags.isPlain(track.id) && !seen.has(track.id) && Boolean(seen.add(track.id)));
-      }
       return allTracks.filter((track) => trackTags.tagsOf(track.id).includes(activeTag));
     },
     [isLikesMode, activeTag, allTracks, trackTags],
@@ -1047,7 +1042,7 @@ function LibraryPlaylistContent() {
                   className={`flex gap-[6px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-[10px] ${isMobile ? "px-0 pt-[4px]" : "px-[8px]"}`}
                   style={{ fontFamily: "var(--font-inter), sans-serif" }}
                 >
-                  {[null, ...trackTags.available, ...(trackTags.plainCount > 0 ? (["plain"] as const) : [])].map((tag) => {
+                  {[null, ...trackTags.available].map((tag) => {
                     const on = activeTag === tag;
                     return (
                       <button
@@ -1061,7 +1056,7 @@ function LibraryPlaylistContent() {
                         {tag ? t(`tags.${tag}`) : t("common.all")}
                         {tag && (
                           <span className={on ? "opacity-60" : "text-text-tertiary"}>
-                            {tag === "plain" ? trackTags.plainCount : trackTags.counts.get(tag)}
+                            {trackTags.counts.get(tag)}
                           </span>
                         )}
                       </button>

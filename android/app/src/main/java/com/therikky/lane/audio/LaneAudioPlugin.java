@@ -95,20 +95,39 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
 
     @PluginMethod
     public void queueNext(PluginCall call) {
-        String url = call.getString("url");
-        String trackId = call.getString("trackId");
         String after = call.getString("afterTrackId");
-        if (url == null || trackId == null || after == null) {
-            call.reject("url, trackId and afterTrackId are required");
+        com.getcapacitor.JSArray items = call.getArray("items");
+        if (after == null || items == null) {
+            call.reject("afterTrackId and items are required");
             return;
         }
-        Map<String, String> headers = headersOf(call);
-        String title = call.getString("title", "");
-        String artist = call.getString("artist", "");
-        String album = call.getString("album", "");
-        String artwork = call.getString("artwork", "");
+        java.util.List<PlayerHolder.NextSpec> queue = new java.util.ArrayList<>();
+        try {
+            for (int i = 0; i < items.length(); i++) {
+                org.json.JSONObject o = items.getJSONObject(i);
+                Map<String, String> headers = new HashMap<>();
+                org.json.JSONObject h = o.optJSONObject("headers");
+                if (h != null) {
+                    Iterator<String> keys = h.keys();
+                    while (keys.hasNext()) {
+                        String k = keys.next();
+                        String v = h.optString(k, null);
+                        if (v != null) headers.put(k, v);
+                    }
+                }
+                String url = o.optString("url", "");
+                String trackId = o.optString("trackId", "");
+                if (url.isEmpty() || trackId.isEmpty()) continue;
+                queue.add(new PlayerHolder.NextSpec(trackId, url, headers,
+                    o.optString("title", ""), o.optString("artist", ""),
+                    o.optString("album", ""), o.optString("artwork", "")));
+            }
+        } catch (org.json.JSONException e) {
+            call.reject("bad items: " + e.getMessage());
+            return;
+        }
         main.post(() -> {
-            PlayerHolder.get(getContext()).queueNext(after, trackId, url, headers, title, artist, album, artwork);
+            PlayerHolder.get(getContext()).queueNext(after, queue);
             call.resolve();
         });
     }
