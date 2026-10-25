@@ -58,17 +58,15 @@ public final class PlayerHolder {
         void onAdvanced(String trackId);
     }
 
-    /** the track to play after the current one, handed over ahead of time */
-    private static final class NextSpec {
-        final String afterTrackId;
+    /** a track to play after the current one, handed over ahead of time */
+    public static final class NextSpec {
         final String trackId;
         final String url;
         final Map<String, String> headers;
         final String title, artist, album, artwork;
 
-        NextSpec(String afterTrackId, String trackId, String url, Map<String, String> headers,
-                 String title, String artist, String album, String artwork) {
-            this.afterTrackId = afterTrackId;
+        public NextSpec(String trackId, String url, Map<String, String> headers,
+                        String title, String artist, String album, String artwork) {
             this.trackId = trackId;
             this.url = url;
             this.headers = headers;
@@ -79,7 +77,9 @@ public final class PlayerHolder {
         }
     }
 
-    private NextSpec pendingNext;
+    /** the tracks after `pendingAfter`, waiting for that one to be loaded */
+    private java.util.List<NextSpec> pendingQueue;
+    private String pendingAfter;
 
     private static PlayerHolder instance;
 
@@ -164,6 +164,10 @@ public final class PlayerHolder {
 
             @Override
             public void onPositionDiscontinuity(@NonNull Player.PositionInfo oldPosition, @NonNull Player.PositionInfo newPosition, int reason) {
+                // for the diagnostics log: where a seek (from anywhere) actually landed
+                if (reason == Player.DISCONTINUITY_REASON_SEEK && events != null) {
+                    events.onRemote("seeked", newPosition.positionMs);
+                }
                 emit();
             }
 
@@ -177,7 +181,8 @@ public final class PlayerHolder {
                     && reason != Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) return;
                 String id = mediaItem.mediaId;
                 lastError = null;
-                pendingNext = null;
+                pendingQueue = null;
+                pendingAfter = null;
                 main.post(() -> {
                     int index = player.getCurrentMediaItemIndex();
                     if (index > 0) player.removeMediaItems(0, index);
@@ -361,36 +366,49 @@ public final class PlayerHolder {
         player.setMediaSource(source, Math.max(0, startPositionMs));
         player.prepare();
         player.setPlayWhenReady(playWhenReady);
-        // the next track may have been handed over before this one was loaded
-        NextSpec next = pendingNext;
-        if (next != null && trackId != null && trackId.equals(next.afterTrackId)) appendNext(next);
+        // the next tracks may have been handed over before this one was loaded
+        if (pendingQueue != null && trackId != null && trackId.equals(pendingAfter)) appendQueue(pendingQueue);
         emit();
         if (artwork != null && artwork.startsWith("http")) loadArtwork(artwork, generation, trackId);
     }
 
-    /** what to play after `afterTrackId`; the player switches to it on its own */
-    public void queueNext(String afterTrackId, String trackId, String url, Map<String, String> headers,
-                          String title, String artist, String album, String artwork) {
-        NextSpec next = new NextSpec(afterTrackId, trackId, url, headers, title, artist, album, artwork);
-        pendingNext = next;
+    /**
+     * What to play after `afterTrackId`, in order; the player moves through
+     * these on its own, so playback keeps going while the app's page sleeps.
+     */
+    public void queueNext(String afterTrackId, java.util.List<NextSpec> queue) {
+        pendingQueue = queue;
+        pendingAfter = afterTrackId;
         MediaItem current = player.getCurrentMediaItem();
-        if (current != null && afterTrackId != null && afterTrackId.equals(current.mediaId)) appendNext(next);
+        if (current != null && afterTrackId != null && afterTrackId.equals(current.mediaId)) appendQueue(queue);
     }
 
     public void clearNext() {
-        pendingNext = null;
+        pendingQueue = null;
+        pendingAfter = null;
         int index = player.getCurrentMediaItemIndex();
         int count = player.getMediaItemCount();
         if (count > index + 1) player.removeMediaItems(index + 1, count);
     }
 
-    private void appendNext(NextSpec next) {
+    private void appendQueue(java.util.List<NextSpec> queue) {
         int index = player.getCurrentMediaItemIndex();
         int count = player.getMediaItemCount();
-        if (count > index + 1) player.removeMediaItems(index + 1, count);
-        player.addMediaSource(buildSource(next.trackId, next.url, next.headers,
-            metadata(next.title, next.artist, next.album, next.artwork).build()));
-        if (next.artwork != null && next.artwork.startsWith("http")) loadArtwork(next.artwork, loadGeneration, next.trackId);
+        // keep what's already queued in the same order (its buffer too);
+        // replace only from the first difference on
+        int keep = 0;
+        while (keep < queue.size() && index + 1 + keep < count
+            && queue.get(keep).trackId.equals(player.getMediaItemAt(index + 1 + keep).mediaId)) {
+            keep++;
+        }
+        int from = index + 1 + keep;
+        if (count > from) player.removeMediaItems(from, count);
+        for (int i = keep; i < queue.size(); i++) {
+            NextSpec next = queue.get(i);
+            player.addMediaSource(buildSource(next.trackId, next.url, next.headers,
+                metadata(next.title, next.artist, next.album, next.artwork).build()));
+            if (next.artwork != null && next.artwork.startsWith("http")) loadArtwork(next.artwork, loadGeneration, next.trackId);
+        }
     }
 
     private void loadArtwork(String url, int generation, String trackId) {

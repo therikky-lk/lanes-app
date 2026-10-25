@@ -1203,7 +1203,8 @@
     "songs_played_two": "Прослухано треків: {count}",
     "songs_played_few": "Прослухано треків: {count}",
     "songs_played_many": "Прослухано треків: {count}",
-    "songs_played_other": "Прослухано треків: {count}"
+    "songs_played_other": "Прослухано треків: {count}",
+    "just_tracks": "Просто треки"
   },
   "trends": {
     "title": "У трендах",
@@ -1226,7 +1227,6 @@
     "rock": "Рок",
     "electronic": "Електроніка",
     "jazz": "Джаз",
-    "classical": "Класика",
-    "plain": "Просто треки"
+    "classical": "Класика"
   }
 }

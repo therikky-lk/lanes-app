@@ -16,6 +16,7 @@ import {
   onNativeAdvanced,
   onNativeRemote,
   queueNativeNext,
+  type NativeNextItem,
   setNativeHeaderProvider,
   setNativeNowPlaying,
 } from "@/shared/platform/nativeAudio";
@@ -43,7 +44,7 @@ export class PlayerRuntime {
   private attachedTrackId: string | null = null;
   private preloadingTrackId: string | null = null;
   /** Android: the track handed to the native player to play next */
-  private nativeQueued: { afterTrackId: string; trackId: string; expiresAtMs: number | null } | null = null;
+  private nativeQueued: { afterTrackId: string; ids: string; expiry: Map<string, number | null> } | null = null;
   private nativeQueueAbort: AbortController | null = null;
   private preloadingPromise: Promise<void> | null = null;
   private preloadAbortController: AbortController | null = null;
@@ -81,7 +82,7 @@ export class PlayerRuntime {
         this.nativeQueued = null;
         this.currentTrackId = trackId;
         this.attachedTrackId = trackId;
-        this.currentSessionExpiresAt = queued?.trackId === trackId ? queued.expiresAtMs : null;
+        this.currentSessionExpiresAt = queued?.expiry.get(trackId) ?? null;
         this.recoveryAttempts = 0;
         this.recoveryHoldUntilMs = null;
         void import("./playerEngine").then(({ playerEngine }) => playerEngine.handleNativeAdvance(trackId));
@@ -612,41 +613,55 @@ export class PlayerRuntime {
    * a track ended left it to a page Android had put to sleep (screen off,
    * another app open), and the music stopped.
    */
-  public queueNextNatively(afterTrackId: string, track: Track | null): void {
+  public queueNextNatively(afterTrackId: string, tracks: Track[]): void {
     if (!isNativeApp()) return;
-    this.nativeQueueAbort?.abort();
-    this.nativeQueueAbort = null;
-    if (!track) {
+    const ids = tracks.map((t) => t.id).join(",");
+    if (tracks.length === 0) {
+      this.nativeQueueAbort?.abort();
+      this.nativeQueueAbort = null;
       if (this.nativeQueued) clearNativeNext();
       this.nativeQueued = null;
       return;
     }
-    if (this.nativeQueued?.afterTrackId === afterTrackId && this.nativeQueued.trackId === track.id) return;
+    if (this.nativeQueued?.afterTrackId === afterTrackId && this.nativeQueued.ids === ids) return;
+    this.nativeQueueAbort?.abort();
     const controller = new AbortController();
     this.nativeQueueAbort = controller;
+    // resolve one by one and hand over what's ready each time, so the very
+    // next track is there as soon as possible
     void (async () => {
-      try {
-        const cached = await linerDb.getAudio(track.id).catch(() => null);
-        const stream = cached?.blob?.size
-          ? { blob: cached.blob, expiresAtMs: null as number | null }
-          : await resolvePlaybackStream(track, controller.signal);
-        if (controller.signal.aborted) return;
-        await queueNativeNext(
-          afterTrackId,
-          track.id,
-          { url: "url" in stream ? stream.url : undefined, blob: stream.blob },
-          {
-            title: track.title,
-            artist: track.artists,
-            album: (track as { albumTitle?: string }).albumTitle || "Lane",
-            artwork: track.coverUrl || undefined,
-          },
-        );
-        if (controller.signal.aborted) return;
-        this.nativeQueued = { afterTrackId, trackId: track.id, expiresAtMs: stream.expiresAtMs ?? null };
-        log("green", "preload", `queued next natively: "${track.title}"`);
-      } catch (error) {
-        if (!controller.signal.aborted) log("yellow", "preload", `could not queue next natively: ${String(error)}`);
+      const ready: NativeNextItem[] = [];
+      const expiry = new Map<string, number | null>();
+      for (const track of tracks) {
+        try {
+          const cached = await linerDb.getAudio(track.id).catch(() => null);
+          const stream = cached?.blob?.size
+            ? { blob: cached.blob, expiresAtMs: null as number | null }
+            : await resolvePlaybackStream(track, controller.signal);
+          if (controller.signal.aborted) return;
+          expiry.set(track.id, stream.expiresAtMs ?? null);
+          ready.push({
+            trackId: track.id,
+            source: { url: "url" in stream ? stream.url : undefined, blob: stream.blob },
+            meta: {
+              title: track.title,
+              artist: track.artists,
+              album: (track as { albumTitle?: string }).albumTitle || "Lane",
+              artwork: track.coverUrl || undefined,
+            },
+          });
+          await queueNativeNext(afterTrackId, ready);
+          if (controller.signal.aborted) return;
+          this.nativeQueued = { afterTrackId, ids: ready.map((r) => r.trackId).join(","), expiry };
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          diag(`queue ahead: "${track.title}" failed (${String(error).slice(0, 80)})`);
+          break; // the order matters: don't skip over a track that failed
+        }
+      }
+      if (!controller.signal.aborted) {
+        this.nativeQueued = { afterTrackId, ids, expiry };
+        diag(`queued ahead natively: ${ready.length} track(s)`);
       }
     })();
   }

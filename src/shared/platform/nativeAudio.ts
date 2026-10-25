@@ -39,13 +39,15 @@ interface LaneAudioPlugin {
   writeCacheFile(options: { name: string; base64: string }): Promise<{ url: string }>;
   queueNext(options: {
     afterTrackId: string;
-    trackId: string;
-    url: string;
-    headers?: Record<string, string>;
-    title?: string;
-    artist?: string;
-    album?: string;
-    artwork?: string;
+    items: {
+      trackId: string;
+      url: string;
+      headers?: Record<string, string>;
+      title?: string;
+      artist?: string;
+      album?: string;
+      artwork?: string;
+    }[];
   }): Promise<void>;
   clearNext(): Promise<void>;
   addListener(event: "advanced", cb: (a: { trackId: string }) => void): Promise<PluginListenerHandle>;
@@ -99,30 +101,29 @@ export function onNativeAdvanced(handler: ((trackId: string) => void) | null): v
   advancedHandler = handler;
 }
 
+export interface NativeNextItem {
+  trackId: string;
+  source: { url?: string; blob?: Blob };
+  meta: Omit<NowPlayingMeta, "trackId">;
+}
+
 /**
- * Hand the native player the track after `afterTrackId` ahead of time: it
- * then moves on by itself when the current one ends, even while the page is
- * asleep (screen off, another app in front).
+ * Hand the native player the tracks after `afterTrackId` ahead of time: it
+ * then moves on by itself when one ends, even while the page is asleep
+ * (screen off, another app in front).
  */
-export async function queueNativeNext(
-  afterTrackId: string,
-  trackId: string,
-  source: { url?: string; blob?: Blob },
-  meta: Omit<NowPlayingMeta, "trackId">,
-): Promise<void> {
-  let url = source.url ?? "";
-  if (source.blob) {
-    const ext = (source.blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
-    url = (await LaneAudio.writeCacheFile({ name: `next-${Date.now()}.${ext}`, base64: await blobToBase64(source.blob) })).url;
+export async function queueNativeNext(afterTrackId: string, items: NativeNextItem[]): Promise<void> {
+  const out: Parameters<LaneAudioPlugin["queueNext"]>[0]["items"] = [];
+  for (const item of items) {
+    let url = item.source.url ?? "";
+    if (item.source.blob) {
+      const ext = (item.source.blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
+      url = (await LaneAudio.writeCacheFile({ name: `next-${item.trackId.replace(/[^a-z0-9]/gi, "")}.${ext}`, base64: await blobToBase64(item.source.blob) })).url;
+    }
+    if (!url) continue;
+    out.push({ trackId: item.trackId, url, headers: url.startsWith("http") ? headersForUrl(url) : {}, ...item.meta });
   }
-  if (!url) return;
-  await LaneAudio.queueNext({
-    afterTrackId,
-    trackId,
-    url,
-    headers: url.startsWith("http") ? headersForUrl(url) : {},
-    ...meta,
-  });
+  await LaneAudio.queueNext({ afterTrackId, items: out });
 }
 
 export function clearNativeNext(): void {
@@ -260,6 +261,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
     }
   });
   void LaneAudio.addListener("advanced", (a) => {
+    diag(`native: moved on to the next track by itself (${a.trackId})`);
     // a new track is already playing natively: start the clock over
     positionMs = 0;
     positionAt = performance.now();
@@ -271,6 +273,11 @@ export function createNativeAudioElement(): HTMLAudioElement {
     fire("emptied");
   });
   void LaneAudio.addListener("remote", (r) => {
+    if (r.action === "seeked") {
+      diag(`native: seek landed at ${Math.round(r.positionMs / 1000)}s`);
+      return;
+    }
+    if (r.action === "next" || r.action === "previous") diag(`native: "${r.action}" pressed, nothing queued natively`);
     if (r.action === "like") likeHandler?.();
     else if (r.action === "repeat") repeatHandler?.();
     else remoteHandler?.(r.action, r.positionMs);
