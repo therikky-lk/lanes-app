@@ -40,6 +40,9 @@ interface SourceBadgeProps {
 export default function SourceBadge({ trackId, size = 13, className = "" }: SourceBadgeProps) {
   const { t } = useTranslation();
   const source = trackSource(trackId);
+  // YouTube Music is where most tracks come from: only the others get a mark,
+  // so a SoundCloud track (orange cloud) stands out
+  if (source === "youtube") return null;
   const { color, Icon } = STYLE[source];
   const label = source === "local" ? t("local.title") || "My tracks" : `${t("common.source") || "Source"}: ${LABELS[source]}`;
   return (

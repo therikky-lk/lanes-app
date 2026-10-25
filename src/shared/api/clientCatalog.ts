@@ -1,7 +1,20 @@
 import { innertubeCatalog } from "@/shared/media/innertube";
 import { isSoundCloudCatalogId, isSoundCloudUrl, resolveSoundCloudUrl, soundcloudCatalog } from "@/shared/media/soundcloud";
 import { audiusCatalog, isAudiusId } from "@/shared/media/audius";
-import { isJunkVideo, matchesQueryWell } from "@/shared/media/innertube/innertubeSearchRanking";
+import {
+  getQueryTokens,
+  isJunkVideo,
+  matchesQueryWell,
+  normalizeSearchText,
+} from "@/shared/media/innertube/innertubeSearchRanking";
+
+/** at least half of the query's words in the title / artist */
+function matchesQueryLoosely(query: string, title: string, artistNames: string[]): boolean {
+  const tokens = getQueryTokens(query);
+  if (tokens.length === 0) return true;
+  const combined = normalizeSearchText(`${title} ${artistNames.join(" ")}`);
+  return tokens.filter((token) => combined.includes(token)).length >= Math.ceil(tokens.length / 2);
+}
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
 import type {
@@ -22,10 +35,10 @@ export function isClientCatalogId(id: string): boolean {
 const norm = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 /**
- * YouTube results first; SoundCloud and Audius add full tracks YouTube doesn't
- * have (Russian underground, sped up versions…). SoundCloud only steps in
- * when YouTube found little that matches the query, so it never crowds out
- * the songs themselves.
+ * YouTube Music songs first (no clips, no uploads). SoundCloud and Audius add
+ * full tracks YouTube Music doesn't have (Russian underground, sped up
+ * versions…); SoundCloud steps in when YouTube found only a few matching
+ * songs, and its tracks carry an orange cloud so they're easy to tell apart.
  */
 async function withAudius(items: SearchResponse["items"], query: string, type: SearchType): Promise<SearchResponse["items"]> {
   if (type !== "all" && type !== "track") return items;
@@ -34,14 +47,14 @@ async function withAudius(items: SearchResponse["items"], query: string, type: S
   ).length;
   const [audius, soundcloud] = await Promise.all([
     audiusCatalog.search(query, 8).catch(() => []),
-    ytMatches < 3 ? soundcloudCatalog.search(query, 12).catch(() => []) : Promise.resolve([]),
+    ytMatches < 6 ? soundcloudCatalog.search(query, 15).catch(() => []) : Promise.resolve([]),
   ]);
   const extra = [
     ...soundcloud.filter(
       (t) =>
         t.durationMs > 60_000 &&
         !isJunkVideo(t.title, query) &&
-        matchesQueryWell(query, t.title, t.artists.map((a) => a.name)),
+        matchesQueryLoosely(query, t.title, t.artists.map((a) => a.name)),
     ),
     ...audius,
   ];
