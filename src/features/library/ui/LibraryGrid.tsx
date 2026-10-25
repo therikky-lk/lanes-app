@@ -424,7 +424,7 @@ export default function LibraryGrid({
       {prepends.map((node, index) => (
         <div
           key={`prepend-${index}`}
-          className="w-full transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="lane-grid-item w-full"
         >
           {node}
         </div>
@@ -432,7 +432,7 @@ export default function LibraryGrid({
       {items.map((item) => (
         <div
           key={`${item.kind}:${item.id}`}
-          className="w-full transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          className="lane-grid-item w-full"
         >
           <LibraryItemCard item={item} />
         </div>

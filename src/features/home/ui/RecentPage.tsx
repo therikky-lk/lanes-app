@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import LikedCover from "@/features/library/ui/LikedCover";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftLine, DownLine, HeartFill, RadioFill } from "@mingcute/react";
+import { ArrowLeftLine, DownLine, FolderOpenFill, HeartFill, RadioFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { api, toClientTrack } from "@/shared/api";
 import { playerEngine } from "@/features/player";
@@ -132,7 +132,7 @@ export default function RecentPage() {
         return { title: t("history.radio", { title: first.title }), sub: count, cover: first.coverUrl };
       default:
         // the day's lone tracks, gathered in one folder
-        if (g.tracks.length > 1) return { title: tr("history.just_tracks", "Просто треки"), sub: count, cover: first.coverUrl };
+        if (g.tracks.length > 1) return { title: tr("history.just_tracks", "Просто треки"), sub: count, cover: undefined, icon: "tracks" as const };
         return { title: first.title, sub: first.artists, cover: first.coverUrl };
     }
   };
@@ -185,7 +185,7 @@ export default function RecentPage() {
                 const expandable = g.tracks.length > 1;
                 const isOpen = open.has(g.key);
                 return (
-                  <div key={g.key} className="rounded-xl transition-colors hover:bg-white/[0.035]">
+                  <div key={g.key} className="lane-row rounded-xl transition-colors hover:bg-white/[0.035]">
                     <div className="flex items-center gap-[12px] px-[8px] py-[7px]">
                       <button
                         type="button"
@@ -198,6 +198,11 @@ export default function RecentPage() {
                           ) : d.icon === "vibe" ? (
                             <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "radial-gradient(circle at 50% 50%, #111 38%, #d22ad2 70%, #6a0f96)" }}>
                               <RadioFill size={20} />
+                            </span>
+                          ) : d.icon === "tracks" ? (
+                            // the day's loose tracks: a folder of its own
+                            <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "linear-gradient(145deg, #3b82f6, #1e3a8a)" }}>
+                              <FolderOpenFill size={22} />
                             </span>
                           ) : d.cover ? (
                             <CoverImage src={d.cover} alt="" fill sizes="52px" className="object-cover" />

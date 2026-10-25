@@ -174,6 +174,7 @@ export default function LocalTracksPage() {
             tracks.map((track) => (
               <SongCard
                 key={track.id}
+                className="lane-row"
                 id={track.id}
                 title={track.title}
                 artists={track.artists || t("local.unknown_artist") || "Unknown artist"}
