@@ -14,6 +14,7 @@ import {
   VIBE_LANGUAGES,
   VIBE_MOODS,
   type TasteProfile,
+  type VibeLanguage,
   type VibeMood,
   type VibeSettings,
 } from "./vibeTaste";
@@ -124,6 +125,24 @@ usePlayerStore.subscribe((state, prev) => {
 
 type PoolKey = VibeMood | "instrumental" | "popular";
 
+// with a language picked the mood is looked for in that language, so
+// "energetic + Russian" starts from Russian energetic playlists
+const MOOD_QUERIES_RU: Record<PoolKey, string[]> = {
+  energetic: ["энергичная русская музыка", "русский рэп качает", "русские треки для тренировки"],
+  happy: ["весёлые русские песни", "русские хиты для настроения", "позитивные русские треки"],
+  instrumental: ["музыка без слов", "instrumental music", "lofi beats"],
+  popular: ["русские хиты", "топ русских песен", "популярные русские треки"],
+  calm: ["спокойная русская музыка", "русский чилл", "русские песни для души"],
+  sad: ["грустные русские песни", "русский грустный рэп", "печальные русские треки"],
+};
+const MOOD_QUERIES_EN: Record<PoolKey, string[]> = {
+  energetic: ["workout hits", "upbeat songs", "high energy rap"],
+  happy: ["feel good hits", "happy songs", "good vibes playlist"],
+  instrumental: ["instrumental music", "lofi beats", "piano instrumental"],
+  popular: ["top hits", "trending songs", "global top 50"],
+  calm: ["chill vibes", "relaxing songs", "acoustic chill"],
+  sad: ["sad songs", "melancholic", "sad rap"],
+};
 const MOOD_QUERIES: Record<PoolKey, string[]> = {
   energetic: ["энергичная музыка", "workout hits", "upbeat songs"],
   happy: ["весёлые песни", "feel good hits", "happy songs"],
@@ -132,15 +151,17 @@ const MOOD_QUERIES: Record<PoolKey, string[]> = {
   calm: ["спокойная музыка", "chill vibes", "relaxing songs"],
   sad: ["грустные песни", "sad songs", "melancholic"],
 };
-const moodPools = new Map<PoolKey, Promise<Track[]>>();
+const moodPools = new Map<string, Promise<Track[]>>();
 
-function moodPool(mood: PoolKey): Promise<Track[]> {
-  let pool = moodPools.get(mood);
+function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<Track[]> {
+  const key = `${mood}:${language ?? "-"}`;
+  const queries = language === "russian" ? MOOD_QUERIES_RU : language === "foreign" ? MOOD_QUERIES_EN : MOOD_QUERIES;
+  let pool = moodPools.get(key);
   if (!pool) {
     pool = (async () => {
       const playlists = (
         await Promise.all(
-          MOOD_QUERIES[mood].map((q) =>
+          queries[mood].map((q) =>
             api
               .search(q, "playlist")
               .then((r) => r.items.filter((i) => i.type === "playlist").slice(0, 2))
@@ -159,8 +180,8 @@ function moodPool(mood: PoolKey): Promise<Track[]> {
       // songs only: music videos come with frame thumbnails from i.ytimg.com
       return lists.flat().filter((t) => !/ytimg\.com/.test(t.coverUrl || ""));
     })();
-    pool.then((tracks) => tracks.length === 0 && moodPools.delete(mood)).catch(() => moodPools.delete(mood));
-    moodPools.set(mood, pool);
+    pool.then((tracks) => tracks.length === 0 && moodPools.delete(key)).catch(() => moodPools.delete(key));
+    moodPools.set(key, pool);
   }
   return pool;
 }
@@ -200,9 +221,9 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
 
   // pools of tracks that carry the mood / "no words" / popularity
   const [moodTracks, instrumentalTracks, popularTracks] = await Promise.all([
-    mood ? moodPool(mood) : Promise.resolve([] as Track[]),
+    mood ? moodPool(mood, language) : Promise.resolve([] as Track[]),
     language === "instrumental" ? moodPool("instrumental") : Promise.resolve([] as Track[]),
-    character === "popular" ? moodPool("popular") : Promise.resolve([] as Track[]),
+    character === "popular" ? moodPool("popular", language) : Promise.resolve([] as Track[]),
   ]);
   const fits = (t: Track) => !session.skipped.has(t.id);
 
@@ -243,10 +264,39 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
   if (language) {
     // the language is decided by the lyrics (LRCLIB), not by the name
     const speaks = await languageFilter(filtered, language, liked);
-    filtered = filtered.filter(speaks);
-    if (filtered.length < 8) return selectFresh(filtered, taste, {
+    let inLanguage = filtered.filter((t) => speaks(t));
+    const taken = new Set([...exclude, ...session.played.keys()]);
+    const fresh = () => inLanguage.filter((t) => !taken.has(t.id)).length;
+    if (fresh() < 12) {
+      // the mood's radio mostly went elsewhere: grow more from songs that are
+      // known to be in this language (the listener's own first, then the pool)
+      const sample = [...liked, ...pool].sort(() => Math.random() - 0.5).slice(0, 160);
+      const sampleSpeaks = await languageFilter(sample, language, liked, 4000);
+      const langSeeds = pickWeighted(
+        sample.filter((t) => sampleSpeaks(t)).map((track) => ({ track, weight: poolIds?.has(track.id) ? 2 : 1 })),
+        4,
+        new Set([...avoid, ...seeds.map((s) => s.id)]),
+      );
+      if (langSeeds.length) {
+        const more = (await Promise.all(langSeeds.map((s) => radioFor(s)))).flat().filter(fits);
+        const moreSpeaks = await languageFilter(more, language, liked, 5000);
+        const seen = new Set(inLanguage.map((t) => t.id));
+        for (const t of [...langSeeds, ...more]) {
+          if (!seen.has(t.id) && moreSpeaks(t)) {
+            seen.add(t.id);
+            inLanguage.push(t);
+          }
+        }
+      }
+    }
+    if (fresh() < 8) {
+      // still too little: let the title / artist name decide the unknown ones
+      const seen = new Set(inLanguage.map((t) => t.id));
+      inLanguage = [...inLanguage, ...filtered.filter((t) => !seen.has(t.id) && speaks(t, false))];
+    }
+    return selectFresh(inLanguage, taste, {
       count: BATCH,
-      exclude: new Set([...exclude, ...session.played.keys()]),
+      exclude: taken,
       moodIds: poolIds,
       familiarShare: character === "favorite" ? 0.6 : 0.2,
     });

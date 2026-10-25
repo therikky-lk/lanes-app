@@ -1239,5 +1239,16 @@
     "less": "Show less",
     "source": "Apple Music · daily",
     "source_hint": "The most played songs on Apple Music, updated every day. World: the charts of 10 big countries combined."
+  },
+  "tags": {
+    "fast": "Fast",
+    "slow": "Slow",
+    "rap": "Rap",
+    "pop": "Pop",
+    "rnb": "Soul / R&B",
+    "rock": "Rock",
+    "electronic": "Electronic",
+    "jazz": "Jazz",
+    "classical": "Classical"
   }
 }

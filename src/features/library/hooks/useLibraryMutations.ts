@@ -1,7 +1,13 @@
 import { isLocalTrackId, setLocalTrackLiked } from "@/shared/media/local/localTracks";
 import { useCallback, useState } from "react";
 import { api } from "@/shared/api";
-import { notifyLibraryChanged, evictPlaylistFromCache } from "./usePlaylists";
+import {
+  notifyLibraryChanged,
+  evictPlaylistFromCache,
+  addLocalTrackToPlaylist,
+  removeLocalTrackFromPlaylist,
+} from "./usePlaylists";
+import { isLocalPlaylistItemId, LOCAL_ITEM_PREFIX } from "@/features/local/localPlaylistTracks";
 import { applyOptimisticLike, applyOptimisticUnlike } from "./useLikedTracks";
 
 type Options = {
@@ -39,13 +45,17 @@ function useMutation<T, R = unknown>(action: (input: T) => Promise<R>) {
 
 export function useAddPlaylistTracks() {
   return useMutation(({ playlistId, trackId }: { playlistId: string; trackId: string }) =>
-    api.addPlaylistTrack(playlistId, trackId)
+    isLocalTrackId(trackId)
+      ? addLocalTrackToPlaylist(playlistId, trackId).then(() => undefined)
+      : api.addPlaylistTrack(playlistId, trackId).then(() => undefined)
   );
 }
 
 export function useRemovePlaylistTracks() {
   return useMutation(({ playlistId, itemId }: { playlistId: string; itemId: string }) =>
-    api.removePlaylistItem(playlistId, itemId)
+    isLocalPlaylistItemId(itemId)
+      ? removeLocalTrackFromPlaylist(playlistId, itemId.slice(LOCAL_ITEM_PREFIX.length))
+      : api.removePlaylistItem(playlistId, itemId)
   );
 }
 
@@ -114,6 +124,13 @@ export function useRemoveExternalItem() {
           await api.removeCollection("playlists", id).catch(() => {});
           return res;
         } catch (err: unknown) {
+          // the reply can get lost even when the playlist is gone (phones):
+          // only a playlist that is still there is a failure
+          const still = await api
+            .listPlaylists()
+            .then((r) => r.items.some((p) => p.id === id))
+            .catch(() => true);
+          if (!still) return;
           if (isOwned === true) {
             throw err;
           }
@@ -166,6 +183,20 @@ export function useLikeTrack() {
   return { mutate, mutateAsync, isPending };
 }
 
+async function isStillLiked(trackId: string): Promise<boolean> {
+  try {
+    let cursor: string | undefined;
+    do {
+      const page = await api.listLikedTracks(100, cursor);
+      if (page.items.some(({ track }) => track.id === trackId)) return true;
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 export function useUnlikeTrack() {
   const [isPending, setIsPending] = useState(false);
 
@@ -182,6 +213,12 @@ export function useUnlikeTrack() {
       notifyLibraryChanged();
       return result;
     } catch (err) {
+      // the reply can get lost even though the like is gone (phones): only
+      // put the heart back when the server still has the like
+      if (!(await isStillLiked(trackId))) {
+        notifyLibraryChanged();
+        return undefined as unknown as Awaited<ReturnType<typeof api.unlikeTrack>>;
+      }
       rollback();
       throw err;
     } finally {

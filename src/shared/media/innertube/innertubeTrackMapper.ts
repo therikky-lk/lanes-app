@@ -77,6 +77,32 @@ function fallbackArtistFromColumn(renderer: JsonRecord): TrackArtist {
   return { id: "unknown", name };
 }
 
+const JOINER = /^\s*(?:,|&|×|x|feat\.?|ft\.?)\s*$/i;
+
+/**
+ * "Koss & ПЛУТТО" where only Koss has a channel: YouTube gives the second name
+ * as plain text after a joiner. Those names are artists too.
+ */
+function withUnlinkedArtists(runs: JsonRecord[], linked: TrackArtist[]): TrackArtist[] {
+  if (linked.length === 0) return linked;
+  const out = [...linked];
+  const names = new Set(linked.map((a) => a.name.toLowerCase()));
+  const linkedNames = new Set(names);
+  for (let i = 1; i + 1 < runs.length; i++) {
+    const prev = typeof runs[i - 1].text === "string" ? (runs[i - 1].text as string).trim() : "";
+    const joiner = typeof runs[i].text === "string" ? (runs[i].text as string) : "";
+    const next = runs[i + 1];
+    const name = typeof next.text === "string" ? next.text.trim() : "";
+    if (!JOINER.test(joiner) || !name || name === "•" || next.navigationEndpoint) continue;
+    // only right after an artist (or a name already taken in as one)
+    if (!linkedNames.has(prev.toLowerCase()) && !names.has(prev.toLowerCase())) continue;
+    if (/^\d+:\d{2}/.test(name) || names.has(name.toLowerCase())) continue;
+    names.add(name.toLowerCase());
+    out.push({ id: "", name });
+  }
+  return out;
+}
+
 export function mapInnertubeTrack(raw: unknown, fallbackArtists: TrackArtist[] = []): Track | null {
   const item = asRecord(raw);
   const renderer = asRecord(item?.musicResponsiveListItemRenderer) ?? item;
@@ -88,7 +114,7 @@ export function mapInnertubeTrack(raw: unknown, fallbackArtists: TrackArtist[] =
   if (!id || !title) return null;
 
   const metadataRuns = flexRuns(renderer);
-  const rowArtists = runsToArtists(metadataRuns);
+  const rowArtists = withUnlinkedArtists(metadataRuns, runsToArtists(metadataRuns));
   const artists =
     rowArtists.length > 0
       ? rowArtists

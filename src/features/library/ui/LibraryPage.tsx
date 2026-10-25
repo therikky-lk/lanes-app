@@ -1,4 +1,3 @@
-import SpotifyLikedImportDialog, { SpotifyLikedImportPill } from "./SpotifyLikedImportDialog";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
@@ -26,6 +25,7 @@ import { useModalStore } from "../store/modalStore";
 import { useImportStore } from "../store/importStore";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import ImportingPlaylistCard from "./ImportingPlaylistCard";
+import LikedCover from "./LikedCover";
 
 const PAGE_SIZE = 24;
 
@@ -90,10 +90,14 @@ function LikesPlaylistCard({
               hasCustomBg ? "apple-glass-static" : "bg-bg-panel"
             }`}
           >
-            <Icon
-              size={26}
-              className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"}
-            />
+            {Icon === HeartFill ? (
+              <LikedCover />
+            ) : (
+              <Icon
+                size={26}
+                className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"}
+              />
+            )}
           </div>
 
           <div className="min-w-0 flex flex-col gap-[2px]">
@@ -138,10 +142,14 @@ function LikesPlaylistCard({
           hasCustomBg ? "apple-glass-static" : "bg-bg-panel"
         }`}
       >
-        <Icon
-          size={52}
-          className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"}
-        />
+        {Icon === HeartFill ? (
+          <LikedCover />
+        ) : (
+          <Icon
+            size={52}
+            className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"}
+          />
+        )}
       </div>
       <div className="flex flex-col gap-[4px]">
         <span className="truncate text-[14px] font-[500] text-text-primary">
@@ -170,7 +178,6 @@ export default function LibraryPage() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileAdd, setMobileAdd] = useState(false);
-  const [spotifyLikedOpen, setSpotifyLikedOpen] = useState(false);
   const mobileTabLabels: Record<LibraryTab, string> = {
     playlists: t("library.tab_playlists"),
     albums: t("library.tab_albums"),
@@ -439,14 +446,6 @@ export default function LibraryPage() {
                     void openSpotifyImport();
                   }}
                 />
-                <PhoneMenuItem
-                  icon={<HeartFill size={16} className="text-[#1ed760]" />}
-                  label={t("library.spotify_liked.menu") || "Liked Songs from Spotify"}
-                  onClick={() => {
-                    setMobileAdd(false);
-                    setSpotifyLikedOpen(true);
-                  }}
-                />
               </PhoneMenu>
               <button
                 type="button"
@@ -607,33 +606,8 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {activeTab === "playlists" && !isMobile && (
-        <button
-          type="button"
-          onClick={() => void openSpotifyImport()}
-          title={t("library.import_spotify") || "Import from Spotify"}
-          className="absolute bottom-[20px] right-[132px] z-30 flex h-[44px] items-center gap-[8px] rounded-[14px] px-[14px] bg-[#1ed760] text-black text-[13.5px] font-[600] hover:bg-[#3be477] active:scale-[0.96] transition-all border-0 cursor-pointer select-none shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
-          style={{ fontFamily: "var(--font-inter), sans-serif" }}
-        >
-          <FaSpotify size={18} />
-          {t("library.import_spotify") || "Import from Spotify"}
-        </button>
-      )}
 
-      {activeTab === "playlists" && !isMobile && (
-        <button
-          type="button"
-          onClick={() => setSpotifyLikedOpen(true)}
-          title={t("library.spotify_liked.menu") || "Liked Songs from Spotify"}
-          aria-label={t("library.spotify_liked.menu") || "Liked Songs from Spotify"}
-          className="absolute bottom-[20px] right-[80px] z-30 flex h-[44px] w-[44px] items-center justify-center rounded-[14px] bg-[#1ed760] text-black hover:bg-[#3be477] active:scale-[0.92] transition-all border-0 cursor-pointer select-none shadow-[0_6px_20px_rgba(0,0,0,0.25)]"
-        >
-          <HeartFill size={20} />
-        </button>
-      )}
 
-      <SpotifyLikedImportDialog open={spotifyLikedOpen} onClose={() => setSpotifyLikedOpen(false)} />
-      {!spotifyLikedOpen && <SpotifyLikedImportPill onOpen={() => setSpotifyLikedOpen(true)} />}
 
       {activeTab === "playlists" && !isMobile && (
         <button

@@ -1,6 +1,7 @@
 import { innertubeCatalog } from "@/shared/media/innertube";
 import { isSoundCloudCatalogId, isSoundCloudUrl, resolveSoundCloudUrl, soundcloudCatalog } from "@/shared/media/soundcloud";
 import { audiusCatalog, isAudiusId } from "@/shared/media/audius";
+import { isJunkVideo, matchesQueryWell } from "@/shared/media/innertube/innertubeSearchRanking";
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
 import type {
@@ -20,10 +21,30 @@ export function isClientCatalogId(id: string): boolean {
 
 const norm = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
-/** YouTube results first; Audius adds full tracks YouTube doesn't have */
+/**
+ * YouTube results first; SoundCloud and Audius add full tracks YouTube doesn't
+ * have (Russian underground, sped up versions…). SoundCloud only steps in
+ * when YouTube found little that matches the query, so it never crowds out
+ * the songs themselves.
+ */
 async function withAudius(items: SearchResponse["items"], query: string, type: SearchType): Promise<SearchResponse["items"]> {
   if (type !== "all" && type !== "track") return items;
-  const extra = await audiusCatalog.search(query, 8).catch(() => []);
+  const ytMatches = items.filter(
+    (item) => item.type === "track" && matchesQueryWell(query, item.title, item.artists.map((a) => a.name)),
+  ).length;
+  const [audius, soundcloud] = await Promise.all([
+    audiusCatalog.search(query, 8).catch(() => []),
+    ytMatches < 3 ? soundcloudCatalog.search(query, 12).catch(() => []) : Promise.resolve([]),
+  ]);
+  const extra = [
+    ...soundcloud.filter(
+      (t) =>
+        t.durationMs > 60_000 &&
+        !isJunkVideo(t.title, query) &&
+        matchesQueryWell(query, t.title, t.artists.map((a) => a.name)),
+    ),
+    ...audius,
+  ];
   if (extra.length === 0) return items;
   const have = new Set(
     items.flatMap((item) =>
@@ -32,7 +53,7 @@ async function withAudius(items: SearchResponse["items"], query: string, type: S
   );
   const fresh = extra
     .filter((t) => !have.has(norm(`${t.title} ${t.artists.map((a) => a.name).join(" ")}`)))
-    .slice(0, type === "track" ? 8 : 4)
+    .slice(0, type === "track" ? 10 : 5)
     .map((t) => ({ ...t, type: "track" as const }));
   return [...items, ...fresh];
 }

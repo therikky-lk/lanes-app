@@ -47,7 +47,9 @@ import { useTranslation } from "@/languages";
 import { api } from "@/shared/api";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
-import { withLocalAvailability } from "@/features/local/localPlaylistTracks";
+import { isLocalPlaylistItemId, withLocalAvailability } from "@/features/local/localPlaylistTracks";
+import { useTrackTags, type TrackTag } from "../services/trackTags";
+import LikedCover from "./LikedCover";
 import {
   useTrackSearch,
   useTrackSearchButtonLabel,
@@ -259,9 +261,18 @@ function LibraryPlaylistContent() {
     setOptimisticTracks(null);
   }, [viewData?.revision, decodedId]);
 
-  const currentTracks = useMemo(() => {
+  const allTracks = useMemo(() => {
     return optimisticTracks ?? viewData?.tracks ?? [];
   }, [optimisticTracks, viewData?.tracks]);
+
+  // liked songs: tags (fast, rap, pop…) narrow the list down
+  const [activeTag, setActiveTag] = useState<TrackTag | null>(null);
+  useEffect(() => setActiveTag(null), [decodedId]);
+  const trackTags = useTrackTags(allTracks, isLikesMode);
+  const currentTracks = useMemo(
+    () => (isLikesMode && activeTag ? allTracks.filter((track) => trackTags.tagsOf(track.id).includes(activeTag)) : allTracks),
+    [isLikesMode, activeTag, allTracks, trackTags],
+  );
 
   // tracks from another device's files are shown but never queued here
   const playableTracks = useMemo(
@@ -620,8 +631,16 @@ function LibraryPlaylistContent() {
       </button>
       {/* track search sits centred in the page header */}
       {viewData && isReady && (
-        <div className="absolute top-[12px] left-0 right-0 z-20 flex justify-center pointer-events-none">
+        <div
+          className={
+            isMobile
+              ? // phones: under the Back button, full width, so it never covers it
+                "absolute top-[52px] left-[12px] right-[12px] z-20 flex justify-center pointer-events-none"
+              : "absolute top-[12px] left-0 right-0 z-20 flex justify-center pointer-events-none"
+          }
+        >
           <TrackSearchField
+            className={isMobile ? "!w-full !h-[38px]" : ""}
             search={search}
             totalCount={currentTracks.length}
             placeholder={t("track_search.placeholder_playlist")}
@@ -664,7 +683,7 @@ function LibraryPlaylistContent() {
                         (viewData.coverUrl ? [viewData.coverUrl] : []);
                     if (urls.length === 0) {
                       return isLikesMode ? (
-                        <HeartFill size={48} className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"} />
+                        <LikedCover />
                       ) : (
                         <PlaylistFill size={48} className={hasCustomBg ? "text-white" : "text-border-alpha-33"} />
                       );
@@ -1014,6 +1033,29 @@ function LibraryPlaylistContent() {
                 style={{ willChange: "scroll-position" }}
               >
               <ScrollBlurEdge height={60} />
+              {isLikesMode && trackTags.available.length > 0 && (
+                <div
+                  className={`flex gap-[6px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-[10px] ${isMobile ? "px-0 pt-[4px]" : "px-[8px]"}`}
+                  style={{ fontFamily: "var(--font-inter), sans-serif" }}
+                >
+                  {[null, ...trackTags.available].map((tag) => {
+                    const on = activeTag === tag;
+                    return (
+                      <button
+                        key={tag ?? "all"}
+                        type="button"
+                        onClick={() => setActiveTag(tag)}
+                        className={`shrink-0 inline-flex h-[30px] items-center gap-[6px] rounded-full border-0 px-[13px] text-[13px] font-[500] cursor-pointer transition-colors ${
+                          on ? "bg-text-primary text-bg-primary" : "bg-border-alpha-14 text-text-secondary hover:text-text-primary"
+                        }`}
+                      >
+                        {tag ? t(`tags.${tag}`) : t("common.all")}
+                        {tag && <span className={on ? "opacity-60" : "text-text-tertiary"}>{trackTags.counts.get(tag)}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {currentTracks.length > 0 && !isMobile && (
                 <div className="flex items-center justify-between gap-[12px] px-[8px] pb-[10px]">
                   <span className="text-[13px] text-text-tertiary" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
@@ -1127,7 +1169,11 @@ function LibraryPlaylistContent() {
 
                   // reordering a filtered view would be ambiguous, so it waits for the full list
                   const canReorder = Boolean(
-                    !isLikesMode && decodedId && track.playlistItemId && !isFiltering,
+                    !isLikesMode &&
+                      decodedId &&
+                      track.playlistItemId &&
+                      !isLocalPlaylistItemId(track.playlistItemId) &&
+                      !isFiltering,
                   );
 
                   return (
