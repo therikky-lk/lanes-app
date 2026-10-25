@@ -303,6 +303,8 @@ class PlaybackTelemetryTracker {
   }
 }
 
+const trackIdNow = (state: PlayerState) => state.currentTrack?.id || null;
+
 class PlayerEngine {
   private sessionId = 0;
   private lyricsLoadToken = 0;
@@ -346,7 +348,16 @@ class PlayerEngine {
         usePlayerStore.getState().currentTrack?.id || null;
       let prevStatus: string = "idle";
       let newTrack = false;
+      let prevRepeat = usePlayerStore.getState().repeat;
+      let prevQueue = usePlayerStore.getState().queue;
       const unsub = usePlayerStore.subscribe((state) => {
+        // what plays next changed (repeat mode, the queue): hand it over again
+        if (state.repeat !== prevRepeat || state.queue !== prevQueue) {
+          prevRepeat = state.repeat;
+          prevQueue = state.queue;
+          this.lastPreloadKey = null;
+          if (state.currentTrack && trackIdNow(state) === prevTrackId) this.preloadNextTrack(state);
+        }
         const trackId = state.currentTrack?.id || null;
         if (trackId !== prevTrackId) {
           prevTrackId = trackId;
@@ -1205,11 +1216,12 @@ class PlayerEngine {
 
     if (!nextTrack) {
       this.lastPreloadKey = null;
+      if (state.currentTrack) playerRuntime?.queueNextNatively(state.currentTrack.id, null);
       return;
     }
 
     const currentId = state.currentTrack?.id || "none";
-    const preloadKey = `${currentId}->${nextTrack.id}`;
+    const preloadKey = `${currentId}->${nextTrack.id}:${state.repeat}`;
     if (this.lastPreloadKey === preloadKey) {
       return;
     }
@@ -1227,7 +1239,34 @@ class PlayerEngine {
 
     if (playerRuntime) {
       void playerRuntime.preloadTrack(nextTrack);
+      // Android: the native player moves on to it by itself (not on repeat-one,
+      // which plays the same track again)
+      if (state.currentTrack) {
+        playerRuntime.queueNextNatively(state.currentTrack.id, state.repeat === "one" ? null : nextTrack);
+      }
     }
+  }
+
+  /** Android: the native player already started the queued next track */
+  public handleNativeAdvance(trackId: string): void {
+    const store = usePlayerStore.getState();
+    if (store.currentTrack?.id === trackId) return;
+    const expected = this.computeNextIndex(true);
+    const index =
+      expected !== null && store.queue[expected]?.id === trackId
+        ? expected
+        : store.queue.findIndex((t, i) => i > store.currentIndex && t.id === trackId);
+    if (index < 0) return;
+    const track = store.queue[index];
+    this.telemetry.onTrackCompleted(false);
+    this.sessionId += 1;
+    const mySession = this.sessionId;
+    store.setCurrentTrack(track, index);
+    store.setPosition(0);
+    store.setDuration(track.durationMs ?? 0);
+    store.setStatus("playing", null);
+    playerRuntime?.updateMediaSessionMetadata(track);
+    this.maybeExtendQueue(mySession, track.id, index, store.queue.length);
   }
 
   private async prefetchLyrics(trackId: string, hint?: LyricsHint): Promise<void> {

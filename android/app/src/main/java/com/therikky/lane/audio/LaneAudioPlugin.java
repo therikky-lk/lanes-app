@@ -72,13 +72,14 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         notifyListeners("remote", data);
     }
 
-    @PluginMethod
-    public void load(PluginCall call) {
-        String url = call.getString("url");
-        if (url == null) {
-            call.reject("url is required");
-            return;
-        }
+    @Override
+    public void onAdvanced(String trackId) {
+        JSObject data = new JSObject();
+        data.put("trackId", trackId);
+        notifyListeners("advanced", data);
+    }
+
+    private static Map<String, String> headersOf(PluginCall call) {
         Map<String, String> headers = new HashMap<>();
         JSObject h = call.getObject("headers", new JSObject());
         if (h != null) {
@@ -89,6 +90,46 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
                 if (v != null) headers.put(k, v);
             }
         }
+        return headers;
+    }
+
+    @PluginMethod
+    public void queueNext(PluginCall call) {
+        String url = call.getString("url");
+        String trackId = call.getString("trackId");
+        String after = call.getString("afterTrackId");
+        if (url == null || trackId == null || after == null) {
+            call.reject("url, trackId and afterTrackId are required");
+            return;
+        }
+        Map<String, String> headers = headersOf(call);
+        String title = call.getString("title", "");
+        String artist = call.getString("artist", "");
+        String album = call.getString("album", "");
+        String artwork = call.getString("artwork", "");
+        main.post(() -> {
+            PlayerHolder.get(getContext()).queueNext(after, trackId, url, headers, title, artist, album, artwork);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void clearNext(PluginCall call) {
+        main.post(() -> {
+            PlayerHolder.get(getContext()).clearNext();
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void load(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null) {
+            call.reject("url is required");
+            return;
+        }
+        Map<String, String> headers = headersOf(call);
+        String trackId = call.getString("trackId", "");
         String title = call.getString("title", "");
         String artist = call.getString("artist", "");
         String album = call.getString("album", "");
@@ -96,7 +137,7 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         long start = call.getLong("startPositionMs", 0L);
         boolean autoplay = Boolean.TRUE.equals(call.getBoolean("autoplay", false));
         main.post(() -> {
-            PlayerHolder.get(getContext()).load(url, headers, title, artist, album, artwork, start, autoplay);
+            PlayerHolder.get(getContext()).load(trackId, url, headers, title, artist, album, artwork, start, autoplay);
             call.resolve();
         });
     }

@@ -201,10 +201,11 @@ function LibraryPlaylistContent() {
   const viewData = useMemo(() => {
     if (isLikesMode) {
       if (!likesData) return null;
-      const tracks: Track[] = (likesData.tracks ?? []).map((t) => ({
-        ...t,
-        playCount: 0,
-      }));
+      // the user's own files liked on another device are greyed out here
+      const tracks: Track[] = withLocalAvailability(
+        (likesData.tracks ?? []).map((t) => ({ ...t, playCount: 0 })),
+        localRecords,
+      );
       return {
         title: t("playlist.liked_songs"),
         bio: "",

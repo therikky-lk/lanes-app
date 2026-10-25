@@ -236,11 +236,14 @@
       "character_unfamiliar": "Незнайоме",
       "character_popular": "Популярне",
       "mood_energetic": "Бадьоре",
-      "language_russian": "Російська",
-      "language_foreign": "Іноземна",
+      "language_russian": "Російські",
       "language_instrumental": "Без слів",
       "customize": "Налаштувати Мою хвилю",
-      "reset": "Скинути"
+      "reset": "Скинути",
+      "language_ukrainian": "Українські",
+      "language_english": "Англійські",
+      "expand": "Розгорнути «Мою хвилю»",
+      "collapse": "Згорнути"
     },
     "daily_mix": "Мікс дня {n}",
     "mix_label": "Мікс",

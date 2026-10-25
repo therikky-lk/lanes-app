@@ -1,6 +1,7 @@
 import { getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
 import { readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
 import { buildLocalPlaylistEntry, localEntryToTrack } from "@/features/local/localPlaylistTracks";
+import { isLocalLikesPlaylist } from "@/features/local/localLikesSync";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
@@ -110,7 +111,9 @@ function load(force = false): Promise<void> {
 
   request = (async () => {
     const coverCache = readCoverCache();
-    const response = await api.listPlaylists();
+    const listed = await api.listPlaylists();
+    // the hidden list behind likes of the user's own files is not a playlist to show
+    const response = { ...listed, items: listed.items.filter((p) => !isLocalLikesPlaylist(p)) };
 
     const playlists = await Promise.all(
       response.items.map(async (playlist) => {

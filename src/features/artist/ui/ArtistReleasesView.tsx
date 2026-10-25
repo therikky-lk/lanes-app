@@ -119,10 +119,13 @@ export default function ArtistReleasesView({
         >
           {isMobile ? (
             <header
-              className="sticky top-[0px] z-20 flex items-center gap-[6px] px-[8px] pb-[8px] backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.05]"
+              className="sticky top-[0px] z-20 flex items-center gap-[6px] px-[8px] pb-[8px] border-b border-white/[0.05]"
               style={{
                 paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
-                background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
+                // Android's web view blurs only some of the covers behind a sticky
+                // header (rectangles of blur): a nearly solid header instead
+                background:
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #0d0d10) 97%, transparent), color-mix(in srgb, var(--bg-primary, #0d0d10) 90%, transparent))",
               }}
             >
               <button

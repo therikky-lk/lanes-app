@@ -156,11 +156,27 @@ function classifyAll(tracks: Track[]): () => void {
       if (controller.signal.aborted || result === null) return;
       tags[track.id] = result;
       changed();
-      await sleep(250);
+      // Deezer allows ~50 requests per 5 s; 4 workers with a short pause stay under it
+      await sleep(120);
     }
   };
-  void Promise.all([worker(), worker(), worker()]);
+  void Promise.all([worker(), worker(), worker(), worker()]).finally(() => {
+    if (running === controller) running = null;
+  });
   return () => controller.abort();
+}
+
+let warmed = "";
+/**
+ * Start tagging the liked songs right after launch, so the tags are ready by
+ * the time the list is opened (not only while it's open).
+ */
+export function warmTrackTags(tracks: Track[]): void {
+  const todo = tracks.filter((t) => t.id && !t.id.startsWith("local:") && !(t.id in tags));
+  const key = `${tracks.length}:${todo.length}`;
+  if (todo.length === 0 || warmed === key || running) return;
+  warmed = key;
+  classifyAll(tracks);
 }
 
 function subscribe(listener: () => void) {
@@ -173,7 +189,8 @@ export function useTrackTags(tracks: Track[], enabled: boolean): { tagsOf: (id: 
   const v = useSyncExternalStore(subscribe, () => version, () => 0);
   useEffect(() => {
     if (!enabled || tracks.length === 0) return;
-    return classifyAll(tracks);
+    // keeps going after the page is left: the tags are kept for next time
+    classifyAll(tracks);
   }, [enabled, tracks]);
   return useMemo(() => {
     const counts = new Map<TrackTag, number>();
