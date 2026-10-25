@@ -79,6 +79,23 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         notifyListeners("advanced", data);
     }
 
+    /**
+     * A time in ms from JS. It arrives as a fraction (100000.4) whenever the
+     * page computed it, and getLong() quietly returns the default for those:
+     * every seek from the app landed at 0.
+     */
+    private static long millis(PluginCall call, String key) {
+        Object raw = call.getData().opt(key);
+        if (raw instanceof Number) return Math.max(0L, Math.round(((Number) raw).doubleValue()));
+        if (raw instanceof String) {
+            try {
+                return Math.max(0L, Math.round(Double.parseDouble((String) raw)));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 0L;
+    }
+
     private static Map<String, String> headersOf(PluginCall call) {
         Map<String, String> headers = new HashMap<>();
         JSObject h = call.getObject("headers", new JSObject());
@@ -153,7 +170,7 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         String artist = call.getString("artist", "");
         String album = call.getString("album", "");
         String artwork = call.getString("artwork", "");
-        long start = call.getLong("startPositionMs", 0L);
+        long start = millis(call, "startPositionMs");
         boolean autoplay = Boolean.TRUE.equals(call.getBoolean("autoplay", false));
         main.post(() -> {
             PlayerHolder.get(getContext()).load(trackId, url, headers, title, artist, album, artwork, start, autoplay);
@@ -188,7 +205,7 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
 
     @PluginMethod
     public void seek(PluginCall call) {
-        long position = call.getLong("positionMs", 0L);
+        long position = millis(call, "positionMs");
         main.post(() -> {
             PlayerHolder.get(getContext()).player().seekTo(Math.max(0, position));
             PlayerHolder.get(getContext()).emit();
