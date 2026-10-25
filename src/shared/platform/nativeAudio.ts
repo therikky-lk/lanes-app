@@ -320,7 +320,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
         url,
         headers: url.startsWith("http") ? headersForUrl(url) : {},
         ...nowPlaying,
-        startPositionMs,
+        startPositionMs: Math.round(startPositionMs),
         autoplay: wantPlay,
       });
     } catch (e) {
@@ -349,7 +349,8 @@ export function createNativeAudioElement(): HTMLAudioElement {
     positionAt = performance.now();
     ended = false;
     fire("seeking");
-    void LaneAudio.seek({ positionMs }).then(() => fire("seeked"));
+    // whole ms: the native side reads an integer
+    void LaneAudio.seek({ positionMs: Math.round(positionMs) }).then(() => fire("seeked"));
     fire("timeupdate");
   });
   define("duration", () => (Number.isFinite(durationMs) ? durationMs / 1000 : NaN));
