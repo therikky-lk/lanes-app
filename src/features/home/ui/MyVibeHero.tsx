@@ -2,7 +2,7 @@ import { isNativeApp } from "@/shared/platform/native";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
-import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine, MicOffLine } from "@mingcute/react";
+import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine, MicOffLine, PawFill } from "@mingcute/react";
 import { Emoji } from "react-apple-emojis";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -709,6 +709,16 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 }`}
               >
                 <MicOffLine size={21} />
+              </button>
+              {/* мьюс: the channel */}
+              <button
+                type="button"
+                title="мьюс"
+                aria-label="мьюс"
+                onClick={() => window.open("https://t.me/justchannelor", "_blank", "noopener,noreferrer")}
+                className="inline-flex h-[44px] w-[52px] items-center justify-center rounded-xl border-0 bg-bg-elevated text-text-secondary hover:text-text-primary cursor-pointer transition-colors active:scale-[0.97]"
+              >
+                <PawFill size={21} />
               </button>
             </div>
               </motion.div>

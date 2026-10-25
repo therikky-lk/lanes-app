@@ -267,16 +267,15 @@ img {
   width: 100%;
 }
 
+/* opacity + transform only: an animated blur re-renders the whole page every frame */
 @keyframes page-enter {
   from {
     opacity: 0;
     transform: translate3d(0, 6px, 0);
-    filter: blur(2.5px);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
-    filter: blur(0px);
   }
 }
 
@@ -541,3 +540,21 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-mobile .backdrop-blur-3xl { --tw-backdrop-blur: blur(16px); }
 .lane-mobile .backdrop-blur-xl { --tw-backdrop-blur: blur(12px); }
 .lane-mobile .blur-3xl { --tw-blur: blur(28px); }
+
+/* smoother scrolling: big grids skip drawing what's off screen, and the
+   rows / tiles are drawn on their own layers only while they're needed */
+.lane-grid-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 230px;
+}
+[data-page-scroller] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.lane-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 66px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-transition { animation: none; }
+}

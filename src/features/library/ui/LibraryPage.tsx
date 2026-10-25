@@ -469,9 +469,9 @@ export default function LibraryPage() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`${activeTab}:${debouncedQuery || "all"}:${viewMode}`}
-                initial={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(4px)", y: 6 }}
-                animate={isMobile ? { opacity: 1 } : { opacity: 1, filter: "blur(0px)", y: 0 }}
-                exit={isMobile ? { opacity: 0 } : { opacity: 0, filter: "blur(4px)", y: -4 }}
+                initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                animate={isMobile ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                exit={isMobile ? { opacity: 0 } : { opacity: 0, y: -4 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
                 <LibraryGrid
@@ -528,8 +528,8 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            // the very same glass as the bottom tab bar
-            className="absolute inset-x-0 top-0 z-20 bg-bg-primary/55 backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.06]"
+            // solid: the web view's blur kept drawing the covers as patches
+            className="absolute inset-x-0 top-0 z-20 bg-bg-primary border-b border-white/[0.06]"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
