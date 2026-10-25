@@ -76,17 +76,21 @@ export const TimelineSlider = memo(function TimelineSlider({
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
 
       const targetPos = calculatePositionFromPointer(e.clientX);
+      let lastPos = targetPos;
       setScrubPosition(targetPos);
       onScrub?.(targetPos);
 
       const onPointerMove = (ev: PointerEvent) => {
         const pos = calculatePositionFromPointer(ev.clientX);
+        lastPos = pos;
         setScrubPosition(pos);
         onScrub?.(pos);
       };
 
       const onPointerUp = (ev: PointerEvent) => {
-        const finalPos = calculatePositionFromPointer(ev.clientX);
+        // a cancelled touch (the phone took the gesture) carries no real
+        // position: keep where the finger last was
+        const finalPos = ev.type === "pointercancel" ? lastPos : calculatePositionFromPointer(ev.clientX);
         setIsDragging(false);
         setScrubPosition(null);
         try {
@@ -170,6 +174,9 @@ export const TimelineSlider = memo(function TimelineSlider({
         tabIndex={0}
         onKeyDown={handleKeyDown}
         onPointerDown={handlePointerDown}
+        // phones: the finger drags the slider, the page / player sheet doesn't
+        // pan or scroll under it (that cancelled every seek)
+        style={{ touchAction: "none" }}
         className="relative flex h-full flex-1 items-center cursor-pointer outline-none"
       >
         <motion.div

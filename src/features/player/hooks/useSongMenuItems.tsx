@@ -62,9 +62,12 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     if (liked) {
       unlikeMutation.mutate(id);
     } else {
-      likeMutation.mutate(id);
+      likeMutation.mutate({
+        trackId: id,
+        track: { id, title, artists, coverUrl, durationMs: durationMs ?? 0, playCount: 0 },
+      });
     }
-  }, [id, liked, likeMutation, unlikeMutation]);
+  }, [id, liked, likeMutation, unlikeMutation, title, artists, coverUrl, durationMs]);
 
   const buildMenu = useCallback((): DropdownMenuItem[] => {
     const isTrack = searchType === "track" || !searchType;

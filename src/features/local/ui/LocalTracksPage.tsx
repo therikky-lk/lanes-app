@@ -13,7 +13,8 @@ import { playerEngine, usePlayerStore } from "@/features/player";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { useTranslation } from "@/languages";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
-import { addLocalFiles, removeLocalTrack, setLocalTrackLiked } from "@/shared/media/local/localTracks";
+import { addLocalFiles, removeLocalTrack } from "@/shared/media/local/localTracks";
+import { setLocalLike } from "../localLikesSync";
 import type { Track } from "@/shared/types";
 import { useLocalTracks } from "../hooks/useLocalTracks";
 
@@ -184,20 +185,20 @@ export default function LocalTracksPage() {
                 isCurrent={currentTrackId === track.id}
                 onPlay={() => play(track)}
                 liked={likedIds.has(track.id)}
-                onToggleLike={() => void setLocalTrackLiked(track.id, !likedIds.has(track.id))}
+                onToggleLike={() => void setLocalLike(track.id, !likedIds.has(track.id))}
                 menuItems={[
                   likedIds.has(track.id)
                     ? {
                         id: "unlike",
                         icon: <HeartFill size={15} />,
                         label: t("common.unlike"),
-                        onClick: () => void setLocalTrackLiked(track.id, false),
+                        onClick: () => void setLocalLike(track.id, false),
                       }
                     : {
                         id: "like",
                         icon: <HeartLine size={15} />,
                         label: t("common.like"),
-                        onClick: () => void setLocalTrackLiked(track.id, true),
+                        onClick: () => void setLocalLike(track.id, true),
                       },
                   {
                     // the file stays here; other devices see it greyed out in the playlist
@@ -225,7 +226,10 @@ export default function LocalTracksPage() {
                     icon: <DeleteLine size={15} />,
                     label: t("common.delete"),
                     danger: true,
-                    onClick: () => void removeLocalTrack(track.id),
+                    onClick: () => {
+                      if (likedIds.has(track.id)) void setLocalLike(track.id, false);
+                      void removeLocalTrack(track.id);
+                    },
                   },
                 ]}
               />

@@ -1,4 +1,7 @@
-import { isLocalTrackId, setLocalTrackLiked } from "@/shared/media/local/localTracks";
+import { usePlayerStore } from "@/features/player/store/playerStore";
+import type { Track } from "@/shared/types";
+import { isLocalTrackId } from "@/shared/media/local/localTracks";
+import { setLocalLike } from "@/features/local/localLikesSync";
 import { useCallback, useState } from "react";
 import { api } from "@/shared/api";
 import {
@@ -147,6 +150,15 @@ type TrackMutationInput = string | { trackId: string; [key: string]: unknown };
 const trackIdFrom = (input: TrackMutationInput) =>
   typeof input === "string" ? input : input.trackId;
 
+/** the track's details, from the caller or from what the player knows */
+function knownTrack(input: TrackMutationInput): Track | undefined {
+  if (typeof input !== "string" && input.track && typeof input.track === "object") return input.track as Track;
+  const id = trackIdFrom(input);
+  const { currentTrack, queue } = usePlayerStore.getState();
+  if (currentTrack?.id === id) return currentTrack;
+  return queue.find((t) => t.id === id);
+}
+
 export function useLikeTrack() {
   const [isPending, setIsPending] = useState(false);
 
@@ -154,10 +166,10 @@ export function useLikeTrack() {
     const trackId = trackIdFrom(input);
     setIsPending(true);
     if (isLocalTrackId(trackId)) {
-      await setLocalTrackLiked(trackId, true).finally(() => setIsPending(false));
+      await setLocalLike(trackId, true).finally(() => setIsPending(false));
       return undefined as unknown as Awaited<ReturnType<typeof api.likeTrack>>;
     }
-    const rollback = applyOptimisticLike(trackId);
+    const rollback = applyOptimisticLike(trackId, knownTrack(input));
     try {
       const result = await api.likeTrack(trackId);
       notifyLibraryChanged();
@@ -204,7 +216,7 @@ export function useUnlikeTrack() {
     const trackId = trackIdFrom(input);
     setIsPending(true);
     if (isLocalTrackId(trackId)) {
-      await setLocalTrackLiked(trackId, false).finally(() => setIsPending(false));
+      await setLocalLike(trackId, false).finally(() => setIsPending(false));
       return undefined as unknown as Awaited<ReturnType<typeof api.unlikeTrack>>;
     }
     const rollback = applyOptimisticUnlike(trackId);

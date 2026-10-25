@@ -53,7 +53,33 @@ public final class PlayerHolder {
                      long positionMs, long durationMs, String error);
 
         void onRemote(String action, long positionMs);
+
+        /** the player moved on to the queued next track by itself */
+        void onAdvanced(String trackId);
     }
+
+    /** the track to play after the current one, handed over ahead of time */
+    private static final class NextSpec {
+        final String afterTrackId;
+        final String trackId;
+        final String url;
+        final Map<String, String> headers;
+        final String title, artist, album, artwork;
+
+        NextSpec(String afterTrackId, String trackId, String url, Map<String, String> headers,
+                 String title, String artist, String album, String artwork) {
+            this.afterTrackId = afterTrackId;
+            this.trackId = trackId;
+            this.url = url;
+            this.headers = headers;
+            this.title = title;
+            this.artist = artist;
+            this.album = album;
+            this.artwork = artwork;
+        }
+    }
+
+    private NextSpec pendingNext;
 
     private static PlayerHolder instance;
 
@@ -140,6 +166,25 @@ public final class PlayerHolder {
             public void onPositionDiscontinuity(@NonNull Player.PositionInfo oldPosition, @NonNull Player.PositionInfo newPosition, int reason) {
                 emit();
             }
+
+            @Override
+            public void onMediaItemTransition(MediaItem mediaItem, int reason) {
+                // the queued next track started on its own (end of the previous one,
+                // or "next" on the notification): no page needed for that, so it
+                // keeps going with the screen off or the app in the background
+                if (mediaItem == null) return;
+                if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
+                    && reason != Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) return;
+                String id = mediaItem.mediaId;
+                lastError = null;
+                pendingNext = null;
+                main.post(() -> {
+                    int index = player.getCurrentMediaItemIndex();
+                    if (index > 0) player.removeMediaItems(0, index);
+                    if (events != null) events.onAdvanced(id);
+                    emit();
+                });
+            }
         });
 
         // what the notification and the lock screen talk to: next / previous are
@@ -163,12 +208,14 @@ public final class PlayerHolder {
 
             @Override
             public void seekToNext() {
-                remote("next");
+                if (player.hasNextMediaItem()) player.seekToNextMediaItem();
+                else remote("next");
             }
 
             @Override
             public void seekToNextMediaItem() {
-                remote("next");
+                if (player.hasNextMediaItem()) player.seekToNextMediaItem();
+                else remote("next");
             }
 
             @Override
@@ -250,34 +297,27 @@ public final class PlayerHolder {
             lastError);
     }
 
-    /** load a stream (http/https/file) with the request headers its client needs */
-    public void load(String url, Map<String, String> headers, String title, String artist, String album,
-                     String artwork, long startPositionMs, boolean playWhenReady) {
-        lastError = null;
-        holdHandoff();
+    private MediaMetadata.Builder metadata(String title, String artist, String album, String artwork) {
         MediaMetadata.Builder meta = new MediaMetadata.Builder()
             .setTitle(title)
             .setArtist(artist)
             .setAlbumTitle(album)
             .setIsPlayable(true);
-        final int generation = ++loadGeneration;
-        boolean fetchArtwork = false;
-        if (artwork != null && !artwork.isEmpty()) {
-            if (artwork.startsWith("data:")) {
-                try {
-                    String b64 = artwork.substring(artwork.indexOf(',') + 1);
-                    meta.setArtworkData(Base64.decode(b64, Base64.DEFAULT), MediaMetadata.PICTURE_TYPE_FRONT_COVER);
-                } catch (IllegalArgumentException ignored) {
-                }
-            } else if (artwork.startsWith("http")) {
-                // loaded here (not by the session's bitmap loader) so it works
-                // for every cover host and stays a sane size
-                fetchArtwork = true;
+        if (artwork != null && artwork.startsWith("data:")) {
+            try {
+                String b64 = artwork.substring(artwork.indexOf(',') + 1);
+                meta.setArtworkData(Base64.decode(b64, Base64.DEFAULT), MediaMetadata.PICTURE_TYPE_FRONT_COVER);
+            } catch (IllegalArgumentException ignored) {
             }
         }
+        return meta;
+    }
+
+    private MediaSource buildSource(String trackId, String url, Map<String, String> headers, MediaMetadata meta) {
         MediaItem item = new MediaItem.Builder()
+            .setMediaId(trackId == null ? "" : trackId)
             .setUri(Uri.parse(url))
-            .setMediaMetadata(meta.build())
+            .setMediaMetadata(meta)
             .build();
 
         Map<String, String> requestHeaders = new HashMap<>(headers);
@@ -306,17 +346,54 @@ public final class PlayerHolder {
         if (url.contains(".googlevideo.com/")) {
             upstream = new ResolvingDataSource.Factory(http, PlayerHolder::withRangeParam);
         }
-        MediaSource source = new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, upstream))
+        return new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, upstream))
             .createMediaSource(item);
+    }
+
+    /** load a stream (http/https/file) with the request headers its client needs */
+    public void load(String trackId, String url, Map<String, String> headers, String title, String artist, String album,
+                     String artwork, long startPositionMs, boolean playWhenReady) {
+        lastError = null;
+        holdHandoff();
+        final int generation = ++loadGeneration;
+        MediaSource source = buildSource(trackId, url, headers, metadata(title, artist, album, artwork).build());
 
         player.setMediaSource(source, Math.max(0, startPositionMs));
         player.prepare();
         player.setPlayWhenReady(playWhenReady);
+        // the next track may have been handed over before this one was loaded
+        NextSpec next = pendingNext;
+        if (next != null && trackId != null && trackId.equals(next.afterTrackId)) appendNext(next);
         emit();
-        if (fetchArtwork) loadArtwork(artwork, generation);
+        if (artwork != null && artwork.startsWith("http")) loadArtwork(artwork, generation, trackId);
     }
 
-    private void loadArtwork(String url, int generation) {
+    /** what to play after `afterTrackId`; the player switches to it on its own */
+    public void queueNext(String afterTrackId, String trackId, String url, Map<String, String> headers,
+                          String title, String artist, String album, String artwork) {
+        NextSpec next = new NextSpec(afterTrackId, trackId, url, headers, title, artist, album, artwork);
+        pendingNext = next;
+        MediaItem current = player.getCurrentMediaItem();
+        if (current != null && afterTrackId != null && afterTrackId.equals(current.mediaId)) appendNext(next);
+    }
+
+    public void clearNext() {
+        pendingNext = null;
+        int index = player.getCurrentMediaItemIndex();
+        int count = player.getMediaItemCount();
+        if (count > index + 1) player.removeMediaItems(index + 1, count);
+    }
+
+    private void appendNext(NextSpec next) {
+        int index = player.getCurrentMediaItemIndex();
+        int count = player.getMediaItemCount();
+        if (count > index + 1) player.removeMediaItems(index + 1, count);
+        player.addMediaSource(buildSource(next.trackId, next.url, next.headers,
+            metadata(next.title, next.artist, next.album, next.artwork).build()));
+        if (next.artwork != null && next.artwork.startsWith("http")) loadArtwork(next.artwork, loadGeneration, next.trackId);
+    }
+
+    private void loadArtwork(String url, int generation, String trackId) {
         artworkLoader.execute(() -> {
             byte[] png = null;
             try {
@@ -347,13 +424,16 @@ public final class PlayerHolder {
             final byte[] data = png;
             main.post(() -> {
                 if (generation != loadGeneration || player.getMediaItemCount() == 0) return;
-                MediaItem current = player.getCurrentMediaItem();
-                if (current == null) return;
-                MediaMetadata updated = current.mediaMetadata.buildUpon()
-                    .setArtworkData(data, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
-                    .build();
-                player.replaceMediaItem(player.getCurrentMediaItemIndex(),
-                    current.buildUpon().setMediaMetadata(updated).build());
+                // the item may be the current one or the queued next one
+                for (int i = 0; i < player.getMediaItemCount(); i++) {
+                    MediaItem item = player.getMediaItemAt(i);
+                    if (trackId != null && !trackId.equals(item.mediaId)) continue;
+                    MediaMetadata updated = item.mediaMetadata.buildUpon()
+                        .setArtworkData(data, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                        .build();
+                    player.replaceMediaItem(i, item.buildUpon().setMediaMetadata(updated).build());
+                    return;
+                }
             });
         });
     }

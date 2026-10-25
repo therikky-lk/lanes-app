@@ -37,6 +37,18 @@ interface LaneAudioPlugin {
   setLiked(options: { liked: boolean }): Promise<void>;
   setRepeat(options: { mode: number }): Promise<void>;
   writeCacheFile(options: { name: string; base64: string }): Promise<{ url: string }>;
+  queueNext(options: {
+    afterTrackId: string;
+    trackId: string;
+    url: string;
+    headers?: Record<string, string>;
+    title?: string;
+    artist?: string;
+    album?: string;
+    artwork?: string;
+  }): Promise<void>;
+  clearNext(): Promise<void>;
+  addListener(event: "advanced", cb: (a: { trackId: string }) => void): Promise<PluginListenerHandle>;
   addListener(event: "state", cb: (s: NativeState) => void): Promise<PluginListenerHandle>;
   addListener(event: "remote", cb: (r: { action: string; positionMs: number }) => void): Promise<PluginListenerHandle>;
 }
@@ -44,6 +56,8 @@ interface LaneAudioPlugin {
 export const LaneAudio = registerPlugin<LaneAudioPlugin>("LaneAudio");
 
 export interface NowPlayingMeta {
+  /** lets the native player tell which track it is on */
+  trackId?: string;
   title?: string;
   artist?: string;
   album?: string;
@@ -77,6 +91,42 @@ export function onNativeLike(handler: (() => void) | null): void {
 let repeatHandler: (() => void) | null = null;
 export function onNativeRepeat(handler: (() => void) | null): void {
   repeatHandler = handler;
+}
+
+// the native player switched to the queued next track by itself
+let advancedHandler: ((trackId: string) => void) | null = null;
+export function onNativeAdvanced(handler: ((trackId: string) => void) | null): void {
+  advancedHandler = handler;
+}
+
+/**
+ * Hand the native player the track after `afterTrackId` ahead of time: it
+ * then moves on by itself when the current one ends, even while the page is
+ * asleep (screen off, another app in front).
+ */
+export async function queueNativeNext(
+  afterTrackId: string,
+  trackId: string,
+  source: { url?: string; blob?: Blob },
+  meta: Omit<NowPlayingMeta, "trackId">,
+): Promise<void> {
+  let url = source.url ?? "";
+  if (source.blob) {
+    const ext = (source.blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
+    url = (await LaneAudio.writeCacheFile({ name: `next-${Date.now()}.${ext}`, base64: await blobToBase64(source.blob) })).url;
+  }
+  if (!url) return;
+  await LaneAudio.queueNext({
+    afterTrackId,
+    trackId,
+    url,
+    headers: url.startsWith("http") ? headersForUrl(url) : {},
+    ...meta,
+  });
+}
+
+export function clearNativeNext(): void {
+  void LaneAudio.clearNext().catch(() => undefined);
 }
 
 // blob: URLs are page-local; remember the Blob behind each one so it can be
@@ -200,6 +250,17 @@ export function createNativeAudioElement(): HTMLAudioElement {
       error = new NativeMediaError(2, s.error);
       fire("error");
     }
+  });
+  void LaneAudio.addListener("advanced", (a) => {
+    // a new track is already playing natively: start the clock over
+    positionMs = 0;
+    positionAt = performance.now();
+    durationMs = NaN;
+    ended = false;
+    error = null;
+    readyState = 0;
+    advancedHandler?.(a.trackId);
+    fire("emptied");
   });
   void LaneAudio.addListener("remote", (r) => {
     if (r.action === "like") likeHandler?.();

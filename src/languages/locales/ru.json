@@ -238,11 +238,14 @@
       "character_unfamiliar": "Незнакомое",
       "character_popular": "Популярное",
       "mood_energetic": "Бодрое",
-      "language_russian": "Русский",
-      "language_foreign": "Иностранный",
+      "language_russian": "Русские",
       "language_instrumental": "Без слов",
       "customize": "Настроить Мою волну",
-      "reset": "Сбросить"
+      "reset": "Сбросить",
+      "language_ukrainian": "Украинские",
+      "language_english": "Английские",
+      "expand": "Развернуть «Мою волну»",
+      "collapse": "Свернуть"
     },
     "daily_mix": "Микс дня {n}",
     "mix_label": "Микс",
