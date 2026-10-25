@@ -1,4 +1,5 @@
 import { usePlayerStore } from "../store/playerStore";
+import { diag } from "@/shared/platform/diag";
 import { ApiError } from "@/shared/api";
 import { log } from "@/shared/utils/logger";
 import { telemetry } from "@/shared/telemetry";
@@ -449,6 +450,15 @@ export class PlayerRuntime {
     const isExpired =
       this.currentSessionExpiresAt !== null &&
       Date.now() >= this.currentSessionExpiresAt - 15_000;
+    if (isNativeApp() && this.currentTrackId === trackId) {
+      const why = [
+        this.attachedTrackId !== trackId && "attached to another track",
+        !(this.audio.currentSrc || this.audio.src) && "no src",
+        this.audio.error && `error: ${this.audio.error.message}`,
+        isExpired && "stream link expired",
+      ].filter(Boolean);
+      if (why.length) diag(`source check: ${why.join(", ")}`);
+    }
     return (
       this.currentTrackId === trackId &&
       this.attachedTrackId === trackId &&
@@ -848,6 +858,12 @@ export class PlayerRuntime {
       log("cyan", "playback", `resolved stream for ${track.title}`);
       const playable = stream;
       const url = playable.blob ? URL.createObjectURL(playable.blob) : playable.url!;
+      // Android: the native player starts right at the position (a reload
+      // after a seek used to start the track over)
+      if (isNativeApp()) {
+        const startAt = this.pendingStartPositionMs > 0 ? this.pendingStartPositionMs : startPositionMs;
+        (this.audio as unknown as { laneStartAt: number }).laneStartAt = startAt;
+      }
       this.attachSource(url, Boolean(playable.blob), track.id);
       this.audio.volume = 0;
       this.audio.load();
@@ -1041,7 +1057,11 @@ export class PlayerRuntime {
   }
 
   public seek(positionMs: number) {
-    if (!this.audio.src || this.audio.src === window.location.href) return;
+    if (!this.audio.src || this.audio.src === window.location.href) {
+      diag("seek: no source attached, skipped");
+      return;
+    }
+    if (this.audio.readyState < 1) diag("seek: waiting for the stream before seeking");
     try {
       if (this.audio.readyState >= 1) {
         this.audio.currentTime = positionMs / 1000;

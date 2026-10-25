@@ -236,17 +236,29 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
   const avoid = new Set(recentSeeds());
 
   // pools of tracks that carry the mood / "no words" / popularity
+  // a language with nothing else picked: start from hits in that language
+  const spoken = language === "russian" || language === "ukrainian" || language === "english";
   const [moodTracks, instrumentalTracks, popularTracks] = await Promise.all([
     mood ? moodPool(mood, language) : Promise.resolve([] as Track[]),
     language === "instrumental" ? moodPool("instrumental") : Promise.resolve([] as Track[]),
-    character === "popular" ? moodPool("popular", language) : Promise.resolve([] as Track[]),
+    character === "popular" || (spoken && !mood) ? moodPool("popular", language) : Promise.resolve([] as Track[]),
   ]);
   const fits = (t: Track) => !session.skipped.has(t.id);
 
   // the pool that defines the stream, if any: mood first, then the others
   // (for "no vocals" the instrumental search only seeds the radio: every pick
   // still has to be marked instrumental, see the language filter below)
-  const pool = (mood ? moodTracks : language === "instrumental" ? instrumentalTracks : character === "popular" ? popularTracks : []).filter(fits);
+  const pool = (
+    mood
+      ? moodTracks
+      : language === "instrumental"
+        ? instrumentalTracks
+        : character === "popular" || spoken
+          ? popularTracks
+          : []
+  ).filter(fits);
+  // playlists searched in that language: their songs count as in it unless known otherwise
+  const languagePoolIds = spoken ? new Set(pool.map((t) => t.id)) : new Set<string>();
   const poolIds = pool.length ? new Set(pool.map((t) => t.id)) : undefined;
 
   let seeds: Track[];
@@ -280,7 +292,8 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
   if (language) {
     // the language is decided by the lyrics (LRCLIB), not by the name
     const speaks = await languageFilter(filtered, language, liked);
-    let inLanguage = filtered.filter((t) => speaks(t));
+    const inLang = (t: Track) => speaks(t) || (languagePoolIds.has(t.id) && !speaks.known(t));
+    let inLanguage = filtered.filter(inLang);
     const taken = new Set([...exclude, ...session.played.keys()]);
     const fresh = () => inLanguage.filter((t) => !taken.has(t.id)).length;
     if (fresh() < 12) {
@@ -289,7 +302,9 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
       const sample = [...liked, ...pool].sort(() => Math.random() - 0.5).slice(0, 160);
       const sampleSpeaks = await languageFilter(sample, language, liked, 4000);
       const langSeeds = pickWeighted(
-        sample.filter((t) => sampleSpeaks(t)).map((track) => ({ track, weight: poolIds?.has(track.id) ? 2 : 1 })),
+        sample
+          .filter((t) => sampleSpeaks(t) || (languagePoolIds.has(t.id) && !sampleSpeaks.known(t)))
+          .map((track) => ({ track, weight: poolIds?.has(track.id) ? 2 : 1 })),
         4,
         new Set([...avoid, ...seeds.map((s) => s.id)]),
       );
@@ -298,7 +313,7 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
         const moreSpeaks = await languageFilter(more, language, liked, 5000);
         const seen = new Set(inLanguage.map((t) => t.id));
         for (const t of [...langSeeds, ...more]) {
-          if (!seen.has(t.id) && moreSpeaks(t)) {
+          if (!seen.has(t.id) && (moreSpeaks(t) || (languagePoolIds.has(t.id) && !moreSpeaks.known(t)))) {
             seen.add(t.id);
             inLanguage.push(t);
           }
@@ -309,6 +324,10 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
       // still too little: let the title / artist name decide the unknown ones
       const seen = new Set(inLanguage.map((t) => t.id));
       inLanguage = [...inLanguage, ...filtered.filter((t) => !seen.has(t.id) && speaks(t, false))];
+    }
+    if (fresh() === 0 && pool.length) {
+      // nothing at all yet: the language's own playlists carry the start
+      inLanguage = pool.filter((t) => !speaks.known(t) || speaks(t));
     }
     return selectFresh(inLanguage, taste, {
       count: BATCH,

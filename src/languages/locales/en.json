@@ -1252,6 +1252,7 @@
     "rock": "Rock",
     "electronic": "Electronic",
     "jazz": "Jazz",
-    "classical": "Classical"
+    "classical": "Classical",
+    "plain": "Just tracks"
   }
 }

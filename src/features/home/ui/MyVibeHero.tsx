@@ -2,8 +2,9 @@ import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
-import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine } from "@mingcute/react";
+import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine, MicOffLine } from "@mingcute/react";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
+import { Emoji } from "react-apple-emojis";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -109,23 +110,8 @@ function traceRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
   ctx.closePath();
 }
 
-/** small flags for the language switch (drawn, so they look the same on every OS) */
-function Flag({ code }: { code: "ru" | "ua" | "us" }) {
-  const box = "inline-block h-[13px] w-[19px] shrink-0 overflow-hidden rounded-[2.5px] shadow-[0_0_0_0.5px_rgba(255,255,255,0.25)]";
-  if (code === "ru")
-    return <span className={box} style={{ background: "linear-gradient(#fff 0 33.3%, #1c57a5 33.3% 66.6%, #d52b1e 66.6%)" }} />;
-  if (code === "ua") return <span className={box} style={{ background: "linear-gradient(#0057b7 0 50%, #ffd700 50%)" }} />;
-  return (
-    <span
-      className={`${box} relative`}
-      style={{ background: "repeating-linear-gradient(#b22234 0 1.85px, #fff 1.85px 3.7px)" }}
-    >
-      <span className="absolute left-0 top-0 h-[7px] w-[8px]" style={{ background: "#3c3b6e" }} />
-    </span>
-  );
-}
-
-const LANGUAGE_FLAG = { russian: "ru", ukrainian: "ua", english: "us" } as const;
+/** Apple's flag emoji, as everywhere else in the app (react-apple-emojis) */
+const LANGUAGE_FLAG = { russian: "flag-russia", ukrainian: "flag-ukraine", english: "flag-united-states" } as const;
 
 export default function MyVibeHero({ liked, recent, trending, expanded = false, onToggleExpanded }: MyVibeHeroProps) {
   const { t } = useTranslation();
@@ -673,32 +659,22 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 and "no vocals" on its own */}
             <div className="flex flex-wrap items-center gap-[8px]">
               <SegmentedTabs
-                className="!bg-white/[0.07]"
-                value={(settings.language ?? "") as "russian" | "ukrainian" | "english"}
+                iconOnly
+                value={(settings.language ?? "") as "russian" | "ukrainian" | "english" | "instrumental"}
                 onChange={(l) => toggle("language", l)}
-                options={(["russian", "ukrainian", "english"] as const).map((l) => ({
-                  id: l,
-                  title: label.language(l),
-                  label: (
-                    <span className="inline-flex items-center gap-[7px] text-white">
-                      <Flag code={LANGUAGE_FLAG[l]} />
-                      {label.language(l)}
-                    </span>
-                  ),
-                }))}
+                options={[
+                  ...(["russian", "ukrainian", "english"] as const).map((l) => ({
+                    id: l,
+                    title: label.language(l),
+                    label: <Emoji name={LANGUAGE_FLAG[l]} width={22} />,
+                  })),
+                  {
+                    id: "instrumental" as const,
+                    title: label.language("instrumental"),
+                    label: <MicOffLine size={20} />,
+                  },
+                ]}
               />
-              <button
-                type="button"
-                aria-pressed={settings.language === "instrumental"}
-                onClick={() => toggle("language", "instrumental")}
-                className={`h-[37px] rounded-xl border px-[16px] text-[13px] font-[550] cursor-pointer transition-colors ${
-                  settings.language === "instrumental"
-                    ? "border-white bg-white text-black"
-                    : "border-transparent bg-white/[0.07] text-white hover:bg-white/[0.11]"
-                }`}
-              >
-                {label.language("instrumental")}
-              </button>
             </div>
               </motion.div>
             </motion.div>

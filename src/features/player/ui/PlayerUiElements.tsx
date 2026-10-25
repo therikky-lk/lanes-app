@@ -259,7 +259,9 @@ export function PlayerUiElements({
       {/* Timeline (Compact, with smooth spring pill, no thumb) */}
       <TimelineSlider
         positionMs={player.positionMs}
-        durationMs={player.durationMs}
+        // the stream's length may not have arrived yet: the track's own length
+        // keeps the bar usable (a 0 length turned every tap into "seek to 0")
+        durationMs={player.durationMs > 0 ? player.durationMs : (player.currentTrack?.durationMs ?? 0)}
         onSeek={(pos) => playerEngine.seek(pos)}
         showTime
         size="lg"
