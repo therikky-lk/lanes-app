@@ -69,8 +69,10 @@ function absorb(into: HistoryGroup, other: HistoryGroup): void {
  * a short detour inside a session: a lone track, or a single song from some
  * other playlist (My Vibe often reports the playlist a song came from)
  */
-function isFiller(group: HistoryGroup): boolean {
-  return group.source === "track" || group.tracks.length === 1;
+function isFiller(group: HistoryGroup, counts?: Map<string, number>): boolean {
+  if (group.source === "track") return true;
+  // a single song from a place that comes up only this once that day
+  return group.tracks.length === 1 && (counts?.get(`${group.source}:${group.id ?? ""}`) ?? 1) <= 1;
 }
 
 /**
@@ -81,6 +83,11 @@ function isFiller(group: HistoryGroup): boolean {
  */
 export function mergeSessions(groups: HistoryGroup[]): HistoryGroup[] {
   const out = [...groups];
+  const counts = new Map<string, number>();
+  for (const g of groups) {
+    const key = `${g.source}:${g.id ?? ""}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
   let changed = true;
   while (changed) {
     changed = false;
@@ -89,7 +96,7 @@ export function mergeSessions(groups: HistoryGroup[]): HistoryGroup[] {
       if (a.source === "track") continue;
       // newer part, detours…, older part of the same source
       let j = i + 1;
-      while (j < out.length && isFiller(out[j]) && !sameSource(a, out[j])) j++;
+      while (j < out.length && isFiller(out[j], counts) && !sameSource(a, out[j])) j++;
       if (j >= out.length) continue;
       const b = out[j];
       if (!sameSource(a, b)) continue;
@@ -102,6 +109,32 @@ export function mergeSessions(groups: HistoryGroup[]): HistoryGroup[] {
       changed = true;
       break;
     }
+  }
+  return out;
+}
+
+/**
+ * One entry per place a day: "My Vibe · 13" instead of "My Vibe · 10",
+ * "Liked · 2", "My Vibe · 3". The entry stays where its newest part was; lone
+ * tracks stay as they are.
+ */
+export function consolidate(groups: HistoryGroup[]): HistoryGroup[] {
+  const out: HistoryGroup[] = [];
+  const bySource = new Map<string, HistoryGroup>();
+  for (const group of groups) {
+    if (group.source === "track") {
+      out.push(group);
+      continue;
+    }
+    const key = `${group.source}:${group.id ?? ""}`;
+    const first = bySource.get(key);
+    if (first) {
+      absorb(first, group);
+      continue;
+    }
+    const copy = { ...group, tracks: [...group.tracks] };
+    bySource.set(key, copy);
+    out.push(copy);
   }
   return out;
 }
@@ -131,6 +164,6 @@ export function groupHistory(plays: HistoryPlay[]): HistoryDay[] {
     }
     day.groups.push({ key: `${key}-${day.groups.length}`, source, id, tracks: [play.track], at: time, from: time });
   }
-  for (const day of days) day.groups = mergeSessions(day.groups);
+  for (const day of days) day.groups = consolidate(mergeSessions(day.groups));
   return days;
 }

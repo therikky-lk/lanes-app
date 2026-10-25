@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { warmTrackTags } from "@/features/library/services/trackTags";
 import LikedCover from "@/features/library/ui/LikedCover";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
@@ -110,8 +111,16 @@ export default function HomePage() {
     ? "apple-glass-action"
     : "bg-bg-elevated hover:bg-[#dedee3] dark:hover:bg-border-alpha-14 transition-colors duration-150 ease-out";
 
+  // liked songs get their tags (genre, pace) in the background from the start
+  useEffect(() => {
+    if (likedData?.tracks?.length) warmTrackTags(likedData.tracks);
+  }, [likedData?.tracks]);
+
+  // desktop: "My Vibe" can fill the whole page (arrow next to its settings)
+  const [vibeExpanded, setVibeExpanded] = useState(false);
+
   return (
-    <div data-page-scroller className="relative h-full w-full overflow-y-auto overflow-x-hidden bg-transparent">
+    <div data-page-scroller className={`relative h-full w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
       <ScrollBlurEdge height={72} />
 
       <div
@@ -127,9 +136,18 @@ export default function HomePage() {
         />
       )}
 
-      <div className="relative z-1">
-        <MyVibeHero liked={likedData?.tracks} recent={vibeRecent} trending={vibeTrending} />
+      <div className={vibeExpanded ? "relative z-1 h-full" : "relative z-1"}>
+        <MyVibeHero
+          liked={likedData?.tracks}
+          recent={vibeRecent}
+          trending={vibeTrending}
+          expanded={vibeExpanded}
+          onToggleExpanded={() => setVibeExpanded((v) => !v)}
+        />
       </div>
+
+      {/* expanded: only the vibe is on screen */}
+      {!vibeExpanded && (
 
       <div className="relative z-1 grid grid-cols-1 items-start w-full">
         {/* Real Content Layer */}
@@ -266,6 +284,7 @@ export default function HomePage() {
         </div>
       )}
       </div>
+      )}
     </div>
   );
 }

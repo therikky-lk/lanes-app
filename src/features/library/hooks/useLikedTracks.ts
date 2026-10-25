@@ -2,6 +2,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import { api, getAuthSession, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
 import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@/shared/media/local/localTracks";
+import { loadLocalLikes } from "@/features/local/localLikesSync";
+import { localEntryToTrack } from "@/features/local/localPlaylistTracks";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
@@ -12,31 +14,40 @@ const listeners = new Set<() => void>();
 let view = { data: cache, isLoading: true };
 
 const optimisticOverrides = new Map<string, boolean>();
+/** what a just-liked track looks like, so it shows in the list right away */
+const optimisticTracks = new Map<string, Track>();
 /** when each override was set: a reload that started earlier can't know about it */
 const overrideAt = new Map<string, number>();
 let reloadQueued = false;
 
 // liked uploads live on this device and are shown first
 let localLiked: Track[] = [];
+// liked uploads of the user's other devices (greyed out here)
+let remoteLocalLiked: Track[] = [];
 
 function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } {
-  if (optimisticOverrides.size === 0 && localLiked.length === 0) return { data: cache, isLoading };
+  if (optimisticOverrides.size === 0 && localLiked.length === 0 && remoteLocalLiked.length === 0) {
+    return { data: cache, isLoading };
+  }
 
-  let tracks = [...localLiked, ...cache.tracks].filter(
+  const here = new Set(localLiked.map((t) => t.id));
+  const elsewhere = remoteLocalLiked.filter((t) => !here.has(t.id));
+  let tracks = [...localLiked, ...elsewhere, ...cache.tracks].filter(
     (t) => optimisticOverrides.get(t.id) !== false
   );
   for (const [id, liked] of optimisticOverrides) {
     if (liked && !tracks.some((t) => t.id === id)) {
       tracks = [
-        {
-          id,
-          title: "",
-          artists: "",
-          artistId: undefined,
-          coverUrl: "",
-          durationMs: 0,
-          playCount: 0,
-        } as Track,
+        optimisticTracks.get(id) ??
+          ({
+            id,
+            title: "",
+            artists: "",
+            artistId: undefined,
+            coverUrl: "",
+            durationMs: 0,
+            playCount: 0,
+          } as Track),
         ...tracks,
       ];
     }
@@ -82,12 +93,14 @@ function load(force = false): Promise<void> {
   request = (async () => {
     const tracks: Track[] = [];
     let cursor: string | undefined;
+    const remoteLocal = loadLocalLikes();
     do {
       const page = await api.listLikedTracks(100, cursor);
       tracks.push(...page.items.map(({ track }) => toClientTrack(track)));
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
     cache = { tracks, total: tracks.length };
+    remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
     loaded = true;
     // keep the optimistic state the server doesn't show yet: overrides made
     // after this reload started, or that it doesn't agree with yet
@@ -116,7 +129,8 @@ function load(force = false): Promise<void> {
   return request;
 }
 
-export function applyOptimisticLike(trackId: string): () => void {
+export function applyOptimisticLike(trackId: string, track?: Track): () => void {
+  if (track?.title) optimisticTracks.set(trackId, { ...track, id: trackId });
   const prev = optimisticOverrides.get(trackId);
   optimisticOverrides.set(trackId, true);
   overrideAt.set(trackId, Date.now());
@@ -167,7 +181,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("library:changed", () => (lastRefresh = Date.now()));
   window.addEventListener("focus", () => refreshIfStale(15_000));
   document.addEventListener("visibilitychange", () => refreshIfStale(15_000));
-  setInterval(() => refreshIfStale(120_000), 30_000);
+  setInterval(() => refreshIfStale(45_000), 15_000);
 }
 
 export function useLikedTracks(_params?: { limit?: number; offset?: number }) {

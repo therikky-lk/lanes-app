@@ -9,7 +9,15 @@ import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
 import { downloadAudioBytes } from "@/shared/media/innertube";
 import { isNativeApp, streamHeadersFor } from "@/shared/platform/native";
-import { createNativeAudioElement, onNativeRemote, setNativeHeaderProvider, setNativeNowPlaying } from "@/shared/platform/nativeAudio";
+import {
+  clearNativeNext,
+  createNativeAudioElement,
+  onNativeAdvanced,
+  onNativeRemote,
+  queueNativeNext,
+  setNativeHeaderProvider,
+  setNativeNowPlaying,
+} from "@/shared/platform/nativeAudio";
 
 
 // error recovery tuning (see the audio "error" handler)
@@ -33,6 +41,9 @@ export class PlayerRuntime {
   // currentTrackId for a moment.
   private attachedTrackId: string | null = null;
   private preloadingTrackId: string | null = null;
+  /** Android: the track handed to the native player to play next */
+  private nativeQueued: { afterTrackId: string; trackId: string; expiresAtMs: number | null } | null = null;
+  private nativeQueueAbort: AbortController | null = null;
   private preloadingPromise: Promise<void> | null = null;
   private preloadAbortController: AbortController | null = null;
   private backgroundCacheAbortController: AbortController | null = null;
@@ -62,6 +73,17 @@ export class PlayerRuntime {
           if (action === "next") void playerEngine.skipNext(false);
           else if (action === "previous") void playerEngine.skipPrevious();
         });
+      });
+      // the native player already moved on to the queued track: catch up
+      onNativeAdvanced((trackId) => {
+        const queued = this.nativeQueued;
+        this.nativeQueued = null;
+        this.currentTrackId = trackId;
+        this.attachedTrackId = trackId;
+        this.currentSessionExpiresAt = queued?.trackId === trackId ? queued.expiresAtMs : null;
+        this.recoveryAttempts = 0;
+        this.recoveryHoldUntilMs = null;
+        void import("./playerEngine").then(({ playerEngine }) => playerEngine.handleNativeAdvance(trackId));
       });
       if (typeof document !== "undefined") document.body.appendChild(audio);
     }
@@ -227,6 +249,7 @@ export class PlayerRuntime {
       setNativeNowPlaying(
         track
           ? {
+              trackId: track.id,
               title: track.title,
               artist: track.artists,
               album: (track as { albumTitle?: string }).albumTitle || "Lane",
@@ -571,6 +594,51 @@ export class PlayerRuntime {
     this.safeResetAudioElement();
     usePlayerStore.getState().setStatus("paused");
     log("cyan", "playback", "pending load cancelled");
+  }
+
+  /**
+   * Android: resolve the next track's stream while this one plays and hand it
+   * to the native player, which switches to it by itself. Doing that only when
+   * a track ended left it to a page Android had put to sleep (screen off,
+   * another app open), and the music stopped.
+   */
+  public queueNextNatively(afterTrackId: string, track: Track | null): void {
+    if (!isNativeApp()) return;
+    this.nativeQueueAbort?.abort();
+    this.nativeQueueAbort = null;
+    if (!track) {
+      if (this.nativeQueued) clearNativeNext();
+      this.nativeQueued = null;
+      return;
+    }
+    if (this.nativeQueued?.afterTrackId === afterTrackId && this.nativeQueued.trackId === track.id) return;
+    const controller = new AbortController();
+    this.nativeQueueAbort = controller;
+    void (async () => {
+      try {
+        const cached = await linerDb.getAudio(track.id).catch(() => null);
+        const stream = cached?.blob?.size
+          ? { blob: cached.blob, expiresAtMs: null as number | null }
+          : await resolvePlaybackStream(track, controller.signal);
+        if (controller.signal.aborted) return;
+        await queueNativeNext(
+          afterTrackId,
+          track.id,
+          { url: "url" in stream ? stream.url : undefined, blob: stream.blob },
+          {
+            title: track.title,
+            artist: track.artists,
+            album: (track as { albumTitle?: string }).albumTitle || "Lane",
+            artwork: track.coverUrl || undefined,
+          },
+        );
+        if (controller.signal.aborted) return;
+        this.nativeQueued = { afterTrackId, trackId: track.id, expiresAtMs: stream.expiresAtMs ?? null };
+        log("green", "preload", `queued next natively: "${track.title}"`);
+      } catch (error) {
+        if (!controller.signal.aborted) log("yellow", "preload", `could not queue next natively: ${String(error)}`);
+      }
+    })();
   }
 
   public async preloadTrack(track: Track): Promise<void> {

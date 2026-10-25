@@ -2,7 +2,8 @@ import { isNativeApp } from "@/shared/platform/native";
 import { useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
-import { CloseLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill } from "@mingcute/react";
+import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine } from "@mingcute/react";
+import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import { AnimatePresence, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -12,7 +13,6 @@ import { BeatTracker } from "../vibe/audioAnalyser";
 import { isVibeContext, sameSettings, startVibe, storedSettings, storeSettings, vibeSettingsOf } from "../vibe/vibeController";
 import {
   VIBE_CHARACTERS,
-  VIBE_LANGUAGES,
   VIBE_MOODS,
   type VibeCharacter,
   type VibeLanguage,
@@ -79,6 +79,9 @@ export interface MyVibeHeroProps {
   liked?: Track[];
   recent?: Track[];
   trending?: Track[];
+  /** desktop: the vibe fills the whole view */
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
 }
 
 /** radius of the ring at angle `a`: a slow wobble plus a kick on the bass */
@@ -106,7 +109,25 @@ function traceRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
   ctx.closePath();
 }
 
-export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps) {
+/** small flags for the language switch (drawn, so they look the same on every OS) */
+function Flag({ code }: { code: "ru" | "ua" | "us" }) {
+  const box = "inline-block h-[13px] w-[19px] shrink-0 overflow-hidden rounded-[2.5px] shadow-[0_0_0_0.5px_rgba(255,255,255,0.25)]";
+  if (code === "ru")
+    return <span className={box} style={{ background: "linear-gradient(#fff 0 33.3%, #1c57a5 33.3% 66.6%, #d52b1e 66.6%)" }} />;
+  if (code === "ua") return <span className={box} style={{ background: "linear-gradient(#0057b7 0 50%, #ffd700 50%)" }} />;
+  return (
+    <span
+      className={`${box} relative`}
+      style={{ background: "repeating-linear-gradient(#b22234 0 1.85px, #fff 1.85px 3.7px)" }}
+    >
+      <span className="absolute left-0 top-0 h-[7px] w-[8px]" style={{ background: "#3c3b6e" }} />
+    </span>
+  );
+}
+
+const LANGUAGE_FLAG = { russian: "ru", ukrainian: "ua", english: "us" } as const;
+
+export default function MyVibeHero({ liked, recent, trending, expanded = false, onToggleExpanded }: MyVibeHeroProps) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const silkRef = useRef<HTMLCanvasElement>(null);
@@ -287,8 +308,9 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
       const b = bass * motion + pulse * 0.9;
 
       const cx = w / 2;
-      const cy = BLEED + HERO_HEIGHT / 2;
-      const R = Math.min(w * 0.4, HERO_HEIGHT * 0.42, 280) * (1 + pulse * 0.07);
+      const heroH = Math.max(1, h - BLEED);
+      const cy = BLEED + heroH / 2;
+      const R = Math.min(w * 0.4, heroH * 0.42, heroH > HERO_HEIGHT + 50 ? 440 : 280) * (1 + pulse * 0.07);
       const white: [number, number, number] = [255, 255, 255];
 
       // ---- glow layer (low-res, blurred by CSS): coloured light around a dark centre
@@ -443,7 +465,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
     <section
       ref={wrapRef}
       className="relative w-full select-none"
-      style={{ height: HERO_HEIGHT, marginTop: "var(--lane-safe-top, 0px)" }}
+      style={{ height: expanded ? "100%" : HERO_HEIGHT, marginTop: "var(--lane-safe-top, 0px)" }}
       aria-label={t("home.vibe.title")}
     >
       {(["glow", "bloom", "silk"] as const).map((layer) => (
@@ -455,7 +477,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
             top: -BLEED,
             left: 0,
             width: "100%",
-            height: HERO_HEIGHT + BLEED,
+            height: expanded ? `calc(100% + ${BLEED}px)` : HERO_HEIGHT + BLEED,
             filter: layer === "glow" ? "blur(20px) saturate(1.4)" : layer === "bloom" ? "blur(9px) saturate(1.3)" : "none",
             // the light fades out downward: a smooth hand-off into the page
             WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
@@ -470,7 +492,7 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
         aria-hidden="true"
         style={{
           top: -BLEED,
-          height: HERO_HEIGHT + BLEED,
+          height: expanded ? `calc(100% + ${BLEED}px)` : HERO_HEIGHT + BLEED,
           backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>")`,
           opacity: 0.07,
           mixBlendMode: "overlay",
@@ -510,6 +532,17 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
           >
             <Settings6Line size={18} />
           </button>
+          {!isMobile && onToggleExpanded && (
+            <button
+              type="button"
+              onClick={onToggleExpanded}
+              aria-label={expanded ? t("home.vibe.collapse") : t("home.vibe.expand")}
+              title={expanded ? t("home.vibe.collapse") : t("home.vibe.expand")}
+              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white/90 hover:bg-white/[0.14] active:scale-95 transition-all cursor-pointer"
+            >
+              {expanded ? <UpLine size={18} /> : <DownLine size={18} />}
+            </button>
+          )}
           {active.map((chip) => (
             <span
               key={chip.key}
@@ -636,23 +669,36 @@ export default function MyVibeHero({ liked, recent, trending }: MyVibeHeroProps)
             </div>
 
             <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_language")}</p>
-            <div className="grid grid-cols-3 gap-[8px]">
-              {VIBE_LANGUAGES.map((l) => {
-                const on = settings.language === l;
-                return (
-                  <button
-                    key={l}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => toggle("language", l)}
-                    className={`h-[52px] rounded-full border text-[14px] font-[550] cursor-pointer transition-colors ${
-                      on ? "border-white bg-white text-black" : "border-transparent bg-white/[0.07] text-white hover:bg-white/[0.11]"
-                    }`}
-                  >
-                    {label.language(l)}
-                  </button>
-                );
-              })}
+            {/* one switch for the language (tap the picked one again to clear it),
+                and "no vocals" on its own */}
+            <div className="flex flex-wrap items-center gap-[8px]">
+              <SegmentedTabs
+                className="!bg-white/[0.07]"
+                value={(settings.language ?? "") as "russian" | "ukrainian" | "english"}
+                onChange={(l) => toggle("language", l)}
+                options={(["russian", "ukrainian", "english"] as const).map((l) => ({
+                  id: l,
+                  title: label.language(l),
+                  label: (
+                    <span className="inline-flex items-center gap-[7px] text-white">
+                      <Flag code={LANGUAGE_FLAG[l]} />
+                      {label.language(l)}
+                    </span>
+                  ),
+                }))}
+              />
+              <button
+                type="button"
+                aria-pressed={settings.language === "instrumental"}
+                onClick={() => toggle("language", "instrumental")}
+                className={`h-[37px] rounded-xl border px-[16px] text-[13px] font-[550] cursor-pointer transition-colors ${
+                  settings.language === "instrumental"
+                    ? "border-white bg-white text-black"
+                    : "border-transparent bg-white/[0.07] text-white hover:bg-white/[0.11]"
+                }`}
+              >
+                {label.language("instrumental")}
+              </button>
             </div>
               </motion.div>
             </motion.div>

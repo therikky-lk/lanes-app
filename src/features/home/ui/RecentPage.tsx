@@ -27,10 +27,11 @@ function useHistoryPlays() {
       const all: HistoryPlay[] = [];
       let at = from;
       let next: string | null = null;
-      // the first view loads the whole of today (for today's total), a page
-      // at a time, up to a sane limit
-      const startOfToday = new Date(new Date().toDateString()).getTime();
-      for (let i = 0; i < (from ? 1 : 15); i++) {
+      // whole days at a time (3 per load), so every shown day has its total;
+      // only the last, still incomplete day goes without one
+      const dayOf = (iso: string) => new Date(iso).toDateString();
+      const days = new Set<string>();
+      for (let i = 0; i < 40; i++) {
         const page = await api.getHistory(at, PAGE);
         for (const item of page.items ?? []) {
           if (item.track) {
@@ -40,11 +41,11 @@ function useHistoryPlays() {
               context: item.context,
               playedMs: item.playedDurationMs,
             });
+            days.add(dayOf(item.listenedAt));
           }
         }
         next = page.nextCursor ?? null;
-        const oldest = all.length ? new Date(all[all.length - 1].listenedAt).getTime() : 0;
-        if (!next || oldest < startOfToday) break;
+        if (!next || days.size > 3) break;
         at = next;
       }
       setPlays((prev) => (from ? [...prev, ...all] : all));

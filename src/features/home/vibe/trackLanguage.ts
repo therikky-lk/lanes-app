@@ -13,17 +13,24 @@ import type { VibeLanguage } from "./vibeTaste";
 const LRCLIB = "https://lrclib.net/api";
 const HEADERS = { "Lrclib-Client": "Lane (https://github.com/therikky-lk)" };
 // v2: Cyrillic that isn't Russian (Ukrainian, Belarusian, Kazakh…) has its own verdict
-const CACHE_KEY = "lane_track_language_v2";
+// v3: Ukrainian and English have verdicts of their own
+const CACHE_KEY = "lane_track_language_v3";
 const MAX_CACHE = 4000;
 const CYRILLIC = /[Ѐ-ӿ]/g;
 const LATIN = /[A-Za-z]/g;
 // letters Russian doesn't have: Ukrainian і ї є ґ, Belarusian ў, Kazakh/Tatar
 // ә ғ қ ң ө ұ ү һ, Serbian/Macedonian ђ ј љ њ ћ џ ѓ ќ ѕ
 const NOT_RUSSIAN = /[іїєґўәғқңөұүһђјљњћџѓќѕІЇЄҐЎӘҒҚҢӨҰҮҺЂЈЉЊЋЏЃЌЅ]/g;
+// letters that are Ukrainian's own (ї є ґ aren't in any other of these)
+const UKRAINIAN_OWN = /[їєґЇЄҐ]/g;
+// common English words: a Latin-script song made of them is sung in English
+const ENGLISH_WORDS = new Set(
+  "the you i me my and to a it in is that on your we be for all love it's i'm don't can know just like no but what so up oh baby yeah with this get go got never one when out time now make way say feel want gonna let down night see need back away been over".split(" "),
+);
 // letters only Russian (of these) has
 const RUSSIAN_ONLY = /[ыэъёЫЭЪЁ]/g;
 
-/** "other": sung in a language none of the filters stands for (Ukrainian, Kazakh…) */
+/** "other": sung in a language none of the filters stands for (Kazakh, Spanish…) */
 type Verdict = VibeLanguage | "unknown" | "other";
 
 interface Rec {
@@ -64,11 +71,22 @@ export function scriptVerdict(text: string, minLetters = 20): Verdict {
   const cyr = text.match(CYRILLIC)?.length ?? 0;
   const lat = text.match(LATIN)?.length ?? 0;
   if (cyr + lat < minLetters) return "unknown";
-  if (cyr / (cyr + lat) < 0.35) return "foreign";
+  if (cyr / (cyr + lat) < 0.35) {
+    const words = text.toLowerCase().match(/[a-z']+/g) ?? [];
+    if (words.length < 6) return "unknown";
+    const english = words.filter((w) => ENGLISH_WORDS.has(w)).length;
+    return english / words.length >= 0.12 ? "english" : "other";
+  }
   const notRussian = text.match(NOT_RUSSIAN)?.length ?? 0;
   const russianOnly = text.match(RUSSIAN_ONLY)?.length ?? 0;
   // a few stray letters (a name, a quote) don't make a Ukrainian song
-  if (notRussian >= Math.max(2, Math.ceil(cyr * 0.01)) && notRussian > russianOnly * 0.5) return "other";
+  if (notRussian >= Math.max(2, Math.ceil(cyr * 0.01)) && notRussian > russianOnly * 0.5) {
+    const own = text.match(UKRAINIAN_OWN)?.length ?? 0;
+    const i = (text.match(/[іІ]/g)?.length ?? 0);
+    // Ukrainian: і plus its own ї є ґ, and none of the Kazakh / Serbian letters
+    const others = notRussian - own - i;
+    return own > 0 && others <= notRussian * 0.1 ? "ukrainian" : "other";
+  }
   return "russian";
 }
 
@@ -154,7 +172,11 @@ export async function languageFilter(
     const artist = byArtist.get(artistKey(t));
     if (artist) return artist === language;
     if (strict) return false;
-    const v = scriptVerdict(`${t.title} ${t.artists}`, 3);
-    return v === "unknown" ? language === "foreign" : v === language;
+    // the name alone: Cyrillic says Russian / Ukrainian, Latin is taken as English
+    const name = `${t.title} ${t.artists}`;
+    const cyr = name.match(CYRILLIC)?.length ?? 0;
+    if (cyr === 0) return language === "english";
+    if (/[іїєґІЇЄҐ]/.test(name)) return language === "ukrainian";
+    return language === "russian";
   };
 }

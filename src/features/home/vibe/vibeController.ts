@@ -63,7 +63,8 @@ function cleanSettings(raw: Partial<Record<keyof VibeSettings, unknown>> | null 
   return {
     character: pick(raw?.character, VIBE_CHARACTERS),
     mood: pick(raw?.mood, VIBE_MOODS),
-    language: pick(raw?.language, VIBE_LANGUAGES),
+    // "foreign" was the old name of the English filter
+    language: pick(raw?.language === "foreign" ? "english" : raw?.language, VIBE_LANGUAGES),
   };
 }
 
@@ -135,6 +136,14 @@ const MOOD_QUERIES_RU: Record<PoolKey, string[]> = {
   calm: ["спокойная русская музыка", "русский чилл", "русские песни для души"],
   sad: ["грустные русские песни", "русский грустный рэп", "печальные русские треки"],
 };
+const MOOD_QUERIES_UA: Record<PoolKey, string[]> = {
+  energetic: ["енергійна українська музика", "український реп", "українські треки для тренувань"],
+  happy: ["веселі українські пісні", "українські хіти для настрою", "позитивна українська музика"],
+  instrumental: ["музика без слів", "instrumental music", "lofi beats"],
+  popular: ["українські хіти", "топ українських пісень", "популярна українська музика"],
+  calm: ["спокійна українська музика", "український чіл", "українські пісні для душі"],
+  sad: ["сумні українські пісні", "український сумний реп", "сумна українська музика"],
+};
 const MOOD_QUERIES_EN: Record<PoolKey, string[]> = {
   energetic: ["workout hits", "upbeat songs", "high energy rap"],
   happy: ["feel good hits", "happy songs", "good vibes playlist"],
@@ -155,7 +164,14 @@ const moodPools = new Map<string, Promise<Track[]>>();
 
 function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<Track[]> {
   const key = `${mood}:${language ?? "-"}`;
-  const queries = language === "russian" ? MOOD_QUERIES_RU : language === "foreign" ? MOOD_QUERIES_EN : MOOD_QUERIES;
+  const queries =
+    language === "russian"
+      ? MOOD_QUERIES_RU
+      : language === "ukrainian"
+        ? MOOD_QUERIES_UA
+        : language === "english"
+          ? MOOD_QUERIES_EN
+          : MOOD_QUERIES;
   let pool = moodPools.get(key);
   if (!pool) {
     pool = (async () => {

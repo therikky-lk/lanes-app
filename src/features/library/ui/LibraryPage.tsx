@@ -409,10 +409,13 @@ export default function LibraryPage() {
         {!isMobile && <ScrollBlurEdge height={96} />}
         {isMobile ? (
           <header
-            className="sticky top-[0px] z-20 border-b border-white/[0.05] backdrop-blur-2xl backdrop-saturate-150"
+            className="sticky top-[0px] z-20 border-b border-white/[0.05]"
             style={{
               paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
-              background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
+              // Android's web view blurs only some of the covers behind a sticky
+                // header (rectangles of blur): a nearly solid header instead
+                background:
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #0d0d10) 97%, transparent), color-mix(in srgb, var(--bg-primary, #0d0d10) 90%, transparent))",
             }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
