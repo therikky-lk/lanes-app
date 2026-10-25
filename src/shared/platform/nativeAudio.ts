@@ -188,6 +188,8 @@ export function createNativeAudioElement(): HTMLAudioElement {
   let readyState = 0;
   let error: NativeMediaError | null = null;
   let loadToken = 0;
+  /** where the next load starts (a reload after a seek mustn't restart the track) */
+  let startAtMs = 0;
 
   const fire = (type: string) => el.dispatchEvent(new Event(type));
   const livePosition = () =>
@@ -195,7 +197,13 @@ export function createNativeAudioElement(): HTMLAudioElement {
 
   let playWhenReady = false;
   let seekable = true;
+  let seekCheck: { target: number; at: number } | null = null;
   void LaneAudio.addListener("state", (s) => {
+    // what the player reports right after a seek, for the log
+    if (seekCheck && performance.now() - seekCheck.at > 600) {
+      diag(`native after seek: at ${Math.round(s.positionMs / 1000)}s (wanted ${Math.round(seekCheck.target / 1000)}s)`);
+      seekCheck = null;
+    }
     const wasPlaying = playing;
     const wasActive = playWhenReady;
     const hadDuration = Number.isFinite(durationMs);
@@ -295,10 +303,17 @@ export function createNativeAudioElement(): HTMLAudioElement {
         url = written.url;
       }
       if (token !== loadToken) return;
+      const startPositionMs = startAtMs;
+      startAtMs = 0;
+      if (startPositionMs > 0) {
+        diag(`load: starting at ${Math.round(startPositionMs / 1000)}s`);
+        positionMs = startPositionMs;
+      }
       await LaneAudio.load({
         url,
         headers: url.startsWith("http") ? headersForUrl(url) : {},
         ...nowPlaying,
+        startPositionMs,
         autoplay: wantPlay,
       });
     } catch (e) {
@@ -316,8 +331,13 @@ export function createNativeAudioElement(): HTMLAudioElement {
     void startLoad();
   });
   define("currentSrc", () => src);
+  define("laneStartAt", () => startAtMs, (v: number) => {
+    startAtMs = Math.max(0, Number(v) || 0);
+  });
   define("currentTime", () => livePosition() / 1000, (v: number) => {
     if (!seekable) diag("seek: this stream reports itself as not seekable");
+    diag(`native seek -> ${Math.round(v)}s (was ${Math.round(livePosition() / 1000)}s)`);
+    seekCheck = { target: v * 1000, at: performance.now() };
     positionMs = Math.max(0, v * 1000);
     positionAt = performance.now();
     ended = false;

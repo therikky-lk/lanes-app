@@ -146,7 +146,7 @@ export async function languageFilter(
   language: VibeLanguage,
   known: Track[] = [],
   budgetMs = 7000,
-): Promise<(t: Track, strict?: boolean) => boolean> {
+): Promise<((t: Track, strict?: boolean) => boolean) & { known: (t: Track) => boolean }> {
   const todo = tracks.filter((t) => !(t.id in cache) && !t.id.startsWith("local:"));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
@@ -168,7 +168,11 @@ export async function languageFilter(
   // the "english" (US flag) filter means anything but Russian and Ukrainian:
   // English, Spanish, Kazakh… all count
   const fits = (v: Verdict) => v === language || (language === "english" && v === "other");
-  return (t: Track, strict = true) => {
+  const isKnown = (t: Track) => {
+    const own = cache[t.id];
+    return (!!own && own !== "unknown") || byArtist.has(artistKey(t));
+  };
+  const predicate = (t: Track, strict = true) => {
     const own = cache[t.id];
     if (own && own !== "unknown") return fits(own);
     if (language === "instrumental") return false; // only tracks marked as such
@@ -183,4 +187,5 @@ export async function languageFilter(
     if (/[ўәғқңөұүһђјљњћџ]/i.test(name)) return language === "english";
     return language === "russian";
   };
+  return Object.assign(predicate, { known: isKnown });
 }

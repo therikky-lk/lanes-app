@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import { FireFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -136,22 +137,15 @@ export default function TrendsSection() {
           <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>
           <span className="text-[12px] text-text-tertiary" title={t("trends.source_hint")}>{t("trends.source")}</span>
         </div>
-        <div className="flex items-center gap-[4px] rounded-full bg-white/[0.06] p-[3px]" role="tablist">
-          {(["russia", "world"] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              role="tab"
-              aria-selected={region === r}
-              onClick={() => pick(r)}
-              className={`h-[28px] rounded-full border-0 px-[12px] text-[12.5px] font-[600] cursor-pointer transition-colors ${
-                region === r ? "bg-white text-black" : "bg-transparent text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {r === "russia" ? t("trends.russia") : t("trends.world")}
-            </button>
-          ))}
-        </div>
+        {/* the same switch as in the library */}
+        <SegmentedTabs
+          value={region}
+          onChange={pick}
+          options={[
+            { id: "russia" as const, label: t("trends.russia") },
+            { id: "world" as const, label: t("trends.world") },
+          ]}
+        />
       </div>
 
       <div className="mt-[10px] grid grid-cols-1 gap-x-[16px] px-[24px] md:grid-cols-2">
