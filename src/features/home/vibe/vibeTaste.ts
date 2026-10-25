@@ -34,7 +34,8 @@ export function fitsLanguage(track: Pick<Track, "title" | "artists">, language: 
   const text = `${track.title} ${track.artists}`;
   if (language === "russian") return CYRILLIC.test(text) && !UKRAINIAN.test(text);
   if (language === "ukrainian") return UKRAINIAN.test(text);
-  if (language === "english") return !CYRILLIC.test(text);
+  // "english" (US flag): anything that isn't Russian or Ukrainian
+  if (language === "english") return !CYRILLIC.test(text) || (!UKRAINIAN.test(text) && /[ўәғқңөұүһђјљњћџ]/i.test(text));
   return INSTRUMENTAL.test(track.title) || (!!pool && !!id && pool.has(id));
 }
 

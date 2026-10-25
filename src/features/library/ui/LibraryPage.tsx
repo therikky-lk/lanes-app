@@ -4,7 +4,7 @@ import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { FaSpotify } from "react-icons/fa";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import LibraryControls from "./LibraryControls";
 import LibraryGrid from "./LibraryGrid";
@@ -384,6 +384,19 @@ export default function LibraryPage() {
       importJob?.status === "finalizing" ||
       importJob?.status === "awaiting_decision");
 
+  // phones: the header floats over the list (see below); its height pads the list
+  const mobileHeaderRef = useRef<HTMLElement>(null);
+  const [mobileHeaderH, setMobileHeaderH] = useState(0);
+  useLayoutEffect(() => {
+    const el = mobileHeaderRef.current;
+    if (!el) return;
+    const update = () => setMobileHeaderH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
   const isMobile = useIsMobile();
   const openSpotifyImport = async () => {
     // prefill a Spotify link from the clipboard; a lone space opens the import tab empty
@@ -408,109 +421,9 @@ export default function LibraryPage() {
       >
         {!isMobile && <ScrollBlurEdge height={96} />}
         {isMobile ? (
-          <header
-            className="sticky top-[0px] z-20 border-b border-white/[0.05]"
-            style={{
-              paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
-              // Android's web view blurs only some of the covers behind a sticky
-                // header (rectangles of blur): a nearly solid header instead
-                background:
-                  "linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #0d0d10) 97%, transparent), color-mix(in srgb, var(--bg-primary, #0d0d10) 90%, transparent))",
-            }}
-          >
-            <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
-              <div className="min-w-0 flex-1">
-                <h1 className="m-0 truncate text-[22px] font-[700] tracking-[-0.01em] text-text-primary">{t("library.title")}</h1>
-                <p className="m-0 truncate text-[12px] text-text-tertiary">{mobileTabLabels[activeTab]}</p>
-              </div>
-              <button
-                ref={addButtonRef}
-                type="button"
-                aria-label={t("library.create_playlist")}
-                onClick={() => setMobileAdd((v) => !v)}
-                className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
-              >
-                <AddLine size={22} />
-              </button>
-              <PhoneMenu open={mobileAdd} anchorRef={addButtonRef} onClose={() => setMobileAdd(false)}>
-                <PhoneMenuItem
-                  icon={<AddLine size={16} />}
-                  label={t("library.create_playlist")}
-                  onClick={() => {
-                    setMobileAdd(false);
-                    openCreatePlaylist();
-                  }}
-                />
-                <PhoneMenuItem
-                  icon={<FaSpotify size={16} />}
-                  label={t("library.import_spotify") || "Import from Spotify"}
-                  onClick={() => {
-                    setMobileAdd(false);
-                    void openSpotifyImport();
-                  }}
-                />
-              </PhoneMenu>
-              <button
-                type="button"
-                aria-label={t("common.search") || "Search"}
-                onClick={() => setMobileSearch((v) => !v)}
-                className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 cursor-pointer ${mobileSearch ? "bg-border-alpha-14 text-text-primary" : "bg-transparent text-text-primary"}`}
-              >
-                <Search2Line size={21} />
-              </button>
-              <div className="relative">
-                <button
-                  type="button"
-                  ref={menuButtonRef}
-                  aria-label={t("common.more") || "More"}
-                  onClick={() => setMobileMenu((v) => !v)}
-                  className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
-                >
-                  <More2Fill size={22} />
-                </button>
-                <PhoneMenu open={mobileMenu} anchorRef={menuButtonRef} onClose={() => setMobileMenu(false)}>
-                  {(["playlists", "albums", "artists"] as const).map((tab) => (
-                    <PhoneMenuItem
-                      key={tab}
-                      label={mobileTabLabels[tab]}
-                      checked={activeTab === tab}
-                      onClick={() => {
-                        setActiveTab(tab);
-                        setMobileMenu(false);
-                      }}
-                    />
-                  ))}
-                  <PhoneMenuDivider />
-                  {(["grid", "list"] as const).map((mode) => (
-                    <PhoneMenuItem
-                      key={mode}
-                      icon={mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
-                      label={mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}
-                      checked={viewMode === mode}
-                      onClick={() => {
-                        handleViewModeChange(mode);
-                        setMobileMenu(false);
-                      }}
-                    />
-                  ))}
-                </PhoneMenu>
-              </div>
-            </div>
-            {mobileSearch && (
-              <div className="px-[12px] pb-[10px]">
-                <input
-                  autoFocus
-                  type="text"
-                  value={activeState.query}
-                  onChange={(e) =>
-                    setActiveTabState({ query: e.target.value, visibleCount: PAGE_SIZE, loadingMore: false })
-                  }
-                  placeholder={t("common.search") || "Search"}
-                  className="h-[38px] w-full rounded-[10px] border-0 bg-border-alpha-14 px-[12px] text-[15px] text-text-primary outline-none placeholder:text-text-tertiary"
-                />
-              </div>
-            )}
-          </header>
+          // the header itself sits outside the scroller (below), where
+          // Android can blur what scrolls under it; this keeps its room
+          <div aria-hidden style={{ height: mobileHeaderH }} />
         ) : (
         <div className="sticky top-0 z-20 bg-transparent">
 
@@ -611,6 +524,111 @@ export default function LibraryPage() {
 
 
 
+
+      {isMobile && (
+          <header
+            ref={mobileHeaderRef}
+            className="absolute inset-x-0 top-0 z-20 border-b border-white/[0.05] backdrop-blur-2xl backdrop-saturate-150"
+            style={{
+              paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
+              background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 55%, transparent)",
+              WebkitBackdropFilter: "blur(40px) saturate(1.5)",
+            }}
+          >
+            <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
+              <div className="min-w-0 flex-1">
+                <h1 className="m-0 truncate text-[22px] font-[700] tracking-[-0.01em] text-text-primary">{t("library.title")}</h1>
+                <p className="m-0 truncate text-[12px] text-text-tertiary">{mobileTabLabels[activeTab]}</p>
+              </div>
+              <button
+                ref={addButtonRef}
+                type="button"
+                aria-label={t("library.create_playlist")}
+                onClick={() => setMobileAdd((v) => !v)}
+                className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+              >
+                <AddLine size={22} />
+              </button>
+              <PhoneMenu open={mobileAdd} anchorRef={addButtonRef} onClose={() => setMobileAdd(false)}>
+                <PhoneMenuItem
+                  icon={<AddLine size={16} />}
+                  label={t("library.create_playlist")}
+                  onClick={() => {
+                    setMobileAdd(false);
+                    openCreatePlaylist();
+                  }}
+                />
+                <PhoneMenuItem
+                  icon={<FaSpotify size={16} />}
+                  label={t("library.import_spotify") || "Import from Spotify"}
+                  onClick={() => {
+                    setMobileAdd(false);
+                    void openSpotifyImport();
+                  }}
+                />
+              </PhoneMenu>
+              <button
+                type="button"
+                aria-label={t("common.search") || "Search"}
+                onClick={() => setMobileSearch((v) => !v)}
+                className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 cursor-pointer ${mobileSearch ? "bg-border-alpha-14 text-text-primary" : "bg-transparent text-text-primary"}`}
+              >
+                <Search2Line size={21} />
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  ref={menuButtonRef}
+                  aria-label={t("common.more") || "More"}
+                  onClick={() => setMobileMenu((v) => !v)}
+                  className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+                >
+                  <More2Fill size={22} />
+                </button>
+                <PhoneMenu open={mobileMenu} anchorRef={menuButtonRef} onClose={() => setMobileMenu(false)}>
+                  {(["playlists", "albums", "artists"] as const).map((tab) => (
+                    <PhoneMenuItem
+                      key={tab}
+                      label={mobileTabLabels[tab]}
+                      checked={activeTab === tab}
+                      onClick={() => {
+                        setActiveTab(tab);
+                        setMobileMenu(false);
+                      }}
+                    />
+                  ))}
+                  <PhoneMenuDivider />
+                  {(["grid", "list"] as const).map((mode) => (
+                    <PhoneMenuItem
+                      key={mode}
+                      icon={mode === "grid" ? <GridLine size={16} /> : <MenuLine size={16} />}
+                      label={mode === "grid" ? t("common.grid") || "Grid" : t("common.list") || "List"}
+                      checked={viewMode === mode}
+                      onClick={() => {
+                        handleViewModeChange(mode);
+                        setMobileMenu(false);
+                      }}
+                    />
+                  ))}
+                </PhoneMenu>
+              </div>
+            </div>
+            {mobileSearch && (
+              <div className="px-[12px] pb-[10px]">
+                <input
+                  autoFocus
+                  type="text"
+                  value={activeState.query}
+                  onChange={(e) =>
+                    setActiveTabState({ query: e.target.value, visibleCount: PAGE_SIZE, loadingMore: false })
+                  }
+                  placeholder={t("common.search") || "Search"}
+                  className="h-[38px] w-full rounded-[10px] border-0 bg-border-alpha-14 px-[12px] text-[15px] text-text-primary outline-none placeholder:text-text-tertiary"
+                />
+              </div>
+            )}
+          </header>
+      )}
 
       {activeTab === "playlists" && !isMobile && (
         <button
