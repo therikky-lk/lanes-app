@@ -898,6 +898,11 @@ class PlayerEngine {
     const nextMs = Math.round(
       Math.max(0, Math.min(durationMs || positionMs, positionMs)),
     );
+    const loaded = store.currentTrack ? playerRuntime?.hasLoadedSourceFor(store.currentTrack.id) : false;
+    diag(
+      `seek: to ${Math.round(nextMs / 1000)}s (asked ${Math.round(positionMs / 1000)}s, length ${Math.round(durationMs / 1000)}s, ` +
+        `status ${store.status}, source ${loaded ? "loaded" : "not loaded -> reload"})`,
+    );
 
     if (nextMs < currentMs - 3000) {
       this.telemetry.recordSeekBackward();

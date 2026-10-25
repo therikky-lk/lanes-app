@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, memo } from "react";
+import { diag } from "@/shared/platform/diag";
 import { motion } from "framer-motion";
 
 export interface TimelineSliderProps {
@@ -88,6 +89,15 @@ export const TimelineSlider = memo(function TimelineSlider({
       };
 
       const onPointerUp = (ev: PointerEvent) => {
+        if (duration <= 0) {
+          diag("seek bar: ignored, the track length is unknown");
+          setIsDragging(false);
+          setScrubPosition(null);
+          window.removeEventListener("pointermove", onPointerMove);
+          window.removeEventListener("pointerup", onPointerUp);
+          window.removeEventListener("pointercancel", onPointerUp);
+          return;
+        }
         // a cancelled touch (the phone took the gesture) carries no real
         // position: keep where the finger last was
         const finalPos = ev.type === "pointercancel" ? lastPos : calculatePositionFromPointer(ev.clientX);
@@ -99,6 +109,7 @@ export const TimelineSlider = memo(function TimelineSlider({
         window.removeEventListener("pointermove", onPointerMove);
         window.removeEventListener("pointerup", onPointerUp);
         window.removeEventListener("pointercancel", onPointerUp);
+        diag(`seek bar: ${ev.type} at ${Math.round(finalPos / 1000)}s of ${Math.round(duration / 1000)}s`);
         onSeek(finalPos);
       };
 
@@ -106,7 +117,7 @@ export const TimelineSlider = memo(function TimelineSlider({
       window.addEventListener("pointerup", onPointerUp);
       window.addEventListener("pointercancel", onPointerUp);
     },
-    [calculatePositionFromPointer, onScrub, onSeek],
+    [calculatePositionFromPointer, onScrub, onSeek, duration],
   );
 
   const handleKeyDown = useCallback(

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import LikedCover from "@/features/library/ui/LikedCover";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -21,40 +21,51 @@ function useHistoryPlays() {
   const [cursor, setCursor] = useState<string | null | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
+  const run = useRef(0);
+  const [filling, setFilling] = useState(false);
+
+  // the first page shows at once; the rest of the days (3 whole days per
+  // load, so each shown day has its total) streams in behind it
   const loadMore = async (from?: string) => {
-    setLoading(true);
+    const token = ++run.current;
+    setLoading(!from);
+    setFilling(true);
+    const dayOf = (iso: string) => new Date(iso).toDateString();
+    const days = new Set<string>();
+    let at = from;
+    let next: string | null = null;
     try {
-      const all: HistoryPlay[] = [];
-      let at = from;
-      let next: string | null = null;
-      // whole days at a time (3 per load), so every shown day has its total;
-      // only the last, still incomplete day goes without one
-      const dayOf = (iso: string) => new Date(iso).toDateString();
-      const days = new Set<string>();
       for (let i = 0; i < 40; i++) {
-        const page = await api.getHistory(at, PAGE);
+        const page = await api.getHistory(at, i === 0 ? 50 : PAGE);
+        if (token !== run.current) return;
+        const batch: HistoryPlay[] = [];
         for (const item of page.items ?? []) {
-          if (item.track) {
-            all.push({
-              track: toClientTrack(item.track),
-              listenedAt: item.listenedAt,
-              context: item.context,
-              playedMs: item.playedDurationMs,
-            });
-            days.add(dayOf(item.listenedAt));
-          }
+          if (!item.track) continue;
+          batch.push({
+            track: toClientTrack(item.track),
+            listenedAt: item.listenedAt,
+            context: item.context,
+            playedMs: item.playedDurationMs,
+          });
+          days.add(dayOf(item.listenedAt));
         }
+        setPlays((prev) => (!from && i === 0 ? batch : [...prev, ...batch]));
+        if (i === 0) setLoading(false);
         next = page.nextCursor ?? null;
+        // keep the cursor current: the last day stays "incomplete" (no total) until its end is in
+        setCursor(next ?? null);
         if (!next || days.size > 3) break;
         at = next;
       }
-      setPlays((prev) => (from ? [...prev, ...all] : all));
-      setCursor(next);
     } catch {
+      if (token !== run.current) return;
       if (!from) setPlays([]);
       setCursor(null);
     } finally {
-      setLoading(false);
+      if (token === run.current) {
+        setLoading(false);
+        setFilling(false);
+      }
     }
   };
 
@@ -63,7 +74,7 @@ function useHistoryPlays() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner]);
 
-  return { plays, loading, hasMore: !!cursor, more: () => cursor && void loadMore(cursor) };
+  return { plays, loading, hasMore: !!cursor, filling, more: () => cursor && !filling && void loadMore(cursor) };
 }
 
 export default function RecentPage() {

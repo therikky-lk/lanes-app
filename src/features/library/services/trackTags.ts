@@ -185,7 +185,17 @@ function subscribe(listener: () => void) {
 }
 
 /** tags of each track, filled in as they're looked up */
-export function useTrackTags(tracks: Track[], enabled: boolean): { tagsOf: (id: string) => TrackTag[]; available: TrackTag[]; counts: Map<TrackTag, number> } {
+export function useTrackTags(
+  tracks: Track[],
+  enabled: boolean,
+): {
+  tagsOf: (id: string) => TrackTag[];
+  available: TrackTag[];
+  counts: Map<TrackTag, number>;
+  /** looked up, and in none of the shown tags ("just tracks") */
+  isPlain: (id: string) => boolean;
+  plainCount: number;
+} {
   const v = useSyncExternalStore(subscribe, () => version, () => 0);
   useEffect(() => {
     if (!enabled || tracks.length === 0) return;
@@ -197,7 +207,16 @@ export function useTrackTags(tracks: Track[], enabled: boolean): { tagsOf: (id: 
     for (const t of tracks) for (const tag of tags[t.id] ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
     // a tag shows up once it covers a few songs
     const available = TRACK_TAGS.filter((tag) => (counts.get(tag) ?? 0) >= 3);
-    return { tagsOf: (id: string) => tags[id] ?? [], available, counts };
+    const shown = new Set<TrackTag>(available);
+    const isPlain = (id: string) => id in tags && !tags[id].some((tag) => shown.has(tag));
+    const seen = new Set<string>();
+    let plainCount = 0;
+    for (const t of tracks) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      if (isPlain(t.id)) plainCount += 1;
+    }
+    return { tagsOf: (id: string) => tags[id] ?? [], available, counts, isPlain, plainCount };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracks, v]);
 }

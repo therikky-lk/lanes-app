@@ -528,12 +528,9 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            className="absolute inset-x-0 top-0 z-20 border-b border-white/[0.05] backdrop-blur-2xl backdrop-saturate-150"
-            style={{
-              paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
-              background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 55%, transparent)",
-              WebkitBackdropFilter: "blur(40px) saturate(1.5)",
-            }}
+            // the very same glass as the bottom tab bar
+            className="absolute inset-x-0 top-0 z-20 bg-bg-primary/55 backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.06]"
+            style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
               <div className="min-w-0 flex-1">
