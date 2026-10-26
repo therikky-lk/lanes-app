@@ -683,12 +683,17 @@ export class PlayerRuntime {
         } catch (error) {
           if (controller.signal.aborted) return;
           diag(`queue ahead: "${track.title}" failed (${String(error).slice(0, 80)})`);
-          break; // the order matters: don't skip over a track that failed
+          // a track YouTube won't play at all is skipped when its turn comes
+          // anyway: leave it out and keep the rest of the look-ahead
+          if (/unavailable|not available|private video|removed/i.test(String(error))) continue;
+          break; // otherwise the order matters: don't skip over a track that may still play
         }
       }
       if (!controller.signal.aborted) {
         this.nativeQueued = { afterTrackId, ids, expiry };
-        diag(`queued ahead natively: ${ready.length} track(s)`);
+        // which YouTube clients the links came from: each is sent with its own User-Agent
+        const clients = new Set(ready.map((r) => (r.source.url ? streamHeadersFor(r.source.url)["User-Agent"] ?? "-" : "file")));
+        diag(`queued ahead natively: ${ready.length} track(s), ${clients.size} client UA(s)`);
       }
     })();
   }

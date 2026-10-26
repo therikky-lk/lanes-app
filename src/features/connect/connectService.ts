@@ -229,16 +229,51 @@ let lastRemoteUpdate = 0;
 let lastStateNudge = 0;
 let resendTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ntfy rate-limits a chatty client (HTTP 429), after which nothing gets
+// through for a while. A track that fails and reloads flips the status many
+// times a second, and every flip was its own message: states now go out at
+// most once per STATE_MIN_GAP_MS, always the newest one, and a 429 pauses the
+// non-essential traffic briefly instead of hammering on.
+const STATE_MIN_GAP_MS = 1200;
+const RATE_LIMIT_PAUSE_MS = 10_000;
+let lastStateSentAt = 0;
+let pendingState: Message | null = null;
+let pendingStateTimer: ReturnType<typeof setTimeout> | null = null;
+let rateLimitedUntil = 0;
+let lastSendError = "";
+
 async function send(message: Message): Promise<void> {
   if (!relay || !keys) return;
+  const now = Date.now();
   if (message.t === "state") {
-    stateSeq = Math.max(Date.now(), stateSeq + 1);
+    const wait = Math.max(lastStateSentAt + STATE_MIN_GAP_MS, rateLimitedUntil) - now;
+    if (wait > 0) {
+      pendingState = message; // the newest state replaces one still waiting
+      if (!pendingStateTimer) {
+        pendingStateTimer = setTimeout(() => {
+          pendingStateTimer = null;
+          const next = pendingState;
+          pendingState = null;
+          if (next) void send(next);
+        }, wait);
+      }
+      return;
+    }
+    lastStateSentAt = now;
+    stateSeq = Math.max(now, stateSeq + 1);
     message = { ...message, state: { ...message.state, seq: stateSeq } };
+  } else if (message.t === "hello" && now < rateLimitedUntil) {
+    return; // presence: the heartbeat repeats it anyway
   }
   try {
     await relay.publish(await seal(keys.key, { ...message, clock }));
+    lastSendError = "";
   } catch (error) {
-    diag(`connect: send failed (${error instanceof Error ? error.message : String(error)})`);
+    const text = error instanceof Error ? error.message : String(error);
+    if (/\b429\b/.test(text)) rateLimitedUntil = Date.now() + RATE_LIMIT_PAUSE_MS;
+    // the same failure over and over says nothing new: log it once
+    if (text !== lastSendError) diag(`connect: send failed (${text})`);
+    lastSendError = text;
   }
 }
 
@@ -738,6 +773,10 @@ export function stopConnect(sayBye = true): void {
   broadcastTimer = null;
   if (resendTimer) clearTimeout(resendTimer);
   resendTimer = null;
+  if (pendingStateTimer) clearTimeout(pendingStateTimer);
+  pendingStateTimer = null;
+  pendingState = null;
+  lastSendError = "";
   lastSeq.clear();
   lastBroadcast = "";
   lastBroadcastState = null;
