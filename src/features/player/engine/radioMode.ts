@@ -18,8 +18,19 @@ export function nextRepeatMode(current: RepeatMode, radio: boolean): RepeatMode 
   return "off";
 }
 
-/** refill the radio queue once this few tracks (or fewer) are left after the current one */
-export const RADIO_REFILL_THRESHOLD = 1;
+/**
+ * Android hands this many upcoming tracks to the native player, which then
+ * plays through them by itself while the page sleeps (screen off, another app
+ * in front), so the music goes on for a good while without the app waking up.
+ */
+export const NATIVE_QUEUE_AHEAD = 10;
+
+/**
+ * refill the radio queue once this few tracks (or fewer) are left after the
+ * current one: early enough that the native player always has a full
+ * look-ahead of NATIVE_QUEUE_AHEAD tracks
+ */
+export const RADIO_REFILL_THRESHOLD = NATIVE_QUEUE_AHEAD;
 
 export function shouldRefillRadio(queueLength: number, currentIndex: number): boolean {
   if (currentIndex < 0) return false;

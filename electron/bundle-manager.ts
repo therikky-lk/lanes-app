@@ -287,6 +287,10 @@ export class BundleManager {
     signal?: AbortSignal,
   ): Promise<{ success: boolean; error?: string }> {
     if (this.isDownloading) return { success: false, error: "Already downloading" };
+    // the version and hash become folder names: never let them climb out of bundles/
+    if (!/^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$/.test(String(manifest.bundleVersion)) || !/^[0-9a-f]{64}$/i.test(String(manifest.sha256))) {
+      return { success: false, error: "Invalid bundle manifest" };
+    }
     this.isDownloading = true;
 
     const bundleDir = path.join(

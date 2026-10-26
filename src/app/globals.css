@@ -541,6 +541,21 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-mobile .backdrop-blur-xl { --tw-backdrop-blur: blur(12px); }
 .lane-mobile .blur-3xl { --tw-blur: blur(28px); }
 
+/* weak phones (Helio G99, Exynos 1330 and the like, see deviceTier.ts): the
+   same frosted look with a smaller blur radius — a backdrop blur costs the GPU
+   roughly in proportion to its radius on every frame something scrolls under
+   it — and shorter page transitions */
+.lane-low-end .backdrop-blur-2xl,
+.lane-low-end .backdrop-blur-3xl,
+.lane-low-end .backdrop-blur-xl { --tw-backdrop-blur: blur(10px); }
+.lane-low-end .backdrop-blur-lg { --tw-backdrop-blur: blur(8px); }
+.lane-low-end .blur-3xl { --tw-blur: blur(20px); }
+.lane-low-end .lane-frost-sticky::before {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.lane-low-end .page-transition { animation-duration: 140ms; }
+
 /* smoother scrolling: big grids skip drawing what's off screen, and the
    rows / tiles are drawn on their own layers only while they're needed */
 .lane-grid-item {

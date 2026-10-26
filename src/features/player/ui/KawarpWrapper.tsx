@@ -1,11 +1,13 @@
 import { isNativeApp } from "@/shared/platform/native";
+import { isLowEndDevice } from "@/shared/platform/deviceTier";
 import { useEffect, useRef, useState } from "react";
 import { KawarpEngine } from "../engine/kawarpEngine";
 import { getCoverElement, useCoverElement } from "@/features/covers";
 
 export const KAWARP_RESIZE_SETTLE_MS = 300;
 // phones: a much smaller surface and fewer blur passes keep it smooth
-export const KAWARP_RENDER_SCALE = isNativeApp() ? 0.28 : 0.5;
+// weak phones (Helio G99…): smaller still, it's a soft blurred background anyway
+export const KAWARP_RENDER_SCALE = isNativeApp() ? (isLowEndDevice() ? 0.22 : 0.28) : 0.5;
 
 interface KawarpWrapperProps {
   src?: string;
@@ -28,12 +30,16 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
     try {
       engine = new KawarpEngine(canvas, {
         warpIntensity: 1.1,
-        blurPasses: isNativeApp() ? 4 : 8,
+        blurPasses: isNativeApp() ? (isLowEndDevice() ? 3 : 4) : 8,
         transitionDuration: 1000,
         animationSpeed: isNativeApp() ? 0.7 : 1.0,
         saturation: 1.3,
         scale: 1.18,
         dithering: 0.008,
+        // a slow-moving background: 30 fps looks the same and halves the GPU work
+        maxFps: isLowEndDevice() ? 30 : 0,
+        // phones redraw every frame, nothing reads the canvas back
+        preserveDrawingBuffer: !isNativeApp(),
       });
       engineRef.current = engine;
       engine.start();

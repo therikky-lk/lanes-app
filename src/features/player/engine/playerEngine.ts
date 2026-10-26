@@ -9,7 +9,7 @@ import {
   type PlayerState,
 } from "../store/playerStore";
 import { playerRuntime } from "./playerRuntime";
-import { isRadioContext, shouldRefillRadio } from "./radioMode";
+import { isRadioContext, NATIVE_QUEUE_AHEAD, shouldRefillRadio } from "./radioMode";
 import { pitchShifter } from "./pitchShifter";
 import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { CUSTOM_LYRICS_EVENT, customLyricsCandidate, getCustomLyrics } from "@/shared/media/lyrics/customLyrics";
@@ -1200,7 +1200,9 @@ class PlayerEngine {
       `appending ${additions.length} tracks from Radio Wave engine (wave=${waveId.slice(0, 8)} history=${historyIds.length}): [${sample}]`,
     );
     state.setQueue([...state.queue, ...additions]);
-    this.preloadNextTrack(state);
+    // the fresh state: `state` still holds the queue from before the append,
+    // so the native look-ahead wouldn't see the new tracks
+    this.preloadNextTrack(usePlayerStore.getState());
   }
 
   private async syncDiscordPresence(
@@ -1247,7 +1249,10 @@ class PlayerEngine {
       // Android: the native player moves on through the next few by itself
       // (not on repeat-one, which plays the same track again)
       if (state.currentTrack) {
-        playerRuntime.queueNextNatively(state.currentTrack.id, state.repeat === "one" ? [] : this.upcoming(state, 4));
+        playerRuntime.queueNextNatively(
+          state.currentTrack.id,
+          state.repeat === "one" ? [] : this.upcoming(state, NATIVE_QUEUE_AHEAD),
+        );
       }
     }
   }
