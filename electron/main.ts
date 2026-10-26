@@ -198,6 +198,44 @@ const DEFAULT_WINDOW_HEIGHT = 780;
 const MIN_WINDOW_WIDTH = 1100;
 const MIN_WINDOW_HEIGHT = 705;
 
+// renderer console -> renderer.log: buffered and written off the main thread
+// (a sync write per console line stalled the UI), size-capped, tokens masked.
+// dev runs keep it in the working directory; the packaged app in its logs folder.
+const RENDERER_LOG_MAX_BYTES = 5 * 1024 * 1024;
+let rendererLogBuffer = "";
+let rendererLogTimer: ReturnType<typeof setTimeout> | null = null;
+let rendererLogWriting: Promise<void> = Promise.resolve();
+
+function rendererLogPath(): string {
+  return app.isPackaged ? path.join(app.getPath("logs"), "renderer.log") : path.join(process.cwd(), "renderer.log");
+}
+
+function maskSecrets(line: string): string {
+  return line
+    .replace(/(Bearer\s+)[\w.~+/=-]+/gi, "$1***")
+    .replace(/eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]+/g, "***")
+    .replace(/("?(?:access|refresh)_?token"?\s*[:=]\s*"?)[^"\s,}]+/gi, "$1***");
+}
+
+function appendRendererLog(line: string): void {
+  rendererLogBuffer += maskSecrets(line);
+  if (rendererLogTimer) return;
+  rendererLogTimer = setTimeout(() => {
+    rendererLogTimer = null;
+    const chunk = rendererLogBuffer;
+    rendererLogBuffer = "";
+    const file = rendererLogPath();
+    rendererLogWriting = rendererLogWriting.then(async () => {
+      try {
+        await fs.promises.mkdir(path.dirname(file), { recursive: true });
+        const size = await fs.promises.stat(file).then((st) => st.size, () => 0);
+        if (size > RENDERER_LOG_MAX_BYTES) await fs.promises.rename(file, `${file}.1`).catch(() => undefined);
+        await fs.promises.appendFile(file, chunk);
+      } catch {}
+    });
+  }, 500);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: "Lane",
@@ -281,9 +319,7 @@ function createWindow() {
   mainWindow.webContents.on("console-message", (_event, level, message) => {
     // clean devtools format directives for terminal readability
     const cleanMsg = message.replace(/%c/g, "").trim();
-    try {
-      fs.appendFileSync(path.join(process.cwd(), "renderer.log"), `[${level}] ${cleanMsg}\n`);
-    } catch {}
+    appendRendererLog(`[${level}] ${cleanMsg}\n`);
     if (level >= 3) {
       console.error(`\x1b[41;37m renderer error \x1b[0m ${cleanMsg}`);
     } else if (level === 2) {
@@ -816,7 +852,9 @@ if (!gotTheLock) {
         }
         if (targetPath) {
           const dir = path.dirname(targetPath);
-          if (fs.existsSync(dir)) {
+          // only ever open a folder: openPath on a file runs it (an .exe passed
+          // as ".../app.exe/x" would have its "folder" launched)
+          if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) {
             await shell.openPath(dir);
             return true;
           }

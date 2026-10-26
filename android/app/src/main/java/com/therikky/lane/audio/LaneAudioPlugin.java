@@ -28,6 +28,9 @@ import java.util.Map;
 @CapacitorPlugin(name = "LaneAudio")
 public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
 
+    /** audio files kept in the cache dir: current track + 10 queued ahead, twice over */
+    private static final int KEPT_CACHE_FILES = 24;
+
     private final Handler main = new Handler(Looper.getMainLooper());
     private ListenableFuture<MediaController> controller;
 
@@ -261,11 +264,13 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         try {
             File dir = new File(getContext().getCacheDir(), "lane-audio");
             if (!dir.exists() && !dir.mkdirs()) throw new IllegalStateException("no cache dir");
-            // keep the cache small: only the few most recent files
+            // keep the cache bounded: the most recent files only, but enough for
+            // the current track plus the whole look-ahead (10 tracks) the app
+            // hands over, so a queued file is never deleted before it plays
             File[] old = dir.listFiles();
-            if (old != null && old.length > 6) {
+            if (old != null && old.length > KEPT_CACHE_FILES) {
                 java.util.Arrays.sort(old, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
-                for (int i = 0; i < old.length - 6; i++) //noinspection ResultOfMethodCallIgnored
+                for (int i = 0; i < old.length - KEPT_CACHE_FILES; i++) //noinspection ResultOfMethodCallIgnored
                     old[i].delete();
             }
             File file = new File(dir, name.replaceAll("[^A-Za-z0-9._-]", "_"));

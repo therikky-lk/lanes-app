@@ -124,10 +124,20 @@ public class LaneHttpPlugin extends Plugin {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         CountDownLatch done = new CountDownLatch(1);
         final Exception[] failure = new Exception[1];
+        // a redirect away from Spotify while the user's Spotify cookies are
+        // attached: Cronet would resend them there, so it's followed by hand
+        final String[] offsite = new String[1];
+        final int[] offsiteStatus = new int[1];
 
         UrlRequest.Callback callback = new UrlRequest.Callback() {
             @Override
             public void onRedirectReceived(UrlRequest request, UrlResponseInfo info, String newLocationUrl) {
+                if (hasCookie(headers) && !isSpotify(newLocationUrl)) {
+                    offsite[0] = newLocationUrl;
+                    offsiteStatus[0] = info.getHttpStatusCode();
+                    request.cancel();
+                    return;
+                }
                 request.followRedirect();
             }
 
@@ -192,12 +202,38 @@ public class LaneHttpPlugin extends Plugin {
             request.cancel();
             throw new IllegalStateException("timed out");
         }
+        if (offsite[0] != null) {
+            boolean toGet = offsiteStatus[0] == 303 || ((offsiteStatus[0] == 301 || offsiteStatus[0] == 302) && "POST".equals(method));
+            return viaCronet(engine, offsite[0], toGet ? "GET" : method, withoutCookie(headers), toGet ? null : body);
+        }
         if (failure[0] != null) throw failure[0];
         result.body = "HEAD".equals(method) ? new byte[0] : out.toByteArray();
         return result;
     }
 
+    private static boolean isSpotify(String url) {
+        String host = android.net.Uri.parse(url).getHost();
+        return host != null && (host.equals("spotify.com") || host.endsWith(".spotify.com"));
+    }
+
+    private static boolean hasCookie(Map<String, String> headers) {
+        for (String k : headers.keySet()) if ("cookie".equalsIgnoreCase(k)) return true;
+        return false;
+    }
+
+    private static Map<String, String> withoutCookie(Map<String, String> headers) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (Map.Entry<String, String> e : headers.entrySet()) {
+            if (!"cookie".equalsIgnoreCase(e.getKey())) out.put(e.getKey(), e.getValue());
+        }
+        return out;
+    }
+
     private Result viaJava(String url, String method, Map<String, String> headers, byte[] body) throws Exception {
+        return viaJava(url, method, headers, body, 0);
+    }
+
+    private Result viaJava(String url, String method, Map<String, String> headers, byte[] body, int redirects) throws Exception {
         Result result = new Result();
         result.via = "java";
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
@@ -205,7 +241,10 @@ public class LaneHttpPlugin extends Plugin {
             conn.setRequestMethod(method);
             conn.setConnectTimeout(20_000);
             conn.setReadTimeout(30_000);
-            conn.setInstanceFollowRedirects(true);
+            // with Spotify cookies attached, redirects are followed by hand so
+            // the cookies never go to another site
+            boolean cookies = hasCookie(headers);
+            conn.setInstanceFollowRedirects(!cookies);
             conn.setUseCaches(false);
             for (Map.Entry<String, String> e : headers.entrySet()) conn.setRequestProperty(e.getKey(), e.getValue());
             if (body != null) {
@@ -216,6 +255,12 @@ public class LaneHttpPlugin extends Plugin {
                 }
             }
             result.status = conn.getResponseCode();
+            if (cookies && result.status >= 300 && result.status < 400 && conn.getHeaderField("Location") != null) {
+                String next = new URL(conn.getURL(), conn.getHeaderField("Location")).toString();
+                boolean toGet = result.status == 303 || ((result.status == 301 || result.status == 302) && "POST".equals(method));
+                if (redirects >= 10) throw new IllegalStateException("too many redirects");
+                return viaJava(next, toGet ? "GET" : method, isSpotify(next) ? headers : withoutCookie(headers), toGet ? null : body, redirects + 1);
+            }
             result.url = conn.getURL().toString();
             InputStream in = result.status >= 400 ? conn.getErrorStream() : conn.getInputStream();
             if (in != null && !"HEAD".equals(method)) {

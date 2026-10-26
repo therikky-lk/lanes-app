@@ -1,4 +1,5 @@
 import { isNativeApp } from "@/shared/platform/native";
+import { isLowEndDevice } from "@/shared/platform/deviceTier";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
@@ -184,6 +185,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
     // phones: fewer pixels and ~30 fps; both layers are blurred by CSS anyway
     const lite = isNativeApp() || window.innerWidth < 700;
+    // weak phones (Helio G99…): the same picture drawn at ~24 fps, with
+    // fewer curve points / gradient stops (the layers are blurred anyway)
+    const weak = isLowEndDevice();
+    const frameMs = weak ? 41 : lite ? 32 : 0;
+    const curvePoints = weak ? 48 : 72;
+    const gradientStops = weak ? 18 : 36;
     const tracker = new BeatTracker();
     let palette: VibePalette = live.current.target;
     let raf = 0;
@@ -204,7 +211,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       // the glow and bloom layers are blurred by CSS: they need fewer pixels
       glowScale = lite ? 0.5 : 0.75;
       bloomScale = lite ? 0.5 : 0.6;
-      silkScale = Math.min(lite ? 2 : 2.5, window.devicePixelRatio || 1);
+      silkScale = Math.min(weak ? 1.5 : lite ? 2 : 2.5, window.devicePixelRatio || 1);
       bloomCanvas.width = Math.max(1, Math.round(w * bloomScale));
       bloomCanvas.height = Math.max(1, Math.round(h * bloomScale));
       glowCanvas.width = Math.max(1, Math.round(w * glowScale));
@@ -232,7 +239,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
 
     /** one smooth closed curve (quadratic through midpoints: no corners) */
     const strand = (c: CanvasRenderingContext2D, cx: number, cy: number, r: number, t: number, b: number) => {
-      const n = 72;
+      const n = curvePoints;
       const pts: [number, number][] = [];
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2;
@@ -258,7 +265,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     const lit = (c: CanvasRenderingContext2D, cx: number, cy: number, t: number, color: (k: number) => [number, number, number], alpha: number) => {
       if (typeof c.createConicGradient !== "function") return rgba(color(0.7), alpha * 0.7);
       const g = c.createConicGradient(0, cx, cy);
-      const stops = 36;
+      const stops = gradientStops;
       for (let i = 0; i <= stops; i++) {
         const k = light((i / stops) * Math.PI * 2, t);
         g.addColorStop(i / stops, rgba(color(k), Math.min(1, alpha * k)));
@@ -275,7 +282,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     function frame(now: number) {
       raf = 0;
       if (!visible || document.hidden) return;
-      if (lite && now - lastDraw < 32) {
+      if (frameMs && now - lastDraw < frameMs) {
         raf = requestAnimationFrame(frame);
         return;
       }
@@ -347,7 +354,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       bc.globalCompositeOperation = "lighter";
       sc.lineJoin = "round";
       bc.lineJoin = "round";
-      const strands = lite ? 6 : 9;
+      const strands = weak ? 5 : lite ? 6 : 9;
       for (let i = 0; i < strands; i++) {
         const t = time + i * 0.31;
         // strands bunch near the dark edge and spread outward

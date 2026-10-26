@@ -3,6 +3,7 @@ import { usePlayerStore } from "@/features/player/store/playerStore";
 import { api, toClientTrack } from "@/shared/api";
 import { loadListeningSignals } from "../hooks/listeningSignals";
 import type { Track } from "@/shared/types/track";
+import { shuffle } from "@/shared/utils/shuffle";
 import { languageFilter } from "./trackLanguage";
 import {
   affinity,
@@ -27,18 +28,14 @@ import {
 
 export type { VibeMood, VibeCharacter, VibeLanguage, VibeSettings } from "./vibeTaste";
 
-const VIBE_CONTEXT_KEY = "lane_vibe_context";
+const VIBE_CONTEXT_PREFIX = "radio:vibe:";
 const RECENT_SEEDS_KEY = "lane_vibe_recent_seeds";
 const SETTINGS_KEY = "lane_vibe_settings";
 const BATCH = 20;
-
-let vibeContext: string | null = (() => {
-  try {
-    return sessionStorage.getItem(VIBE_CONTEXT_KEY);
-  } catch {
-    return null;
-  }
-})();
+// the listener waits for the first batch: the lyrics lookups that decide the
+// language get this long in all (refills run in the background, with more time)
+const START_LANGUAGE_BUDGET_MS = 5000;
+const REFILL_LANGUAGE_BUDGET_MS = 16000;
 
 function recentSeeds(): string[] {
   try {
@@ -86,8 +83,12 @@ export function sameSettings(a: VibeSettings, b: VibeSettings): boolean {
   return a.character === b.character && a.mood === b.mood && a.language === b.language;
 }
 
+/**
+ * The context itself says it's a vibe (radio:vibe:…), so a vibe restored after
+ * the app restarts (resume playback) keeps refilling as a vibe, with its settings.
+ */
 export function isVibeContext(playbackContext: string | null | undefined): boolean {
-  return !!vibeContext && playbackContext === vibeContext;
+  return typeof playbackContext === "string" && playbackContext.startsWith(VIBE_CONTEXT_PREFIX);
 }
 
 /** the settings a vibe context was started with: radio:vibe:<character>:<mood>:<language>:<id> */
@@ -115,6 +116,8 @@ usePlayerStore.subscribe((state, prev) => {
   lastTrack = state.currentTrack ? { track: state.currentTrack, context: state.playbackContext } : null;
   if (!before || !isVibeContext(before.context)) return;
   session.played.set(before.track.id, before.track);
+  // going back to the previous track isn't a "not for me"
+  if (state.playbackContext === before.context && state.currentIndex >= 0 && state.currentIndex < prev.currentIndex) return;
   // left within 25 s (and not near the end): counts as "not for me"
   const duration = prev.durationMs || before.track.durationMs || 0;
   if (prev.positionMs < 25_000 && (duration === 0 || prev.positionMs < duration - 5000)) {
@@ -217,7 +220,12 @@ async function radioFor(seed: Track, k = 25): Promise<Track[]> {
     .catch(() => []);
 }
 
-async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?: Fallback): Promise<Track[]> {
+async function nextBatch(
+  settings: VibeSettings,
+  exclude: Set<string>,
+  fallback?: Fallback,
+  languageBudgetMs = REFILL_LANGUAGE_BUDGET_MS,
+): Promise<Track[]> {
   const { mood, character, language } = settings;
   const loaded = await loadSignals();
   const liked = loaded.liked.length ? loaded.liked : fallback?.liked ?? [];
@@ -285,13 +293,16 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
 
   let candidates = [...(await Promise.all(seeds.map((s) => radioFor(s)))).flat(), ...extra];
   // "favorite": the listener's own liked songs make up a good part of it
-  if (character === "favorite") candidates.push(...liked.filter(fits).sort(() => Math.random() - 0.5).slice(0, 30));
+  if (character === "favorite") candidates.push(...shuffle(liked.filter(fits)).slice(0, 30));
   // "unfamiliar": artists the listener already knows are left out
   if (character === "unfamiliar") candidates = candidates.filter((t) => affinity(taste, t) <= 0);
   let filtered = candidates.filter(fits);
   if (language) {
-    // the language is decided by the lyrics (LRCLIB), not by the name
-    const speaks = await languageFilter(filtered, language, liked);
+    // the language is decided by the lyrics (LRCLIB), not by the name; the
+    // lookups below share one time budget instead of adding up
+    const deadline = Date.now() + languageBudgetMs;
+    const budget = (cap: number) => Math.max(800, Math.min(cap, deadline - Date.now()));
+    const speaks = await languageFilter(filtered, language, liked, budget(7000));
     const inLang = (t: Track) => speaks(t) || (languagePoolIds.has(t.id) && !speaks.known(t));
     let inLanguage = filtered.filter(inLang);
     const taken = new Set([...exclude, ...session.played.keys()]);
@@ -299,8 +310,8 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
     if (fresh() < 12) {
       // the mood's radio mostly went elsewhere: grow more from songs that are
       // known to be in this language (the listener's own first, then the pool)
-      const sample = [...liked, ...pool].sort(() => Math.random() - 0.5).slice(0, 160);
-      const sampleSpeaks = await languageFilter(sample, language, liked, 4000);
+      const sample = shuffle([...liked, ...pool]).slice(0, 160);
+      const sampleSpeaks = await languageFilter(sample, language, liked, budget(4000));
       const langSeeds = pickWeighted(
         sample
           .filter((t) => sampleSpeaks(t) || (languagePoolIds.has(t.id) && !sampleSpeaks.known(t)))
@@ -310,7 +321,7 @@ async function nextBatch(settings: VibeSettings, exclude: Set<string>, fallback?
       );
       if (langSeeds.length) {
         const more = (await Promise.all(langSeeds.map((s) => radioFor(s)))).flat().filter(fits);
-        const moreSpeaks = await languageFilter(more, language, liked, 5000);
+        const moreSpeaks = await languageFilter(more, language, liked, budget(5000));
         const seen = new Set(inLanguage.map((t) => t.id));
         for (const t of [...langSeeds, ...more]) {
           if (!seen.has(t.id) && (moreSpeaks(t) || (languagePoolIds.has(t.id) && !moreSpeaks.known(t)))) {
@@ -353,13 +364,10 @@ setRadioRefillProvider((context, queue) => {
 export async function startVibe(settings: VibeSettings, fallback?: Fallback): Promise<boolean> {
   session.played.clear();
   session.skipped.clear();
-  const batch = await nextBatch(settings, new Set(), fallback);
+  const batch = await nextBatch(settings, new Set(), fallback, START_LANGUAGE_BUDGET_MS);
   if (batch.length === 0) return false;
   const { character, mood, language } = settings;
-  vibeContext = `radio:vibe:${character ?? "-"}:${mood ?? "-"}:${language ?? "-"}:${Date.now().toString(36)}`;
-  try {
-    sessionStorage.setItem(VIBE_CONTEXT_KEY, vibeContext);
-  } catch {}
+  const vibeContext = `${VIBE_CONTEXT_PREFIX}${character ?? "-"}:${mood ?? "-"}:${language ?? "-"}:${Date.now().toString(36)}`;
   await playerEngine.playTrack(batch[0], batch, vibeContext, batch[0].coverUrl ?? null, 0);
   return true;
 }
