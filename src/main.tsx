@@ -3,10 +3,13 @@ import ReactDOM from "react-dom/client";
 import { initGlobalErrorHandlers } from "@/shared/utils/globalErrorHandlers";
 import { installNativeFetchHeaders } from "@/shared/platform/native";
 import { installAndroidBackButton } from "@/shared/platform/androidBack";
+import { isLowEndDevice } from "@/shared/platform/deviceTier";
 
 initGlobalErrorHandlers();
 installNativeFetchHeaders();
 void installAndroidBackButton();
+// weak phones: cheaper blur and animations (see globals.css .lane-low-end)
+document.documentElement.classList.toggle("lane-low-end", isLowEndDevice());
 
 const isOverlay = window.location.hash.startsWith("#/overlay");
 

@@ -1,3 +1,4 @@
+import { shuffle as shuffleList } from "@/shared/utils/shuffle";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -59,7 +60,7 @@ export default function LocalTracksPage() {
   const play = (track: Track) => playerEngine.playTrack(track, tracks, CONTEXT, track.coverUrl);
   const playAll = (shuffle = false) => {
     if (tracks.length === 0) return;
-    const list = shuffle ? [...tracks].sort(() => Math.random() - 0.5) : tracks;
+    const list = shuffle ? shuffleList(tracks) : tracks;
     playerEngine.playTrack(list[0], list, CONTEXT, list[0].coverUrl);
   };
 

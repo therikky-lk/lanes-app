@@ -107,6 +107,27 @@ export interface NativeNextItem {
   meta: Omit<NowPlayingMeta, "trackId">;
 }
 
+// saved tracks handed over as files: the look-ahead is sent again on every
+// track change, and writing the same few MB again each time (base64 through
+// the bridge) is what made weak phones stutter
+const nextFiles = new Map<string, Promise<string>>();
+const NEXT_FILES_KEPT = 12;
+
+function nextFileFor(trackId: string, blob: Blob): Promise<string> {
+  const key = `${trackId}:${blob.size}`;
+  let file = nextFiles.get(key);
+  if (!file) {
+    const ext = (blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
+    file = (async () =>
+      (await LaneAudio.writeCacheFile({ name: `next-${trackId.replace(/[^a-z0-9]/gi, "")}.${ext}`, base64: await blobToBase64(blob) })).url)();
+    file.catch(() => nextFiles.delete(key));
+    nextFiles.set(key, file);
+    // the native side keeps a bounded number of files: forget the oldest here too
+    while (nextFiles.size > NEXT_FILES_KEPT) nextFiles.delete(nextFiles.keys().next().value!);
+  }
+  return file;
+}
+
 /**
  * Hand the native player the tracks after `afterTrackId` ahead of time: it
  * then moves on by itself when one ends, even while the page is asleep
@@ -116,10 +137,7 @@ export async function queueNativeNext(afterTrackId: string, items: NativeNextIte
   const out: Parameters<LaneAudioPlugin["queueNext"]>[0]["items"] = [];
   for (const item of items) {
     let url = item.source.url ?? "";
-    if (item.source.blob) {
-      const ext = (item.source.blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
-      url = (await LaneAudio.writeCacheFile({ name: `next-${item.trackId.replace(/[^a-z0-9]/gi, "")}.${ext}`, base64: await blobToBase64(item.source.blob) })).url;
-    }
+    if (item.source.blob) url = await nextFileFor(item.trackId, item.source.blob);
     if (!url) continue;
     out.push({ trackId: item.trackId, url, headers: url.startsWith("http") ? headersForUrl(url) : {}, ...item.meta });
   }

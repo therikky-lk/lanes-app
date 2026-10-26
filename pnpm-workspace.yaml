@@ -3,3 +3,8 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@kawarp/core@1.2.1'
   - '@kawarp/react@1.2.1'
+# security fixes in transitive dependencies (same major versions):
+# undici via @xhayper/discord-rpc, js-yaml via electron-updater
+overrides:
+  undici@6: ^6.29.1
+  js-yaml@4: ^4.3.2

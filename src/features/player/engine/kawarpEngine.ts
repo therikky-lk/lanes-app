@@ -173,6 +173,10 @@ export interface KawarpOptions {
   tintIntensity?: number;
   dithering?: number;
   scale?: number;
+  /** cap the frame rate (weak phones); 0 = every display frame */
+  maxFps?: number;
+  /** keep the drawn frame after compositing (costs a copy on mobile GPUs) */
+  preserveDrawingBuffer?: boolean;
 }
 
 export class KawarpEngine {
@@ -218,6 +222,8 @@ export class KawarpEngine {
   private tintIntensity = 0.15;
   private dithering = 0.012;
   private scale = 1.2;
+  private minFrameMs = 0;
+  private lastDrawTime = 0;
   private hasImage = false;
 
   private uniforms: any;
@@ -228,7 +234,7 @@ export class KawarpEngine {
       antialias: false,
       depth: false,
       stencil: false,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer: options.preserveDrawingBuffer ?? true,
       powerPreference: 'high-performance',
     });
     if (!gl) throw new Error('WebGL not supported');
@@ -243,6 +249,7 @@ export class KawarpEngine {
     if (options.tintIntensity !== undefined) this.tintIntensity = options.tintIntensity;
     if (options.dithering !== undefined) this.dithering = options.dithering;
     if (options.scale !== undefined) this.scale = options.scale;
+    if (options.maxFps) this.minFrameMs = 1000 / options.maxFps - 2;
 
     this.blurProgram = this.createProgram(VERTEX_SHADER, KAWASE_BLUR_SHADER);
     this.blendProgram = this.createProgram(VERTEX_SHADER, BLEND_SHADER);
@@ -511,7 +518,11 @@ export class KawarpEngine {
     const dt = (timestamp - this.lastFrameTime) / 1000;
     this.lastFrameTime = timestamp;
     this.accumulatedTime += dt * this.animationSpeed;
-    this.render(this.accumulatedTime, timestamp);
+    // capped frame rate: time still runs on, frames in between are skipped
+    if (!this.minFrameMs || timestamp - this.lastDrawTime >= this.minFrameMs) {
+      this.lastDrawTime = timestamp;
+      this.render(this.accumulatedTime, timestamp);
+    }
     this.animationId = requestAnimationFrame(this.renderLoop);
   };
 

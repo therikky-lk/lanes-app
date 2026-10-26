@@ -25,6 +25,8 @@ import {
 // error recovery tuning (see the audio "error" handler)
 const RECOVERY_HOLD_MS = 3000;
 const WAITING_GRACE_MS = 300; // a buffering hiccup shorter than this never shows // must play this far past a recovery before it may retry again
+// a reused look-ahead link must stay valid this long past the moment its track starts
+const NATIVE_STREAM_MARGIN_MS = 15 * 60_000;
 
 export class PlayerRuntime {
   private audio: HTMLAudioElement;
@@ -46,6 +48,8 @@ export class PlayerRuntime {
   /** Android: the track handed to the native player to play next */
   private nativeQueued: { afterTrackId: string; ids: string; expiry: Map<string, number | null> } | null = null;
   private nativeQueueAbort: AbortController | null = null;
+  /** stream links resolved for the native look-ahead, by track id */
+  private nativeStreams = new Map<string, { url?: string; blob?: Blob; expiresAtMs?: number | null }>();
   private preloadingPromise: Promise<void> | null = null;
   private preloadAbortController: AbortController | null = null;
   private backgroundCacheAbortController: AbortController | null = null;
@@ -629,15 +633,38 @@ export class PlayerRuntime {
     this.nativeQueueAbort = controller;
     // resolve one by one and hand over what's ready each time, so the very
     // next track is there as soon as possible
+    // streams resolved for the previous look-ahead are reused: after a track
+    // change the list only moves on by one, so only the new last one is fetched
+    const wanted = new Set(tracks.map((t) => t.id));
+    for (const id of this.nativeStreams.keys()) if (!wanted.has(id)) this.nativeStreams.delete(id);
     void (async () => {
       const ready: NativeNextItem[] = [];
       const expiry = new Map<string, number | null>();
+      // how long until each track starts playing: its link must still work then
+      let startsInMs = 0;
       for (const track of tracks) {
         try {
           const cached = await linerDb.getAudio(track.id).catch(() => null);
-          const stream = cached?.blob?.size
-            ? { blob: cached.blob, expiresAtMs: null as number | null }
-            : await resolvePlaybackStream(track, controller.signal);
+          let stream: { url?: string; blob?: Blob; expiresAtMs?: number | null };
+          const reusable = this.nativeStreams.get(track.id);
+          if (cached?.blob?.size) {
+            stream = { blob: cached.blob, expiresAtMs: null };
+          } else if (
+            reusable &&
+            (reusable.expiresAtMs == null || reusable.expiresAtMs > Date.now() + startsInMs + NATIVE_STREAM_MARGIN_MS)
+          ) {
+            stream = reusable;
+          } else {
+            const resolved = await resolvePlaybackStream(track, controller.signal);
+            stream = {
+              url: "url" in resolved ? resolved.url : undefined,
+              blob: resolved.blob,
+              expiresAtMs: resolved.expiresAtMs ?? null,
+            };
+            // a Blob is kept by the cache above already; links are worth keeping
+            if (!resolved.blob) this.nativeStreams.set(track.id, stream);
+          }
+          startsInMs += track.durationMs > 0 ? track.durationMs : 4 * 60_000;
           if (controller.signal.aborted) return;
           expiry.set(track.id, stream.expiresAtMs ?? null);
           ready.push({
