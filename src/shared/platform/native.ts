@@ -20,10 +20,41 @@ export function nativePlatform(): string | null {
   return (window as unknown as { Capacitor?: CapacitorGlobal }).Capacitor?.getPlatform?.() ?? null;
 }
 
-/** User-Agent of the YouTube client that produced the current stream URL */
+/** User-Agent of the YouTube client that produced the latest stream URL */
 let streamUserAgent: string | undefined;
 export function setStreamUserAgent(ua: string | undefined): void {
   streamUserAgent = ua;
+}
+
+// googlevideo refuses a stream (403 at byte 0) fetched with another client's
+// User-Agent than the one that asked for it. Streams for the native look-ahead
+// are resolved many at a time, by different clients (WEB_REMIX, ANDROID_VR…),
+// so one shared "latest UA" handed the native player the wrong one: each
+// stream keeps its own.
+const userAgentByUrl = new Map<string, string>();
+const USER_AGENTS_KEPT = 64;
+
+/** the stream's identity: byte ranges / request counters added later don't change it */
+function streamKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    for (const p of ["range", "rn", "rbuf"]) parsed.searchParams.delete(p);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+export function rememberStreamUserAgent(url: string, ua: string | undefined): void {
+  if (!url || !ua) return;
+  const key = streamKey(url);
+  userAgentByUrl.delete(key);
+  userAgentByUrl.set(key, ua);
+  while (userAgentByUrl.size > USER_AGENTS_KEPT) userAgentByUrl.delete(userAgentByUrl.keys().next().value!);
+}
+
+function userAgentFor(url: string): string | undefined {
+  return userAgentByUrl.get(streamKey(url)) ?? streamUserAgent;
 }
 
 const UA_OVERRIDE = "x-liner-user-agent";
@@ -132,8 +163,9 @@ export function installNativeFetchHeaders(): void {
     if (override) {
       headers.delete(UA_OVERRIDE);
       headers.set("User-Agent", override);
-    } else if (isVideo && streamUserAgent && !headers.has("User-Agent")) {
-      headers.set("User-Agent", streamUserAgent);
+    } else if (isVideo && !headers.has("User-Agent")) {
+      const ua = userAgentFor(url);
+      if (ua) headers.set("User-Agent", ua);
     }
     const origin = host === "www.youtube.com" ? "https://www.youtube.com" : "https://music.youtube.com";
     headers.set("Origin", origin);
@@ -159,7 +191,7 @@ export function streamHeadersFor(url: string): Record<string, string> {
     Origin: "https://music.youtube.com",
     Referer: "https://music.youtube.com/",
   };
-  const ua = streamUserAgent ?? (typeof navigator !== "undefined" ? navigator.userAgent : undefined);
+  const ua = userAgentFor(url) ?? (typeof navigator !== "undefined" ? navigator.userAgent : undefined);
   if (ua) headers["User-Agent"] = ua;
   return headers;
 }

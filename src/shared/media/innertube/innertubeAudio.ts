@@ -1,4 +1,4 @@
-import { setStreamUserAgent } from "@/shared/platform/native";
+import { rememberStreamUserAgent, setStreamUserAgent } from "@/shared/platform/native";
 import { InnertubeError, postInnertube, type InnertubeProfile } from "./innertubeClient";
 import { PLAYBACK_PROFILES } from "./playbackProfiles";
 import { resetClientVisitorData } from "@/shared/api/visitorSession";
@@ -107,8 +107,13 @@ async function resolveViaWebRemix(
     try {
       const stream = await resolveWebRemixAudioStream(videoId, options);
       // the stream is tied to the client that asked for it: the WebView's own UA
-      if (typeof navigator !== "undefined") setStreamUserAgent(navigator.userAgent);
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : undefined;
+      setStreamUserAgent(ua);
+      // tied to this URL before the probe: another resolve running at the same
+      // time may change the "latest" UA in between
+      rememberStreamUserAgent(stream.url, ua);
       stream.url = await assertStreamReachable(stream.url, stream.contentLength, options.signal);
+      rememberStreamUserAgent(stream.url, ua);
       webRemixFailures = 0;
       return stream;
     } catch (error) {
@@ -159,7 +164,9 @@ async function resolveWithProfile(
   const stream = toResolvedStream(best);
   // googlevideo checks the stream against the client that asked for it (Android app only)
   setStreamUserAgent(profile.userAgent);
+  rememberStreamUserAgent(stream.url, profile.userAgent);
   stream.url = await assertStreamReachable(stream.url, stream.contentLength, options.signal);
+  rememberStreamUserAgent(stream.url, profile.userAgent);
   return stream;
 }
 
