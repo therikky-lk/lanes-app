@@ -456,7 +456,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   return (
     <section
       ref={wrapRef}
-      className={`relative w-full select-none ${expanded ? "overflow-visible" : "overflow-hidden"}`}
+      className="relative w-full select-none overflow-visible"
       style={{
         height: expanded ? "100%" : HERO_HEIGHT,
         marginTop: "var(--lane-safe-top, 0px)",
