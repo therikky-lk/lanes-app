@@ -869,7 +869,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           <img
             src={backgroundImage}
             alt=""
-            className="w-full h-full object-cover select-none"
+            className="lane-wallpaper w-full h-full object-cover select-none"
             style={{
               filter: backgroundBlur > 0 ? `blur(${backgroundBlur}px)` : undefined,
               transform: backgroundBlur > 0 ? "scale(1.05)" : undefined,

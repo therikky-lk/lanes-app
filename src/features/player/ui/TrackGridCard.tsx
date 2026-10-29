@@ -8,6 +8,7 @@ import { ArtistLink } from "@/features/artist";
 import type { Track } from "@/shared/types";
 import { useSongMenuItems } from "../hooks/useSongMenuItems";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
+import { useTranslation } from "@/languages";
 
 export interface TrackGridCardProps {
   track: Track;
@@ -21,6 +22,7 @@ export interface TrackGridCardProps {
 
 /** a track as a tile: cover, title, artist; same menu as the list rows */
 function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTitle, onPlay, showLikeButton = false }: TrackGridCardProps) {
+  const { t } = useTranslation();
   const coverUrl = track.coverUrl || coverFallback || "";
   const menuItems = useSongMenuItems({
     id: track.id,
@@ -90,7 +92,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
         </span>
         <button
           type="button"
-          aria-label="More"
+          aria-label={t("common.more_options")}
           onClick={(e) => {
             e.stopPropagation();
             const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -104,7 +106,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
         {showLikeButton && (
           <button
             type="button"
-            aria-label={isLiked ? "Unlike" : "Like"}
+            aria-label={isLiked ? t("common.unlike") : t("common.like")}
             aria-pressed={isLiked}
             onClick={(e) => {
               e.stopPropagation();
