@@ -12,6 +12,7 @@ interface ScrollableRowProps {
   dragCursor?: string;
   wheelMultiplier?: number;
   controller?: UseHorizontalScrollResult;
+  showScrollMask?: boolean;
 }
 
 export function ScrollableRow({
@@ -20,6 +21,7 @@ export function ScrollableRow({
   dragCursor,
   wheelMultiplier,
   controller,
+  showScrollMask = true,
 }: ScrollableRowProps) {
   const internalController = useHorizontalScroll({
     dragCursor,
@@ -50,7 +52,7 @@ export function ScrollableRow({
           display: "flex",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
-          ...maskStyle,
+          ...(showScrollMask ? maskStyle : {}),
         }}
       >
         {children}
