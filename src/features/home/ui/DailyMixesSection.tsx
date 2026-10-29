@@ -123,7 +123,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onMouseLeave={() => setIsCardHovered(false)}
     >
       <div
-        className={`relative aspect-[1.08] w-full overflow-hidden rounded-[14px] bg-border-alpha-14 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.28)] ${
+        className={`relative aspect-[1.08] w-full overflow-hidden rounded-[14px] bg-border-alpha-14 ${
           isPlayingMix ? "ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary" : ""
         }`}
       >
