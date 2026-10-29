@@ -655,7 +655,7 @@ export class PlayerRuntime {
           ) {
             stream = reusable;
           } else {
-            const resolved = await resolvePlaybackStream(track, controller.signal);
+            const resolved = await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
             stream = {
               url: "url" in resolved ? resolved.url : undefined,
               blob: resolved.blob,
@@ -715,7 +715,7 @@ export class PlayerRuntime {
     const generation = audioCache.currentGeneration();
     const promise = (async () => {
       try {
-        const stream = await resolvePlaybackStream(track, controller.signal);
+        const stream = await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
         if (controller.signal.aborted) return;
 
         const blob = await this.downloadAudioBlob(stream, controller.signal);
@@ -891,7 +891,7 @@ export class PlayerRuntime {
         return;
       }
 
-      const stream = await resolvePlaybackStream(track, controller.signal);
+      const stream = await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
       this.ttfbMs = Math.round(performance.now() - this.loadStartTime);
 
       if (epoch !== this.loadEpoch || controller.signal.aborted) {

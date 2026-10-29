@@ -137,6 +137,7 @@ async function resolveViaWebRemix(
 export interface ResolveAudioOptions {
   signal?: AbortSignal;
   preferredCodec?: "opus" | "aac";
+  preferHighest?: boolean;
   profiles?: readonly InnertubeProfile[];
 }
 
@@ -159,7 +160,7 @@ async function resolveWithProfile(
   }
   const unplayable = playabilityError(response);
   if (unplayable) throw new InnertubeError(unplayable, 403);
-  const best = selectBestAudioFormat(extractAudioFormats(response), options.preferredCodec);
+  const best = selectBestAudioFormat(extractAudioFormats(response), options.preferredCodec, options.preferHighest);
   if (!best) throw new InnertubeError(`${profile.clientName} returned no direct audio formats.`, 502);
   const stream = toResolvedStream(best);
   // googlevideo checks the stream against the client that asked for it (Android app only)
