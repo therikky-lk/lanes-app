@@ -22,9 +22,10 @@ export interface MixCoverProps {
   label: string;
   sizes?: string;
   className?: string;
+  showBadge?: boolean;
 }
 
-export default function MixCover({ index, covers, label, sizes = "175px", className = "" }: MixCoverProps) {
+export default function MixCover({ index, covers, label, sizes = "282px", className = "", showBadge = true }: MixCoverProps) {
   const [from, to] = PALETTE[(Math.max(1, index) - 1) % PALETTE.length];
   const tiles = covers.length >= 4 ? covers.slice(0, 4) : covers.slice(0, 1);
   return (
@@ -40,22 +41,24 @@ export default function MixCover({ index, covers, label, sizes = "175px", classN
           </div>
         ))}
       </div>
-      {/* the mix's colour rises smoothly from the bottom; the name sits on it */}
+      {/* The artwork stays visible behind the type, with a soft cinematic fade. */}
       <div
         className="absolute inset-x-0 bottom-0"
         style={{
-          height: "58%",
-          background: `linear-gradient(to top, ${to} 0%, ${to}f2 22%, ${from}b3 52%, ${from}00 100%)`,
+          height: "72%",
+          background: `linear-gradient(to top, rgba(8, 10, 14, 0.94) 0%, rgba(8, 10, 14, 0.72) 35%, ${from}70 70%, transparent 100%)`,
         }}
       />
-      <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-white">
-        <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
-          {label}
-        </span>
-        <span className="text-[clamp(18px,17cqw,52px)] font-[800] leading-[0.8] tracking-tight" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
-          {index}
-        </span>
-      </div>
+      {showBadge && (
+        <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-white">
+          <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
+            {label}
+          </span>
+          <span className="text-[clamp(18px,17cqw,52px)] font-[800] leading-[0.8] tracking-tight" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
+            {index}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
