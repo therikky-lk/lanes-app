@@ -118,9 +118,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      <div
-        className="relative aspect-[1.57] w-full overflow-hidden rounded-[9px] bg-border-alpha-14"
-      >
+      <div className="relative aspect-[1.42] w-full overflow-hidden rounded-[12px] bg-border-alpha-14">
         {mix.mixIndex ? (
           <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={mixLabel} showBadge={false} />
         ) : mix.coverUrl && (
@@ -128,21 +126,23 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             src={mix.coverUrl}
             alt={mix.title}
             fill
-            sizes="165px"
+            sizes="180px"
             className={`object-cover ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
             onLoad={() => setImageLoaded(true)}
           />
         )}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pt-16 text-white">
-          <div className="truncate text-[13px] font-bold leading-tight tracking-[-0.02em]" title={mix.title}>{mix.title}</div>
-        </div>
+        {mix.mixIndex && (
+          <div className="pointer-events-none absolute left-[8px] top-[8px] z-10 rounded-md bg-black/55 px-[7px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
+            {mixLabel} {String(mix.mixIndex).padStart(2, "0")}
+          </div>
+        )}
       </div>
 
-      <div className="mt-[6px] min-w-0 px-[1px]">
-        <div className="truncate text-[12px] font-[500] leading-tight text-text-primary" title={mix.title}>{mix.title}</div>
-        <div className="mt-[3px] truncate text-[10px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
+      <div className="mt-[8px] min-w-0 px-[2px]">
+        <div className="truncate text-[13px] font-[600] leading-tight text-text-primary" title={mix.title}>{mix.title}</div>
+        <div className="mt-[4px] truncate text-[11px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
       </div>
 
       {menuItems.length > 0 && (
