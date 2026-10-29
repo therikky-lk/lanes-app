@@ -134,9 +134,9 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onContextMenu={handleContextMenu}
     >
       <div
-        className="relative aspect-[1.42] w-full overflow-hidden rounded-[12px] bg-border-alpha-14"
+        className="relative aspect-[1.6] w-full overflow-hidden rounded-[12px] border border-white/10 bg-border-alpha-14"
         style={{
-          boxShadow: `0 6px 18px rgba(0,0,0,0.18), inset 0 0 0 1px ${gradientTo}45`,
+          boxShadow: "0 6px 16px rgba(0,0,0,0.16)",
         }}
       >
         {mix.mixIndex ? (
@@ -156,23 +156,27 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
         <div
           className="pointer-events-none absolute inset-0 z-[5]"
           style={{
-            background: `linear-gradient(180deg, ${gradientFrom}08 0%, transparent 38%, ${gradientFrom}12 68%, ${gradientTo}72 100%)`,
+            background: `linear-gradient(180deg, rgba(0,0,0,0.04) 20%, transparent 43%, rgba(0,0,0,0.18) 62%, ${gradientFrom}c7 100%)`,
           }}
         />
         {mix.mixIndex && (
-          <div className="pointer-events-none absolute left-[8px] top-[8px] z-10 rounded-md bg-black/55 px-[7px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
+          <div className="pointer-events-none absolute left-[8px] top-[8px] z-10 rounded-[7px] border border-white/20 bg-black/45 px-[7px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
             {mixLabel} {String(mix.mixIndex).padStart(2, "0")}
           </div>
         )}
+        <div className="pointer-events-none absolute inset-x-[10px] bottom-[9px] z-10 flex items-end justify-between gap-2">
+          <div className="min-w-0 truncate text-[13px] font-semibold leading-tight text-white [text-shadow:0_1px_5px_rgba(0,0,0,0.65)]">
+            {mix.title}
+          </div>
+          <div className="flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full bg-white/90 text-black shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
+            <PlayFill size={13} />
+          </div>
+        </div>
       </div>
 
-      <div className="mt-[8px] min-w-0 px-[2px]">
-        <div className="truncate text-[13px] font-[600] leading-tight text-text-primary" title={mix.title}>{mix.title}</div>
-        <div
-          className="mt-[5px] h-[2px] w-[28px] rounded-full"
-          style={{ background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }}
-        />
-        <div className="mt-[4px] truncate text-[11px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
+      <div className="mt-[7px] min-w-0 px-[2px]">
+        <div className="mb-[5px] h-[2px] w-[34px] rounded-full" style={{ background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }} />
+        <div className="truncate text-[11px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
       </div>
 
       {menuItems.length > 0 && (
