@@ -168,7 +168,20 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
         </span>
 
         {/* Update Checker Button */}
-        <div className="w-full flex items-center justify-center mb-[20px]">
+        <div className="w-full flex items-center justify-center gap-[8px] mb-[20px]">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleCheckUpdates}
+            disabled={checkingUpdate}
+            className="!h-[32px] !px-[16px] !text-[12.5px] !gap-[7px] !rounded-lg"
+          >
+            <Refresh1Line
+              size={14}
+              className={checkingUpdate ? "animate-spin" : ""}
+            />
+            {t("settings.about.update_app", { defaultValue: "Обновить приложение" })}
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -180,7 +193,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
               size={14}
               className={checkingUpdate ? "animate-spin text-text-primary" : "text-text-tertiary"}
             />
-            {t("settings.about.all_releases") || "All versions"}
+            {t("settings.about.all_releases", { defaultValue: "All versions" })}
           </Button>
         </div>
 
