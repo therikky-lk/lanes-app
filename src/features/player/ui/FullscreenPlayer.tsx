@@ -450,24 +450,6 @@ export function FullscreenPlayer({
             isMobile && !mobileLyrics ? "hidden" : ""
           }`}
         >
-          {(showProviderIsland || hasLyrics) && (
-            <div className="absolute top-[12px] left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center justify-center gap-[8px]">
-              {showProviderIsland && <LyricsProviderIsland />}
-              {hasLyrics && (
-                <button
-                  type="button"
-                  onClick={() => setCustomLyricsOpen(true)}
-                  title={t("player.custom_lyrics_edit") || "Edit lyrics"}
-                  aria-label={t("player.custom_lyrics_edit") || "Edit lyrics"}
-                  data-no-window-drag
-                  className="pointer-events-auto inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 text-white/70 backdrop-blur-md cursor-pointer"
-                >
-                  <Edit2Line size={16} />
-                </button>
-              )}
-            </div>
-          )}
-
           <div
             className="flex-1 min-h-0 relative w-full h-full"
             style={{
@@ -621,6 +603,18 @@ export function FullscreenPlayer({
         style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 108 }}
         data-no-window-drag
       >
+        {showProviderIsland && <LyricsProviderIsland />}
+        {hasLyrics && (
+          <button
+            type="button"
+            onClick={() => setCustomLyricsOpen(true)}
+            title={t("player.custom_lyrics_edit") || "Edit lyrics"}
+            aria-label={t("player.custom_lyrics_edit") || "Edit lyrics"}
+            className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 text-white/70 backdrop-blur-md cursor-pointer"
+          >
+            <Edit2Line size={16} />
+          </button>
+        )}
         {isMobile && (
           <button
             type="button"
