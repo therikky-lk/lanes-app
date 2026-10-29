@@ -59,6 +59,10 @@ scratch/
 # android web build
 /dist-android
 
+# local Android signing material
+/android/keystore/*.jks
+/android/keystore/*.password
+
 # tests are kept and run locally only
 *.test.ts
 *.test.tsx
