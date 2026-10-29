@@ -14,14 +14,22 @@ import { findYoutubeStandIn } from "./youtubeStandIn";
 import { findSoundCloudStandIn } from "./soundcloudStandIn";
 import { getLocalTrack, isLocalTrackId } from "@/shared/media/local/localTracks";
 import { audiusStreamUrl, isAudiusId } from "@/shared/media/audius";
+import type { AudioQuality } from "../store/playerStore";
 
 export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlaybackStream } from "./playbackStream";
 
-async function resolveYoutubeStandIn(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
+function audioOptions(quality: AudioQuality) {
+  return {
+    preferredCodec: quality === "low" || quality === "standard" ? ("aac" as const) : ("opus" as const),
+    preferHighest: quality === "lossless",
+  };
+}
+
+async function resolveYoutubeStandIn(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
   const videoId = await findYoutubeStandIn(track, signal);
   if (!videoId) throw new Error("No matching YouTube track found");
   log("cyan", "playback", `playing youtube stand-in ${videoId} for "${track.title}"`);
-  return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal }));
+  return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal, ...audioOptions(quality) }));
 }
 
 async function resolveSoundCloud(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
@@ -63,16 +71,16 @@ async function withSoundCloudFallback(
   }
 }
 
-async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal?: AbortSignal): Promise<PlaybackStream> {
+async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
   const liner = await resolveLinerStream(videoId, signal);
   if (liner) {
     log("cyan", "playback", `playing liner audio (r2) for "${track.title}"`);
     return fromLinerStream(liner, track);
   }
-  return withSoundCloudFallback(track, async () => fromInnertubeStream(await resolveDirectAudioStream(track.id, { signal })), signal);
+  return withSoundCloudFallback(track, async () => fromInnertubeStream(await resolveDirectAudioStream(track.id, { signal, ...audioOptions(quality) })), signal);
 }
 
-export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
+export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
   if (isLocalTrackId(track.id)) {
     // the user's own file: play the stored Blob, never look for a stand-in
     const record = await getLocalTrack(track.id);
@@ -86,6 +94,6 @@ export async function resolvePlaybackStream(track: PlayableTrack, signal?: Abort
     return { url: audiusStreamUrl(track.id), mimeType: "audio/mpeg", codec: "mp3", bitrate: 320, expiresAtMs: null };
   }
   const videoId = toVideoId(track.id);
-  if (videoId) return resolveYoutubeTrack(track, videoId, signal);
-  return withSoundCloudFallback(track, () => resolveYoutubeStandIn(track, signal), signal);
+  if (videoId) return resolveYoutubeTrack(track, videoId, signal, quality);
+  return withSoundCloudFallback(track, () => resolveYoutubeStandIn(track, signal, quality), signal);
 }
