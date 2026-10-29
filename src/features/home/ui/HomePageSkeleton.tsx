@@ -19,6 +19,7 @@ function SectionSkeleton({
   titleWidth?: string;
   cardsCount?: number;
 }) {
+  const isMobile = useIsMobile();
   return (
     <div className="flex flex-col select-none">
       {/* Section Header */}
@@ -30,9 +31,11 @@ function SectionSkeleton({
       </div>
 
       {/* Cards Row */}
-      <div className="flex gap-[28px] pl-8 pr-8 mt-[12px] overflow-hidden pb-[2px]">
+      <div className={isMobile
+        ? "grid grid-cols-2 gap-x-[12px] gap-y-[16px] px-[14px] mt-[12px] pb-[2px]"
+        : "flex gap-[28px] pl-8 pr-8 mt-[12px] overflow-hidden pb-[2px]"}>
         {Array.from({ length: cardsCount }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 w-[175px]">
+          <div key={i} className={isMobile ? "min-w-0" : "flex-shrink-0 w-[175px]"}>
             {/* Thumbnail */}
             <div className="relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14">
               <div className="skeleton-shimmer w-full h-full" />
