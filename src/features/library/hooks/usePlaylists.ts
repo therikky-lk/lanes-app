@@ -1,4 +1,4 @@
-import { getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
+import { compactPlaylistCover, getCustomPlaylistCover, getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
 import { readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
 import { buildLocalPlaylistEntry, localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { isLocalLikesPlaylist } from "@/features/local/localLikesSync";
@@ -158,6 +158,17 @@ function load(force = false): Promise<void> {
     for (const playlist of playlists) {
       const fromServer = readCoverMarker(playlist.description);
       rememberServerCover(playlist.id, fromServer);
+      const customCover = getCustomPlaylistCover(playlist.id);
+      if (customCover) {
+        // Older app versions kept user-picked covers locally. Compress and
+        // attach them to the playlist so every signed-in device can restore it.
+        void compactPlaylistCover(customCover)
+          .then((cover) => {
+            if (cover === fromServer) return;
+            return api.updatePlaylist(playlist.id, { description: withCoverMarker(playlist.description, cover) });
+          })
+          .catch(() => undefined);
+      }
       const local = getImportedPlaylistMeta(playlist.id)?.coverUrl;
       if (local && !fromServer) {
         // imported on this device before the cover was synced: send it up once
@@ -250,6 +261,20 @@ export function usePlaylist(id: string | null) {
         if (!active) return;
 
         const covers = extractCovers(response.items);
+        const syncedCover = readCoverMarker(response.playlist.description);
+        rememberServerCover(id, syncedCover);
+        const playlistCover = getPlaylistCover(id);
+        const localCover = getCustomPlaylistCover(id) ?? getImportedPlaylistMeta(id)?.coverUrl;
+        if (localCover && localCover !== syncedCover) {
+          void compactPlaylistCover(localCover)
+            .then((cover) => {
+              if (cover !== syncedCover) {
+                return api.updatePlaylist(id, { description: withCoverMarker(response.playlist.description, cover) });
+              }
+              return undefined;
+            })
+            .catch(() => undefined);
+        }
 
         const coverCache = readCoverCache();
         coverCache[id] = {
@@ -265,8 +290,8 @@ export function usePlaylist(id: string | null) {
           title: response.playlist.title,
           description: response.playlist.description,
           trackCount: response.items.length + localTracks.length,
-          coverUrl: covers[0] ?? "",
-          coverUrls: covers,
+          coverUrl: playlistCover ?? covers[0] ?? "",
+          coverUrls: playlistCover ? [playlistCover] : covers,
           revision: response.playlist.revision,
           tracks: [...response.items.map(toTrack), ...localTracks],
         };

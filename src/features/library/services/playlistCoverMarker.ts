@@ -1,7 +1,7 @@
 // The server keeps only a title and a description for user playlists. Things
 // that have to reach every device travel at the end of the description behind
 // an invisible separator; the app reads them back and never shows them:
-//   ⁣lane-cover:<url>      an imported playlist's original cover
+//   ⁣lane-cover:<url>      an imported or user-selected playlist cover
 //   ⁣lane-local:<base64>   the user's own audio files added to the playlist
 //                          (the audio stays on the device that has it)
 const SEP = "⁣";
@@ -23,7 +23,9 @@ function build(text: string, local: string | undefined, cover: string | undefine
 
 export function readCoverMarker(description: string | null | undefined): string | undefined {
   const url = readMarker(description, "cover");
-  return url && /^https?:\/\//.test(url) ? url : undefined;
+  return url && (/^https?:\/\//.test(url) || /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=_-]+$/i.test(url))
+    ? url
+    : undefined;
 }
 
 export function stripCoverMarker(description: string | null | undefined): string {
