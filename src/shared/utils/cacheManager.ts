@@ -194,6 +194,9 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
   let coversCount = 0;
   let lyricsBytes = 0;
   let metadataBytes = 0;
+  let audioCount = 0;
+  let lyricsCount = 0;
+  let metadataCount = 0;
   let cachePath = "";
 
   // 1. electron disk measurements (if running inside electron app)
@@ -222,6 +225,7 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     const audioTrackBytes = await linerDb.getTotalTrackBytes();
     const audioBlobBytes = await linerDb.getTotalAudioBytes();
     audioBytes = audioTrackBytes + audioBlobBytes;
+    audioCount = await linerDb.getStoreCount("audio");
   } catch {}
 
   // take the maximum between indexeddb object store iteration and physical disk size
@@ -260,6 +264,7 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     const lBytes = await linerDb.getTotalLyricsBytes();
     const lStats = lyricsCache.getStats();
     lyricsBytes = lBytes + lStats.bytes;
+    lyricsCount = (await linerDb.getStoreCount("lyrics")) + lStats.count;
   } catch {}
 
   // 5. in-memory catalog cache added in queryCache.ts + linerDb artists
@@ -267,6 +272,7 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     const qStats = queryCache.getStats();
     const aBytes = await linerDb.getTotalArtistBytes();
     metadataBytes += qStats.bytes + aBytes;
+    metadataCount = qStats.count + (await linerDb.getStoreCount("artists")) + (await linerDb.getStoreCount("tracks"));
   } catch {}
 
   // 6. localstorage inspection for covers, search and metadata
@@ -286,8 +292,10 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
         k === "liner_search_history"
       ) {
         metadataBytes += size;
+        metadataCount += 1;
       } else if (k.startsWith("liner:artist:")) {
         metadataBytes += size;
+        metadataCount += 1;
       } else if (
         k.startsWith("liner_lyrics_") ||
         k.startsWith("lyrics-storage")
@@ -332,18 +340,21 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
       id: "audio",
       labelKey: "settings.storage.categories.audio",
       bytes: audioBytes,
+      count: audioCount,
       color: "#8B5CF6", // purple
     },
     {
       id: "lyrics",
       labelKey: "settings.storage.categories.lyrics",
       bytes: lyricsBytes,
+      count: lyricsCount,
       color: "#EC4899", // pink
     },
     {
       id: "metadata",
       labelKey: "settings.storage.categories.metadata",
       bytes: metadataBytes,
+      count: metadataCount,
       color: "#F59E0B", // amber
     },
   ];
