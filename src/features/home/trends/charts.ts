@@ -40,8 +40,11 @@ export interface ChartEntry {
 
 const SIZE = 50;
 const TTL = 60 * 60 * 1000;
-const FEED = (country: string, size: number) =>
-  `https://rss.marketingtools.apple.com/api/v2/${country}/music/most-played/${size}/songs.json`;
+// Apple moved the public RSS host to applemarketingtools.com. Keep the old
+// host as a fallback because some regions/cache layers still serve it.
+const FEED_HOSTS = ["https://rss.applemarketingtools.com", "https://rss.marketingtools.apple.com"];
+const FEED = (host: string, country: string, size: number) =>
+  `${host}/api/v2/${country}/music/most-played/${size}/songs.json`;
 /** big music markets whose charts make up "world" */
 export const WORLD_COUNTRIES = ["us", "gb", "de", "fr", "br", "mx", "jp", "kr", "es", "it"];
 const SNAPSHOT_KEY = (region: ChartRegion) => `lane_chart_snapshots_${region}_v2`;
@@ -114,21 +117,23 @@ function songOf(r: FeedResult): ChartSong | null {
 
 export async function fetchFeed(country: string, size: number, signal?: AbortSignal): Promise<ChartSong[]> {
   let lastError: unknown = new Error(`chart feed ${country} failed`);
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const res = await fetch(FEED(country, size), { signal, headers: { accept: "application/json" }, cache: "no-store" });
-      if (!res.ok) throw new Error(`chart feed ${country} failed (${res.status})`);
-      const data = (await res.json()) as { feed?: { results?: FeedResult[] } };
-      const songs = (data.feed?.results ?? []).flatMap((r) => {
-        const s = songOf(r);
-        return s ? [s] : [];
-      });
-      if (songs.length > 0) return songs;
-      throw new Error(`chart feed ${country} returned no songs`);
-    } catch (error) {
-      lastError = error;
-      if (signal?.aborted || attempt === 2) break;
-      await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+  for (const host of FEED_HOSTS) {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const res = await fetch(FEED(host, country, size), { signal, headers: { accept: "application/json" }, cache: "no-store" });
+        if (!res.ok) throw new Error(`chart feed ${country} failed (${res.status})`);
+        const data = (await res.json()) as { feed?: { results?: FeedResult[] } };
+        const songs = (data.feed?.results ?? []).flatMap((r) => {
+          const s = songOf(r);
+          return s ? [s] : [];
+        });
+        if (songs.length > 0) return songs;
+        throw new Error(`chart feed ${country} returned no songs`);
+      } catch (error) {
+        lastError = error;
+        if (signal?.aborted) throw error;
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
     }
   }
   throw lastError;
