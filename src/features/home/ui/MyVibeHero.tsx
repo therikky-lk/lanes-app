@@ -668,9 +668,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_language")}</p>
             {/* one switch for the language (tap the picked one again to clear it),
                 and "no vocals" on its own */}
-            <div className="flex flex-wrap items-center gap-[8px]">
+            <div className="flex flex-nowrap items-center gap-[6px]">
               {/* library-style switch, flags only, with dividers */}
-              <div className="inline-flex items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+              <div className="inline-flex shrink-0 items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
                 {(["russian", "ukrainian", "english"] as const).map((l, i) => {
                   const on = settings.language === l;
                   return (
@@ -690,7 +690,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                         title={label.language(l)}
                         aria-label={label.language(l)}
                         onClick={() => toggle("language", l)}
-                        className="relative inline-flex h-[36px] min-w-[76px] items-center justify-center rounded-lg border-0 bg-transparent px-[22px] cursor-pointer select-none active:scale-[0.97]"
+                        className="relative inline-flex h-[36px] min-w-[64px] items-center justify-center rounded-lg border-0 bg-transparent px-[12px] cursor-pointer select-none active:scale-[0.97]"
                       >
                         {on && (
                           <motion.span
@@ -714,7 +714,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 title={label.language("instrumental")}
                 aria-label={label.language("instrumental")}
                 onClick={() => toggle("language", "instrumental")}
-                className={`inline-flex h-[44px] w-[52px] items-center justify-center rounded-xl border-0 cursor-pointer transition-colors active:scale-[0.97] ${
+                className={`inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl border-0 cursor-pointer transition-colors active:scale-[0.97] ${
                   settings.language === "instrumental"
                     ? "bg-white text-black"
                     : "bg-bg-elevated text-text-secondary hover:text-text-primary"
@@ -728,7 +728,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 title="мьюс"
                 aria-label="мьюс"
                 onClick={() => window.open("https://t.me/justchannelor", "_blank", "noopener,noreferrer")}
-                className="inline-flex h-[44px] w-[52px] items-center justify-center rounded-xl border-0 bg-bg-elevated text-text-secondary hover:text-text-primary cursor-pointer transition-colors active:scale-[0.97]"
+                className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl border-0 bg-bg-elevated text-text-secondary hover:text-text-primary cursor-pointer transition-colors active:scale-[0.97]"
               >
                 <PawFill size={21} />
               </button>
