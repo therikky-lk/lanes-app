@@ -12,7 +12,7 @@
 
 </details>
 
-<details open>
+<details>
 <summary><strong>1.6.4</strong> — обновления и мобильный интерфейс</summary>
 
 - Исправлена проверка обновлений на Linux: в релиз загружается `latest-linux.yml`.
@@ -24,7 +24,7 @@
 
 </details>
 
-<details open>
+<details>
 <summary><strong>1.6.3</strong> — миксы и лайки</summary>
 
 - Карточки миксов уменьшены и приведены к компактному виду.
