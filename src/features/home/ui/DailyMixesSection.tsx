@@ -119,11 +119,6 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
     }, 200);
   };
 
-  const subtitleText =
-    (mix.clusterArtists && mix.clusterArtists.length > 0
-      ? mix.clusterArtists.join(", ")
-      : mix.description) || "";
-
   const mixLabel = t("home.mix_label") || "Mix";
   const [gradientFrom, gradientTo] = MIX_COLORS[((mix.mixIndex ?? 1) - 1) % MIX_COLORS.length];
 
@@ -159,11 +154,6 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             background: `linear-gradient(180deg, rgba(0,0,0,0.04) 20%, transparent 43%, rgba(0,0,0,0.18) 62%, ${gradientFrom}c7 100%)`,
           }}
         />
-        {mix.mixIndex && (
-          <div className="pointer-events-none absolute left-[8px] top-[8px] z-10 rounded-[7px] border border-white/20 bg-black/45 px-[7px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
-            {mixLabel} {String(mix.mixIndex).padStart(2, "0")}
-          </div>
-        )}
         <div className="pointer-events-none absolute inset-x-[10px] bottom-[9px] z-10 flex items-end justify-between gap-2">
           <div className="min-w-0 truncate text-[13px] font-semibold leading-tight text-white [text-shadow:0_1px_5px_rgba(0,0,0,0.65)]">
             {mix.title}
@@ -172,11 +162,6 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             <PlayFill size={13} />
           </div>
         </div>
-      </div>
-
-      <div className="mt-[7px] min-w-0 px-[2px]">
-        <div className="mb-[5px] h-[2px] w-[34px] rounded-full" style={{ background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }} />
-        <div className="truncate text-[11px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
       </div>
 
       {menuItems.length > 0 && (
