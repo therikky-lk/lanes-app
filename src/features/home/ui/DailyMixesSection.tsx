@@ -134,7 +134,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onContextMenu={handleContextMenu}
     >
       <div
-        className="relative aspect-[1.6] w-full overflow-hidden rounded-[12px] border border-white/10 bg-border-alpha-14"
+        className="relative aspect-square w-full overflow-hidden rounded-[12px] border border-white/10 bg-border-alpha-14"
         style={{
           boxShadow: "0 6px 16px rgba(0,0,0,0.16)",
         }}
