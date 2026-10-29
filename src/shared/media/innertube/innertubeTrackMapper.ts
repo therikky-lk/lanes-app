@@ -1,7 +1,7 @@
 import type { Track, TrackArtist } from "@/shared/contracts";
 import { asArray, asRecord, type JsonRecord } from "@/shared/utils/json";
 import { getRuns, getText, runsToAlbum, runsToArtists } from "./innertubeJson";
-import { coverFromThumbnail, videoThumbnailCover } from "./innertubeThumbnail";
+import { coverFromThumbnail } from "./innertubeThumbnail";
 
 export function hasExplicitBadge(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(hasExplicitBadge);
@@ -128,7 +128,7 @@ export function mapInnertubeTrack(raw: unknown, fallbackArtists: TrackArtist[] =
     artists,
     album: runsToAlbum(metadataRuns),
     durationMs: durationFromRuns([...metadataRuns, ...fixedRuns(renderer)]),
-    cover: coverFromThumbnail(renderer.thumbnail) ?? videoThumbnailCover(id),
+    cover: coverFromThumbnail(renderer.thumbnail),
     explicit: hasExplicitBadge(renderer),
   };
 }

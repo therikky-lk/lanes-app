@@ -1,5 +1,4 @@
 import type { ImportResult, ImportReview, ImportSource, Track } from "@/shared/contracts";
-import { videoThumbnailCover } from "@/shared/media/innertube";
 import { parseImportSource, type ClientImportedPlaylist, type ClientImportedTrack } from "../index";
 import { findCatalogMatch } from "@/shared/media/matching";
 
@@ -41,11 +40,7 @@ function canonicalTrack(source: ImportSource, track: ClientImportedTrack): Track
     artists: track.artists.map((name, index) => ({ id: track.artistIds?.[index] ?? "unknown", name })),
     ...(track.album ? { album: { id: track.albumId || `sc_rel_${track.sourceId}`, title: track.album } } : {}),
     durationMs: track.durationMs ?? 0,
-    ...(track.coverUrl
-      ? { cover: { url: track.coverUrl, width: 480, height: 360 } }
-      : source === "soundcloud"
-        ? {}
-        : { cover: videoThumbnailCover(track.sourceId) }),
+    ...(track.coverUrl ? { cover: { url: track.coverUrl, width: 480, height: 360 } } : {}),
   };
 }
 
