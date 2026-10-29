@@ -833,6 +833,7 @@
       "badge_private": "Privé"
     },
     "about": {
+      "update_app": "Mettre à jour l’application",
       "all_releases": "Toutes les versions",
       "liner": "Lane",
       "telegram": "Chaîne",

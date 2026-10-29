@@ -831,6 +831,7 @@
       "badge_private": "Privato"
     },
     "about": {
+      "update_app": "Aggiorna app",
       "all_releases": "Tutte le versioni",
       "liner": "Lane",
       "telegram": "Canale",
