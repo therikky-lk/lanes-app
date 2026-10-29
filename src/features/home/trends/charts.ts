@@ -113,13 +113,25 @@ function songOf(r: FeedResult): ChartSong | null {
 }
 
 export async function fetchFeed(country: string, size: number, signal?: AbortSignal): Promise<ChartSong[]> {
-  const res = await fetch(FEED(country, size), { signal, headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error(`chart feed ${country} failed (${res.status})`);
-  const data = (await res.json()) as { feed?: { results?: FeedResult[] } };
-  return (data.feed?.results ?? []).flatMap((r) => {
-    const s = songOf(r);
-    return s ? [s] : [];
-  });
+  let lastError: unknown = new Error(`chart feed ${country} failed`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetch(FEED(country, size), { signal, headers: { accept: "application/json" }, cache: "no-store" });
+      if (!res.ok) throw new Error(`chart feed ${country} failed (${res.status})`);
+      const data = (await res.json()) as { feed?: { results?: FeedResult[] } };
+      const songs = (data.feed?.results ?? []).flatMap((r) => {
+        const s = songOf(r);
+        return s ? [s] : [];
+      });
+      if (songs.length > 0) return songs;
+      throw new Error(`chart feed ${country} returned no songs`);
+    } catch (error) {
+      lastError = error;
+      if (signal?.aborted || attempt === 2) break;
+      await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 const songKey = (s: ChartSong) => `${s.artist}|${s.title}`.toLowerCase().replace(/\s+/g, " ").trim();
@@ -215,11 +227,21 @@ export function loadChart(region: ChartRegion): Promise<ChartEntry[]> {
   let run = inflight.get(region);
   if (!run) {
     run = (async () => {
-      const songs = await loadSongs(region);
-      if (songs.length === 0) throw new Error("chart is empty");
-      const entries = withMovement(region, songs).map((e) => ({ ...e, track: knownMatch(e.song) ?? undefined }));
-      cache.set(region, { at: Date.now(), entries });
-      return entries;
+      let lastError: unknown = new Error("chart is empty");
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const songs = await loadSongs(region);
+          if (songs.length === 0) throw new Error("chart is empty");
+          const entries = withMovement(region, songs).map((e) => ({ ...e, track: knownMatch(e.song) ?? undefined }));
+          cache.set(region, { at: Date.now(), entries });
+          return entries;
+        } catch (error) {
+          lastError = error;
+          if (attempt === 1) break;
+          await new Promise((resolve) => window.setTimeout(resolve, 400));
+        }
+      }
+      throw lastError;
     })().finally(() => inflight.delete(region));
     inflight.set(region, run);
   }

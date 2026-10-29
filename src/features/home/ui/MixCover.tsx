@@ -83,9 +83,6 @@ export default function MixCover({ index, covers, label, sizes = "165px", classN
           <div className="pointer-events-none absolute -left-[6%] top-[26%] h-[82%] w-[82%] rounded-[44%] border-[clamp(6px,1.2cqw,15px)] border-white/50 rotate-[-24deg]" />
         </>
       )}
-      <div className="pointer-events-none absolute left-[9%] top-[9%] flex h-[clamp(30px,14cqw,72px)] w-[clamp(30px,14cqw,72px)] items-center justify-center rounded-full bg-white/70 text-[clamp(16px,7cqw,38px)] text-[#5368bf] shadow-sm">
-        <span className="leading-none">✦</span>
-      </div>
       {showBadge && (
         <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-[#304caf]">
           <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none">
