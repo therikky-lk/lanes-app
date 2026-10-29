@@ -459,6 +459,10 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-right: 8px !important;
 }
 .lane-mobile body { padding: 0 !important; }
+/* Keep the complete user wallpaper visible on phones. Desktop still fills the
+   frame, while mobile uses the available black space instead of cropping the
+   artwork's top or bottom. */
+.lane-mobile .lane-wallpaper { object-fit: contain !important; background: #000; }
 /* no hover on touch screens: keep hover-only controls reachable */
 .lane-mobile .group:active .group-hover\:opacity-100 { opacity: 1; }
 

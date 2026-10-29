@@ -20,8 +20,11 @@ const optimisticTracks = new Map<string, Track>();
 /** when each override was set: a reload that started earlier can't know about it */
 const overrideAt = new Map<string, number>();
 let reloadQueued = false;
-const LIKE_SYNC_MIN_AGE_MS = 12_000;
-const LIKE_SYNC_POLL_MS = 5_000;
+// A like click is optimistic and updates the UI immediately. Background
+// refreshes should not be frequent enough to replace that state with a
+// temporarily stale server snapshot while the request is settling.
+const LIKE_SYNC_MIN_AGE_MS = 45_000;
+const LIKE_SYNC_POLL_MS = 15_000;
 
 // liked uploads live on this device and are shown first
 let localLiked: Track[] = [];
@@ -201,8 +204,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("library:changed", handleRefresh);
   window.addEventListener("auth:changed", handleRefresh);
 
-  // Likes made on another device: refresh immediately when this app returns
-  // to the foreground, then poll while it remains visible.
+  // Likes made on another device: refresh when this app returns to the
+  // foreground if the snapshot is stale, then poll while it remains visible.
   let lastRefresh = Date.now();
   const refreshIfStale = (minAgeMs: number) => {
     if (!loaded || document.visibilityState !== "visible" || Date.now() - lastRefresh < minAgeMs) return;
@@ -210,11 +213,7 @@ if (typeof window !== "undefined") {
     void load(true);
   };
   window.addEventListener("library:changed", () => (lastRefresh = Date.now()));
-  const refreshOnReturn = () => {
-    if (document.visibilityState !== "visible") return;
-    lastRefresh = Date.now();
-    void load(true);
-  };
+  const refreshOnReturn = () => refreshIfStale(LIKE_SYNC_MIN_AGE_MS);
   window.addEventListener("focus", refreshOnReturn);
   document.addEventListener("visibilitychange", refreshOnReturn);
   setInterval(() => refreshIfStale(LIKE_SYNC_MIN_AGE_MS), LIKE_SYNC_POLL_MS);
