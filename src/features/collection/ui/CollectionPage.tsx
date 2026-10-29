@@ -625,6 +625,7 @@ function CollectionContent() {
                       durationMs={track.durationMs}
                       explicit={track.explicit}
                       isCurrent={currentTrackId === track.id}
+                      showLikeButton={isDailyMix}
                       onPlay={() =>
                         playerEngine.playTrack(
                           track,
