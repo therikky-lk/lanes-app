@@ -60,17 +60,6 @@ export default function MobileMiniPlayer() {
       </div>
       <button
         type="button"
-        aria-label="Previous track"
-        onClick={(e) => {
-          e.stopPropagation();
-          void playerEngine.skipPrevious();
-        }}
-        className="inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
-      >
-        <SkipPrevious size={22} weight="Bold" />
-      </button>
-      <button
-        type="button"
         aria-label={isLiked ? t("common.unlike") : t("common.like")}
         aria-pressed={isLiked}
         onClick={(e) => {
@@ -82,6 +71,17 @@ export default function MobileMiniPlayer() {
         }`}
       >
         {isLiked ? <HeartFill size={21} /> : <HeartLine size={21} />}
+      </button>
+      <button
+        type="button"
+        aria-label="Previous track"
+        onClick={(e) => {
+          e.stopPropagation();
+          void playerEngine.skipPrevious();
+        }}
+        className="inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+      >
+        <SkipPrevious size={22} weight="Bold" />
       </button>
       <button
         type="button"

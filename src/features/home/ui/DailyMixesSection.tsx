@@ -116,7 +116,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
 
   return (
     <div
-      className="group flex-shrink-0 w-[282px] cursor-pointer select-none"
+      className="group flex-shrink-0 w-[min(220px,64vw)] cursor-pointer select-none"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onMouseEnter={() => setIsCardHovered(true)}
@@ -156,8 +156,8 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
           </button>
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pt-16 text-white">
-          <div className="truncate text-[21px] font-bold leading-tight tracking-[-0.02em]" title={mix.title}>{mix.title}</div>
-          <div className="mt-1 truncate text-[13px] text-white/65" title={subtitleText}>{subtitleText || mix.description}</div>
+          <div className="truncate text-[17px] font-bold leading-tight tracking-[-0.02em]" title={mix.title}>{mix.title}</div>
+          <div className="mt-1 truncate text-[11px] text-white/65" title={subtitleText}>{subtitleText || mix.description}</div>
         </div>
       </div>
 
@@ -203,7 +203,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixes
       </div>
 
       {/* room above and below so the playing mix's ring isn't clipped by the scroller */}
-      <ScrollableRow className="flex gap-[22px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[8px] pb-[12px]">
+      <ScrollableRow className="flex gap-[16px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[8px] pb-[12px]">
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
