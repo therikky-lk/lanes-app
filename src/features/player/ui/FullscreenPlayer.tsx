@@ -451,8 +451,20 @@ export function FullscreenPlayer({
           }`}
         >
           {showProviderIsland && (
-            <div className="absolute top-[12px] left-1/2 -translate-x-1/2 z-30 pointer-events-none flex justify-center">
+            <div className="absolute top-[12px] left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center justify-center gap-[8px]">
               <LyricsProviderIsland />
+              {isMobile && hasLyrics && (
+                <button
+                  type="button"
+                  onClick={() => setCustomLyricsOpen(true)}
+                  title={t("player.custom_lyrics_edit") || "Edit lyrics"}
+                  aria-label={t("player.custom_lyrics_edit") || "Edit lyrics"}
+                  data-no-window-drag
+                  className="pointer-events-auto inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 text-white/70 cursor-pointer"
+                >
+                  <Edit2Line size={16} />
+                </button>
+              )}
             </div>
           )}
 
@@ -559,7 +571,7 @@ export function FullscreenPlayer({
         </div>
       </div>
 
-      {hasLyrics && (
+      {hasLyrics && !isMobile && (
         <button
           type="button"
           onClick={() => setCustomLyricsOpen(true)}

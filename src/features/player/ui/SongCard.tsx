@@ -197,7 +197,7 @@ function SongCard({
       role={onPlay ? "button" : undefined}
       tabIndex={onPlay ? 0 : undefined}
     >
-      <div className={`flex items-center ${gapClass} min-w-0 ${albumTitle !== undefined ? "flex-1" : ""}`}>
+      <div className={`flex flex-1 items-center ${gapClass} min-w-0`}>
         {rowNumber !== undefined && (
           <div
             className={`w-[26px] shrink-0 text-right tabular-nums text-[14px] ${isCurrent ? "text-accent-primary" : "text-text-tertiary"}`}
@@ -301,7 +301,7 @@ function SongCard({
         </div>
       )}
 
-      <div className="flex items-center shrink-0 ml-[16px] gap-[16px]">
+      <div className={`flex items-center shrink-0 ml-auto gap-[16px] justify-end ${onToggleLike ? "w-[116px]" : ""}`}>
         {releaseDate && (
           <span
             className="text-[14px] text-text-tertiary"
