@@ -55,6 +55,38 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(null);
 
+  const compareVersions = (a: string, b: string) => {
+    const left = a.replace(/^v/i, "").split(".").map(Number);
+    const right = b.replace(/^v/i, "").split(".").map(Number);
+    for (let i = 0; i < 3; i += 1) {
+      const delta = (left[i] || 0) - (right[i] || 0);
+      if (delta !== 0) return delta;
+    }
+    return 0;
+  };
+
+  const checkAndroidRelease = async (): Promise<boolean> => {
+    const response = await fetch("https://api.github.com/repos/therikky-lk/lanes-app/releases/tags/releases", {
+      cache: "no-store",
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok) throw new Error(`GitHub release check failed (${response.status})`);
+    const release = (await response.json()) as {
+      tag_name?: string;
+      name?: string;
+      assets?: Array<{ name?: string; browser_download_url?: string }>;
+    };
+    const latest = (release.name?.match(/(\d+\.\d+\.\d+)/)?.[1] || release.tag_name || "").replace(/^v/i, "");
+    const apk = release.assets?.find((asset) => asset.name?.toLowerCase() === "lane-latest.apk") ||
+      release.assets?.find((asset) => asset.name?.toLowerCase().endsWith(".apk"));
+    if (latest && compareVersions(latest, appVersion) > 0 && apk?.browser_download_url) {
+      window.open(apk.browser_download_url, "_blank");
+      toast(`Доступна версия v${latest}. Открываю загрузку APK`, "checkmark");
+      return true;
+    }
+    return false;
+  };
+
   useEffect(() => {
     // dynamically query electron runtime version & bundle status
     if (window.linerElectron) {
@@ -88,6 +120,11 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
     if (checkingUpdate) return;
     setCheckingUpdate(true);
     try {
+      if (isNativeApp() && !window.linerElectron) {
+        const opened = await checkAndroidRelease();
+        if (!opened) toast(t("settings.about.latest_version_toast", { version: appVersion }), "info");
+        return;
+      }
       await useUpdaterStore.getState().checkForUpdates();
       const status = useUpdaterStore.getState().status;
       const updateInfo = useUpdaterStore.getState().updateInfo;
