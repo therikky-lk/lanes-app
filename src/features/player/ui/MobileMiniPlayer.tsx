@@ -1,11 +1,14 @@
 import { useConnectStore } from "@/features/connect/connectService";
 import { useTranslation } from "@/languages";
 import { SkipNext, SkipPrevious } from "@solar-icons/react";
+import { HeartFill, HeartLine } from "@mingcute/react";
+import { useCallback, useRef } from "react";
 import { usePlayerState } from "../hooks/usePlayerState";
 import { usePlayerStore } from "../store/playerStore";
 import { playerEngine } from "../engine/playerEngine";
 import { PlayPauseIcon } from "./PlayerUiElements";
 import CoverImage from "@/features/covers/ui/CoverImage";
+import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 
 /** phone mini player: cover, title, play/pause and next; tap opens the full player */
 export default function MobileMiniPlayer() {
@@ -14,6 +17,24 @@ export default function MobileMiniPlayer() {
   const track = player.currentTrack;
   const { t } = useTranslation();
   const remoteName = useConnectStore((s) => (s.followingId ? s.devices[s.followingId]?.name ?? "…" : null));
+  const isLiked = useIsTrackLiked(track?.id);
+  const likeMutation = useLikeTrack();
+  const unlikeMutation = useUnlikeTrack();
+  const togglingRef = useRef(false);
+
+  const handleLikeToggle = useCallback(() => {
+    if (!track || togglingRef.current) return;
+    togglingRef.current = true;
+    const onSettled = () => {
+      togglingRef.current = false;
+    };
+    if (isLiked) {
+      unlikeMutation.mutate(track.id, { onSettled });
+    } else {
+      likeMutation.mutate(track.id, { onSettled });
+    }
+  }, [track, isLiked, likeMutation, unlikeMutation]);
+
   if (!track) return null;
   const progress = player.durationMs > 0 ? Math.min(1, player.positionMs / player.durationMs) : 0;
 
@@ -47,6 +68,20 @@ export default function MobileMiniPlayer() {
         className="inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
       >
         <SkipPrevious size={22} weight="Bold" />
+      </button>
+      <button
+        type="button"
+        aria-label={isLiked ? t("common.unlike") : t("common.like")}
+        aria-pressed={isLiked}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleLikeToggle();
+        }}
+        className={`inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent cursor-pointer transition-colors duration-150 ${
+          isLiked ? "text-[#ff3b5c]" : "text-text-primary"
+        }`}
+      >
+        {isLiked ? <HeartFill size={21} /> : <HeartLine size={21} />}
       </button>
       <button
         type="button"
