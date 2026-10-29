@@ -426,7 +426,7 @@ export function FullscreenPlayer({
         />
         {kawarpSrc && !kawarpShown && (
           <div
-            className="absolute inset-0 bg-cover bg-center filter blur-3xl scale-110 opacity-70 pointer-events-none"
+            className="absolute inset-0 bg-cover bg-center filter blur-xl scale-105 opacity-50 pointer-events-none"
             style={{ backgroundImage: `url(${kawarpSrc})` }}
           />
         )}
@@ -450,17 +450,17 @@ export function FullscreenPlayer({
             isMobile && !mobileLyrics ? "hidden" : ""
           }`}
         >
-          {showProviderIsland && (
+          {(showProviderIsland || hasLyrics) && (
             <div className="absolute top-[12px] left-1/2 -translate-x-1/2 z-30 pointer-events-none flex items-center justify-center gap-[8px]">
-              <LyricsProviderIsland />
-              {isMobile && hasLyrics && (
+              {showProviderIsland && <LyricsProviderIsland />}
+              {hasLyrics && (
                 <button
                   type="button"
                   onClick={() => setCustomLyricsOpen(true)}
                   title={t("player.custom_lyrics_edit") || "Edit lyrics"}
                   aria-label={t("player.custom_lyrics_edit") || "Edit lyrics"}
                   data-no-window-drag
-                  className="pointer-events-auto inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 text-white/70 cursor-pointer"
+                  className="pointer-events-auto inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 text-white/70 backdrop-blur-md cursor-pointer"
                 >
                   <Edit2Line size={16} />
                 </button>
@@ -570,20 +570,6 @@ export function FullscreenPlayer({
           </AnimatePresence>
         </div>
       </div>
-
-      {hasLyrics && !isMobile && (
-        <button
-          type="button"
-          onClick={() => setCustomLyricsOpen(true)}
-          title={t("player.custom_lyrics_edit") || "Edit lyrics"}
-          aria-label={t("player.custom_lyrics_edit") || "Edit lyrics"}
-          data-no-window-drag
-          className="absolute bottom-[16px] right-[16px] z-30 inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/40 backdrop-blur-xl text-white/60 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer"
-        >
-          <Edit2Line size={16} />
-        </button>
-      )}
-
 
       <CustomLyricsDialog
         open={customLyricsOpen}
