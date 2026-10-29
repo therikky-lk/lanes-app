@@ -486,13 +486,13 @@ export class DiscordRpcManager {
         activity.smallImageText = sanitizeText(track.artist) || "Artist";
       }
 
-      // Action buttons linking to song or tryliner.fun (Discord allows up to 2 buttons)
+      // Action buttons linking to the author's GitHub repository.
       const buttons: Array<{ label: string; url: string }> = [];
 
       if (this.settings.showButton && track.id) {
         buttons.push({
-          label: "Listen on Lane",
-          url: `https://link.tryliner.fun/track?id=${encodeURIComponent(track.id)}`,
+          label: "Lane on GitHub",
+          url: "https://github.com/therikky-lk/lanes-app",
         });
       }
 
