@@ -116,6 +116,7 @@ const TrackItem = memo(function TrackItem({
         playlistId={playlistId}
         playlistItemId={track.playlistItemId}
         playlistTitle={playlistTitle}
+        showLikeButton={Boolean(playlistId)}
         showReorderHandle={showReorderHandle}
         onGrabStart={onGrabStart}
         highlight={highlight}
@@ -1095,6 +1096,7 @@ function LibraryPlaylistContent() {
                       isCurrent={currentTrackId === track.id}
                       playlistId={isLikesMode ? undefined : (decodedId ?? undefined)}
                       playlistTitle={viewData.title}
+                      showLikeButton={!isLikesMode}
                       onPlay={() =>
                         track.onlyOnDevice
                           ? toast(t("local.only_on_device_toast", { device: track.onlyOnDevice }), "info", {

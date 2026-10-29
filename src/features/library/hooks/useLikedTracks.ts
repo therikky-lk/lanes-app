@@ -20,6 +20,8 @@ const optimisticTracks = new Map<string, Track>();
 /** when each override was set: a reload that started earlier can't know about it */
 const overrideAt = new Map<string, number>();
 let reloadQueued = false;
+const LIKE_SYNC_MIN_AGE_MS = 12_000;
+const LIKE_SYNC_POLL_MS = 5_000;
 
 // liked uploads live on this device and are shown first
 let localLiked: Track[] = [];
@@ -199,8 +201,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("library:changed", handleRefresh);
   window.addEventListener("auth:changed", handleRefresh);
 
-  // likes made on another device: pick them up when the app comes back to the
-  // front and every couple of minutes while it's in use
+  // Likes made on another device: refresh immediately when this app returns
+  // to the foreground, then poll while it remains visible.
   let lastRefresh = Date.now();
   const refreshIfStale = (minAgeMs: number) => {
     if (!loaded || document.visibilityState !== "visible" || Date.now() - lastRefresh < minAgeMs) return;
@@ -208,9 +210,14 @@ if (typeof window !== "undefined") {
     void load(true);
   };
   window.addEventListener("library:changed", () => (lastRefresh = Date.now()));
-  window.addEventListener("focus", () => refreshIfStale(15_000));
-  document.addEventListener("visibilitychange", () => refreshIfStale(15_000));
-  setInterval(() => refreshIfStale(45_000), 15_000);
+  const refreshOnReturn = () => {
+    if (document.visibilityState !== "visible") return;
+    lastRefresh = Date.now();
+    void load(true);
+  };
+  window.addEventListener("focus", refreshOnReturn);
+  document.addEventListener("visibilitychange", refreshOnReturn);
+  setInterval(() => refreshIfStale(LIKE_SYNC_MIN_AGE_MS), LIKE_SYNC_POLL_MS);
 }
 
 export function useLikedTracks(_params?: { limit?: number; offset?: number }) {

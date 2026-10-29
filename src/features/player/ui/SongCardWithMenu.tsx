@@ -1,10 +1,11 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import SongCard from "./SongCard";
 import { useSongMenuItems } from "../hooks/useSongMenuItems";
 import { playerEngine } from "../engine/playerEngine";
 import { usePlayerStore } from "../store/playerStore";
 import { useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
+import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 
 import type { TrackArtist } from "@/shared/types";
 
@@ -40,6 +41,8 @@ export interface SongCardWithMenuProps {
   highlight?: string;
   /** greyed-out row that can't be played here, with the reason */
   unavailableNote?: string;
+  /** show a direct like button next to the track duration */
+  showLikeButton?: boolean;
 }
 
 function SongCardWithMenu({
@@ -73,6 +76,7 @@ function SongCardWithMenu({
   onGrabStart,
   highlight,
   unavailableNote,
+  showLikeButton = false,
 }: SongCardWithMenuProps) {
   const resolvedDurationMs = useMemo(() => {
     if (durationMs !== undefined) return durationMs;
@@ -109,6 +113,10 @@ function SongCardWithMenu({
 
   const { t } = useTranslation();
   const { toast } = useToast();
+  const isLiked = useIsTrackLiked(id);
+  const likeMutation = useLikeTrack();
+  const unlikeMutation = useUnlikeTrack();
+  const togglingLikeRef = useRef(false);
   const trackDoubleClickBehavior = usePlayerStore(
     (state) => state.trackDoubleClickBehavior,
   );
@@ -141,6 +149,25 @@ function SongCardWithMenu({
     toast,
     t,
   ]);
+
+  const handleLikeToggle = useCallback(() => {
+    if (!id || togglingLikeRef.current) return;
+    togglingLikeRef.current = true;
+    const onSettled = () => {
+      togglingLikeRef.current = false;
+    };
+    if (isLiked) {
+      unlikeMutation.mutate(id, { onSettled });
+    } else {
+      likeMutation.mutate(
+        {
+          trackId: id,
+          track: { id, title, artists, coverUrl, durationMs: resolvedDurationMs, playCount: 0 },
+        },
+        { onSettled },
+      );
+    }
+  }, [id, isLiked, unlikeMutation, likeMutation, title, artists, coverUrl, resolvedDurationMs]);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -191,6 +218,8 @@ function SongCardWithMenu({
       showReorderHandle={showReorderHandle}
       onGrabStart={onGrabStart}
       unavailableNote={unavailableNote}
+      liked={showLikeButton ? isLiked : undefined}
+      onToggleLike={showLikeButton ? handleLikeToggle : undefined}
     />
   );
 }
