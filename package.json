@@ -30,7 +30,14 @@
     "productName": "Lane",
     "executableName": "lane",
     "artifactName": "Lane-${version}-${arch}.${ext}",
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "therikky-lk",
+        "repo": "lanes-app",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "output": "release"
     },

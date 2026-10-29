@@ -15,7 +15,6 @@ import {
   MusicLine,
   CheckLine,
   ArrowLeftLine,
-  ShareForwardLine,
   Search2Line,
   PicLine,
   GridLine,
@@ -29,7 +28,6 @@ import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { readCoverMarker, stripCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
 import { getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
-import { buildShareUrl } from "@/shared/utils/share";
 import Button from "@/shared/ui/Button";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
@@ -366,16 +364,6 @@ function LibraryPlaylistContent() {
     }, 1200);
     return () => clearTimeout(timer);
   }, [playableTracks, viewData, toast, t]);
-
-  const handleShare = useCallback(() => {
-    if (typeof navigator !== "undefined" && navigator.clipboard && decodedId) {
-      navigator.clipboard.writeText(buildShareUrl("playlist", decodedId));
-      void api.updatePlaylist(decodedId, { isPublic: true }).catch(() => {});
-      toast(t("common.link_copied"), "checkmark", {
-        description: viewData?.title || undefined,
-      });
-    }
-  }, [decodedId, viewData?.title, toast, t]);
 
   const handleReorderCommit = useCallback(
     (fromIndex: number, toIndex: number, movingTrack: Track) => {
@@ -990,12 +978,6 @@ function LibraryPlaylistContent() {
                                     },
                                   ]
                                 : []),
-                              {
-                                id: "share",
-                                icon: <ShareForwardLine size={15} />,
-                                label: t("common.share"),
-                                onClick: handleShare,
-                              },
                               {
                                 id: "delete",
                                 icon: <LuTrash2 size={15} />,

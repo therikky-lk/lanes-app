@@ -9,8 +9,6 @@ import { EyeLine, EyeCloseLine, ArrowLeftLine } from "@mingcute/react";
 import WindowControls from "@/features/navigation/ui/WindowControls";
 import { useWindowState } from "@/features/navigation/hooks/useWindowState";
 import logo from "@/assets/logo.svg";
-import cloudsBanner from "@/assets/wallhaven-5g1yz8.jpg";
-import CircleDitherCanvas from "@/shared/ui/CircleDitherCanvas";
 import AppImage from "@/features/covers/ui/AppImage";
 import {
   authErrorMessage,
@@ -179,27 +177,27 @@ export default function LoginPage() {
     <main
       className={`relative flex h-full w-full items-center justify-center overflow-hidden ${frameShape} ${
         isEdgeToEdge ? "border-0" : "border border-border-primary"
-      } bg-bg-primary`}
+      } bg-[#050505]`}
     >
-      <div className={`absolute inset-0 z-0 select-none overflow-hidden ${frameShape}`}>
-        <CircleDitherCanvas
-          src={cloudsBanner}
-          alt="Clouds Dither Background"
-          dotSize={7}
-          gap={0.5}
-          edgePadding={1.5}
-          cornerRadius={12}
-          gridType="square"
-          objectFit="cover"
-          className={`h-full w-full ${frameShape} overflow-hidden`}
-        />
-      </div>
-
       {!isNativeApp() && <WindowControls variant="glass" />}
 
-      {/* Centered solid panel in new app style — bg stays visible around it */}
-      <section className="relative z-10 mx-4 my-auto flex max-h-[calc(100%-48px)] w-full max-w-[400px] flex-col overflow-y-auto rounded-xl border border-border-primary bg-bg-panel p-[28px]">
-        <div className="flex min-h-full w-full flex-col justify-between">
+      <section className="relative z-10 mx-4 my-auto grid max-h-[calc(100%-48px)] w-full max-w-[860px] overflow-y-auto rounded-xl border border-white/10 bg-[#080808] md:grid-cols-[0.9fr_1.1fr]">
+        <aside className="hidden min-h-[490px] flex-col items-center justify-center border-r border-white/10 px-10 text-center md:flex">
+          <AppImage
+            src={logo}
+            alt="Lane"
+            width={92}
+            height={108}
+            className="theme-logo h-[92px] w-auto"
+            priority
+          />
+          <span className="mt-6 text-[27px] font-[500] tracking-[0.42em] text-white">Lane</span>
+          <p className="mt-3 max-w-[220px] text-[13px] leading-[1.45] text-white/65">
+            {t("login.auth_subtitle_login")}
+          </p>
+        </aside>
+
+        <div className="flex min-h-full w-full flex-col justify-between p-[28px] md:p-[48px]">
           {/* Top: logo + lang picker */}
           <div className="flex shrink-0 items-center gap-[10px]">
             <AppImage
@@ -622,28 +620,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Bottom: legal warning */}
-          <p className="m-0 shrink-0 text-center text-[11px] leading-[1.5] text-text-tertiary">
-            {t("login.legal")}{" "}
-            <a
-              href="https://tryliner.fun/terms"
-              target="_blank"
-              rel="noreferrer"
-              className="text-text-secondary underline underline-offset-2 hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-primary rounded-xs transition-colors"
-            >
-              {t("login.legal_tos")}
-            </a>{" "}
-            {t("login.legal_and")}{" "}
-            <a
-              href="https://tryliner.fun/privacy"
-              target="_blank"
-              rel="noreferrer"
-              className="text-text-secondary underline underline-offset-2 hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-primary rounded-xs transition-colors"
-            >
-              {t("login.legal_pp")}
-            </a>
-            .
-          </p>
         </div>
       </section>
     </main>

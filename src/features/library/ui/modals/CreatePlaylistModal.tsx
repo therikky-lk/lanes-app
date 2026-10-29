@@ -14,7 +14,7 @@ import { resolveApiErrorMessage } from "@/shared/api";
 
 type Tab = "create" | "import";
 
-const TITLE_MAX = 20;
+const TITLE_MAX = 50;
 
 // mirrors backend detectImportSource, labels only
 function detectSourceLabel(raw: string): string | null {
