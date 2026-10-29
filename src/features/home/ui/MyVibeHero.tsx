@@ -188,9 +188,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     // weak phones (Helio G99…): the same picture drawn at ~24 fps, with
     // fewer curve points / gradient stops (the layers are blurred anyway)
     const weak = isLowEndDevice();
-    const frameMs = weak ? 41 : lite ? 32 : 0;
-    const curvePoints = weak ? 48 : 72;
-    const gradientStops = weak ? 18 : 36;
+    const frameMs = weak ? 50 : lite ? 33 : 0;
+    const curvePoints = weak ? 32 : lite ? 40 : 72;
+    const gradientStops = weak ? 10 : lite ? 14 : 36;
     const tracker = new BeatTracker();
     let palette: VibePalette = live.current.target;
     let raf = 0;
@@ -209,9 +209,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       w = rect.width;
       h = rect.height;
       // the glow and bloom layers are blurred by CSS: they need fewer pixels
-      glowScale = lite ? 0.5 : 0.75;
-      bloomScale = lite ? 0.5 : 0.6;
-      silkScale = Math.min(weak ? 1.5 : lite ? 2 : 2.5, window.devicePixelRatio || 1);
+      glowScale = lite ? 0.35 : 0.75;
+      bloomScale = lite ? 0.35 : 0.6;
+      silkScale = Math.min(weak ? 1.25 : lite ? 1.35 : 2.5, window.devicePixelRatio || 1);
       bloomCanvas.width = Math.max(1, Math.round(w * bloomScale));
       bloomCanvas.height = Math.max(1, Math.round(h * bloomScale));
       glowCanvas.width = Math.max(1, Math.round(w * glowScale));
@@ -316,7 +316,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       gc.fillStyle = field;
       gc.fillRect(0, 0, w, h);
       gc.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < (lite ? 2 : 3); i++) {
         const a = time * (0.18 + i * 0.07) + i * 2.1;
         const px = cx + Math.cos(a) * R * (1.25 + 0.25 * Math.sin(time * 0.3 + i));
         const py = cy + Math.sin(a) * R * (1.05 + 0.2 * Math.cos(time * 0.27 + i));
@@ -354,7 +354,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       bc.globalCompositeOperation = "lighter";
       sc.lineJoin = "round";
       bc.lineJoin = "round";
-      const strands = weak ? 5 : lite ? 6 : 9;
+      const strands = weak ? 4 : lite ? 4 : 9;
       for (let i = 0; i < strands; i++) {
         const t = time + i * 0.31;
         // strands bunch near the dark edge and spread outward
@@ -457,7 +457,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     <section
       ref={wrapRef}
       className="relative w-full select-none"
-      style={{ height: expanded ? "100%" : HERO_HEIGHT, marginTop: "var(--lane-safe-top, 0px)" }}
+      style={{
+        height: expanded ? "100%" : HERO_HEIGHT,
+        marginTop: "var(--lane-safe-top, 0px)",
+        transition: "height 520ms cubic-bezier(0.22, 1, 0.36, 1)",
+        willChange: "height",
+      }}
       aria-label={t("home.vibe.title")}
     >
       {(["glow", "bloom", "silk"] as const).map((layer) => (
@@ -486,7 +491,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
           top: -BLEED,
           height: expanded ? `calc(100% + ${BLEED}px)` : HERO_HEIGHT + BLEED,
           backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>")`,
-          opacity: 0.07,
+          opacity: isMobile ? 0 : 0.07,
           mixBlendMode: "overlay",
           WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
           maskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
@@ -578,7 +583,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 initial={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
                 animate={isMobile ? { y: 0 } : { x: 0 }}
                 exit={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
-                transition={{ type: "spring", stiffness: 380, damping: 38 }}
+                transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.8 }}
                 // phones: pull the sheet down to close it
                 drag={isMobile ? "y" : false}
                 dragConstraints={{ top: 0, bottom: 0 }}
