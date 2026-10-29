@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 const TRACK_TITLE_WIDTHS = [
   "w-[42%]",
@@ -29,19 +30,24 @@ export interface PlaylistPageSkeletonProps {
 function PlaylistPageSkeletonComponent({
   className = "",
 }: PlaylistPageSkeletonProps) {
+  const isMobile = useIsMobile();
   return (
     <div
       className={`relative h-full w-full overflow-hidden bg-transparent select-none ${className}`}
     >
-      <div className="relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border">
-        <aside className="shrink-0 w-[280px] self-start pt-[56px] pb-[24px]">
-          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14">
+      <div className={isMobile
+        ? "relative z-10 flex flex-col items-center gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto box-border"
+        : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"}>
+        <aside className={isMobile
+          ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]"
+          : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}>
+          <div className={`relative aspect-square w-full overflow-hidden ${isMobile ? "rounded-xl" : "rounded-md"} bg-border-alpha-14`}>
             <div className="skeleton-shimmer h-full w-full" />
           </div>
 
-          <div className="skeleton-shimmer h-[26px] w-[80%] rounded-[6px] mt-[16px]" />
-          <div className="skeleton-shimmer h-[16px] w-[60%] rounded-[4px] mt-[6px]" />
-          <div className="skeleton-shimmer h-[26px] w-[130px] rounded-md mt-[8px]" />
+          <div className={`${isMobile ? "mx-auto" : ""} skeleton-shimmer h-[26px] w-[80%] rounded-[6px] mt-[16px]`} />
+          <div className={`${isMobile ? "mx-auto" : ""} skeleton-shimmer h-[16px] w-[60%] rounded-[4px] mt-[6px]`} />
+          <div className={`${isMobile ? "mx-auto" : ""} skeleton-shimmer h-[26px] w-[130px] rounded-md mt-[8px]`} />
 
           <div className="skeleton-shimmer h-[36px] w-full rounded-md mt-[16px]" />
           <div className="mt-[8px] flex items-center gap-[8px]">
@@ -51,7 +57,9 @@ function PlaylistPageSkeletonComponent({
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 h-full min-h-0 overflow-hidden px-[8px] pt-[56px] pb-[24px]">
+        <div className={isMobile
+          ? "min-w-0 w-full shrink-0 overflow-hidden px-0 pt-[4px] pb-[24px]"
+          : "min-w-0 flex-1 h-full min-h-0 overflow-hidden px-[8px] pt-[56px] pb-[24px]"}>
           <div className="flex flex-col">
             {Array.from({ length: 10 }).map((_, i) => (
               <div

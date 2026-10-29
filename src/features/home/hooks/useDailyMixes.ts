@@ -126,7 +126,7 @@ function cacheCollection(mix: DailyMix) {
 
 let building: Promise<DailyMix[]> | null = null;
 
-/** liked tracks + history -> five long mixes grown with the radio engine */
+/** liked tracks + history -> ten long mixes grown with the radio engine */
 async function buildClientMixes(owner: string): Promise<DailyMix[]> {
   const { liked, history } = await loadListeningSignals(300, 200);
   const seeds: MixSeedTrack[] = [
@@ -138,7 +138,7 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
 
   const t = createTranslatorSync(getStoredLocale());
   const built = await buildDailyMixes(seeds, {
-    mixCount: 5,
+    mixCount: 10,
     tracksPerMix: 50,
     artistTracks: (name) =>
       api.search(name, "track").then((r) =>
@@ -146,7 +146,7 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
       ),
     radio: (seed) => api.getRadio(seed.id, { k: 30 }).then((r) => (r.items || []).map((item) => toClientTrack(item))),
   });
-  const mixes: DailyMix[] = built.slice(0, 5).map((mix) => {
+  const mixes: DailyMix[] = built.slice(0, 10).map((mix) => {
     const artists = getDailyMixArtists(mix.artists, mix.tracks, 4);
     return {
       id: mix.id,
@@ -223,7 +223,7 @@ export function useDailyMixes() {
     loadWithRetry(() => api.getDailyMixes(), () => active)
       .then((res) => {
         if (!active) return;
-        const mixes: DailyMix[] = (res.items || []).slice(0, 5).map((mix, mixPosition) => {
+        const mixes: DailyMix[] = (res.items || []).slice(0, 10).map((mix, mixPosition) => {
           const clientTracks = (mix.tracks || []).slice(0, 50).map((t) => toClientTrack(t));
           const primaryCover =
             mix.cover?.url ? mediaUrl(mix.cover.url) :
