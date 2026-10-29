@@ -1,5 +1,6 @@
 import { toVideoId } from "@/shared/media/innertube";
 import { findCatalogMatch } from "@/shared/media/matching";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
 import type { PlayableTrack } from "./playbackStream";
 
 const matchedVideoIds = new Map<string, string>();
@@ -23,6 +24,7 @@ export async function findYoutubeStandIn(track: PlayableTrack, signal?: AbortSig
     signal,
   );
   if (outcome.status !== "approved") return null;
+  if (isVideoTrack(outcome.track)) return null;
   const videoId = toVideoId(outcome.track.id);
   if (videoId) matchedVideoIds.set(track.id, videoId);
   return videoId;
