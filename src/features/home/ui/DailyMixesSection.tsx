@@ -5,7 +5,7 @@ import CoverImage from "@/features/covers/ui/CoverImage";
 import MixCover from "./MixCover";
 import { playerEngine } from "@/features/player";
 import { usePlayerStore } from "@/features/player/store/playerStore";
-import { useToast, ScrollableText } from "@/shared/ui";
+import { useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
 import DropdownMenu, { type DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import type { DailyMix } from "../hooks/useDailyMixes";
@@ -112,21 +112,27 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       ? mix.clusterArtists.join(", ")
       : mix.description) || "";
 
+  const mixLabel = t("home.mix_label") || "Mix";
+
   return (
     <div
-      className="group flex-shrink-0 w-[175px] cursor-pointer select-none"
+      className="group flex-shrink-0 w-[282px] cursor-pointer select-none"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
     >
       <div
-        className={`relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14 transition-shadow ${
+        className={`relative aspect-[1.08] w-full overflow-hidden rounded-[14px] bg-border-alpha-14 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_18px_40px_rgba(0,0,0,0.28)] ${
           isPlayingMix ? "ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary" : ""
         }`}
       >
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">
+          <span>{mixLabel} {mix.mixIndex ?? ""}</span>
+          <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] tracking-[0.08em] text-white/65">{mix.trackCount} tracks</span>
+        </div>
         {mix.mixIndex ? (
-          <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={t("home.mix_label") || "Mix"} />
+          <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={mixLabel} showBadge={false} />
         ) : mix.coverUrl && (
           <CoverImage
             src={mix.coverUrl}
@@ -139,18 +145,20 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             onLoad={() => setImageLoaded(true)}
           />
         )}
-      </div>
-
-      <div className="flex flex-col mt-[8px]">
-        <span className={`truncate text-[14px] font-[500] ${isPlayingMix ? "text-accent-primary" : "text-text-primary"}`}>
-          {mix.title}
-        </span>
-        <ScrollableText
-          text={subtitleText}
-          isParentHovered={isCardHovered}
-          className="text-[13px] text-text-tertiary"
-          fadeColorClass="from-bg-primary"
-        />
+        <div className={`absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-200 ${isCardHovered ? "opacity-100" : "opacity-0"}`}>
+          <button
+            type="button"
+            aria-label={`${t("artist.play")} ${mix.title}`}
+            onClick={(e) => { e.stopPropagation(); handlePlay(); }}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-black shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-transform hover:scale-105 active:scale-95"
+          >
+            <PlayFill size={25} />
+          </button>
+        </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pt-16 text-white">
+          <div className="truncate text-[21px] font-bold leading-tight tracking-[-0.02em]" title={mix.title}>{mix.title}</div>
+          <div className="mt-1 truncate text-[13px] text-white/65" title={subtitleText}>{subtitleText || mix.description}</div>
+        </div>
       </div>
 
       {menuItems.length > 0 && (
@@ -195,7 +203,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixes
       </div>
 
       {/* room above and below so the playing mix's ring isn't clipped by the scroller */}
-      <ScrollableRow className="flex gap-[28px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[5px] pb-[6px]">
+      <ScrollableRow className="flex gap-[22px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[8px] pb-[12px]">
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
