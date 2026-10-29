@@ -66,7 +66,8 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
 
   if (!isMatch(decision) || decision.score < MATCH_CONFIDENCE_FLOOR) await attempt(meta.searchQuery, "all");
   if (!isMatch(decision) && meta.title && meta.title !== meta.searchQuery) await attempt(meta.title, "track");
-  if (!isMatch(decision)) await attempt(meta.searchQuery, "video");
+  // Do not fall back to the video tab: clips and official videos can have the
+  // same title as the song but are a different audio source.
   if (!isMatch(decision)) {
     // not on YouTube at all (small Russian artists, sped up versions…): SoundCloud often has it
     const extra = await soundcloudCatalog.search(meta.searchQuery, 10, signal).catch((error) => {

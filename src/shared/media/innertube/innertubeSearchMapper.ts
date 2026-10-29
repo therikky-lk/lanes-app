@@ -79,7 +79,6 @@ export function getSearchItems(response: unknown): unknown[] {
 
 export function mapSearchResponse(response: unknown): SearchResult[] {
   const results: SearchResult[] = [];
-  const videos: SearchResult[] = [];
   const seen = new Set<string>();
   for (const item of getSearchItems(response)) {
     const mapped = mapInnertubeSearchResult(item);
@@ -87,31 +86,11 @@ export function mapSearchResponse(response: unknown): SearchResult[] {
     const key = `${mapped.type}:${mapped.id}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    // clips and uploads are held back: shown only when the song itself isn't there
-    if (mapped.type === "track" && isMusicVideo(item)) videos.push(mapped);
-    else results.push(mapped);
-  }
-  const songKeys = new Set(
-    results.flatMap((r) => (r.type === "track" ? [songKey(r.title, r.artists.map((a) => a.name).join(" "))] : [])),
-  );
-  // songs only: clips and uploads are left out, unless the search found no
-  // song at all (then a clip is better than nothing)
-  if (!results.some((r) => r.type === "track")) {
-    for (const video of videos) {
-      if (video.type !== "track") continue;
-      if (!songKeys.has(songKey(video.title, video.artists.map((a) => a.name).join(" ")))) results.push(video);
-    }
+    // Never expose music videos or uploads as song candidates. A video is not
+    // an acceptable substitute for an audio track, even when no song result is
+    // available.
+    if (mapped.type === "track" && isMusicVideo(item)) continue;
+    results.push(mapped);
   }
   return results;
-}
-
-/** "Song (Official Video)" and "Song" by the same artist are one song */
-function songKey(title: string, artists: string): string {
-  const clean = title
-    .toLowerCase()
-    .replace(/[([][^)\]]*(video|clip|клип|visualizer|lyric|audio|live|mv)[^)\]]*[)\]]/gi, " ")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-  const artist = artists.toLowerCase().split(/,|&| feat| ft| x /)[0].replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-  return `${clean}|${artist}`;
 }
