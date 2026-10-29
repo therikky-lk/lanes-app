@@ -118,24 +118,12 @@ export default function TrendsSection() {
 
   if (failed) return null;
   const shown = entries ? (all ? entries : entries.slice(0, PREVIEW)) : [];
-  const movementLabel = (e: ChartEntry) =>
-    e.rank === 1
-      ? t("trends.first")
-      : e.movement === "up"
-        ? t("trends.up", { n: e.delta })
-        : e.movement === "down"
-          ? t("trends.down", { n: -e.delta })
-          : e.movement === "new"
-            ? t("trends.new")
-            : t("trends.same");
-
   return (
     <div className="flex flex-col" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
       <div className="mt-[26px] px-8 flex items-center justify-between gap-[12px]">
         <div className="flex items-center gap-2.5">
           <FireFill className="w-5 h-5 text-[#ff6a3d]" />
           <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>
-          <span className="text-[12px] text-text-tertiary" title={t("trends.source_hint")}>{t("trends.source")}</span>
         </div>
         {/* the same switch as in the library */}
         <SegmentedTabs
@@ -163,7 +151,7 @@ export default function TrendsSection() {
                 onClick={() => void play(e)}
                 className="group flex h-[60px] min-w-0 items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
               >
-                <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]" title={movementLabel(e)} aria-label={movementLabel(e)}>
+                <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]">
                   <span className={`text-[15px] font-[700] tabular-nums leading-none ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
                     {e.rank}
                   </span>
