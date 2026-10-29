@@ -10,6 +10,8 @@ import { useTranslation } from "@/languages";
 import DropdownMenu, { type DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import type { DailyMix } from "../hooks/useDailyMixes";
 import { SparklesFill, PlayFill, AddFill } from "@mingcute/react";
+import { ArrowLeftLine, ArrowRightLine } from "@mingcute/react";
+import useHorizontalScroll from "@/shared/hooks/useHorizontalScroll";
 
 interface DailyMixCardProps {
   mix: DailyMix;
@@ -24,9 +26,6 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
     (state) => state.trackDoubleClickBehavior,
   );
   const [menuOpen, setMenuOpen] = useState(false);
-  const isPlayingMix = usePlayerStore(
-    (s) => s.playbackContext === `playlist:${mix.id}` || (s.playbackContext === mix.title && mix.tracks.some((tr) => tr.id === s.currentTrack?.id)),
-  );
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -115,14 +114,12 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
 
   return (
     <div
-      className="group flex-shrink-0 w-[min(220px,64vw)] cursor-pointer select-none"
+      className="group flex-shrink-0 w-[165px] cursor-pointer select-none"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
       <div
-        className={`relative aspect-[1.55] w-full overflow-hidden rounded-[9px] bg-border-alpha-14 ${
-          isPlayingMix ? "ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary" : ""
-        }`}
+        className="relative aspect-[1.57] w-full overflow-hidden rounded-[9px] bg-border-alpha-14"
       >
         {mix.mixIndex ? (
           <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={mixLabel} showBadge={false} />
@@ -131,7 +128,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             src={mix.coverUrl}
             alt={mix.title}
             fill
-            sizes="175px"
+            sizes="165px"
             className={`object-cover ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
@@ -171,17 +168,18 @@ export interface DailyMixesSectionProps {
 
 function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixesSectionProps) {
   const { t } = useTranslation();
+  const scroll = useHorizontalScroll();
   if (mixes.length === 0) return null;
 
   return (
     <div className="flex flex-col">
-      <div className={`${headingMarginTop} px-8 flex items-center justify-between`}>
+      <div className={`${headingMarginTop} px-[16px] flex items-center justify-between`}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center shrink-0">
-            <SparklesFill className="w-5 h-5 text-amber-400" />
+            <SparklesFill className="w-5 h-5 text-text-primary" />
           </div>
           <h2
-            className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight"
+            className="text-text-primary text-[20px] font-semibold m-0 leading-tight tracking-tight"
             style={{ fontFamily: "var(--font-inter), sans-serif" }}
           >
             {t("home.dailyMixes") || "Daily Mixes"}
@@ -189,12 +187,37 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixes
         </div>
       </div>
 
-      {/* room above and below so the playing mix's ring isn't clipped by the scroller */}
-      <ScrollableRow className="flex gap-[14px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[8px] pb-[12px]">
+      <div className="relative">
+        <ScrollableRow
+          controller={scroll}
+          showScrollMask={false}
+          className="flex gap-[14px] pl-[16px] pr-[16px] mt-[7px] overflow-x-auto pt-[8px] pb-[12px]"
+        >
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
-      </ScrollableRow>
+        </ScrollableRow>
+        <div className="absolute right-[16px] top-[-38px] flex items-center gap-[4px]">
+          <button
+            type="button"
+            aria-label="Previous mixes"
+            onClick={scroll.scrollPrev}
+            disabled={!scroll.canScrollLeft}
+            className="inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-text-tertiary disabled:opacity-30 cursor-pointer disabled:cursor-default"
+          >
+            <ArrowLeftLine size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label="Next mixes"
+            onClick={scroll.scrollNext}
+            disabled={!scroll.canScrollRight}
+            className="inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-default"
+          >
+            <ArrowRightLine size={16} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
