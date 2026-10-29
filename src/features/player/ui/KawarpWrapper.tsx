@@ -30,7 +30,7 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
     try {
       engine = new KawarpEngine(canvas, {
         warpIntensity: 1.1,
-        blurPasses: isNativeApp() ? (isLowEndDevice() ? 3 : 4) : 8,
+        blurPasses: isNativeApp() ? (isLowEndDevice() ? 3 : 4) : 4,
         transitionDuration: 1000,
         animationSpeed: isNativeApp() ? 0.7 : 1.0,
         saturation: 1.3,
