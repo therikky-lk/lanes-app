@@ -12,6 +12,7 @@ import type { DailyMix } from "../hooks/useDailyMixes";
 import { SparklesFill, PlayFill, AddFill } from "@mingcute/react";
 import { ArrowLeftLine, ArrowRightLine } from "@mingcute/react";
 import useHorizontalScroll from "@/shared/hooks/useHorizontalScroll";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 interface DailyMixCardProps {
   mix: DailyMix;
@@ -135,7 +136,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       <div
         className="relative aspect-[1.42] w-full overflow-hidden rounded-[12px] bg-border-alpha-14"
         style={{
-          boxShadow: `0 8px 24px ${gradientFrom}35, inset 0 0 0 1px ${gradientTo}55`,
+          boxShadow: `0 6px 18px rgba(0,0,0,0.18), inset 0 0 0 1px ${gradientTo}45`,
         }}
       >
         {mix.mixIndex ? (
@@ -155,7 +156,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
         <div
           className="pointer-events-none absolute inset-0 z-[5]"
           style={{
-            background: `linear-gradient(180deg, ${gradientFrom}12 0%, transparent 34%, ${gradientFrom}22 62%, ${gradientTo}b8 100%)`,
+            background: `linear-gradient(180deg, ${gradientFrom}08 0%, transparent 38%, ${gradientFrom}12 68%, ${gradientTo}72 100%)`,
           }}
         />
         {mix.mixIndex && (
@@ -198,6 +199,7 @@ export interface DailyMixesSectionProps {
 function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesSectionProps) {
   const { t } = useTranslation();
   const scroll = useHorizontalScroll();
+  const isMobile = useIsMobile();
   if (mixes.length === 0) return null;
 
   return (
@@ -226,26 +228,28 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
         </ScrollableRow>
-        <div className="absolute right-[16px] top-[-38px] flex items-center gap-[4px]">
-          <button
-            type="button"
-            aria-label="Previous mixes"
-            onClick={scroll.scrollPrev}
-            disabled={!scroll.canScrollLeft}
-            className="inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-text-tertiary disabled:opacity-30 cursor-pointer disabled:cursor-default"
-          >
-            <ArrowLeftLine size={16} />
-          </button>
-          <button
-            type="button"
-            aria-label="Next mixes"
-            onClick={scroll.scrollNext}
-            disabled={!scroll.canScrollRight}
-            className="inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-text-primary disabled:opacity-30 cursor-pointer disabled:cursor-default"
-          >
-            <ArrowRightLine size={16} />
-          </button>
-        </div>
+        {!isMobile && (
+          <div className="absolute right-[16px] top-[-38px] flex items-center gap-[4px]">
+            <button
+              type="button"
+              aria-label="Previous mixes"
+              onClick={scroll.scrollPrev}
+              disabled={!scroll.canScrollLeft}
+              className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-white/80 cursor-pointer disabled:cursor-default ${scroll.canScrollLeft ? "opacity-100" : "invisible"}`}
+            >
+              <ArrowLeftLine size={16} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next mixes"
+              onClick={scroll.scrollNext}
+              disabled={!scroll.canScrollRight}
+              className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-white/80 cursor-pointer disabled:cursor-default ${scroll.canScrollRight ? "opacity-100" : "invisible"}`}
+            >
+              <ArrowRightLine size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
