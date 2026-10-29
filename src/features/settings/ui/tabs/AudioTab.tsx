@@ -25,10 +25,6 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
     setMounted(true);
   }, []);
 
-  // lossless is listed as unavailable, so the picker only offers live tiers
-  const quality: Exclude<AudioQuality, "lossless"> =
-    audioQuality === "lossless" ? "high" : audioQuality;
-
   return (
     <div className="flex flex-col gap-[16px]">
       <SettingSection>
@@ -43,12 +39,13 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
               <Select
                 aria-label={t("settings.audio.title")}
                 className="w-[210px]"
-                value={quality}
+                value={audioQuality}
                 onChange={setAudioQuality}
                 options={[
                   { value: "low", label: t("settings.audio.low") },
                   { value: "standard", label: t("settings.audio.standard") },
                   { value: "high", label: t("settings.audio.high") },
+                  { value: "lossless", label: "Lossless (если доступно)" },
                 ]}
               />
             ) : (
