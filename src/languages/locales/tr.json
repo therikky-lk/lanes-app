@@ -831,6 +831,7 @@
       "badge_private": "Gizli"
     },
     "about": {
+      "update_app": "Uygulamayı güncelle",
       "all_releases": "Tüm sürümler",
       "liner": "Lane",
       "telegram": "Kanal",

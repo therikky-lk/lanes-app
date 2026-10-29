@@ -944,6 +944,7 @@
       "badge_private": "Приватний"
     },
     "about": {
+      "update_app": "Оновити застосунок",
       "all_releases": "Усі версії",
       "liner": "Lane",
       "telegram": "Канал",
