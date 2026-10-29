@@ -213,7 +213,7 @@ export default function HomePage() {
             {dailyMixes && dailyMixes.length > 0 && (
               <DailyMixesSection
                 mixes={dailyMixes}
-                headingMarginTop="mt-[22px]"
+                headingMarginTop="mt-[8px]"
               />
             )}
 
