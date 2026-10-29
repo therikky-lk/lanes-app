@@ -1,9 +1,9 @@
-import { mapInnertubeTrack } from "@/shared/media/innertube/innertubeTrackMapper";
+import { isMusicVideo, mapInnertubeTrack } from "@/shared/media/innertube/innertubeTrackMapper";
 import type { ClientImportedTrack } from "../../importTypes";
 import { collectByKey } from "@/shared/utils/json";
-import { youtubeThumbnailUrl } from "./youtubeUrl";
 
 function mapRendererTrack(rawRenderer: unknown, seenIds: Set<string>): ClientImportedTrack | undefined {
+  if (isMusicVideo({ musicResponsiveListItemRenderer: rawRenderer })) return undefined;
   const mapped = mapInnertubeTrack({ musicResponsiveListItemRenderer: rawRenderer });
   if (!mapped || seenIds.has(mapped.id)) return undefined;
   seenIds.add(mapped.id);
@@ -15,7 +15,7 @@ function mapRendererTrack(rawRenderer: unknown, seenIds: Set<string>): ClientImp
     album: mapped.album?.title,
     albumId: mapped.album?.id,
     durationMs: mapped.durationMs,
-    coverUrl: mapped.cover?.url ?? youtubeThumbnailUrl(mapped.id),
+    coverUrl: mapped.cover?.url ?? "",
   };
 }
 
