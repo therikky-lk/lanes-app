@@ -17,6 +17,19 @@ interface DailyMixCardProps {
   mix: DailyMix;
 }
 
+const MIX_COLORS: Array<[string, string]> = [
+  ["#7c3aed", "#ec4899"],
+  ["#0891b2", "#2563eb"],
+  ["#dc2626", "#f97316"],
+  ["#475569", "#14b8a6"],
+  ["#db2777", "#f59e0b"],
+  ["#334155", "#a855f7"],
+  ["#059669", "#eab308"],
+  ["#2563eb", "#06b6d4"],
+  ["#c026d3", "#fb7185"],
+  ["#ea580c", "#facc15"],
+];
+
 function DailyMixCard({ mix }: DailyMixCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const { t } = useTranslation();
@@ -111,6 +124,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       : mix.description) || "";
 
   const mixLabel = t("home.mix_label") || "Mix";
+  const [gradientFrom, gradientTo] = MIX_COLORS[((mix.mixIndex ?? 1) - 1) % MIX_COLORS.length];
 
   return (
     <div
@@ -118,7 +132,12 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
-      <div className="relative aspect-[1.42] w-full overflow-hidden rounded-[12px] bg-border-alpha-14">
+      <div
+        className="relative aspect-[1.42] w-full overflow-hidden rounded-[12px] bg-border-alpha-14"
+        style={{
+          boxShadow: `0 8px 24px ${gradientFrom}35, inset 0 0 0 1px ${gradientTo}55`,
+        }}
+      >
         {mix.mixIndex ? (
           <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={mixLabel} showBadge={false} />
         ) : mix.coverUrl && (
@@ -133,6 +152,12 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             onLoad={() => setImageLoaded(true)}
           />
         )}
+        <div
+          className="pointer-events-none absolute inset-0 z-[5]"
+          style={{
+            background: `linear-gradient(180deg, ${gradientFrom}12 0%, transparent 34%, ${gradientFrom}22 62%, ${gradientTo}b8 100%)`,
+          }}
+        />
         {mix.mixIndex && (
           <div className="pointer-events-none absolute left-[8px] top-[8px] z-10 rounded-md bg-black/55 px-[7px] py-[4px] text-[10px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
             {mixLabel} {String(mix.mixIndex).padStart(2, "0")}
@@ -142,6 +167,10 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
 
       <div className="mt-[8px] min-w-0 px-[2px]">
         <div className="truncate text-[13px] font-[600] leading-tight text-text-primary" title={mix.title}>{mix.title}</div>
+        <div
+          className="mt-[5px] h-[2px] w-[28px] rounded-full"
+          style={{ background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }}
+        />
         <div className="mt-[4px] truncate text-[11px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
       </div>
 
