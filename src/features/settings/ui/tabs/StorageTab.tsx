@@ -408,6 +408,9 @@ export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string
 
                   <span className="text-text-secondary text-[12px] font-[500] shrink-0">
                     {formatStorageBytes(cat.bytes)}
+                    {cat.count !== undefined && (
+                      <span className="text-text-tertiary"> · {t("settings.storage.saved_items", { count: cat.count })}</span>
+                    )}
                   </span>
                 </button>
               );

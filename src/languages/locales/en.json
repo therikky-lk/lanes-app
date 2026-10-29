@@ -833,6 +833,8 @@
       "title": "Cache & Storage",
       "description": "Storage breakdown, local cache analytics and media files.",
       "usage_title": "Storage Usage",
+      "saved_items_one": "{count} saved",
+      "saved_items_other": "{count} saved",
       "device_usage": "Lane is currently using {size} of local storage.",
       "device_usage_raw": "Lane is currently using {size} of local storage.",
       "audio_cache_limit": "Cache size limit",

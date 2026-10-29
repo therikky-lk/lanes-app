@@ -277,6 +277,22 @@ class LinerDb {
     return total;
   }
 
+  async getStoreCount(storeName: "tracks" | "audio" | "lyrics" | "artists"): Promise<number> {
+    const result = await this.runTransaction(storeName, "readonly", (store) => {
+      return new Promise<number>((resolve) => {
+        const req = store.count();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(0);
+      });
+    });
+
+    if (result !== null && result !== undefined) return result;
+    if (storeName === "tracks") return this.memTracks.size;
+    if (storeName === "audio") return this.memAudio.size;
+    if (storeName === "lyrics") return this.memLyrics.size;
+    return this.memArtists.size;
+  }
+
   private rememberAudio(trackId: string, record: CachedAudioRecord): void {
     this.memAudio.delete(trackId);
     this.memAudio.set(trackId, record);
