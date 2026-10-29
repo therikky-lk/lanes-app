@@ -1,5 +1,5 @@
 import type { ImportedTrack, ImportReviewReason, SearchResult, Track } from "@/shared/contracts";
-import { searchRaw, videoThumbnailCover } from "@/shared/media/innertube";
+import { searchRaw } from "@/shared/media/innertube";
 import { soundcloudCatalog } from "@/shared/media/soundcloud/soundcloudCatalog";
 import { cleanSoundCloudMetadata } from "./artistTitle";
 import { evaluateImportedTrack, type MatchDecision } from "./evaluate";
@@ -85,8 +85,7 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
   }
 
   if (isMatch(decision)) {
-    const track = { ...decision.track, cover: decision.track.cover ?? videoThumbnailCover(decision.track.id) };
-    return { status: "approved", track, score: decision.score };
+    return { status: "approved", track: decision.track, score: decision.score };
   }
   if (decision) {
     return {
