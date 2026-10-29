@@ -425,7 +425,7 @@ export default function LibraryPage() {
           // Android can blur what scrolls under it; this keeps its room
           <div aria-hidden style={{ height: mobileHeaderH }} />
         ) : (
-        <div className="sticky top-0 z-20 bg-transparent">
+        <div className="sticky top-0 z-20 border-b border-white/[0.06] bg-bg-elevated/75 backdrop-blur-2xl backdrop-saturate-150">
 
           <div className="px-[32px] pt-[20px] pb-[10px]">
             <h1
@@ -528,8 +528,7 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            // solid: the web view's blur kept drawing the covers as patches
-            className="absolute inset-x-0 top-0 z-20 bg-bg-primary border-b border-white/[0.06]"
+            className="absolute inset-x-0 top-0 z-20 border-b border-white/[0.06] bg-bg-elevated/75 backdrop-blur-2xl backdrop-saturate-150"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
