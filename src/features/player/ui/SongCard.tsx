@@ -323,7 +323,7 @@ function SongCard({
               e.stopPropagation();
               onToggleLike();
             }}
-            className={`flex items-center justify-center border-0 bg-transparent p-0 cursor-pointer transition-colors ${
+            className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center border-0 bg-transparent p-0 cursor-pointer transition-colors ${
               liked ? "text-[#ff3b5c]" : "text-text-tertiary hover:text-text-primary"
             }`}
           >
