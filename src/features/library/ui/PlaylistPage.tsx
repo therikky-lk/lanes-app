@@ -27,7 +27,7 @@ import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { readCoverMarker, stripCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
-import { getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
+import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import Button from "@/shared/ui/Button";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
@@ -443,6 +443,17 @@ function LibraryPlaylistContent() {
     }
   }, [navigate]);
 
+  const savePlaylistCover = useCallback(async (playlistId: string, cover: string | null) => {
+    // User playlists do not have a dedicated cover field in the API. Keep the
+    // compact image in their synced description metadata instead.
+    const detail = await api.getUserPlaylist(playlistId);
+    await api.updatePlaylist(playlistId, {
+      description: withCoverMarker(detail.playlist.description, cover ?? undefined),
+    });
+    setPlaylistCover(playlistId, cover, { notify: false });
+    window.dispatchEvent(new Event("library:changed"));
+  }, []);
+
   const targetScrollTopRef = useRef<number | null>(null);
   const rafIdRef = useRef<number | null>(null);
 
@@ -597,7 +608,7 @@ function LibraryPlaylistContent() {
           e.target.value = "";
           if (!file || !decodedId) return;
           try {
-            setPlaylistCover(decodedId, await imageFileToCover(file));
+            await savePlaylistCover(decodedId, await imageFileToCover(file));
           } catch {
             toast(t("playlist.cover_failed") || "Could not use this image", "error");
           }
@@ -774,7 +785,7 @@ function LibraryPlaylistContent() {
                           if (decodedId && next !== viewData.bio) {
                             void api
                               // keep the synced cover marker behind the edited text
-                              .updatePlaylist(decodedId, { description: withCoverMarker(next, readCoverMarker(playlistDetail?.description)) })
+                              .updatePlaylist(decodedId, { description: withCoverMarker(next, getCustomPlaylistCover(decodedId) ?? readCoverMarker(playlistDetail?.description)) })
                               .then(() =>
                                 window.dispatchEvent(new Event("library:changed")),
                               );
@@ -975,7 +986,12 @@ function LibraryPlaylistContent() {
                                       id: "cover-reset",
                                       icon: <PicLine size={15} />,
                                       label: t("playlist.reset_cover") || "Reset cover",
-                                      onClick: () => decodedId && setPlaylistCover(decodedId, null),
+                                      onClick: () => {
+                                        if (!decodedId) return;
+                                        void savePlaylistCover(decodedId, null).catch(() =>
+                                          toast(t("playlist.cover_failed") || "Could not update this cover", "error"),
+                                        );
+                                      },
                                     },
                                   ]
                                 : []),
