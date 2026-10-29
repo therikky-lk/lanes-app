@@ -16,6 +16,19 @@ const PALETTE: [string, string][] = [
   ["#c471f5", "#fa71cd"],
 ];
 
+const DESIGN_COLORS: [string, string][] = [
+  ["#4c5fc5", "#e6a8c7"],
+  ["#5478bd", "#a9d9e8"],
+  ["#345bb7", "#dca9cc"],
+  ["#357b77", "#b5e2d6"],
+  ["#b15b8f", "#f4c2b8"],
+  ["#6354b5", "#d1b4e7"],
+  ["#b07d36", "#f3d99c"],
+  ["#3a87a1", "#b8dfe5"],
+  ["#7b55b2", "#f0b7d2"],
+  ["#c36b48", "#f3d9a1"],
+];
+
 export interface MixCoverProps {
   index: number;
   covers: string[];
@@ -27,6 +40,7 @@ export interface MixCoverProps {
 
 export default function MixCover({ index, covers, label, sizes = "165px", className = "", showBadge = true }: MixCoverProps) {
   const [from, to] = PALETTE[(Math.max(1, index) - 1) % PALETTE.length];
+  const [designFrom, designTo] = DESIGN_COLORS[(Math.max(1, index) - 1) % DESIGN_COLORS.length];
   const tiles = covers.length >= 4 ? covers.slice(0, 4) : covers.slice(0, 1);
   return (
     <div
@@ -36,19 +50,29 @@ export default function MixCover({ index, covers, label, sizes = "165px", classN
       {/* artwork across the whole cover */}
       <div className={`absolute inset-0 grid ${tiles.length === 4 ? "grid-cols-2 grid-rows-2" : ""}`}>
         {tiles.map((src, i) => (
-          <div key={`${src}-${i}`} className="relative overflow-hidden">
+          <div key={`${src}-${i}`} className="relative overflow-hidden opacity-[0.2] grayscale">
             <CoverImage src={src} alt="" fill sizes={sizes} className="object-cover" draggable={false} />
           </div>
         ))}
       </div>
-      {/* The artwork stays visible behind the type, with a soft cinematic fade. */}
-      <div className="absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/75 to-transparent" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(135deg, rgba(255,255,255,0.96), ${designTo}e8 55%, ${designFrom}cf)`,
+        }}
+      />
+      <div className="pointer-events-none absolute -right-[52%] -top-[35%] h-[145%] w-[145%] rounded-full border-[clamp(14px,2.8cqw,34px)] border-white/80" />
+      <div className="pointer-events-none absolute -right-[67%] -top-[17%] h-[138%] w-[138%] rounded-full border-[clamp(10px,2cqw,25px)] border-white/70" />
+      <div className="pointer-events-none absolute -right-[83%] top-[5%] h-[132%] w-[132%] rounded-full border-[clamp(7px,1.4cqw,18px)] border-white/55" />
+      <div className="pointer-events-none absolute left-[9%] top-[9%] flex h-[clamp(30px,14cqw,72px)] w-[clamp(30px,14cqw,72px)] items-center justify-center rounded-full bg-white/70 text-[clamp(16px,7cqw,38px)] text-[#5368bf] shadow-sm">
+        <span className="leading-none">✦</span>
+      </div>
       {showBadge && (
-        <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-white">
-          <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
+        <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-[#304caf]">
+          <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none">
             {label}
           </span>
-          <span className="text-[clamp(18px,17cqw,52px)] font-[800] leading-[0.8] tracking-tight" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
+          <span className="text-[clamp(18px,17cqw,52px)] font-[800] leading-[0.8] tracking-tight">
             {index}
           </span>
         </div>
