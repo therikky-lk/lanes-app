@@ -133,10 +133,10 @@ export function mapInnertubeTrack(raw: unknown, fallbackArtists: TrackArtist[] =
   };
 }
 
-// YouTube Music marks every playable item: MUSIC_VIDEO_TYPE_ATV is the song
-// itself (album artwork, studio audio); OMV is an official music video, UGC a
-// user upload, both with video frames for covers and often a different cut.
-const VIDEO_TYPES = new Set(["MUSIC_VIDEO_TYPE_OMV", "MUSIC_VIDEO_TYPE_UGC", "MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC"]);
+// YouTube Music marks every playable item: ATV and OFFICIAL_SOURCE_MUSIC are
+// audio tracks. OMV is an official music video and UGC is a user upload; both
+// have video frames for covers and often represent a different cut.
+const VIDEO_TYPES = new Set(["MUSIC_VIDEO_TYPE_OMV", "MUSIC_VIDEO_TYPE_UGC"]);
 
 /** the musicVideoType of a raw item, looked up a few levels deep */
 export function musicVideoType(raw: unknown): string | undefined {
