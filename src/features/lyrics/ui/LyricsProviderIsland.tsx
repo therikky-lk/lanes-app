@@ -1,75 +1,37 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LeftLine,
-  RightLine,
   CheckFill,
   DownLine,
-  TimeLine,
-  AddLine,
-  MinimizeLine,
-  Refresh1Line,
 } from "@mingcute/react";
 import { useLyricsStore, hasSyncedLyricsSources } from "../store/lyricsStore";
-import { useTranslation } from "@/languages";
-
-function formatOffsetBadge(ms: number): string {
-  if (ms === 0) return "0.0s";
-  const sign = ms > 0 ? "+" : "";
-  const abs = Math.abs(ms);
-  if (abs % 100 === 0) {
-    return `${sign}${(ms / 1000).toFixed(1)}s`;
-  }
-  return `${sign}${(ms / 1000).toFixed(2)}s`;
-}
 
 export function LyricsProviderIsland() {
-  const { t } = useTranslation();
   const {
     availableProviders,
     activeProvider,
     selectProvider,
     braccatoLyrics,
     rawFormat,
-    offsetMs,
-    setOffset,
-    adjustOffset,
-    resetOffset,
   } = useLyricsStore();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [offsetOpen, setOffsetOpen] = useState(false);
-  const [unit, setUnit] = useState<"ms" | "s">("ms");
-  const [inputValue, setInputValue] = useState(String(offsetMs));
-  const isInputFocusedRef = useRef(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isInputFocusedRef.current) {
-      if (unit === "ms") {
-        setInputValue(String(offsetMs));
-      } else {
-        setInputValue(String(offsetMs / 1000));
-      }
-    }
-  }, [offsetMs, unit]);
-
-  useEffect(() => {
-    if (!dropdownOpen && !offsetOpen) return;
+    if (!dropdownOpen) return;
     const onMouseDown = (e: MouseEvent) => {
       if (
         containerRef.current &&
         !containerRef.current.contains(e.target as Node)
       ) {
         setDropdownOpen(false);
-        setOffsetOpen(false);
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setDropdownOpen(false);
-        setOffsetOpen(false);
       }
     };
     document.addEventListener("mousedown", onMouseDown);
@@ -78,35 +40,13 @@ export function LyricsProviderIsland() {
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [dropdownOpen, offsetOpen]);
-
-  const handleInputChange = useCallback(
-    (val: string) => {
-      setInputValue(val);
-      const parsed = parseFloat(val);
-      if (!isNaN(parsed)) {
-        const targetMs =
-          unit === "ms" ? Math.round(parsed) : Math.round(parsed * 1000);
-        if (targetMs >= -60000 && targetMs <= 60000) {
-          setOffset(targetMs);
-        }
-      }
-    },
-    [unit, setOffset],
-  );
+  }, [dropdownOpen]);
 
   const hasSyncedSources = hasSyncedLyricsSources(
     availableProviders,
     braccatoLyrics,
     rawFormat,
   );
-
-  const isCurrentPlain =
-    rawFormat === "plain" ||
-    (braccatoLyrics.length > 0 &&
-      braccatoLyrics.every(
-        (l) => (l.startTimeMs ?? 0) === 0 && (l.durationMs ?? 0) === 0,
-      ));
 
   if (
     availableProviders.length === 0 ||
@@ -124,48 +64,16 @@ export function LyricsProviderIsland() {
     availableProviders[currentIndex] ?? availableProviders[0];
   const hasMultiple = availableProviders.length > 1;
 
-  const handlePrev = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget?.blur();
-    if (!hasMultiple) return;
-    const nextIdx =
-      (currentIndex - 1 + availableProviders.length) %
-      availableProviders.length;
-    selectProvider(availableProviders[nextIdx].provider);
-  };
-
-  const handleNext = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget?.blur();
-    if (!hasMultiple) return;
-    const nextIdx = (currentIndex + 1) % availableProviders.length;
-    selectProvider(availableProviders[nextIdx].provider);
-  };
-
   return (
     <div
       ref={containerRef}
       className="relative inline-flex items-center pointer-events-auto select-none"
     >
       <div className="inline-flex items-center h-[32px] min-h-[32px] max-h-[32px] box-border rounded-lg bg-black/50 backdrop-blur-xl px-[3px] gap-[2px] text-white">
-        {hasMultiple && (
-          <button
-            type="button"
-            onClick={handlePrev}
-            aria-label="Previous provider"
-            className="w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all border-none bg-transparent cursor-pointer"
-          >
-            <LeftLine size={14} />
-          </button>
-        )}
-
         <button
           type="button"
           onClick={() => {
             if (hasMultiple) {
-              setOffsetOpen(false);
               setDropdownOpen((v) => !v);
             }
           }}
@@ -194,69 +102,6 @@ export function LyricsProviderIsland() {
           )}
         </button>
 
-        {hasMultiple && (
-          <button
-            type="button"
-            onClick={handleNext}
-            aria-label="Next provider"
-            className="w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all border-none bg-transparent cursor-pointer"
-          >
-            <RightLine size={14} />
-          </button>
-        )}
-
-        {!isCurrentPlain && (
-          <>
-            <div className="w-[1px] h-[14px] bg-white/15 mx-[1px]" />
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                adjustOffset(-100);
-              }}
-              aria-label={`${t("player.earlier")} (-0.1s)`}
-              title={`${t("player.earlier")} (-0.1s)`}
-              className="w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all border-none bg-transparent cursor-pointer"
-            >
-              <MinimizeLine size={12} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setDropdownOpen(false);
-                setOffsetOpen((v) => !v);
-              }}
-              className={`flex items-center gap-[4px] h-[26px] min-h-[26px] max-h-[26px] px-[6px] rounded-md text-[12px] font-mono transition-all border-none bg-transparent hover:bg-white/10 cursor-pointer ${
-                offsetMs !== 0
-                  ? "text-white font-[600]"
-                  : "text-white/80 font-[500]"
-              }`}
-              style={{ fontFamily: "var(--font-inter), sans-serif" }}
-              title={t("player.lyrics_offset")}
-            >
-              <TimeLine
-                size={12}
-                className={offsetMs !== 0 ? "text-white" : "text-white/50"}
-              />
-              <span>{formatOffsetBadge(offsetMs)}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                adjustOffset(100);
-              }}
-              aria-label={`${t("player.later")} (+0.1s)`}
-              title={`${t("player.later")} (+0.1s)`}
-              className="w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all border-none bg-transparent cursor-pointer"
-            >
-              <AddLine size={12} />
-            </button>
-          </>
-        )}
       </div>
 
       <AnimatePresence>
@@ -302,6 +147,8 @@ export function LyricsProviderIsland() {
           </motion.div>
         )}
 
+        </AnimatePresence>
+        {/*
         {offsetOpen && !isCurrentPlain && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -4 }}
@@ -440,7 +287,7 @@ export function LyricsProviderIsland() {
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+        */}
     </div>
   );
 }
