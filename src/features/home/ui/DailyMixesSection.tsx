@@ -17,7 +17,6 @@ interface DailyMixCardProps {
 
 function DailyMixCard({ mix }: DailyMixCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [isCardHovered, setIsCardHovered] = useState(false);
   const { t } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -119,18 +118,12 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
       className="group flex-shrink-0 w-[min(220px,64vw)] cursor-pointer select-none"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      onMouseEnter={() => setIsCardHovered(true)}
-      onMouseLeave={() => setIsCardHovered(false)}
     >
       <div
-        className={`relative aspect-[1.08] w-full overflow-hidden rounded-[14px] bg-border-alpha-14 ${
+        className={`relative aspect-[1.55] w-full overflow-hidden rounded-[9px] bg-border-alpha-14 ${
           isPlayingMix ? "ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary" : ""
         }`}
       >
-        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-3.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">
-          <span>{mixLabel} {mix.mixIndex ?? ""}</span>
-          <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] tracking-[0.08em] text-white/65">{mix.trackCount} tracks</span>
-        </div>
         {mix.mixIndex ? (
           <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={mixLabel} showBadge={false} />
         ) : mix.coverUrl && (
@@ -139,26 +132,20 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             alt={mix.title}
             fill
             sizes="175px"
-            className={`object-cover transition-all duration-300 group-hover:brightness-[1.15] ${
+            className={`object-cover ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
             onLoad={() => setImageLoaded(true)}
           />
         )}
-        <div className={`absolute inset-0 z-20 flex items-center justify-center transition-opacity duration-200 ${isCardHovered ? "opacity-100" : "opacity-0"}`}>
-          <button
-            type="button"
-            aria-label={`${t("artist.play")} ${mix.title}`}
-            onClick={(e) => { e.stopPropagation(); handlePlay(); }}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-black shadow-[0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-transform hover:scale-105 active:scale-95"
-          >
-            <PlayFill size={25} />
-          </button>
-        </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 pt-16 text-white">
-          <div className="truncate text-[17px] font-bold leading-tight tracking-[-0.02em]" title={mix.title}>{mix.title}</div>
-          <div className="mt-1 truncate text-[11px] text-white/65" title={subtitleText}>{subtitleText || mix.description}</div>
+          <div className="truncate text-[13px] font-bold leading-tight tracking-[-0.02em]" title={mix.title}>{mix.title}</div>
         </div>
+      </div>
+
+      <div className="mt-[6px] min-w-0 px-[1px]">
+        <div className="truncate text-[12px] font-[500] leading-tight text-text-primary" title={mix.title}>{mix.title}</div>
+        <div className="mt-[3px] truncate text-[10px] leading-tight text-text-tertiary" title={subtitleText}>{subtitleText || mix.description}</div>
       </div>
 
       {menuItems.length > 0 && (
@@ -203,7 +190,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixes
       </div>
 
       {/* room above and below so the playing mix's ring isn't clipped by the scroller */}
-      <ScrollableRow className="flex gap-[16px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[8px] pb-[12px]">
+      <ScrollableRow className="flex gap-[14px] pl-8 pr-8 mt-[7px] overflow-x-auto pt-[8px] pb-[12px]">
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
