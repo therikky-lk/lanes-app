@@ -92,7 +92,7 @@ const cache = { data: [] as DailyMix[], timestamp: 0, owner: "", client: false }
 
 // ---- client-built mixes (Lane) -------------------------------------------
 
-const LANE_MIXES_KEY = "lane_daily_mixes_v4";
+const LANE_MIXES_KEY = "lane_daily_mixes_v5";
 const today = () => new Date().toLocaleDateString("en-CA");
 
 interface StoredMixes {
@@ -126,7 +126,7 @@ function cacheCollection(mix: DailyMix) {
 
 let building: Promise<DailyMix[]> | null = null;
 
-/** liked tracks + history -> ten long mixes grown with the radio engine */
+/** liked tracks + history -> five long mixes grown with the radio engine */
 async function buildClientMixes(owner: string): Promise<DailyMix[]> {
   const { liked, history } = await loadListeningSignals(300, 200);
   const seeds: MixSeedTrack[] = [
@@ -138,14 +138,15 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
 
   const t = createTranslatorSync(getStoredLocale());
   const built = await buildDailyMixes(seeds, {
-    mixCount: 10,
+    mixCount: 5,
+    tracksPerMix: 50,
     artistTracks: (name) =>
       api.search(name, "track").then((r) =>
         r.items.flatMap((item) => (item.type === "track" ? [toClientTrack(item as Parameters<typeof toClientTrack>[0])] : [])).slice(0, 15),
       ),
     radio: (seed) => api.getRadio(seed.id, { k: 30 }).then((r) => (r.items || []).map((item) => toClientTrack(item))),
   });
-  const mixes: DailyMix[] = built.map((mix) => {
+  const mixes: DailyMix[] = built.slice(0, 5).map((mix) => {
     const artists = getDailyMixArtists(mix.artists, mix.tracks, 4);
     return {
       id: mix.id,
@@ -153,8 +154,8 @@ async function buildClientMixes(owner: string): Promise<DailyMix[]> {
       description: artists.join(", "),
       clusterArtists: artists,
       coverUrl: mix.tracks.find((tr) => tr.coverUrl)?.coverUrl,
-      trackCount: mix.tracks.length,
-      tracks: mix.tracks,
+      trackCount: Math.min(50, mix.tracks.length),
+      tracks: mix.tracks.slice(0, 50),
       mixIndex: mix.index,
       mosaic: mixMosaic(mix.tracks),
     };
@@ -222,8 +223,8 @@ export function useDailyMixes() {
     loadWithRetry(() => api.getDailyMixes(), () => active)
       .then((res) => {
         if (!active) return;
-        const mixes: DailyMix[] = (res.items || []).map((mix, mixPosition) => {
-          const clientTracks = (mix.tracks || []).map((t) => toClientTrack(t));
+        const mixes: DailyMix[] = (res.items || []).slice(0, 5).map((mix, mixPosition) => {
+          const clientTracks = (mix.tracks || []).slice(0, 50).map((t) => toClientTrack(t));
           const primaryCover =
             mix.cover?.url ? mediaUrl(mix.cover.url) :
             (clientTracks[0]?.coverUrl ||
@@ -237,7 +238,7 @@ export function useDailyMixes() {
             description: mix.description,
             clusterArtists: computedArtists,
             coverUrl: primaryCover,
-            trackCount: mix.trackCount || clientTracks.length,
+            trackCount: Math.min(50, clientTracks.length),
             tracks: clientTracks,
             mixIndex: mixPosition + 1,
             mosaic: mixMosaic(clientTracks),
