@@ -2,13 +2,16 @@ import type { AlbumDetails, CatalogPlaylistDetails, Track, TrackArtist } from "@
 import { findFirst, type JsonRecord, walkRecords } from "@/shared/utils/json";
 import { getRuns, getText, runPageType, runsToArtists, yearFromRuns } from "./innertubeJson";
 import { coverFromThumbnail } from "./innertubeThumbnail";
-import { mapInnertubeTrack } from "./innertubeTrackMapper";
+import { isMusicVideo, mapInnertubeTrack } from "./innertubeTrackMapper";
 
 export function mapInnertubeBrowseTracks(body: unknown, fallbackArtists: TrackArtist[] = []): Track[] {
   const tracks: Track[] = [];
   const seen = new Set<string>();
   walkRecords(body, (record) => {
     if (!record.musicResponsiveListItemRenderer) return false;
+    // Collections can contain official videos and user uploads alongside
+    // audio tracks. Never expose their video-frame thumbnails as artwork.
+    if (isMusicVideo(record)) return true;
     const track = mapInnertubeTrack(record, fallbackArtists);
     if (track && !seen.has(track.id)) {
       seen.add(track.id);
