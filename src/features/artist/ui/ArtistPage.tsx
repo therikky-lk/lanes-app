@@ -5,7 +5,6 @@ import {
   AddLine,
   NewFolderLine,
   FolderCheckFill,
-  ShareForwardLine,
 } from "@mingcute/react";
 import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
@@ -21,7 +20,6 @@ import { useToast, StickyHeader } from "@/shared/ui";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "@/features/library";
 import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack, type ApiTrack } from "@/shared/api";
-import { buildShareUrl } from "@/shared/utils/share";
 import { useExternalItems } from "@/features/library/hooks";
 import ArtistProfileModal from "./ArtistProfileModal";
 import { PinFill, PinLine } from "@mingcute/react";
@@ -190,15 +188,6 @@ function ArtistContent() {
         title: data.title,
         coverUrl: data.coverUrl,
         type: "artist",
-      });
-    }
-  };
-
-  const handleShare = () => {
-    if (typeof navigator !== "undefined" && navigator.clipboard && decodedId) {
-      navigator.clipboard.writeText(buildShareUrl("artist", decodedId));
-      toast(t("common.link_copied"), "checkmark", {
-        description: data?.title || undefined,
       });
     }
   };
@@ -434,18 +423,6 @@ function ArtistContent() {
                       {pinned ? <PinFill size={18} /> : <PinLine size={18} />}
                     </Button>
 
-                    <Button
-                      variant={hasCustomBg ? "glass-action" : "outline"}
-                      onClick={handleShare}
-                      className={`!h-[38px] !w-[38px] !p-0 flex items-center justify-center transition-colors ${
-                        hasCustomBg
-                          ? ""
-                          : "text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm"
-                      }`}
-                      title={t("artist.share")}
-                    >
-                      <ShareForwardLine size={18} />
-                    </Button>
                   </div>
                 </div>
 

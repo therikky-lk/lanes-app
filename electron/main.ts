@@ -415,8 +415,8 @@ function createWindow() {
 }
 
 // Single instance lock
-// Lane is a fork of Liner: upstream's auto-updates would replace it with Liner.
-const LANE_FORK_UPDATES_DISABLED = true;
+// Updates are served from this application's release feed configured in package.json.
+const LANE_FORK_UPDATES_DISABLED = false;
 let lanePurgedInjectedIcons = false;
 
 // The name media controls show (MPRIS on Linux, the Windows media flyout) and

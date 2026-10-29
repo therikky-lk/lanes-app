@@ -9,7 +9,6 @@ import {
   PauseFill,
   NewFolderLine,
   FolderCheckFill,
-  ShareForwardLine,
   PlaylistFill,
   PlaylistLine,
   DiscLine,
@@ -37,7 +36,6 @@ import {
 import type { Track } from "@/shared/types";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "@/features/library";
-import { buildShareUrl } from "@/shared/utils/share";
 import { useExternalItems } from "@/features/library/hooks";
 import { useCollection } from "../hooks/useCollection";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
@@ -228,15 +226,6 @@ function CollectionContent() {
         coverUrl: data.coverUrl,
         type: entityType,
         totalTracks: entityType === "playlist" ? data.tracks.length : undefined,
-      });
-    }
-  };
-
-  const handleShare = () => {
-    if (typeof navigator !== "undefined" && navigator.clipboard && decodedId) {
-      navigator.clipboard.writeText(buildShareUrl(entityType, decodedId));
-      toast(t("common.link_copied"), "checkmark", {
-        description: data?.title || undefined,
       });
     }
   };
@@ -582,12 +571,6 @@ function CollectionContent() {
                                   ? t("common.remove_from_library")
                                   : t("common.save_to_library"),
                                 onClick: handleSaveToLibrary,
-                              },
-                              {
-                                id: "share",
-                                icon: <ShareForwardLine size={16} />,
-                                label: t("common.share"),
-                                onClick: handleShare,
                               },
                             ]}
                           />
