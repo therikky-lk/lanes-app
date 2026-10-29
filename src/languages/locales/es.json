@@ -826,6 +826,7 @@
       "badge_private": "Privado"
     },
     "about": {
+      "update_app": "Actualizar aplicación",
       "all_releases": "Todas las versiones",
       "liner": "Lane",
       "telegram": "Canal",
