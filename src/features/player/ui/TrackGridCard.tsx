@@ -1,12 +1,13 @@
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
-import { memo, useCallback, useState } from "react";
-import { PlayFill, More2Fill, MusicLine } from "@mingcute/react";
+import { memo, useCallback, useRef, useState } from "react";
+import { PlayFill, More2Fill, MusicLine, HeartFill, HeartLine } from "@mingcute/react";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
 import { ArtistLink } from "@/features/artist";
 import type { Track } from "@/shared/types";
 import { useSongMenuItems } from "../hooks/useSongMenuItems";
+import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 
 export interface TrackGridCardProps {
   track: Track;
@@ -15,10 +16,11 @@ export interface TrackGridCardProps {
   playlistId?: string;
   playlistTitle?: string;
   onPlay: () => void;
+  showLikeButton?: boolean;
 }
 
 /** a track as a tile: cover, title, artist; same menu as the list rows */
-function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTitle, onPlay }: TrackGridCardProps) {
+function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTitle, onPlay, showLikeButton = false }: TrackGridCardProps) {
   const coverUrl = track.coverUrl || coverFallback || "";
   const menuItems = useSongMenuItems({
     id: track.id,
@@ -33,6 +35,23 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const isLiked = useIsTrackLiked(track.id);
+  const likeMutation = useLikeTrack();
+  const unlikeMutation = useUnlikeTrack();
+  const togglingLikeRef = useRef(false);
+
+  const handleLikeToggle = useCallback(() => {
+    if (togglingLikeRef.current) return;
+    togglingLikeRef.current = true;
+    const onSettled = () => {
+      togglingLikeRef.current = false;
+    };
+    if (isLiked) {
+      unlikeMutation.mutate(track.id, { onSettled });
+    } else {
+      likeMutation.mutate({ trackId: track.id, track }, { onSettled });
+    }
+  }, [isLiked, likeMutation, unlikeMutation, track]);
 
   const onContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -82,6 +101,22 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
         >
           <More2Fill size={16} />
         </button>
+        {showLikeButton && (
+          <button
+            type="button"
+            aria-label={isLiked ? "Unlike" : "Like"}
+            aria-pressed={isLiked}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLikeToggle();
+            }}
+            className={`absolute top-[6px] left-[6px] inline-flex h-[28px] w-[28px] items-center justify-center rounded-full border-0 bg-black/45 backdrop-blur-md transition-opacity group-hover:opacity-100 cursor-pointer ${
+              isLiked ? "text-[#ff3b5c] opacity-100" : "text-white opacity-0"
+            }`}
+          >
+            {isLiked ? <HeartFill size={16} /> : <HeartLine size={16} />}
+          </button>
+        )}
       </div>
       <div className="min-w-0">
         <p className={`m-0 truncate text-[14px] font-[500] ${isCurrent ? "text-accent-primary" : "text-text-primary"}`}>{cleanTrackTitle(track.title, track.artists)}</p>
