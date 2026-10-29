@@ -11,7 +11,7 @@
 
 </details>
 
-<details open>
+<details>
 <summary><strong>1.6.2</strong> — избранное, кэш и синхронизация плейлистов</summary>
 
 - Добавлена кнопка лайка трека в мобильном плеере и плейлистах.
@@ -24,7 +24,7 @@
 
 </details>
 
-<details open>
+<details>
 <summary><strong>1.6.1</strong> — стабильность, офлайн и обновления</summary>
 
 - Убраны клипы, official video и другие видеозаписи из выбора аудиотрека.
