@@ -166,7 +166,7 @@ export interface DailyMixesSectionProps {
   headingMarginTop?: string;
 }
 
-function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixesSectionProps) {
+function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesSectionProps) {
   const { t } = useTranslation();
   const scroll = useHorizontalScroll();
   if (mixes.length === 0) return null;
@@ -191,7 +191,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[22px]" }: DailyMixes
         <ScrollableRow
           controller={scroll}
           showScrollMask={false}
-          className="flex gap-[14px] pl-[16px] pr-[16px] mt-[7px] overflow-x-auto pt-[8px] pb-[12px]"
+          className="flex gap-[14px] pl-[16px] pr-[16px] mt-[3px] overflow-x-auto pt-0 pb-[12px]"
         >
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
