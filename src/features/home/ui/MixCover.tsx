@@ -42,13 +42,7 @@ export default function MixCover({ index, covers, label, sizes = "220px", classN
         ))}
       </div>
       {/* The artwork stays visible behind the type, with a soft cinematic fade. */}
-      <div
-        className="absolute inset-x-0 bottom-0"
-        style={{
-          height: "72%",
-          background: `linear-gradient(to top, rgba(8, 10, 14, 0.94) 0%, rgba(8, 10, 14, 0.72) 35%, ${from}70 70%, transparent 100%)`,
-        }}
-      />
+      <div className="absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/75 to-transparent" />
       {showBadge && (
         <div className="absolute inset-x-[8%] bottom-[7%] flex items-end justify-between text-white">
           <span className="text-[clamp(10px,7cqw,20px)] font-[700] uppercase tracking-[0.1em] leading-none" style={{ textShadow: "0 1px 8px rgba(0,0,0,0.3)" }}>
