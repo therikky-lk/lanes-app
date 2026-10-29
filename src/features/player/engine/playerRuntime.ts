@@ -790,7 +790,10 @@ export class PlayerRuntime {
     }
 
     if (this.preloadingTrackId === track.id && this.preloadingPromise) {
-      await this.preloadingPromise;
+      // Do not make a user initiated skip wait for a background download. The
+      // normal resolver can start immediately and will pick up the cache if
+      // the preload finishes first.
+      void this.preloadingPromise.catch(() => undefined);
     } else if (this.preloadingTrackId && this.preloadingTrackId !== track.id) {
       this.preloadAbortController?.abort();
       this.preloadAbortController = null;
