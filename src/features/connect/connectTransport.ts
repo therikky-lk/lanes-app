@@ -190,14 +190,26 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
 
   return {
     async publish(text: string) {
+      const publishOne = async (relay: string) => {
+        let lastError: unknown;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            if (electron?.connectPublish) {
+              await electron.connectPublish(relay, topic, text);
+            } else {
+              const response = await fetch(`${relay}/${topic}`, { method: "POST", body: text });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            }
+            return;
+          } catch (error) {
+            lastError = error;
+            if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+          }
+        }
+        throw lastError instanceof Error ? lastError : new Error(String(lastError));
+      };
       const results = await Promise.allSettled(
-        RELAYS.map((relay) =>
-          electron?.connectPublish
-            ? electron.connectPublish(relay, topic, text)
-            : fetch(`${relay}/${topic}`, { method: "POST", body: text }).then((r) => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-              }),
-        ),
+        RELAYS.map((relay) => publishOne(relay)),
       );
       if (results.every((r) => r.status === "rejected")) {
         const reason = (results[0] as PromiseRejectedResult).reason;

@@ -202,6 +202,29 @@ class LinerDb {
     return this.memTracks.get(id) || null;
   }
 
+  async listTracks(): Promise<CachedTrackRecord[]> {
+    const result = await this.runTransaction("tracks", "readonly", (store) => {
+      return new Promise<CachedTrackRecord[]>((resolve) => {
+        const records: CachedTrackRecord[] = [];
+        const req = store.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (cursor) {
+            records.push(cursor.value as CachedTrackRecord);
+            cursor.continue();
+          } else {
+            resolve(records);
+          }
+        };
+        req.onerror = () => resolve([]);
+      });
+    });
+    const records = result && result.length > 0 ? result : Array.from(this.memTracks.values());
+    records.sort((a, b) => b.savedAt - a.savedAt);
+    for (const record of records) this.memTracks.set(record.id, record);
+    return records;
+  }
+
   async putTrack(track: Track): Promise<void> {
     const record: CachedTrackRecord = {
       id: track.id,

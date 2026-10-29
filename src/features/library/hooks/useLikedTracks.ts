@@ -4,6 +4,7 @@ import type { Track } from "@/shared/types";
 import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@/shared/media/local/localTracks";
 import { loadLocalLikes } from "@/features/local/localLikesSync";
 import { localEntryToTrack } from "@/features/local/localPlaylistTracks";
+import { linerDb, type CachedTrackRecord } from "@/shared/storage/linerDb";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
@@ -71,6 +72,29 @@ function snapshot() {
 
 const SERVER_SNAPSHOT = { data: EMPTY, isLoading: true };
 
+function cachedTrackToClient(record: CachedTrackRecord): Track {
+  return {
+    id: record.id,
+    title: record.title,
+    artists: record.artists,
+    coverUrl: record.coverUrl ?? "",
+    durationMs: record.durationMs,
+    playCount: 0,
+    ...(record.albumTitle
+      ? { album: { id: record.albumId ?? `cached_${record.id}`, title: record.albumTitle } }
+      : {}),
+  };
+}
+
+async function restoreCachedLibrary(): Promise<boolean> {
+  const records = await linerDb.listTracks().catch(() => []);
+  if (records.length === 0) return false;
+  cache = { tracks: records.map(cachedTrackToClient), total: records.length };
+  loaded = true;
+  emit(false);
+  return true;
+}
+
 function load(force = false): Promise<void> {
   if (request) {
     // a reload asked for while one is running (a like / unlike just went
@@ -91,6 +115,10 @@ function load(force = false): Promise<void> {
 
   const startedAt = Date.now();
   request = (async () => {
+    // Render the last known library immediately. The network refresh below is
+    // best-effort, so a temporary outage never turns the library into an empty
+    // screen.
+    if (!loaded) await restoreCachedLibrary();
     const tracks: Track[] = [];
     let cursor: string | undefined;
     const remoteLocal = loadLocalLikes();
@@ -100,6 +128,7 @@ function load(force = false): Promise<void> {
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
     cache = { tracks, total: tracks.length };
+    await Promise.all(tracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
     loaded = true;
     // keep the optimistic state the server doesn't show yet: overrides made
@@ -115,7 +144,7 @@ function load(force = false): Promise<void> {
     }
   })()
     .catch(() => {
-      if (!loaded) cache = EMPTY;
+      if (!loaded) void restoreCachedLibrary();
       loaded = true;
     })
     .finally(() => {
