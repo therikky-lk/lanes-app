@@ -401,7 +401,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       io.disconnect();
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [expanded]);
+  }, []);
 
   const launch = async (next: VibeSettings) => {
     setStarting(true);
@@ -460,8 +460,6 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       style={{
         height: expanded ? "100%" : HERO_HEIGHT,
         marginTop: "var(--lane-safe-top, 0px)",
-        transition: "height 520ms cubic-bezier(0.22, 1, 0.36, 1)",
-        willChange: "height",
       }}
       aria-label={t("home.vibe.title")}
     >
