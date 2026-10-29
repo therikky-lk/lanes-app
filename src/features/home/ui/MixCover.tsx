@@ -25,7 +25,7 @@ export interface MixCoverProps {
   showBadge?: boolean;
 }
 
-export default function MixCover({ index, covers, label, sizes = "282px", className = "", showBadge = true }: MixCoverProps) {
+export default function MixCover({ index, covers, label, sizes = "220px", className = "", showBadge = true }: MixCoverProps) {
   const [from, to] = PALETTE[(Math.max(1, index) - 1) % PALETTE.length];
   const tiles = covers.length >= 4 ? covers.slice(0, 4) : covers.slice(0, 1);
   return (
