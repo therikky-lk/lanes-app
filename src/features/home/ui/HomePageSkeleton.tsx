@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 interface HomePageSkeletonProps {
   glowClass?: string;
@@ -58,11 +59,12 @@ function HomePageSkeletonComponent({
   showQuickGrid = false,
 }: HomePageSkeletonProps) {
   const hasCustomBg = useIsContentTransparent();
+  const isMobile = useIsMobile();
 
   return (
     <div className="relative min-h-full w-full bg-transparent pb-[16px] select-none overflow-hidden">
 
-      {!hasCustomBg && (
+      {!hasCustomBg && isMobile && (
         <div
           aria-hidden="true"
           className={`pointer-events-none absolute top-0 left-0 right-0 h-[360px] bg-gradient-to-b ${glowClass} blur-3xl opacity-80`}
