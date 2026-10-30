@@ -186,12 +186,19 @@ export default function RecentPage() {
                 const isOpen = open.has(g.key);
                 return (
                   <div key={g.key} className="lane-row rounded-xl transition-colors hover:bg-white/[0.035]">
-                    <div className="flex items-center gap-[12px] px-[8px] py-[7px]">
-                      <button
-                        type="button"
-                        onClick={() => openSource(g)}
-                        className="flex min-w-0 flex-1 items-center gap-[12px] border-0 bg-transparent p-0 text-left cursor-pointer"
-                      >
+                    <div
+                      className="flex cursor-pointer items-center gap-[12px] rounded-xl px-[8px] py-[7px] transition-colors hover:bg-white/[0.035]"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => (expandable ? toggle(g.key) : openSource(g))}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          expandable ? toggle(g.key) : openSource(g);
+                        }
+                      }}
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-[12px] text-left">
                         <span className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
                           {d.icon === "liked" ? (
                             <LikedCover heartRatio={0.5} />
@@ -212,11 +219,14 @@ export default function RecentPage() {
                           <span className="block truncate text-[15px] font-[550] text-text-primary">{d.title}</span>
                           <span className="block truncate text-[13px] text-text-tertiary">{d.sub}</span>
                         </span>
-                      </button>
+                      </div>
                       {expandable && (
                         <button
                           type="button"
-                          onClick={() => toggle(g.key)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggle(g.key);
+                          }}
                           aria-expanded={isOpen}
                           aria-label={isOpen ? t("history.collapse") : t("history.expand")}
                           className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-tertiary hover:bg-white/[0.06] hover:text-text-primary cursor-pointer"
