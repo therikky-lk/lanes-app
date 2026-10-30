@@ -128,7 +128,7 @@ export default function TrendsSection() {
   const shown = entries ? (all ? entries : entries.slice(0, PREVIEW)) : [];
   return (
     <div className="flex flex-col" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <div className="mt-[26px] px-8 flex items-center justify-between gap-[12px]">
+      <div className="mt-[26px] px-[16px] md:px-8 flex items-center justify-between gap-[12px]">
         <div className="flex items-center gap-2.5">
           <FireFill className="w-5 h-5 text-[#ff6a3d]" />
           <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>

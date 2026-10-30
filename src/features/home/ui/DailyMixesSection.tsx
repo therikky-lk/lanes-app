@@ -211,7 +211,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
         <ScrollableRow
           controller={scroll}
           showScrollMask={false}
-          className="flex gap-[14px] pl-[16px] pr-[16px] mt-[3px] overflow-x-auto pt-0 pb-[12px]"
+          className="flex flex-nowrap gap-[14px] pl-[16px] pr-[16px] mt-[3px] overflow-x-auto pt-0 pb-[12px]"
         >
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
