@@ -1,7 +1,6 @@
 import { usePlayerStore } from "../store/playerStore";
 import { HeartFill, HeartLine } from "@mingcute/react";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
-import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
@@ -639,9 +638,6 @@ export function FullscreenPlayer({
             <PlaybackSpeed size={18} weight={speedChanged ? "Bold" : "Outline"} />
           </button>
         )}
-        <ConnectDevicesButton
-          className={`inline-flex ${isMobile ? "h-[34px] w-[34px]" : "h-[32px] w-[32px]"} items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none`}
-        />
       </div>
     </div>
   );
