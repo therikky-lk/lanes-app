@@ -183,7 +183,7 @@ export default function CreatePlaylistModal() {
           </button>
         </div>
 
-        <div className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated">
+        <div className="flex w-full items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated">
           {(
             [
               { id: "create", label: t("library.create_playlist") },
@@ -194,7 +194,7 @@ export default function CreatePlaylistModal() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`relative inline-flex items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
+              className={`relative inline-flex flex-1 items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
                 tab === item.id
                   ? "text-text-primary"
                   : "bg-transparent text-text-secondary hover:text-text-primary"
@@ -202,8 +202,8 @@ export default function CreatePlaylistModal() {
               style={{ ...font, fontWeight: tab === item.id ? 500 : 400 }}
             >
               {tab === item.id && (
-                <motion.span
-                  layoutId="createPlaylistModalTab"
+                <motion.div
+                  layoutId="activeCreatePlaylistTab"
                   className="absolute inset-0 rounded-lg bg-border-alpha-14"
                   transition={{ type: "spring", stiffness: 450, damping: 35 }}
                 />
