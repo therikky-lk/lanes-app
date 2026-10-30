@@ -428,10 +428,10 @@ export default function LibraryPage() {
         <div className="relative sticky top-0 z-20 bg-transparent">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 bottom-[-36px] z-0 backdrop-blur-xl"
+            className="pointer-events-none absolute inset-x-0 top-0 bottom-[-48px] z-0 backdrop-blur-xl"
             style={{
-              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%)",
-              maskImage: "linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%)",
             }}
           />
 
