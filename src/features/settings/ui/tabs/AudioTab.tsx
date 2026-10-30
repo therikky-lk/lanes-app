@@ -45,7 +45,7 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
                   { value: "low", label: t("settings.audio.low") },
                   { value: "standard", label: t("settings.audio.standard") },
                   { value: "high", label: t("settings.audio.high") },
-                  { value: "lossless", label: "Lossless (если доступно)" },
+                  { value: "lossless", label: t("settings.audio.lossless") },
                 ]}
               />
             ) : (
