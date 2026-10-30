@@ -932,7 +932,7 @@
       "low": "Низкое (экономия трафика)",
       "standard": "Стандартное (Opus 64kbps / MP3 128kbps)",
       "high": "Высокое (AAC 256kbps)",
-      "lossless": "Lossless (FLAC/ALAC) — недоступно"
+      "lossless": "Без потерь (FLAC/ALAC) — недоступно"
     },
     "profile": {
       "title": "Профиль",
