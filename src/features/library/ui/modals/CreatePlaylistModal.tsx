@@ -99,10 +99,16 @@ export default function CreatePlaylistModal() {
       if (cover) {
         try {
           setPlaylistCover(playlist.id, cover, { notify: false });
+          console.debug("[Lane][PlaylistCover] syncing newly created cover", {
+            playlistId: playlist.id,
+            bytes: cover.length,
+          });
           await api.updatePlaylist(playlist.id, {
             description: withCoverMarker(playlist.description, cover),
           });
-        } catch {
+          console.debug("[Lane][PlaylistCover] new cover sync complete", { playlistId: playlist.id });
+        } catch (error) {
+          console.error("[Lane][PlaylistCover] new cover sync failed", { playlistId: playlist.id, error });
           // The playlist is already created; a storage failure must not undo it.
         }
       }
