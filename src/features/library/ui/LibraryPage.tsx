@@ -425,9 +425,17 @@ export default function LibraryPage() {
           // Android can blur what scrolls under it; this keeps its room
           <div aria-hidden style={{ height: mobileHeaderH }} />
         ) : (
-        <div className="sticky top-0 z-20 border-b border-white/[0.04] bg-transparent backdrop-blur-xl backdrop-saturate-100">
+        <div className="relative sticky top-0 z-20 border-b border-white/[0.04] bg-transparent">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 bottom-[-36px] z-0 backdrop-blur-xl"
+            style={{
+              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%)",
+            }}
+          />
 
-          <div className="px-[32px] pt-[20px] pb-[10px]">
+          <div className="relative z-10 px-[32px] pt-[20px] pb-[10px]">
             <h1
               className="text-[26px] font-bold text-text-primary tracking-tight m-0 leading-tight"
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
@@ -436,7 +444,7 @@ export default function LibraryPage() {
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-[10px] px-[32px] pb-[10px]">
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-[10px] px-[32px] pb-[10px]">
             <LibraryTabs activeTab={activeTab} onChange={setActiveTab} />
             <LibraryControls
               activeTab={activeTab}
@@ -452,14 +460,6 @@ export default function LibraryPage() {
               onViewModeChange={handleViewModeChange}
             />
           </div>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-full h-[28px] backdrop-blur-xl"
-            style={{
-              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, transparent 100%)",
-              maskImage: "linear-gradient(to bottom, #000 0%, transparent 100%)",
-            }}
-          />
         </div>
         )}
 
