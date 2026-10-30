@@ -6,6 +6,11 @@ const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 192;
 const MIN_SIDE = 64;
 const MAX_SYNCED_COVER_LENGTH = 6_000;
+const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
+
+function coverLog(message: string, details?: unknown): void {
+  if (import.meta.env.DEV) console.debug(COVER_LOG_PREFIX, message, details ?? "");
+}
 
 function readAll(): Record<string, string> {
   try {
@@ -38,6 +43,7 @@ async function compactCover(source: Blob): Promise<string> {
   let dispose = () => {};
   try {
     bitmap = await createImageBitmap(source);
+    coverLog("decoded with createImageBitmap", { width: bitmap.width, height: bitmap.height });
   } catch {
     // Some browsers/formats cannot use createImageBitmap but can still decode
     // the same local file through a normal object URL.
@@ -52,6 +58,7 @@ async function compactCover(source: Blob): Promise<string> {
       });
       bitmap = image;
       dispose = () => URL.revokeObjectURL(url);
+      coverLog("decoded with Image fallback", { width: image.naturalWidth, height: image.naturalHeight });
     } catch (error) {
       URL.revokeObjectURL(url);
       throw error;
@@ -79,6 +86,7 @@ async function compactCover(source: Blob): Promise<string> {
       quality = Math.max(0.62, quality - 0.06);
     }
 
+    coverLog("cover compressed", { side, bytes: result.length });
     return result;
   } finally {
     dispose();
@@ -87,6 +95,7 @@ async function compactCover(source: Blob): Promise<string> {
 }
 
 export async function imageFileToCover(file: File): Promise<string> {
+  coverLog("processing selected file", { type: file.type, bytes: file.size });
   return compactCover(file);
 }
 
@@ -110,5 +119,6 @@ export function setPlaylistCover(playlistId: string, dataUrl: string | null, opt
   } catch {
     throw new Error("Not enough space to store the cover");
   }
+  coverLog("saved cover locally", { playlistId, bytes: dataUrl?.length ?? 0 });
   if (options?.notify !== false) window.dispatchEvent(new Event("library:changed"));
 }
