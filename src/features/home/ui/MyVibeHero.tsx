@@ -621,41 +621,36 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
 
             <p className="m-0 mt-[6px] mb-[10px] text-[11px] font-[600] lowercase text-white/55">{t("home.vibe.by_character")}</p>
             <LayoutGroup id="vibe-character-selector">
-            <div className="inline-flex w-full items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
-              {VIBE_CHARACTERS.map((c, i) => {
+            <div className="relative grid w-full grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+              <motion.span
+                aria-hidden
+                className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-border-alpha-14"
+                style={{ width: "calc((100% - 8px) / 3)" }}
+                animate={{
+                  x: `${Math.max(0, VIBE_CHARACTERS.indexOf(settings.character ?? "favorite")) * 100}%`,
+                  opacity: settings.character ? 1 : 0,
+                }}
+                transition={{ type: "spring", stiffness: 220, damping: 24, mass: 0.8 }}
+              />
+              {VIBE_CHARACTERS.map((c) => {
                 const on = settings.character === c;
                 const { Icon, color } = CHARACTER_ICON[c];
                 return (
-                  <Fragment key={c}>
-                    {i > 0 && (
-                      <span
-                        aria-hidden
-                        className={`mx-[2px] h-[28px] w-px bg-white/15 transition-opacity ${
-                          on || settings.character === VIBE_CHARACTERS[i - 1] ? "opacity-0" : ""
-                        }`}
-                      />
-                    )}
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => toggle("character", c)}
-                      className="relative inline-flex h-[64px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
-                    >
-                      {on && (
-                        <motion.span
-                          layoutId="vibeCharacterPill"
-                          className="absolute inset-0 rounded-lg bg-border-alpha-14"
-                          initial={false}
-                          transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.7 }}
-                        />
-                      )}
-                      <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
-                      <span className="relative z-10 truncate text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
-                    </button>
-                  </Fragment>
+                  <button
+                    key={c}
+                    type="button"
+                    role="tab"
+                    aria-selected={on}
+                    onClick={() => toggle("character", c)}
+                    className="relative z-10 inline-flex h-[64px] min-w-0 items-center justify-center gap-[5px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
+                  >
+                    <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
+                    <span className="relative z-10 truncate text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
+                  </button>
                 );
               })}
+              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/15" />
+              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/15" />
             </div>
             </LayoutGroup>
 
@@ -687,43 +682,38 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             <LayoutGroup id="vibe-language-selector">
             <div className="flex w-full flex-nowrap items-center gap-[6px]">
               {/* library-style switch, flags only, with dividers */}
-              <div className="flex min-w-0 flex-1 items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
-                {(["russian", "ukrainian", "english"] as const).map((l, i) => {
+              <div className="relative grid min-w-0 flex-1 grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+                <motion.span
+                  aria-hidden
+                  className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-border-alpha-14"
+                  style={{ width: "calc((100% - 8px) / 3)" }}
+                  animate={{
+                    x: `${Math.max(0, (["russian", "ukrainian", "english"] as const).indexOf(settings.language as "russian" | "ukrainian" | "english")) * 100}%`,
+                    opacity: settings.language && ["russian", "ukrainian", "english"].includes(settings.language) ? 1 : 0,
+                  }}
+                  transition={{ type: "spring", stiffness: 220, damping: 24, mass: 0.8 }}
+                />
+                {(["russian", "ukrainian", "english"] as const).map((l) => {
                   const on = settings.language === l;
                   return (
-                    <Fragment key={l}>
-                      {i > 0 && (
-                        <span
-                          aria-hidden
-                          className={`mx-[2px] h-[18px] w-px bg-white/15 transition-opacity ${
-                            on || settings.language === (["russian", "ukrainian", "english"] as const)[i - 1] ? "opacity-0" : ""
-                          }`}
-                        />
-                      )}
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={on}
-                        title={label.language(l)}
-                        aria-label={label.language(l)}
-                        onClick={() => toggle("language", l)}
-                        className="relative inline-flex h-[36px] min-w-0 flex-1 items-center justify-center rounded-lg border-0 bg-transparent px-[12px] cursor-pointer select-none active:scale-[0.97]"
-                      >
-                        {on && (
-                          <motion.span
-                            layoutId="vibeLanguagePill"
-                            className="absolute inset-0 rounded-lg bg-border-alpha-14"
-                            initial={false}
-                            transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.7 }}
-                          />
-                        )}
-                        <span className={`relative z-10 transition-opacity ${on ? "" : "opacity-75"}`}>
-                          <Emoji name={LANGUAGE_FLAG[l]} width={24} />
-                        </span>
-                      </button>
-                    </Fragment>
+                    <button
+                      key={l}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      title={label.language(l)}
+                      aria-label={label.language(l)}
+                      onClick={() => toggle("language", l)}
+                      className="relative z-10 inline-flex h-[36px] min-w-0 items-center justify-center rounded-lg border-0 bg-transparent px-[12px] cursor-pointer select-none active:scale-[0.97]"
+                    >
+                      <span className={`relative z-10 transition-opacity ${on ? "" : "opacity-75"}`}>
+                        <Emoji name={LANGUAGE_FLAG[l]} width={24} />
+                      </span>
+                    </button>
                   );
                 })}
+                <span className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px bg-white/15" />
+                <span className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px bg-white/15" />
               </div>
               {/* "no vocals" on its own */}
               <button
