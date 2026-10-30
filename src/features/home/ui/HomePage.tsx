@@ -39,9 +39,9 @@ export default function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
-  const { data: likedData, isLoading: likedLoading } = useLikedTracks();
+  const { data: likedData } = useLikedTracks();
 
-  const { data: popularItems, isLoading: popularLoading } = usePopular(100);
+  const { data: popularItems } = usePopular(100);
   const { data: popularTracksOnly, isLoading: tracksLoading } =
     usePopularTracksOnly(20);
   const { data: popularTracksAllTime, isLoading: allTimeLoading } =
@@ -50,12 +50,10 @@ export default function HomePage() {
     useRecentlyPlayed(20);
   const { data: dailyMixes } = useDailyMixes();
 
-  const isDataLoading =
-    tracksLoading ||
-    allTimeLoading ||
-    popularLoading ||
-    recentLoading ||
-    likedLoading;
+  // Do not hold the entire home screen behind the slowest optional request.
+  // Sections appear as soon as any core source responds; covers and likes
+  // continue enriching in the background.
+  const isDataLoading = tracksLoading && allTimeLoading && recentLoading;
 
   const popularAlbums =
     popularItems?.filter((it) => it.type === "album") ?? [];
