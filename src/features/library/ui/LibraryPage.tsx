@@ -453,10 +453,10 @@ export default function LibraryPage() {
           </div>
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-full h-[28px] backdrop-blur-md"
+            className="pointer-events-none absolute inset-x-0 top-full h-[48px] backdrop-blur-md"
             style={{
-              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, transparent 100%)",
-              maskImage: "linear-gradient(to bottom, #000 0%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.55) 42%, rgba(0,0,0,0.2) 72%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.55) 42%, rgba(0,0,0,0.2) 72%, transparent 100%)",
             }}
           />
         </div>
