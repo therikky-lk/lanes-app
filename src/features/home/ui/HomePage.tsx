@@ -183,7 +183,7 @@ export default function HomePage() {
                   key={item.key}
                   type="button"
                   onClick={item.onClick}
-                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-xl border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05] active:bg-white/[0.08]"
+                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-xl border-0 bg-white/[0.05] px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05] active:bg-white/[0.08]"
                 >
                   {item.tile}
                   <span className="min-w-0 flex-1">
