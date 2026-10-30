@@ -451,6 +451,14 @@ export default function LibraryPage() {
               onViewModeChange={handleViewModeChange}
             />
           </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-full h-[18px] backdrop-blur-md"
+            style={{
+              WebkitMaskImage: "linear-gradient(to bottom, #000 0%, transparent 100%)",
+              maskImage: "linear-gradient(to bottom, #000 0%, transparent 100%)",
+            }}
+          />
         </div>
         )}
 
