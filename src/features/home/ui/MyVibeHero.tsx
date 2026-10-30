@@ -5,7 +5,7 @@ import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
 import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine, MicOffLine, PawFill } from "@mingcute/react";
 import { Emoji } from "react-apple-emojis";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import { useTranslation } from "@/languages";
@@ -620,6 +620,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 </div>
 
             <p className="m-0 mt-[6px] mb-[10px] text-[11px] font-[600] lowercase text-white/55">{t("home.vibe.by_character")}</p>
+            <LayoutGroup id="vibe-character-selector">
             <div className="relative grid grid-cols-3 rounded-[14px] bg-black/25 p-[4px]">
               {VIBE_CHARACTERS.map((c) => {
                 const on = settings.character === c;
@@ -647,6 +648,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
               <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/10" />
               <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/10" />
             </div>
+            </LayoutGroup>
 
             <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_mood")}</p>
             <div className="grid grid-cols-4 gap-[8px]">
@@ -673,6 +675,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_language")}</p>
             {/* one switch for the language (tap the picked one again to clear it),
                 and "no vocals" on its own */}
+            <LayoutGroup id="vibe-language-selector">
             <div className="flex flex-nowrap items-center gap-[6px]">
               {/* library-style switch, flags only, with dividers */}
               <div className="inline-flex shrink-0 items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
@@ -738,6 +741,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 <PawFill size={21} />
               </button>
             </div>
+            </LayoutGroup>
               </motion.div>
             </motion.div>
           )}
