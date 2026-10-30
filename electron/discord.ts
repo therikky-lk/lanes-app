@@ -45,6 +45,15 @@ export function discordSocketDirs(env: NodeJS.ProcessEnv = process.env): string[
         if (entry.isDirectory()) dirs.push(path.join(appDir, entry.name));
       }
     } catch {}
+    // Fedora's Flatpak Discord stores its IPC socket in a private runtime
+    // directory instead of directly under XDG_RUNTIME_DIR:
+    // .flatpak/com.discordapp.Discord/xdg-run/discord-ipc-0
+    try {
+      const flatpakDir = path.join(base, ".flatpak");
+      for (const entry of fs.readdirSync(flatpakDir, { withFileTypes: true })) {
+        if (entry.isDirectory()) dirs.push(path.join(flatpakDir, entry.name, "xdg-run"));
+      }
+    } catch {}
   }
   return dirs;
 }
