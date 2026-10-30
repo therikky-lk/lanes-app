@@ -162,7 +162,7 @@ export default function CreatePlaylistModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (!next ? close() : undefined)} maxWidth={440}>
+    <Dialog open={open} onOpenChange={(next) => (!next ? close() : undefined)} maxWidth={440} animateLayout>
       <div className="flex flex-col gap-[14px] px-[20px] pb-[16px]">
         <div className="flex items-start justify-between gap-[12px]">
           <div>
