@@ -624,7 +624,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             <div className="relative grid w-full grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
               <motion.span
                 aria-hidden
-                className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-border-alpha-14"
+                className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-white/[0.09]"
                 style={{ width: "calc((100% - 8px) / 3)" }}
                 animate={{
                   x: `${Math.max(0, VIBE_CHARACTERS.indexOf(settings.character ?? "favorite")) * 100}%`,
@@ -685,7 +685,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
               <div className="relative grid min-w-0 flex-1 grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
                 <motion.span
                   aria-hidden
-                  className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-border-alpha-14"
+                  className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-white/[0.09]"
                   style={{ width: "calc((100% - 8px) / 3)" }}
                   animate={{
                     x: `${Math.max(0, (["russian", "ukrainian", "english"] as const).indexOf(settings.language as "russian" | "ukrainian" | "english")) * 100}%`,
