@@ -60,7 +60,7 @@ export default function LibraryControls({
           data-no-tooltip="true"
           aria-label={t("library.view_grid")}
           onClick={() => onViewModeChange("grid")}
-          className={`inline-flex items-center justify-center h-[28px] w-[30px] rounded-[6px] border-0 transition-colors cursor-pointer select-none active:scale-[0.95] ${
+          className={`inline-flex items-center justify-center h-[30px] w-[34px] rounded-[6px] border-0 transition-colors cursor-pointer select-none active:scale-[0.95] ${
             viewMode === "grid"
               ? hasCustomBg
                 ? "apple-glass-prominent"
@@ -81,7 +81,7 @@ export default function LibraryControls({
           data-no-tooltip="true"
           aria-label={t("library.view_list")}
           onClick={() => onViewModeChange("list")}
-          className={`inline-flex items-center justify-center h-[28px] w-[30px] rounded-[6px] border-0 transition-colors cursor-pointer select-none active:scale-[0.95] ${
+          className={`inline-flex items-center justify-center h-[30px] w-[34px] rounded-[6px] border-0 transition-colors cursor-pointer select-none active:scale-[0.95] ${
             viewMode === "list"
               ? hasCustomBg
                 ? "apple-glass-prominent"
