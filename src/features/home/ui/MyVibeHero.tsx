@@ -620,7 +620,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 </div>
 
             <p className="m-0 mt-[6px] mb-[10px] text-[11px] font-[600] lowercase text-white/55">{t("home.vibe.by_character")}</p>
-            <div className="grid grid-cols-3 rounded-[14px] bg-black/25 p-[4px]">
+            <div className="relative grid grid-cols-3 rounded-[14px] bg-black/25 p-[4px]">
               {VIBE_CHARACTERS.map((c) => {
                 const on = settings.character === c;
                 const { Icon, color } = CHARACTER_ICON[c];
@@ -630,15 +630,22 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggle("character", c)}
-                    className={`relative flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-[10px] border-0 px-[4px] cursor-pointer ${
-                      on ? "bg-white/[0.12]" : "bg-transparent"
-                    } ${c !== "popular" ? "border-r border-white/10" : ""}`}
+                    className="relative flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-[10px] border-0 bg-transparent px-[4px] cursor-pointer"
                   >
-                    <Icon size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
-                    <span className="truncate max-w-full text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
+                    {on && (
+                      <motion.span
+                        layoutId="vibeCharacterPill"
+                        className="absolute inset-0 rounded-[10px] bg-white/[0.12]"
+                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                      />
+                    )}
+                    <Icon className="relative z-10" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
+                    <span className="relative z-10 truncate max-w-full text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
                   </button>
                 );
               })}
+              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/10" />
+              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/10" />
             </div>
 
             <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_mood")}</p>
