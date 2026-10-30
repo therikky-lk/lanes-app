@@ -3,6 +3,7 @@ import { api, mediaUrl, toClientTrack } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
 import { getDailyMixArtists } from "@/features/home/hooks/useDailyMixes";
+import { fillMissingTrackCovers } from "@/shared/media/yandexCover";
 
 export interface CollectionPageData {
   type?: "playlist" | "album";
@@ -64,7 +65,7 @@ export function useCollection(type: string | null, id: string | null) {
             const mixesRes = await api.getDailyMixes();
             const found = mixesRes.items?.find((m) => m.id === id || m.id === decodedId);
             if (found) {
-              const clientTracks = (found.tracks || []).map((t) => toClientTrack(t));
+              const clientTracks = await fillMissingTrackCovers((found.tracks || []).map((t) => toClientTrack(t)));
               const primaryCover = found.cover?.url
                 ? mediaUrl(found.cover.url)
                 : (clientTracks[0]?.coverUrl || clientTracks[1]?.coverUrl || "");
@@ -95,7 +96,7 @@ export function useCollection(type: string | null, id: string | null) {
               .filter(Boolean)
               .filter((url, idx, arr) => arr.indexOf(url) === idx)
               .slice(0, 4);
-            const tracks: Track[] = userItems.map((item) => toClientTrack(item.track));
+            const tracks: Track[] = await fillMissingTrackCovers(userItems.map((item) => toClientTrack(item.track)));
             const ownerName = userPlaylist.owner?.displayName || userPlaylist.owner?.username || "";
             const formatted: CollectionPageData = {
               type: "playlist",
@@ -109,7 +110,7 @@ export function useCollection(type: string | null, id: string | null) {
           }
 
           const collectionCoverUrl = collection.cover ? mediaUrl(collection.cover.url) : "";
-          const tracks = (collection.tracks || []).map((t: any) => {
+          const tracks = await fillMissingTrackCovers((collection.tracks || []).map((t: any) => {
             const clientTrack = toClientTrack(t);
             let updated = clientTrack;
             if (collection.type === "album") {
@@ -126,7 +127,7 @@ export function useCollection(type: string | null, id: string | null) {
               }
             }
             return updated;
-          });
+          }));
 
           const formatted: CollectionPageData = {
             type: collection.type,
