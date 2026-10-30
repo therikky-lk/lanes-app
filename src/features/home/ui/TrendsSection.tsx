@@ -175,22 +175,17 @@ export default function TrendsSection() {
                     </span>
                   )}
                 </span>
-                <span className="min-w-0">
+                  <span className="min-w-0 flex-1">
                   <span className={`block truncate text-[14.5px] font-[550] ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
                     {e.song.title}
                   </span>
-                  <span className="flex min-w-0 items-center gap-[5px] truncate text-[12.5px] text-text-tertiary">
-                    <span className="truncate">{e.song.artist}</span>
-                    {formatDuration(e.track?.durationMs) && (
-                      <>
-                        <span className="shrink-0 text-text-tertiary/60">·</span>
-                        <span className="shrink-0 tabular-nums text-text-tertiary">
-                          {formatDuration(e.track?.durationMs)}
-                        </span>
-                      </>
-                    )}
-                  </span>
+                    <span className="block truncate text-[12.5px] text-text-tertiary">{e.song.artist}</span>
                 </span>
+                  {formatDuration(e.track?.durationMs) && (
+                    <span className="ml-auto shrink-0 self-center pl-[10px] text-[12.5px] tabular-nums text-text-tertiary">
+                      {formatDuration(e.track?.durationMs)}
+                    </span>
+                  )}
               </button>
             ))}
       </div>
