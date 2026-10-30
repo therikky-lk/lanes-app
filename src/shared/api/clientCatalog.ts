@@ -133,7 +133,14 @@ export const clientCatalog = {
 
   getAlbum(id: string, server: () => Promise<AlbumDetails>): Promise<AlbumDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getAlbum(id);
-    return preferClient("album", () => innertubeCatalog.getAlbum(id), server);
+    return preferClient("album", async () => {
+      const album = await innertubeCatalog.getAlbum(id);
+      // A browse response can contain valid album metadata but no list items
+      // (for example when YouTube Music changes the shelf shape). Treat that
+      // as an incomplete client result so the API can provide the tracks.
+      if (album.tracks.length === 0) throw new Error("album returned no tracks");
+      return album;
+    }, server);
   },
 
   async getArtistImage(id: string): Promise<string | undefined> {
