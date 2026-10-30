@@ -4,12 +4,11 @@ import { getImportedPlaylistMeta } from "./import/importedPlaylistMeta";
 import { diag } from "@/shared/platform/diag";
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
-const MAX_SIDE = 192;
-const MIN_SIDE = 64;
-// Keep the marker safely below the API description limit. The old 6 KB target
-// could make PATCH /playlists hang or be rejected on Android, leaving the
-// cover only in localStorage on the device that selected it.
-const MAX_SYNCED_COVER_LENGTH = 3_800;
+const MAX_SIDE = 256;
+const MIN_SIDE = 96;
+// Keep enough pixels and quality for a sharp playlist tile while staying
+// within the description size accepted by the playlist API.
+const MAX_SYNCED_COVER_LENGTH = 10_000;
 const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
 
 function coverLog(message: string, details?: unknown): void {
@@ -75,7 +74,7 @@ async function compactCover(source: Blob): Promise<string> {
     const height = bitmap instanceof HTMLImageElement ? bitmap.naturalHeight : bitmap.height;
     const crop = Math.min(width, height);
     let side = Math.min(MAX_SIDE, crop);
-    let quality = 0.76;
+    let quality = 0.84;
     let result = "";
 
     while (side >= MIN_SIDE) {
@@ -85,10 +84,13 @@ async function compactCover(source: Blob): Promise<string> {
       if (!ctx) throw new Error("canvas unavailable");
       // centre crop to a square
       ctx.drawImage(bitmap, (width - crop) / 2, (height - crop) / 2, crop, crop, 0, 0, side, side);
-      result = canvas.toDataURL("image/jpeg", quality);
+      // WebP gives us substantially more detail at the same payload size on
+      // Android. Browsers that do not support it return a PNG data URL, which
+      // is still accepted by the cover marker parser.
+      result = canvas.toDataURL("image/webp", quality);
       if (result.length <= MAX_SYNCED_COVER_LENGTH) break;
       side = Math.floor(side * 0.8);
-      quality = Math.max(0.62, quality - 0.06);
+      quality = Math.max(0.7, quality - 0.04);
     }
 
     coverLog("cover compressed", { side, bytes: result.length });
