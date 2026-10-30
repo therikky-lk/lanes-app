@@ -51,7 +51,6 @@ export default function CreatePlaylistModal() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [cover, setCover] = useState<string | null>(null);
-  const [showDescription, setShowDescription] = useState(false);
   const [importUrl, setImportUrl] = useState("");
 
   const [importing, setImporting] = useState(false);
@@ -73,7 +72,6 @@ export default function CreatePlaylistModal() {
       setTitle("");
       setDescription("");
       setCover(null);
-      setShowDescription(false);
       setImportUrl((initialUrl || "").trim());
       setCreateError("");
       setImportError("");
@@ -215,23 +213,6 @@ export default function CreatePlaylistModal() {
             }}
             className="flex flex-col gap-[10px]"
           >
-            <TextInput
-              ref={titleRef}
-              placeholder={t("common.playlist_name")}
-              value={title}
-              maxLength={TITLE_MAX}
-              hasError={Boolean(createError)}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (createError) setCreateError("");
-              }}
-              disabled={createPlaylist.isPending}
-              rightSlot={
-                <span className="text-[11px] text-text-tertiary tabular-nums" style={font}>
-                  {title.length}/{TITLE_MAX}
-                </span>
-              }
-            />
             <div className="flex items-center gap-[12px]">
               <input
                 ref={coverInputRef}
@@ -246,7 +227,7 @@ export default function CreatePlaylistModal() {
               <button
                 type="button"
                 onClick={() => coverInputRef.current?.click()}
-                className="relative inline-flex h-[64px] w-[64px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary transition-colors hover:border-text-secondary hover:text-text-primary cursor-pointer"
+                className="relative inline-flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary cursor-pointer"
                 aria-label={t("common.choose_cover")}
               >
                 {cover ? (
@@ -260,35 +241,41 @@ export default function CreatePlaylistModal() {
                 <button
                   type="button"
                   onClick={() => coverInputRef.current?.click()}
-                  className="mt-[3px] border-0 bg-transparent p-0 text-[12px] text-text-tertiary hover:text-text-primary cursor-pointer"
+                  className="mt-[3px] border-0 bg-transparent p-0 text-[12px] text-text-tertiary cursor-pointer"
                   style={font}
                 >
                   {t("common.choose_cover")}
                 </button>
               </div>
             </div>
-            {showDescription ? (
-              <textarea
-                autoFocus
-                placeholder={t("common.description_placeholder")}
-                value={description}
-                maxLength={300}
-                rows={2}
-                disabled={createPlaylist.isPending}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full resize-none rounded-md border border-border-primary bg-bg-primary px-[14px] py-[10px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,box-shadow] duration-150 focus:border-text-secondary focus:ring-1 focus:ring-text-secondary disabled:opacity-50"
-                style={font}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowDescription(true)}
-                className="self-start bg-transparent border-none p-0 text-[12px] text-text-tertiary hover:text-text-primary transition-colors cursor-pointer"
-                style={font}
-              >
-                + {t("common.description_placeholder")}
-              </button>
-            )}
+            <TextInput
+              ref={titleRef}
+              placeholder={t("common.playlist_name")}
+              value={title}
+              maxLength={TITLE_MAX}
+              hasError={Boolean(createError)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (createError) setCreateError("");
+              }}
+              disabled={createPlaylist.isPending}
+              className="cursor-pointer [&_input]:cursor-pointer"
+              rightSlot={
+                <span className="text-[11px] text-text-tertiary tabular-nums" style={font}>
+                  {title.length}/{TITLE_MAX}
+                </span>
+              }
+            />
+            <textarea
+              placeholder={t("common.description_placeholder")}
+              value={description}
+              maxLength={300}
+              rows={2}
+              disabled={createPlaylist.isPending}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full cursor-pointer resize-none rounded-md border border-border-primary bg-bg-primary px-[14px] py-[10px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,box-shadow] duration-150 focus:border-text-secondary focus:ring-1 focus:ring-text-secondary disabled:opacity-50"
+              style={font}
+            />
             {createError && (
               <span className="text-[12px] text-accent-primary" style={font}>
                 {createError}
