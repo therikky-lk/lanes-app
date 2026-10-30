@@ -213,41 +213,39 @@ export default function CreatePlaylistModal() {
             }}
             className="flex flex-col gap-[10px]"
           >
-            <div className="flex items-center gap-[12px]">
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  void handleCoverChange(event.target.files?.[0]);
-                  event.target.value = "";
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => coverInputRef.current?.click()}
-                className="relative inline-flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary cursor-pointer"
-                aria-label={t("common.choose_cover")}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                void handleCoverChange(event.target.files?.[0]);
+                event.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="flex w-full items-center gap-[12px] border-0 bg-transparent p-0 text-left cursor-pointer"
+              aria-label={t("common.choose_cover")}
+            >
+              <span
+                aria-hidden="true"
+                className="relative inline-flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary"
               >
                 {cover ? (
                   <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 ) : (
                   <Upload2Line size={22} />
                 )}
-              </button>
+              </span>
               <div className="min-w-0">
                 <p className="m-0 text-[13px] text-text-primary" style={font}>{t("common.playlist_cover")}</p>
-                <button
-                  type="button"
-                  onClick={() => coverInputRef.current?.click()}
-                  className="mt-[3px] border-0 bg-transparent p-0 text-[12px] text-text-tertiary cursor-pointer"
-                  style={font}
-                >
+                <span className="mt-[3px] block text-[12px] text-text-tertiary" style={font}>
                   {t("common.choose_cover")}
-                </button>
+                </span>
               </div>
-            </div>
+            </button>
             <TextInput
               ref={titleRef}
               placeholder={t("common.playlist_name")}
