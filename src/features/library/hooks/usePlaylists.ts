@@ -7,6 +7,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
+import { fillMissingTrackCovers } from "@/shared/media/yandexCover";
 
 export interface LibraryPlaylistSummary {
   id: string;
@@ -303,6 +304,7 @@ export function usePlaylist(id: string | null) {
         };
         writeCoverCache(coverCache);
 
+        const remoteTracks = await fillMissingTrackCovers(response.items.map(toTrack));
         const localTracks = readLocalEntries(response.playlist.description).map(localEntryToTrack);
         const detail: LibraryPlaylistDetail = {
           id: response.playlist.id,
@@ -312,7 +314,7 @@ export function usePlaylist(id: string | null) {
           coverUrl: playlistCover ?? covers[0] ?? "",
           coverUrls: playlistCover ? [playlistCover] : covers,
           revision: response.playlist.revision,
-          tracks: [...response.items.map(toTrack), ...localTracks],
+          tracks: [...remoteTracks, ...localTracks],
         };
         queryCache.set(cacheKey, detail);
         setData(detail);
