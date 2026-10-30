@@ -266,7 +266,15 @@ export class DiscordRpcManager {
         // a late EPIPE/ECONNRESET on the raw socket must not crash the main process
         const sock = (client as any).transport?.socket as import("node:net").Socket | undefined;
         sock?.on("error", (err) => {
+          if (this.client !== client || this.isDestroyed) return;
           this.lastError = String(err?.message ?? err);
+          this.isConnected = false;
+          this.isConnecting = false;
+          this.client = null;
+          try {
+            void Promise.resolve(client.destroy()).catch(() => {});
+          } catch {}
+          this.scheduleReconnect();
         });
         // When Discord quits, the library never emits "disconnected" (its close()
         // bails out because the socket is no longer open), so presence would stay
@@ -299,8 +307,14 @@ export class DiscordRpcManager {
       client.login().catch((err) => {
         if (this.client !== client) return;
         this.lastError = String(err?.message ?? err);
+        if (this.connectWatchdog) clearTimeout(this.connectWatchdog);
+        this.connectWatchdog = null;
         this.isConnecting = false;
         this.isConnected = false;
+        this.client = null;
+        try {
+          void Promise.resolve(client.destroy()).catch(() => {});
+        } catch {}
         this.scheduleReconnect();
       });
     } catch (err) {
