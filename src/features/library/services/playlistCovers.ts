@@ -6,7 +6,10 @@ import { diag } from "@/shared/platform/diag";
 const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 192;
 const MIN_SIDE = 64;
-const MAX_SYNCED_COVER_LENGTH = 6_000;
+// Keep the marker safely below the API description limit. The old 6 KB target
+// could make PATCH /playlists hang or be rejected on Android, leaving the
+// cover only in localStorage on the device that selected it.
+const MAX_SYNCED_COVER_LENGTH = 3_800;
 const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
 
 function coverLog(message: string, details?: unknown): void {
