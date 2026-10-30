@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
-import { FireFill } from "@mingcute/react";
+import { FireFill, HeartFill, HeartLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { loadChart, resolveSong, type ChartEntry, type ChartRegion, type Movement } from "../trends/charts";
 import type { Track } from "@/shared/types/track";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 
 const PREVIEW = 10;
 
@@ -45,6 +46,82 @@ function RankMark({ rank, movement }: { rank: number; movement: Movement }) {
     );
   }
   return <span className="block h-[2px] w-[9px] rounded-full bg-text-tertiary/70" aria-hidden="true" />;
+}
+
+function TrendRow({
+  entry,
+  currentId,
+  opening,
+  onPlay,
+}: {
+  entry: ChartEntry;
+  currentId?: string;
+  opening: string | null;
+  onPlay: () => void;
+}) {
+  const { t } = useTranslation();
+  const liked = useIsTrackLiked(entry.track?.id);
+  const like = useLikeTrack();
+  const unlike = useUnlikeTrack();
+  const track = entry.track;
+  const toggleLike = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!track) return;
+    void (liked ? unlike.mutateAsync(track.id) : like.mutateAsync({ trackId: track.id, track }));
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onPlay}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onPlay();
+        }
+      }}
+      className="group grid h-[60px] min-w-0 grid-cols-[26px_44px_minmax(0,1fr)_34px_44px] items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
+    >
+      <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]">
+        <span className={`text-[15px] font-[700] tabular-nums leading-none ${(track && currentId === track.id) ? "text-accent-primary" : "text-text-primary"}`}>
+          {entry.rank}
+        </span>
+        <RankMark rank={entry.rank} movement={entry.movement} />
+      </span>
+      <span className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
+        {(entry.song.coverUrl || track?.coverUrl) && (
+          <CoverImage src={entry.song.coverUrl || track!.coverUrl} alt="" fill sizes="44px" className="object-cover" />
+        )}
+        {opening === entry.song.id && (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="h-[16px] w-[16px] animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          </span>
+        )}
+      </span>
+      <span className="min-w-0 overflow-hidden">
+        <span className={`block truncate text-[14.5px] font-[550] ${(track && currentId === track.id) ? "text-accent-primary" : "text-text-primary"}`}>
+          {entry.song.title}
+        </span>
+        <span className="block truncate text-[12.5px] text-text-tertiary">{entry.song.artist}</span>
+      </span>
+      <span className="flex h-[30px] w-[34px] items-center justify-center">
+        <button
+          type="button"
+          aria-label={liked ? t("common.unlike") : t("common.like")}
+          title={liked ? t("common.unlike") : t("common.like")}
+          disabled={!track || like.isPending || unlike.isPending}
+          onClick={toggleLike}
+          className={`inline-flex h-[30px] w-[30px] items-center justify-center rounded-md border-0 bg-transparent cursor-pointer transition-colors ${liked ? "text-accent-primary" : "text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-primary"}`}
+        >
+          {liked ? <HeartFill size={17} /> : <HeartLine size={17} />}
+        </button>
+      </span>
+      <span className="w-[44px] shrink-0 text-right text-[12.5px] tabular-nums text-text-tertiary">
+        {formatDuration(track?.durationMs) ?? "—"}
+      </span>
+    </div>
+  );
 }
 
 export default function TrendsSection() {
@@ -157,38 +234,7 @@ export default function TrendsSection() {
               </div>
             ))
           : shown.map((e) => (
-              <button
-                key={e.song.id}
-                type="button"
-                onClick={() => void play(e)}
-                className="group grid h-[60px] min-w-0 grid-cols-[26px_44px_minmax(0,1fr)_44px] items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
-              >
-                <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]">
-                  <span className={`text-[15px] font-[700] tabular-nums leading-none ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
-                    {e.rank}
-                  </span>
-                  <RankMark rank={e.rank} movement={e.movement} />
-                </span>
-                <span className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
-                  {(e.song.coverUrl || e.track?.coverUrl) && (
-                    <CoverImage src={e.song.coverUrl || e.track!.coverUrl} alt="" fill sizes="44px" className="object-cover" />
-                  )}
-                  {opening === e.song.id && (
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      <span className="h-[16px] w-[16px] animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                    </span>
-                  )}
-                </span>
-                  <span className="min-w-0 overflow-hidden">
-                  <span className={`block truncate text-[14.5px] font-[550] ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
-                    {e.song.title}
-                  </span>
-                    <span className="block truncate text-[12.5px] text-text-tertiary">{e.song.artist}</span>
-                </span>
-                  <span className="w-[44px] shrink-0 text-right text-[12.5px] tabular-nums text-text-tertiary">
-                    {formatDuration(e.track?.durationMs) ?? "—"}
-                  </span>
-              </button>
+              <TrendRow key={e.song.id} entry={e} currentId={currentId} opening={opening} onPlay={() => void play(e)} />
             ))}
       </div>
 

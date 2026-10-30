@@ -69,7 +69,9 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
       .map((item) => {
       const active = isItemActive(item.id, item.href);
       const Icon = item.Icon;
-      const tooltipLabel = t(`common.sidebar.${item.id}`) || item.label;
+    const tooltipLabel = item.id === "liked"
+      ? (t("library.liked_songs") || t(`common.sidebar.${item.id}`) || item.label)
+      : (t(`common.sidebar.${item.id}`) || item.label);
 
       if (item.id === "search") {
         return (
