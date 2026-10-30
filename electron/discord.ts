@@ -497,14 +497,17 @@ export class DiscordRpcManager {
       // Large artwork (Album/Track cover)
       const coverImage = toDiscordImageUrl(track.coverUrl);
       if (this.settings.showArtwork && coverImage) {
-        activity.largeImageUrl = coverImage;
+        // Discord expects an image asset URL in large_image. largeImageUrl is
+        // a click-through target (large_url), so using it leaves the app icon
+        // in the artwork slot.
+        activity.largeImageKey = coverImage;
         activity.largeImageText = sanitizeText(track.album || track.title) || "Lane";
       }
 
       // Small artwork (Artist photo badge)
       const artistImage = toDiscordImageUrl(payload.artistImageUrl);
       if (this.settings.showArtistSmallImage && artistImage) {
-        activity.smallImageUrl = artistImage;
+        activity.smallImageKey = artistImage;
         activity.smallImageText = sanitizeText(track.artist) || "Artist";
       }
 

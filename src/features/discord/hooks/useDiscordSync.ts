@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { usePlayerState } from "@/features/player/hooks/usePlayerState";
-import { useCoverSrc } from "@/features/covers";
 import { api, mediaUrl, toMaxQualityAvatarUrl } from "@/shared/api";
 import { getAuthSession } from "@/shared/api/auth-session";
 import type { DiscordRpcStatePayload } from "../contracts";
@@ -28,7 +27,6 @@ function loadArtistAvatar(artistId: string): Promise<string | null> {
 export function useDiscordSync() {
   const player = usePlayerState();
   const currentTrack = player.currentTrack;
-  const effectiveCover = useCoverSrc(currentTrack?.coverUrl);
   const [loadedAvatar, setLoadedAvatar] = useState<{ artistId: string; url: string | null } | null>(null);
 
   const primaryArtistId =
@@ -109,7 +107,9 @@ export function useDiscordSync() {
     if (!window.linerElectron?.discordUpdateState) return;
 
     const trackId = currentTrack?.id ?? null;
-    const coverUrl = effectiveCover || currentTrack?.coverUrl;
+    // Discord gets the track's original cover URL. The app can independently
+    // use its resolved/proxied cover URL for display without changing RPC art.
+    const coverUrl = currentTrack?.coverUrl;
     const prev = lastStateRef.current;
     const now = Date.now();
 
@@ -180,7 +180,6 @@ export function useDiscordSync() {
     player.positionMs,
     player.durationMs,
     currentTrack,
-    effectiveCover,
     artistAvatar,
     primaryArtistId,
   ]);
