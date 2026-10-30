@@ -148,14 +148,14 @@ export default function HomePage() {
           <div className="col-start-1 row-start-1 w-full pb-[16px]">
             {/* two shortcuts: liked songs and history. A tile, the name with a
                 chevron, one line under it, and the latest track's cover */}
-            <div className="mt-[18px] px-8 grid grid-cols-1 gap-x-[10px] gap-y-[2px] min-[460px]:grid-cols-2 md:px-4 md:gap-x-[6px]">
+            <div className="mt-[18px] px-8 grid grid-cols-1 gap-x-[10px] gap-y-[2px] min-[460px]:grid-cols-2 md:px-2 md:gap-x-[4px]">
               {(
                 [
                   {
                     key: "liked",
                     onClick: () => navigate("/library/playlist?id=likes"),
                     tile: (
-                      <span className="relative inline-flex h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[10px]">
+                      <span className="relative inline-flex h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[10px] md:h-[52px] md:w-[52px]">
                         <LikedCover heartRatio={0.5} />
                       </span>
                     ),
@@ -167,7 +167,7 @@ export default function HomePage() {
                     key: "history",
                     onClick: () => navigate("/recent"),
                     tile: (
-                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] text-text-primary">
+                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] text-text-primary md:h-[52px] md:w-[52px]">
                         <HistoryLine size={22} />
                       </span>
                     ),
@@ -183,7 +183,7 @@ export default function HomePage() {
                   key={item.key}
                   type="button"
                   onClick={item.onClick}
-                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-xl border-0 bg-white/[0.05] px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05] active:bg-white/[0.08]"
+                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-xl border-0 bg-white/[0.05] px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05] active:bg-white/[0.08] md:h-[72px] md:gap-[14px] md:px-[10px]"
                 >
                   {item.tile}
                   <span className="min-w-0 flex-1">
@@ -194,7 +194,7 @@ export default function HomePage() {
                     <span className="block truncate text-[12.5px] text-text-tertiary">{item.sub}</span>
                   </span>
                   {item.thumb && (
-                    <span className="relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-md">
+                    <span className="relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-md md:h-[44px] md:w-[44px]">
                       <CoverImage src={item.thumb} alt="" fill sizes="40px" className="object-cover" />
                     </span>
                   )}
