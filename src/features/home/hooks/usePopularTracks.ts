@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
+import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 export type PopularTrackItem = Track;
 
@@ -47,6 +48,14 @@ export const popularTracksAllTimeKeys = {
   allTime: ["popularTracksAllTime"] as const,
 };
 
+async function enrichTrackItems(items: PopularItem[]): Promise<PopularItem[]> {
+  const tracks = items.filter((item): item is Extract<PopularItem, { type: "track" }> => item.type === "track");
+  if (tracks.length === 0) return items;
+  const enriched = await replaceTrackCoversWithYandex(tracks.map((item) => item.item));
+  let index = 0;
+  return items.map((item) => item.type === "track" ? { ...item, item: enriched[index++] } : item);
+}
+
 const cache = new Map<string, { data: PopularItem[]; timestamp: number }>();
 const CACHE_TTL = 60_000;
 
@@ -65,13 +74,15 @@ export function usePopularTracksOnly(limit = 20) {
     let active = true;
     api
       .getPopularTracks("7d", limit)
-      .then((res) => {
+      .then(async (res) => {
         if (!active) return;
-        const items: PopularItem[] = (res.items || []).map((entry) => ({
+        const rawItems: PopularItem[] = (res.items || []).map((entry) => ({
           type: "track",
           item: toClientTrack(entry.track),
           playCount: entry.playCount,
         }));
+        const items = await enrichTrackItems(rawItems);
+        if (!active) return;
         cache.set(`tracks_7d_${limit}`, { data: items, timestamp: Date.now() });
         setData(items);
       })
@@ -105,13 +116,15 @@ export function usePopularTracksAllTime(limit = 20) {
     let active = true;
     api
       .getPopularTracks("all", limit)
-      .then((res) => {
+      .then(async (res) => {
         if (!active) return;
-        const items: PopularItem[] = (res.items || []).map((entry) => ({
+        const rawItems: PopularItem[] = (res.items || []).map((entry) => ({
           type: "track",
           item: toClientTrack(entry.track),
           playCount: entry.playCount,
         }));
+        const items = await enrichTrackItems(rawItems);
+        if (!active) return;
         cache.set(`tracks_all_${limit}`, { data: items, timestamp: Date.now() });
         setData(items);
       })
@@ -145,11 +158,15 @@ export function usePopular(limit = 50) {
     let active = true;
     api
       .getPopularTracks("30d", limit)
-      .then((res) => {
+      .then(async (res) => {
+        if (!active) return;
+        const enrichedTracks = await replaceTrackCoversWithYandex(
+          (res.items || []).map((entry) => toClientTrack(entry.track)),
+        );
         if (!active) return;
         const artistMap = new Map<string, PopularArtistItem>();
-        for (const entry of res.items || []) {
-          const track = toClientTrack(entry.track);
+        for (const [index, entry] of (res.items || []).entries()) {
+          const track = enrichedTracks[index];
           const artistName =
             track.artistList?.[0]?.name ||
             track.artists?.split(",")?.[0]?.trim() ||

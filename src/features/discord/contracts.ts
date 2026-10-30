@@ -36,7 +36,7 @@ export interface DiscordRpcStatePayload {
 
 export const DEFAULT_DISCORD_SETTINGS: DiscordRpcSettings = {
   enabled: true,
-  statusDisplayType: "artist",
+  statusDisplayType: "app",
   showArtwork: true,
   showArtistSmallImage: true,
   showTime: true,

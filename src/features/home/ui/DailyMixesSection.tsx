@@ -124,7 +124,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
 
   return (
     <div
-      className="group flex-shrink-0 w-[165px] cursor-pointer select-none"
+      className="group flex-shrink-0 w-[175px] cursor-pointer select-none"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
@@ -192,8 +192,8 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
   if (mixes.length === 0) return null;
 
   return (
-    <div className="flex flex-col">
-      <div className={`${headingMarginTop} px-[32px] flex items-center justify-between`}>
+    <div className="flex min-w-0 flex-col overflow-hidden">
+      <div className={`${headingMarginTop} flex min-w-0 items-center justify-between gap-[12px] px-[32px]`}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center shrink-0">
             <SparklesFill className="w-5 h-5 text-text-primary" />
@@ -205,20 +205,8 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
             {t("home.dailyMixes") || "Daily Mixes"}
           </h2>
         </div>
-      </div>
-
-      <div className="relative">
-        <ScrollableRow
-          controller={scroll}
-          showScrollMask={false}
-          className="flex flex-nowrap gap-[14px] pl-[32px] pr-[32px] mt-[3px] overflow-x-auto pt-0 pb-[12px]"
-        >
-        {mixes.map((mix, index) => (
-          <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
-        ))}
-        </ScrollableRow>
         {!isMobile && (
-          <div className="absolute right-[16px] top-[-38px] flex items-center gap-[4px]">
+          <div className="hidden shrink-0 items-center gap-[4px] md:flex">
             <button
               type="button"
               aria-label="Previous mixes"
@@ -240,6 +228,15 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
           </div>
         )}
       </div>
+
+      <ScrollableRow
+        controller={scroll}
+        className="min-w-0 flex flex-nowrap gap-[28px] overflow-x-auto pl-8 pr-8 pb-[2px] pt-0 mt-[3px]"
+      >
+        {mixes.map((mix, index) => (
+          <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
+        ))}
+      </ScrollableRow>
     </div>
   );
 }

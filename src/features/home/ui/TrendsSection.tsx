@@ -112,7 +112,7 @@ function TrendRow({
           title={liked ? t("common.unlike") : t("common.like")}
           disabled={!track || like.isPending || unlike.isPending}
           onClick={toggleLike}
-          className={`inline-flex h-[30px] w-[30px] items-center justify-center rounded-md border-0 bg-transparent cursor-pointer transition-colors ${liked ? "text-accent-primary" : "text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-primary"}`}
+          className={`inline-flex h-[30px] w-[30px] items-center justify-center rounded-md border-0 bg-transparent cursor-pointer transition-colors ${liked ? "text-accent-primary" : "text-text-tertiary hover:text-text-primary"}`}
         >
           {liked ? <HeartFill size={17} /> : <HeartLine size={17} />}
         </button>

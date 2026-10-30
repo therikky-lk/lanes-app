@@ -42,7 +42,7 @@ export function ScrollableRow({
   }, [showLeftShadow, showRightShadow]);
 
   return (
-    <div className="relative group">
+    <div className="relative group min-w-0 max-w-full overflow-hidden">
       <div
         ref={scrollRef}
         {...handlers}

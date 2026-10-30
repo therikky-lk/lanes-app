@@ -625,7 +625,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   </div>
                 </div>
 
-            <p className="m-0 mt-[6px] mb-[10px] text-[11px] font-[600] lowercase text-white/55">{t("home.vibe.by_character")}</p>
+            <p className="m-0 mt-[6px] mb-[10px] text-[14px] font-[600] leading-[18px] text-white/60">{t("home.vibe.by_character")}</p>
             <LayoutGroup id="vibe-character-selector">
             <div className="relative grid w-full grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
               <motion.span
@@ -654,7 +654,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     className="relative z-10 inline-flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
                   >
                     <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
-                    <span className="relative z-10 truncate text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
+                    <span className="relative z-10 truncate text-[12px] font-[550] leading-[15px] text-white/90">{label.character(c)}</span>
                   </button>
                 );
               })}
