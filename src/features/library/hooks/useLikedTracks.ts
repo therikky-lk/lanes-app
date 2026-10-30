@@ -133,9 +133,10 @@ function load(force = false): Promise<void> {
       tracks.push(...page.items.map(({ track }) => toClientTrack(track)));
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
-    const enrichedTracks = await replaceTrackCoversWithYandex(tracks);
-    cache = { tracks: enrichedTracks, total: enrichedTracks.length };
-    await Promise.all(enrichedTracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
+    // The library must become usable as soon as the API responds. Cover
+    // replacement is optional enrichment and must never block likes or the
+    // home page on a slow Yandex connection.
+    cache = { tracks, total: tracks.length };
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
     loaded = true;
     // keep the optimistic state the server doesn't show yet: overrides made
@@ -149,6 +150,13 @@ function load(force = false): Promise<void> {
         overrideAt.delete(id);
       }
     }
+    emit(false);
+    void replaceTrackCoversWithYandex(tracks).then(async (enrichedTracks) => {
+      if (enrichedTracks.every((track, index) => track === tracks[index])) return;
+      cache = { tracks: enrichedTracks, total: enrichedTracks.length };
+      await Promise.all(enrichedTracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
+      emit(false);
+    });
   })()
     .catch(() => {
       if (!loaded) void restoreCachedLibrary();

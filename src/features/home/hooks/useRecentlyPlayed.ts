@@ -85,6 +85,8 @@ export function useRecentlyPlayed(limit = 20) {
         const tracks = items
           .filter((item): item is Extract<PopularItem, { type: "track" }> => item.type === "track")
           .map((item) => item.item);
+        cache.set(key, { data: items, timestamp: Date.now() });
+        setData(items);
         const enriched = await replaceTrackCoversWithYandex(tracks);
         let enrichedIndex = 0;
         const finalItems = items.map((item) => item.type === "track" ? { ...item, item: enriched[enrichedIndex++] } : item);
