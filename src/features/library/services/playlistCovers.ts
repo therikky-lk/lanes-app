@@ -1,6 +1,7 @@
 // Covers the user picked for their playlists. The server has no cover field for
 // user playlists, so a compact data-image travels in the playlist description.
 import { getImportedPlaylistMeta } from "./import/importedPlaylistMeta";
+import { diag } from "@/shared/platform/diag";
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 192;
@@ -9,7 +10,8 @@ const MAX_SYNCED_COVER_LENGTH = 6_000;
 const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
 
 function coverLog(message: string, details?: unknown): void {
-  if (import.meta.env.DEV) console.debug(COVER_LOG_PREFIX, message, details ?? "");
+  const suffix = details ? ` ${JSON.stringify(details)}` : "";
+  diag(`${COVER_LOG_PREFIX} ${message}${suffix}`);
 }
 
 function readAll(): Record<string, string> {

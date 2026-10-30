@@ -28,6 +28,7 @@ import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { readCoverMarker, stripCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
 import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
+import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
@@ -446,12 +447,12 @@ function LibraryPlaylistContent() {
   const savePlaylistCover = useCallback(async (playlistId: string, cover: string | null) => {
     // User playlists do not have a dedicated cover field in the API. Keep the
     // compact image in their synced description metadata instead.
-    console.debug("[Lane][PlaylistCover] syncing cover", { playlistId, bytes: cover?.length ?? 0 });
+    diag(`[Lane][PlaylistCover] syncing cover ${JSON.stringify({ playlistId, bytes: cover?.length ?? 0 })}`);
     const detail = await api.getUserPlaylist(playlistId);
     await api.updatePlaylist(playlistId, {
       description: withCoverMarker(detail.playlist.description, cover ?? undefined),
     });
-    console.debug("[Lane][PlaylistCover] server sync complete", { playlistId });
+    diag(`[Lane][PlaylistCover] server sync complete ${JSON.stringify({ playlistId })}`);
     setPlaylistCover(playlistId, cover, { notify: false });
     window.dispatchEvent(new Event("library:changed"));
   }, []);
@@ -612,7 +613,7 @@ function LibraryPlaylistContent() {
           try {
             await savePlaylistCover(decodedId, await imageFileToCover(file));
           } catch (error) {
-            console.error("[Lane][PlaylistCover] server sync failed", { error });
+            diag(`[Lane][PlaylistCover] server sync failed ${error instanceof Error ? error.message : String(error)}`);
             toast(t("playlist.cover_failed") || "Could not use this image", "error");
           }
         }}

@@ -14,6 +14,7 @@ import { useImportStore } from "../../store/importStore";
 import { api, resolveApiErrorMessage } from "@/shared/api";
 import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
 import { withCoverMarker } from "../../services/playlistCoverMarker";
+import { diag } from "@/shared/platform/diag";
 
 type Tab = "create" | "import";
 
@@ -99,16 +100,13 @@ export default function CreatePlaylistModal() {
       if (cover) {
         try {
           setPlaylistCover(playlist.id, cover, { notify: false });
-          console.debug("[Lane][PlaylistCover] syncing newly created cover", {
-            playlistId: playlist.id,
-            bytes: cover.length,
-          });
+          diag(`[Lane][PlaylistCover] syncing newly created cover ${JSON.stringify({ playlistId: playlist.id, bytes: cover.length })}`);
           await api.updatePlaylist(playlist.id, {
             description: withCoverMarker(playlist.description, cover),
           });
-          console.debug("[Lane][PlaylistCover] new cover sync complete", { playlistId: playlist.id });
+          diag(`[Lane][PlaylistCover] new cover sync complete ${JSON.stringify({ playlistId: playlist.id })}`);
         } catch (error) {
-          console.error("[Lane][PlaylistCover] new cover sync failed", { playlistId: playlist.id, error });
+          diag(`[Lane][PlaylistCover] new cover sync failed ${JSON.stringify({ playlistId: playlist.id, error: error instanceof Error ? error.message : String(error) })}`);
           // The playlist is already created; a storage failure must not undo it.
         }
       }
