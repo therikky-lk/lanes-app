@@ -247,7 +247,7 @@ export default function CreatePlaylistModal() {
                 type="button"
                 onClick={() => coverInputRef.current?.click()}
                 className="relative inline-flex h-[64px] w-[64px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary transition-colors hover:border-text-secondary hover:text-text-primary cursor-pointer"
-                aria-label={t("common.upload")}
+                aria-label={t("common.choose_cover")}
               >
                 {cover ? (
                   <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -256,14 +256,14 @@ export default function CreatePlaylistModal() {
                 )}
               </button>
               <div className="min-w-0">
-                <p className="m-0 text-[13px] text-text-primary" style={font}>{t("common.upload")}</p>
+                <p className="m-0 text-[13px] text-text-primary" style={font}>{t("common.playlist_cover")}</p>
                 <button
                   type="button"
                   onClick={() => coverInputRef.current?.click()}
                   className="mt-[3px] border-0 bg-transparent p-0 text-[12px] text-text-tertiary hover:text-text-primary cursor-pointer"
                   style={font}
                 >
-                  {t("common.upload")}
+                  {t("common.choose_cover")}
                 </button>
               </div>
             </div>
