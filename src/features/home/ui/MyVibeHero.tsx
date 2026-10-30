@@ -651,7 +651,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     role="tab"
                     aria-selected={on}
                     onClick={() => toggle("character", c)}
-                    className="relative z-10 inline-flex h-[64px] min-w-0 items-center justify-center gap-[5px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
+                    className="relative z-10 inline-flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
                   >
                     <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
                     <span className="relative z-10 truncate text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
