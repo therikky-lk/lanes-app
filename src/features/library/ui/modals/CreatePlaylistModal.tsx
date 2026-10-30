@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import TextInput from "@/shared/ui/TextInput";
 import Tooltip from "@/shared/ui/Tooltip";
@@ -189,19 +190,28 @@ export default function CreatePlaylistModal() {
               { id: "import", label: t("common.import") },
             ] as const
           ).map((item) => (
-            <button
+            <motion.button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 450, damping: 32 }}
               className={`relative inline-flex min-w-[160px] flex-1 items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none font-[500] transition-colors duration-150 cursor-pointer border-none ${
                 tab === item.id
-                  ? "bg-bg-primary text-text-primary"
+                  ? "text-text-primary"
                   : "bg-transparent text-text-secondary hover:text-text-primary"
               }`}
               style={font}
             >
-              {item.label}
-            </button>
+              {tab === item.id && (
+                <motion.span
+                  layoutId="createPlaylistModalTab"
+                  className="absolute inset-0 rounded-lg bg-bg-primary"
+                  transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                />
+              )}
+              <span className="relative z-10">{item.label}</span>
+            </motion.button>
           ))}
         </div>
 
