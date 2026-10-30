@@ -684,9 +684,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             {/* one switch for the language (tap the picked one again to clear it),
                 and "no vocals" on its own */}
             <LayoutGroup id="vibe-language-selector">
-            <div className="flex flex-nowrap items-center gap-[6px]">
+            <div className="flex w-full flex-nowrap items-center gap-[6px]">
               {/* library-style switch, flags only, with dividers */}
-              <div className="inline-flex shrink-0 items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+              <div className="flex min-w-0 flex-1 items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
                 {(["russian", "ukrainian", "english"] as const).map((l, i) => {
                   const on = settings.language === l;
                   return (
@@ -706,7 +706,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                         title={label.language(l)}
                         aria-label={label.language(l)}
                         onClick={() => toggle("language", l)}
-                        className="relative inline-flex h-[36px] min-w-[64px] items-center justify-center rounded-lg border-0 bg-transparent px-[12px] cursor-pointer select-none active:scale-[0.97]"
+                        className="relative inline-flex h-[36px] min-w-0 flex-1 items-center justify-center rounded-lg border-0 bg-transparent px-[12px] cursor-pointer select-none active:scale-[0.97]"
                       >
                         {on && (
                           <motion.span
