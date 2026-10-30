@@ -61,7 +61,7 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
             type="button"
             aria-label={t("common.close") || "Close"}
             onClick={() => onOpenChange(false)}
-            className="inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center border-0 bg-transparent p-0 text-text-tertiary"
+            className="inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center border-0 bg-transparent p-0 text-text-tertiary cursor-pointer"
           >
             <CloseLine size={17} />
           </button>
@@ -113,9 +113,6 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
               {t("player.custom_lyrics_delete") || "Remove"}
             </Button>
           )}
-          <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-            {t("common.cancel")}
-          </Button>
           <Button type="button" variant="primary" size="sm" disabled={!trackId} onClick={save}>
             {t("player.save") || "Save"}
           </Button>
