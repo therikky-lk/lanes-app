@@ -34,26 +34,56 @@ export function hasCustomPlaylistCover(playlistId: string | null | undefined): b
 }
 
 async function compactCover(source: Blob): Promise<string> {
-  const bitmap = await createImageBitmap(source);
-  const crop = Math.min(bitmap.width, bitmap.height);
-  let side = Math.min(MAX_SIDE, crop);
-  let quality = 0.76;
-  let result = "";
-
-  while (side >= MIN_SIDE) {
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = side;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("canvas unavailable");
-    // centre crop to a square
-    ctx.drawImage(bitmap, (bitmap.width - crop) / 2, (bitmap.height - crop) / 2, crop, crop, 0, 0, side, side);
-    result = canvas.toDataURL("image/jpeg", quality);
-    if (result.length <= MAX_SYNCED_COVER_LENGTH) break;
-    side = Math.floor(side * 0.8);
-    quality = Math.max(0.62, quality - 0.06);
+  let bitmap: ImageBitmap | HTMLImageElement;
+  let dispose = () => {};
+  try {
+    bitmap = await createImageBitmap(source);
+  } catch {
+    // Some browsers/formats cannot use createImageBitmap but can still decode
+    // the same local file through a normal object URL.
+    const url = URL.createObjectURL(source);
+    const image = new Image();
+    image.decoding = "async";
+    try {
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("image decode failed"));
+        image.src = url;
+      });
+      bitmap = image;
+      dispose = () => URL.revokeObjectURL(url);
+    } catch (error) {
+      URL.revokeObjectURL(url);
+      throw error;
+    }
   }
 
-  return result;
+  try {
+    const width = bitmap instanceof HTMLImageElement ? bitmap.naturalWidth : bitmap.width;
+    const height = bitmap instanceof HTMLImageElement ? bitmap.naturalHeight : bitmap.height;
+    const crop = Math.min(width, height);
+    let side = Math.min(MAX_SIDE, crop);
+    let quality = 0.76;
+    let result = "";
+
+    while (side >= MIN_SIDE) {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = side;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas unavailable");
+      // centre crop to a square
+      ctx.drawImage(bitmap, (width - crop) / 2, (height - crop) / 2, crop, crop, 0, 0, side, side);
+      result = canvas.toDataURL("image/jpeg", quality);
+      if (result.length <= MAX_SYNCED_COVER_LENGTH) break;
+      side = Math.floor(side * 0.8);
+      quality = Math.max(0.62, quality - 0.06);
+    }
+
+    return result;
+  } finally {
+    dispose();
+    if (typeof ImageBitmap !== "undefined" && bitmap instanceof ImageBitmap) bitmap.close();
+  }
 }
 
 export async function imageFileToCover(file: File): Promise<string> {
