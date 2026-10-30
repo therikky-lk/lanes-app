@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl } from "@/shared/api";
 import type { LibraryItemViewModel } from "../types";
+import { getPlaylistCover } from "../services/playlistCovers";
+import { readCoverMarker } from "../services/playlistCoverMarker";
 
 export type EntityType = "album" | "artist" | "playlist";
 
@@ -14,10 +16,21 @@ export function useExternalItems(type: EntityType) {
           type === "album" ? "albums" : type === "artist" ? "artists" : "playlists";
         const response = await api.listSavedCollections(collectionType);
         if (!active) return;
-        setData(response.items.map((entry: any) => {
+        const items = await Promise.all(response.items.map(async (entry: any) => {
           const value = entry[type];
           const rawCover = value.cover ? mediaUrl(value.cover.url) : "";
-          const cover = type === "artist" ? toMaxQualityAvatarUrl(rawCover) : rawCover;
+          let cover = type === "artist" ? toMaxQualityAvatarUrl(rawCover) : rawCover;
+          if (!cover && type === "playlist") {
+            cover = getPlaylistCover(value.id) || "";
+            if (!cover) {
+              try {
+                const detail = await api.getUserPlaylist(value.id);
+                cover = readCoverMarker(detail.playlist.description) || "";
+              } catch {
+                // Saved catalog playlists may not belong to the current user.
+              }
+            }
+          }
           return {
             id: value.id,
             title: type === "artist" ? value.name : value.title,
@@ -40,6 +53,7 @@ export function useExternalItems(type: EntityType) {
             isOwned: false,
           };
         }));
+        setData(items);
       } catch { if (active) setData([]); }
     };
     void load();
