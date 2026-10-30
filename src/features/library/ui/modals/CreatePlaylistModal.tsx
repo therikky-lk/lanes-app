@@ -265,7 +265,7 @@ export default function CreatePlaylistModal() {
                 if (createError) setCreateError("");
               }}
               disabled={createPlaylist.isPending}
-              className="cursor-pointer hover:border-border-primary [&_input]:cursor-pointer"
+              className="cursor-pointer hover:border-border-primary focus-within:border-border-primary [&_input]:cursor-pointer"
               rightSlot={
                 <span className="text-[11px] text-text-tertiary tabular-nums" style={font}>
                   {title.length}/{TITLE_MAX}
@@ -279,7 +279,7 @@ export default function CreatePlaylistModal() {
               rows={2}
               disabled={createPlaylist.isPending}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full cursor-pointer resize-none rounded-md border border-border-primary bg-bg-primary px-[14px] py-[10px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none hover:border-border-primary transition-[border-color,box-shadow] duration-150 focus:border-text-secondary focus:ring-1 focus:ring-text-secondary disabled:opacity-50"
+              className="w-full cursor-pointer resize-none rounded-md border border-border-primary bg-bg-primary px-[14px] py-[10px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none hover:border-border-primary focus:border-border-primary focus:ring-0 transition-[border-color,box-shadow] duration-150 disabled:opacity-50"
               style={font}
             />
             {createError && (
