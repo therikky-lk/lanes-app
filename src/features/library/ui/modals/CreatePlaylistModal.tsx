@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { LayoutGroup, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import TextInput from "@/shared/ui/TextInput";
 import Tooltip from "@/shared/ui/Tooltip";
@@ -183,39 +183,35 @@ export default function CreatePlaylistModal() {
           </button>
         </div>
 
-        <LayoutGroup id="create-playlist-modal-tabs">
-          <div className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-border-alpha-14">
+        <div className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated">
           {(
             [
               { id: "create", label: t("library.create_playlist") },
               { id: "import", label: t("common.import") },
             ] as const
           ).map((item) => (
-            <motion.button
+            <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              whileTap={{ scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className={`relative inline-flex items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none font-[500] transition-colors duration-150 cursor-pointer border-none ${
+              className={`relative inline-flex items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
                 tab === item.id
                   ? "text-text-primary"
                   : "bg-transparent text-text-secondary hover:text-text-primary"
               }`}
-              style={font}
+              style={{ ...font, fontWeight: tab === item.id ? 500 : 400 }}
             >
               {tab === item.id && (
                 <motion.span
                   layoutId="createPlaylistModalTab"
-                  className="absolute inset-0 rounded-lg bg-bg-primary"
+                  className="absolute inset-0 rounded-lg bg-border-alpha-14"
                   transition={{ type: "spring", stiffness: 450, damping: 35 }}
                 />
               )}
               <span className="relative z-10">{item.label}</span>
-            </motion.button>
+            </button>
           ))}
-          </div>
-        </LayoutGroup>
+        </div>
 
         {isCreate ? (
           <form
