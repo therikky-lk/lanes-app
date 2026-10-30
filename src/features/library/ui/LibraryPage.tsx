@@ -425,7 +425,7 @@ export default function LibraryPage() {
           // Android can blur what scrolls under it; this keeps its room
           <div aria-hidden style={{ height: mobileHeaderH }} />
         ) : (
-        <div className="relative sticky top-0 z-20 bg-transparent">
+        <div className="relative sticky top-0 z-20 bg-transparent backdrop-blur-md backdrop-brightness-110">
           <div className="relative z-10 px-[32px] pt-[20px] pb-[10px]">
             <h1
               className="text-[26px] font-bold text-text-primary tracking-tight m-0 leading-tight"
@@ -451,6 +451,14 @@ export default function LibraryPage() {
               onViewModeChange={handleViewModeChange}
             />
           </div>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-full h-[24px] backdrop-blur-md backdrop-brightness-110"
+            style={{
+              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.75), transparent)",
+              maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.75), transparent)",
+            }}
+          />
         </div>
         )}
 
