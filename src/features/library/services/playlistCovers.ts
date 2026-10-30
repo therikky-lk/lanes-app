@@ -4,8 +4,8 @@ import { getImportedPlaylistMeta } from "./import/importedPlaylistMeta";
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 192;
-const MIN_SIDE = 96;
-const MAX_SYNCED_COVER_LENGTH = 14_000;
+const MIN_SIDE = 64;
+const MAX_SYNCED_COVER_LENGTH = 6_000;
 
 function readAll(): Record<string, string> {
   try {
