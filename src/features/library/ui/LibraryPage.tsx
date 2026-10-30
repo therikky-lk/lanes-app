@@ -2,7 +2,6 @@ import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMen
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { FaSpotify } from "react-icons/fa";
-import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -419,7 +418,6 @@ export default function LibraryPage() {
         data-own-top
         className="h-full w-full overflow-y-auto bg-transparent pb-[80px]"
       >
-        {!isMobile && <ScrollBlurEdge height={96} />}
         {isMobile ? (
           // the header itself sits outside the scroller (below), where
           // Android can blur what scrolls under it; this keeps its room
