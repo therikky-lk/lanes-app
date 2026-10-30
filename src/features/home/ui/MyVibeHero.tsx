@@ -646,7 +646,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                         <motion.span
                           layoutId="vibeCharacterPill"
                           className="absolute inset-0 rounded-lg bg-border-alpha-14"
-                          transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                          initial={false}
+                          transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.7 }}
                         />
                       )}
                       <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
@@ -712,7 +713,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                           <motion.span
                             layoutId="vibeLanguagePill"
                             className="absolute inset-0 rounded-lg bg-border-alpha-14"
-                            transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                            initial={false}
+                            transition={{ type: "spring", stiffness: 280, damping: 26, mass: 0.7 }}
                           />
                         )}
                         <span className={`relative z-10 transition-opacity ${on ? "" : "opacity-75"}`}>
