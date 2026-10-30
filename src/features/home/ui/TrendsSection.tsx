@@ -6,6 +6,7 @@ import { playerEngine, usePlayerStore } from "@/features/player";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { loadChart, resolveSong, type ChartEntry, type ChartRegion, type Movement } from "../trends/charts";
 import type { Track } from "@/shared/types/track";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 const PREVIEW = 10;
 
@@ -48,6 +49,7 @@ function RankMark({ rank, movement }: { rank: number; movement: Movement }) {
 
 export default function TrendsSection() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [region, setRegion] = useState<ChartRegion>(() => {
     try {
       return localStorage.getItem("lane_trends_region") === "world" ? "world" : "russia";
@@ -128,7 +130,7 @@ export default function TrendsSection() {
   const shown = entries ? (all ? entries : entries.slice(0, PREVIEW)) : [];
   return (
     <div className="flex flex-col" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-      <div className="mt-[26px] px-[16px] md:px-8 flex items-center justify-between gap-[12px]">
+      <div className={`mt-[26px] ${isMobile ? "px-[16px]" : "px-8"} flex items-center justify-between gap-[12px]`}>
         <div className="flex items-center gap-2.5">
           <FireFill className="w-5 h-5 text-[#ff6a3d]" />
           <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>
