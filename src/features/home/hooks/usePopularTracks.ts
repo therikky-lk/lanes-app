@@ -81,6 +81,8 @@ export function usePopularTracksOnly(limit = 20) {
           item: toClientTrack(entry.track),
           playCount: entry.playCount,
         }));
+        cache.set(`tracks_7d_${limit}`, { data: rawItems, timestamp: Date.now() });
+        setData(rawItems);
         const items = await enrichTrackItems(rawItems);
         if (!active) return;
         cache.set(`tracks_7d_${limit}`, { data: items, timestamp: Date.now() });
@@ -123,6 +125,8 @@ export function usePopularTracksAllTime(limit = 20) {
           item: toClientTrack(entry.track),
           playCount: entry.playCount,
         }));
+        cache.set(`tracks_all_${limit}`, { data: rawItems, timestamp: Date.now() });
+        setData(rawItems);
         const items = await enrichTrackItems(rawItems);
         if (!active) return;
         cache.set(`tracks_all_${limit}`, { data: items, timestamp: Date.now() });
@@ -160,13 +164,10 @@ export function usePopular(limit = 50) {
       .getPopularTracks("30d", limit)
       .then(async (res) => {
         if (!active) return;
-        const enrichedTracks = await replaceTrackCoversWithYandex(
-          (res.items || []).map((entry) => toClientTrack(entry.track)),
-        );
-        if (!active) return;
+        const rawTracks = (res.items || []).map((entry) => toClientTrack(entry.track));
         const artistMap = new Map<string, PopularArtistItem>();
         for (const [index, entry] of (res.items || []).entries()) {
-          const track = enrichedTracks[index];
+          const track = rawTracks[index];
           const artistName =
             track.artistList?.[0]?.name ||
             track.artists?.split(",")?.[0]?.trim() ||
@@ -192,8 +193,24 @@ export function usePopular(limit = 50) {
             playCount: artist.totalListens,
           }),
         );
-        cache.set(`popular_${limit}`, { data: items, timestamp: Date.now() });
         setData(items);
+        const enrichedTracks = await replaceTrackCoversWithYandex(rawTracks);
+        if (!active) return;
+        const coverByArtist = new Map<string, string>();
+        for (const [index, entry] of (res.items || []).entries()) {
+          const track = enrichedTracks[index];
+          const artistName =
+            track.artistList?.[0]?.name ||
+            track.artists?.split(",")?.[0]?.trim() ||
+            "";
+          if (artistName && track.coverUrl) coverByArtist.set(artistName, track.coverUrl);
+        }
+        const enrichedItems = items.map((item) => {
+          if (item.type !== "artist") return item;
+          return { ...item, item: { ...item.item, imageUrl: coverByArtist.get(item.item.name) || item.item.imageUrl } };
+        });
+        cache.set(`popular_${limit}`, { data: enrichedItems, timestamp: Date.now() });
+        setData(enrichedItems);
       })
       .catch(() => {
         if (active) setData([]);

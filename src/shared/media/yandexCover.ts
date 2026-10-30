@@ -2,6 +2,8 @@ import type { Track } from "@/shared/types";
 
 const coverCache = new Map<string, string | null>();
 const pendingCovers = new Map<string, Promise<string | null>>();
+const COVER_TIMEOUT_MS = 5_000;
+const COVER_CONCURRENCY = 4;
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
@@ -23,12 +25,20 @@ export async function getCoverWithoutToken(
   const request = (async () => {
     try {
       const url = `https://music.yandex.ru/handlers/music-search.jsx?text=${encodeURIComponent(normalized)}&type=all`;
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-          Referer: "https://music.yandex.ru/",
-        },
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(new Error("Yandex cover timeout")), COVER_TIMEOUT_MS);
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+            Referer: "https://music.yandex.ru/",
+          },
+        });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!res.ok) return null;
       const data = await res.json();
       const title = normalize(expectedTitle);
@@ -69,16 +79,18 @@ export async function getCoverWithoutToken(
 }
 
 export async function replaceTrackCoversWithYandex(tracks: Track[]): Promise<Track[]> {
-  return Promise.all(
-    tracks.map(async (track) => {
+  const result = [...tracks];
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < tracks.length) {
+      const index = cursor++;
+      const track = tracks[index];
       let coverUrl = await getCoverWithoutToken(
         `${track.title} ${track.artists}`,
         track.title,
         track.artists,
       );
-      if (!coverUrl) {
-        coverUrl = await getCoverWithoutToken(track.title, track.title, track.artists);
-      }
+      if (!coverUrl) coverUrl = await getCoverWithoutToken(track.title, track.title, track.artists);
       if (!coverUrl && track.album?.title) {
         coverUrl = await getCoverWithoutToken(
           `${track.album.title} ${track.artists}`,
@@ -86,7 +98,9 @@ export async function replaceTrackCoversWithYandex(tracks: Track[]): Promise<Tra
           track.artists,
         );
       }
-      return coverUrl ? { ...track, coverUrl } : track;
-    }),
-  );
+      if (coverUrl) result[index] = { ...track, coverUrl };
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(COVER_CONCURRENCY, tracks.length) }, worker));
+  return result;
 }

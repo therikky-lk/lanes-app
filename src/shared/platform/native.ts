@@ -136,10 +136,21 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
   let res: NativeHttpResponse;
   try {
     const started = performance.now();
-    res = await Promise.race([
+    let abortListener: (() => void) | undefined;
+    const aborted = new Promise<never>((_, reject) => {
+      if (!signal) return;
+      abortListener = () => reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      signal.addEventListener("abort", abortListener, { once: true });
+    });
+    try {
+      res = await Promise.race([
       http.request({ url, method, headers: plain, body }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timed out after 40s")), 40_000)),
-    ]);
+        aborted,
+      ]);
+    } finally {
+      if (signal && abortListener) signal.removeEventListener("abort", abortListener);
+    }
     const took = performance.now() - started;
     if (took > 8000) diag(`HTTP ${method} ${short} slow: ${Math.round(took / 1000)}s`);
   } catch (error) {
