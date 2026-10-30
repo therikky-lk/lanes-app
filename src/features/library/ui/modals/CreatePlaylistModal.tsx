@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Button from "@/shared/ui/Button";
 import TextInput from "@/shared/ui/TextInput";
 import Tooltip from "@/shared/ui/Tooltip";
-import { CheckLine, InformationLine, LinkLine } from "@mingcute/react";
+import { CheckLine, CloseLine, InformationLine, LinkLine, Upload2Line } from "@mingcute/react";
 import { useAddPlaylistTracks, useCreatePlaylist } from "../../hooks";
 import { notifyLibraryChanged } from "../../hooks/usePlaylists";
 import Dialog from "@/shared/ui/Dialog";
@@ -11,6 +11,7 @@ import { useTranslation } from "@/languages";
 import { useModalStore } from "../../store/modalStore";
 import { useImportStore } from "../../store/importStore";
 import { resolveApiErrorMessage } from "@/shared/api";
+import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
 
 type Tab = "create" | "import";
 
@@ -49,6 +50,7 @@ export default function CreatePlaylistModal() {
   const [tab, setTab] = useState<Tab>("create");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [cover, setCover] = useState<string | null>(null);
   const [showDescription, setShowDescription] = useState(false);
   const [importUrl, setImportUrl] = useState("");
 
@@ -58,6 +60,7 @@ export default function CreatePlaylistModal() {
 
   const titleRef = useRef<HTMLInputElement>(null);
   const linkRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const createPlaylist = useCreatePlaylist();
   const addTrack = useAddPlaylistTracks();
 
@@ -69,6 +72,7 @@ export default function CreatePlaylistModal() {
       setTab(initialUrl ? "import" : "create");
       setTitle("");
       setDescription("");
+      setCover(null);
       setShowDescription(false);
       setImportUrl((initialUrl || "").trim());
       setCreateError("");
@@ -92,6 +96,13 @@ export default function CreatePlaylistModal() {
         title: trimmed.slice(0, TITLE_MAX),
         description: description.trim() || undefined,
       });
+      if (cover) {
+        try {
+          setPlaylistCover(playlist.id, cover, { notify: false });
+        } catch {
+          // The playlist is already created; a storage failure must not undo it.
+        }
+      }
       notifyLibraryChanged();
 
       if (pendingTrack) {
@@ -106,6 +117,15 @@ export default function CreatePlaylistModal() {
       }
 
       close();
+    } catch {
+      setCreateError(t("common.failed_create_playlist"));
+    }
+  }
+
+  async function handleCoverChange(file: File | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    try {
+      setCover(await imageFileToCover(file));
     } catch {
       setCreateError(t("common.failed_create_playlist"));
     }
@@ -145,19 +165,29 @@ export default function CreatePlaylistModal() {
   return (
     <Dialog open={open} onOpenChange={(next) => (!next ? close() : undefined)} maxWidth={440}>
       <div className="flex flex-col gap-[14px] px-[20px] pb-[16px]">
-        <div>
-          <h2 className="m-0 text-[18px] font-[500] text-text-primary" style={font}>
-            {isCreate ? t("common.from_scratch") : t("common.import_playlist")}
-          </h2>
-          <p className="m-0 mt-[2px] text-[13px] text-text-tertiary" style={font}>
-            {isCreate ? t("common.create_empty_playlist") : t("common.import_playlist_description")}
-          </p>
+        <div className="flex items-start justify-between gap-[12px]">
+          <div>
+            <h2 className="m-0 text-[18px] font-[500] text-text-primary" style={font}>
+              {isCreate ? t("library.create_playlist") : t("common.import_playlist")}
+            </h2>
+            <p className="m-0 mt-[2px] text-[13px] text-text-tertiary" style={font}>
+              {isCreate ? t("common.create_empty_playlist") : t("common.import_playlist_description")}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label={t("common.close")}
+            onClick={close}
+            className="inline-flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-md border-0 bg-transparent text-text-secondary transition-colors hover:bg-border-alpha-14 hover:text-text-primary cursor-pointer"
+          >
+            <CloseLine size={18} />
+          </button>
         </div>
 
         <div className="flex p-[3px] rounded-lg bg-border-alpha-14">
           {(
             [
-              { id: "create", label: t("common.from_scratch") },
+              { id: "create", label: t("library.create_playlist") },
               { id: "import", label: t("common.import") },
             ] as const
           ).map((item) => (
@@ -202,6 +232,41 @@ export default function CreatePlaylistModal() {
                 </span>
               }
             />
+            <div className="flex items-center gap-[12px]">
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  void handleCoverChange(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => coverInputRef.current?.click()}
+                className="relative inline-flex h-[64px] w-[64px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary transition-colors hover:border-text-secondary hover:text-text-primary cursor-pointer"
+                aria-label={t("common.upload")}
+              >
+                {cover ? (
+                  <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <Upload2Line size={22} />
+                )}
+              </button>
+              <div className="min-w-0">
+                <p className="m-0 text-[13px] text-text-primary" style={font}>{t("common.upload")}</p>
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  className="mt-[3px] border-0 bg-transparent p-0 text-[12px] text-text-tertiary hover:text-text-primary cursor-pointer"
+                  style={font}
+                >
+                  {t("common.upload")}
+                </button>
+              </div>
+            </div>
             {showDescription ? (
               <textarea
                 autoFocus
@@ -230,9 +295,6 @@ export default function CreatePlaylistModal() {
               </span>
             )}
             <div className="flex items-center justify-end gap-[8px] mt-[2px]">
-              <Button type="button" variant="ghost" size="sm" onClick={close}>
-                {t("common.cancel")}
-              </Button>
               <Button type="submit" variant="primary" size="sm" disabled={createPlaylist.isPending}>
                 {createPlaylist.isPending ? t("common.adding") : t("common.create")}
               </Button>
@@ -283,9 +345,6 @@ export default function CreatePlaylistModal() {
               </span>
             )}
             <div className="flex items-center justify-end gap-[8px] mt-[2px]">
-              <Button type="button" variant="ghost" size="sm" onClick={close}>
-                {t("common.cancel")}
-              </Button>
               <Button type="submit" variant="primary" size="sm" disabled={importing}>
                 {importing ? t("common.importing") : t("common.import")}
               </Button>
