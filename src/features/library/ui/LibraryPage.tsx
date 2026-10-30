@@ -426,7 +426,7 @@ export default function LibraryPage() {
         <div
           className={`relative sticky top-0 z-20 ${
             viewMode === "list"
-              ? "border-b border-white/[0.06] bg-bg-elevated"
+              ? "border-b border-white/[0.06] bg-bg-primary"
               : "bg-transparent backdrop-blur-xl"
           }`}
         >
