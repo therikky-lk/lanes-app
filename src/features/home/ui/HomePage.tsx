@@ -148,7 +148,7 @@ export default function HomePage() {
           <div className="col-start-1 row-start-1 w-full pb-[16px]">
             {/* two shortcuts: liked songs and history. A tile, the name with a
                 chevron, one line under it, and the latest track's cover */}
-            <div className="mt-[18px] px-8 grid grid-cols-1 gap-x-[10px] gap-y-[2px] min-[460px]:grid-cols-2 md:px-6 md:gap-x-[8px]">
+            <div className="mt-[18px] px-8 grid grid-cols-1 gap-x-[10px] gap-y-[2px] min-[460px]:grid-cols-2 md:px-4 md:gap-x-[6px]">
               {(
                 [
                   {
