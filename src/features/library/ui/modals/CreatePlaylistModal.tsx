@@ -13,6 +13,7 @@ import { useModalStore } from "../../store/modalStore";
 import { useImportStore } from "../../store/importStore";
 import { resolveApiErrorMessage } from "@/shared/api";
 import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
+import { withCoverMarker } from "../../services/playlistCoverMarker";
 
 type Tab = "create" | "import";
 
@@ -93,7 +94,9 @@ export default function CreatePlaylistModal() {
     try {
       const playlist = await createPlaylist.mutateAsync({
         title: trimmed.slice(0, TITLE_MAX),
-        description: description.trim() || undefined,
+        description: cover
+          ? withCoverMarker(description.trim(), cover)
+          : description.trim() || undefined,
       });
       if (cover) {
         try {
