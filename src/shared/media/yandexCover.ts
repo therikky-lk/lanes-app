@@ -41,7 +41,8 @@ export async function getCoverWithoutToken(query: string): Promise<string | null
 export async function fillMissingTrackCovers(tracks: Track[]): Promise<Track[]> {
   return Promise.all(
     tracks.map(async (track) => {
-      if (track.coverUrl) return track;
+      const isYoutubeThumbnail = /(?:i\d?\.ytimg\.com|img\.youtube\.com|yt3\.ggpht\.com)/i.test(track.coverUrl);
+      if (track.coverUrl && !isYoutubeThumbnail) return track;
       const coverUrl = await getCoverWithoutToken(`${track.title} ${track.artists}`);
       return coverUrl ? { ...track, coverUrl } : track;
     }),
