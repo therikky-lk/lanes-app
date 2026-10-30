@@ -196,7 +196,7 @@ export default function CreatePlaylistModal() {
               onClick={() => setTab(item.id)}
               whileTap={{ scale: 0.96 }}
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className={`relative inline-flex min-w-[160px] flex-1 items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none font-[500] transition-colors duration-150 cursor-pointer border-none ${
+              className={`relative inline-flex items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none font-[500] transition-colors duration-150 cursor-pointer border-none ${
                 tab === item.id
                   ? "text-text-primary"
                   : "bg-transparent text-text-secondary hover:text-text-primary"
