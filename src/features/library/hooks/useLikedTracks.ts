@@ -5,7 +5,7 @@ import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@
 import { loadLocalLikes } from "@/features/local/localLikesSync";
 import { localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { linerDb, type CachedTrackRecord } from "@/shared/storage/linerDb";
-import { fillMissingTrackCovers } from "@/shared/media/yandexCover";
+import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
@@ -133,7 +133,7 @@ function load(force = false): Promise<void> {
       tracks.push(...page.items.map(({ track }) => toClientTrack(track)));
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
-    const enrichedTracks = await fillMissingTrackCovers(tracks);
+    const enrichedTracks = await replaceTrackCoversWithYandex(tracks);
     cache = { tracks: enrichedTracks, total: enrichedTracks.length };
     await Promise.all(enrichedTracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
