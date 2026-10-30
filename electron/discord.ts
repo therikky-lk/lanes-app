@@ -181,7 +181,7 @@ export class DiscordRpcManager {
       return {
         connected: this.isConnected,
         username: this.client?.user?.username,
-        error: this.isConnected ? undefined : this.lastError,
+        error: this.lastError,
       };
     });
   }
@@ -477,13 +477,12 @@ export class DiscordRpcManager {
           break;
       }
 
-      const activity: SetActivity & { status_display_type?: number } = {
+      const activity: SetActivity = {
         name: sanitizeText(activityName) || "Lane",
         type: 2, // 2 = ActivityType.Listening -> renders "Listening to" + live progress bar
         details: sanitizeText(detailsText),
         state: sanitizeText(stateText),
         statusDisplayType: rpcStatusDisplayType,
-        status_display_type: rpcStatusDisplayType,
       };
 
       // Timestamps (media timeline / live progress bar like Spotify)
@@ -498,14 +497,14 @@ export class DiscordRpcManager {
       // Large artwork (Album/Track cover)
       const coverImage = toDiscordImageUrl(track.coverUrl);
       if (this.settings.showArtwork && coverImage) {
-        activity.largeImageKey = coverImage;
+        activity.largeImageUrl = coverImage;
         activity.largeImageText = sanitizeText(track.album || track.title) || "Lane";
       }
 
       // Small artwork (Artist photo badge)
       const artistImage = toDiscordImageUrl(payload.artistImageUrl);
       if (this.settings.showArtistSmallImage && artistImage) {
-        activity.smallImageKey = artistImage;
+        activity.smallImageUrl = artistImage;
         activity.smallImageText = sanitizeText(track.artist) || "Artist";
       }
 
@@ -531,9 +530,12 @@ export class DiscordRpcManager {
       }
 
       await this.client.user.setActivity(activity);
+      this.lastError = undefined;
     } catch (err) {
       this.lastError = String((err as any)?.message ?? err);
-      // Activity update dropped or rate-limited; gracefully ignored
+      if (process.env.LINER_DISCORD_DEBUG) {
+        console.error("[discord-rpc] activity update failed", err);
+      }
     }
   }
 
