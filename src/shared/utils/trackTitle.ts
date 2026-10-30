@@ -4,6 +4,7 @@
 
 const JUNK = /\s*[([](?:official\s*(?:music\s*)?(?:video|audio|clip|visuali[sz]er|lyric\s*video)|official\s*remix|remix\s*official|music\s*video|lyric(?:s)?\s*video|lyrics|audio|video|visuali[sz]er|mood\s*video|премьера\s*клипа|премьера|клип|official|hd|hq|4k)[^)\]]*[)\]]/gi;
 const TRAILING_JUNK = /\s*(?:[-–—|:]\s*)?(?:official\s*(?:music\s*)?(?:video|audio|clip|visuali[sz]er|lyric\s*video)|official\s*remix|remix\s*official|music\s*video|lyric(?:s)?\s*video|lyrics|audio|video|visuali[sz]er|mood\s*video|премьера\s*клипа|премьера|клип)\s*$/i;
+const SOURCE_SUFFIX = /\s*[|–—-]\s*(?:трек\s*\+\s*текст|track\s*\+\s*text)\s*$/i;
 const SEPARATOR = /\s+[-–—]\s+/;
 
 function norm(value: string): string {
@@ -34,7 +35,7 @@ function leftIsArtists(left: string, artists: string): boolean {
 
 export function cleanTrackTitle(title: string, artists = ""): string {
   if (!title) return title;
-  let out = title.replace(JUNK, "").replace(TRAILING_JUNK, "").trim();
+  let out = title.replace(JUNK, "").replace(TRAILING_JUNK, "").replace(SOURCE_SUFFIX, "").trim();
   const parts = out.split(SEPARATOR);
   if (parts.length >= 2 && leftIsArtists(parts[0], artists)) {
     const rest = parts.slice(1).join(" - ").trim();
