@@ -11,7 +11,7 @@ import { useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "../../store/modalStore";
 import { useImportStore } from "../../store/importStore";
-import { resolveApiErrorMessage } from "@/shared/api";
+import { api, resolveApiErrorMessage } from "@/shared/api";
 import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
 import { withCoverMarker } from "../../services/playlistCoverMarker";
 
@@ -94,13 +94,14 @@ export default function CreatePlaylistModal() {
     try {
       const playlist = await createPlaylist.mutateAsync({
         title: trimmed.slice(0, TITLE_MAX),
-        description: cover
-          ? withCoverMarker(description.trim(), cover)
-          : description.trim() || undefined,
+        description: description.trim() || undefined,
       });
       if (cover) {
         try {
           setPlaylistCover(playlist.id, cover, { notify: false });
+          await api.updatePlaylist(playlist.id, {
+            description: withCoverMarker(playlist.description, cover),
+          });
         } catch {
           // The playlist is already created; a storage failure must not undo it.
         }
