@@ -25,7 +25,10 @@ export interface LocalTrackRecord {
 
 const DB_NAME = "lane-local-media";
 const STORE = "tracks";
-const MAX_FILE_BYTES = 300 * 1024 * 1024;
+// Local tracks stay in IndexedDB on this device. 300 MB was too restrictive
+// for the user's own lossless/long recordings; leave the actual storage limit
+// to the device instead of rejecting a valid audio file prematurely.
+const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024;
 
 export function isLocalTrackId(id: string | null | undefined): boolean {
   return typeof id === "string" && id.startsWith(LOCAL_TRACK_PREFIX);
@@ -133,7 +136,8 @@ export async function listLikedLocalTracks(): Promise<LocalTrackRecord[]> {
 }
 
 export function isSupportedAudioFile(file: File): boolean {
-  return /^audio\//.test(file.type) || /\.(mp3|m4a|aac|ogg|oga|opus|flac|wav|webm)$/i.test(file.name);
+  return /^audio\//.test(file.type) ||
+    /\.(mp3|m4a|m4b|aac|ogg|oga|opus|flac|wav|webm|aiff|aif|ape|alac|amr|ac3|dsf|dff|mka|wma)$/i.test(file.name);
 }
 
 export async function addLocalFiles(files: Iterable<File>): Promise<{ added: LocalTrackRecord[]; skipped: string[] }> {
