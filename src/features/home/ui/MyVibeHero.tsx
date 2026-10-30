@@ -621,32 +621,40 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
 
             <p className="m-0 mt-[6px] mb-[10px] text-[11px] font-[600] lowercase text-white/55">{t("home.vibe.by_character")}</p>
             <LayoutGroup id="vibe-character-selector">
-            <div className="relative grid grid-cols-3 rounded-[14px] bg-black/25 p-[4px]">
-              {VIBE_CHARACTERS.map((c) => {
+            <div className="inline-flex w-full items-center rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+              {VIBE_CHARACTERS.map((c, i) => {
                 const on = settings.character === c;
                 const { Icon, color } = CHARACTER_ICON[c];
                 return (
-                  <button
-                    key={c}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => toggle("character", c)}
-                    className="relative flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-[10px] border-0 bg-transparent px-[4px] cursor-pointer"
-                  >
-                    {on && (
-                      <motion.span
-                        layoutId="vibeCharacterPill"
-                        className="absolute inset-0 rounded-[10px] bg-white/[0.12]"
-                        transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                  <Fragment key={c}>
+                    {i > 0 && (
+                      <span
+                        aria-hidden
+                        className={`mx-[2px] h-[28px] w-px bg-white/15 transition-opacity ${
+                          on || settings.character === VIBE_CHARACTERS[i - 1] ? "opacity-0" : ""
+                        }`}
                       />
                     )}
-                    <Icon className="relative z-10" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
-                    <span className="relative z-10 truncate max-w-full text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
-                  </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => toggle("character", c)}
+                      className="relative inline-flex h-[64px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
+                    >
+                      {on && (
+                        <motion.span
+                          layoutId="vibeCharacterPill"
+                          className="absolute inset-0 rounded-lg bg-border-alpha-14"
+                          transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                        />
+                      )}
+                      <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
+                      <span className="relative z-10 truncate text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
+                    </button>
+                  </Fragment>
                 );
               })}
-              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/10" />
-              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/10" />
             </div>
             </LayoutGroup>
 
