@@ -61,7 +61,7 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
             type="button"
             aria-label={t("common.close") || "Close"}
             onClick={() => onOpenChange(false)}
-            className="inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-text-tertiary hover:bg-white/[0.09] hover:text-text-primary cursor-pointer"
+            className="inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center border-0 bg-transparent p-0 text-text-tertiary"
           >
             <CloseLine size={17} />
           </button>
