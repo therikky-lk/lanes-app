@@ -193,7 +193,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
 
   return (
     <div className="flex flex-col">
-      <div className={`${headingMarginTop} px-[16px] flex items-center justify-between`}>
+      <div className={`${headingMarginTop} px-[32px] flex items-center justify-between`}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center shrink-0">
             <SparklesFill className="w-5 h-5 text-text-primary" />
@@ -211,7 +211,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
         <ScrollableRow
           controller={scroll}
           showScrollMask={false}
-          className="flex flex-nowrap gap-[14px] pl-[16px] pr-[16px] mt-[3px] overflow-x-auto pt-0 pb-[12px]"
+          className="flex flex-nowrap gap-[14px] pl-[32px] pr-[32px] mt-[3px] overflow-x-auto pt-0 pb-[12px]"
         >
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
