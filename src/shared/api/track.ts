@@ -1,6 +1,7 @@
 import { mediaUrl } from "./api";
 import type { ApiTrack } from "../contracts";
 import type { Track } from "../types";
+import { cleanTrackTitle } from "../utils/trackTitle";
 
 // "Koss & ПЛУТТО", "A feat. B", "A x B": several artists in one name
 const ARTIST_SEPARATOR = /\s*,\s*|\s+(?:&|×|x|feat\.?|ft\.?|featuring)\s+/i;
@@ -103,7 +104,7 @@ export function toClientTrack(source: any): Track {
 
   return {
     id: source.id,
-    title: source.title,
+    title: cleanTrackTitle(source.title, artistsString),
     artists: artistsString,
     artistList: artistsList.length > 0 ? artistsList : undefined,
     artistId: primaryArtistId,
