@@ -455,14 +455,16 @@ export default function LibraryPage() {
               onViewModeChange={handleViewModeChange}
             />
           </div>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-full h-[36px] backdrop-blur-xl"
-            style={{
-              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)",
-              maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)",
-            }}
-          />
+          {viewMode !== "list" && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-full h-[36px] backdrop-blur-xl"
+              style={{
+                WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)",
+                maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)",
+              }}
+            />
+          )}
         </div>
         )}
 
