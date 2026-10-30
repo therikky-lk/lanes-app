@@ -146,12 +146,14 @@ export default function TrendsSection() {
         />
       </div>
 
-      <div className="mt-[10px] grid grid-cols-1 gap-x-[16px] px-[24px] md:grid-cols-2">
+      <div className="mt-[10px] grid w-full grid-cols-1 gap-x-[16px] px-[32px] md:grid-cols-2">
         {entries === null
           ? Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className="flex h-[60px] items-center gap-[12px] px-[8px]">
+              <div key={i} className="grid h-[60px] min-w-0 grid-cols-[26px_44px_minmax(0,1fr)_44px] items-center gap-[12px] px-[8px]">
+                <span className="h-[12px] w-[16px] animate-pulse rounded bg-border-alpha-14" />
                 <span className="h-[44px] w-[44px] animate-pulse rounded-md bg-border-alpha-14" />
                 <span className="h-[12px] w-[50%] animate-pulse rounded bg-border-alpha-14" />
+                <span className="h-[12px] w-[32px] animate-pulse rounded bg-border-alpha-14" />
               </div>
             ))
           : shown.map((e) => (
@@ -159,7 +161,7 @@ export default function TrendsSection() {
                 key={e.song.id}
                 type="button"
                 onClick={() => void play(e)}
-                className="group flex h-[60px] min-w-0 items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
+                className="group grid h-[60px] min-w-0 grid-cols-[26px_44px_minmax(0,1fr)_44px] items-center gap-[12px] rounded-lg border-0 bg-transparent px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05]"
               >
                 <span className="flex w-[26px] shrink-0 flex-col items-center justify-center gap-[3px]">
                   <span className={`text-[15px] font-[700] tabular-nums leading-none ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
@@ -177,17 +179,15 @@ export default function TrendsSection() {
                     </span>
                   )}
                 </span>
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 overflow-hidden">
                   <span className={`block truncate text-[14.5px] font-[550] ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
                     {e.song.title}
                   </span>
                     <span className="block truncate text-[12.5px] text-text-tertiary">{e.song.artist}</span>
                 </span>
-                  {formatDuration(e.track?.durationMs) && (
-                    <span className="ml-auto shrink-0 self-center pl-[10px] text-[12.5px] tabular-nums text-text-tertiary">
-                      {formatDuration(e.track?.durationMs)}
-                    </span>
-                  )}
+                  <span className="w-[44px] shrink-0 text-right text-[12.5px] tabular-nums text-text-tertiary">
+                    {formatDuration(e.track?.durationMs) ?? "—"}
+                  </span>
               </button>
             ))}
       </div>
