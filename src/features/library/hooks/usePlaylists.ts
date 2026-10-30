@@ -130,7 +130,18 @@ function load(force = false): Promise<void> {
           };
         }
 
-        const detail = await api.getUserPlaylist(playlist.id);
+        let detail: { items: ApiUserPlaylistItem[] };
+        try {
+          detail = await api.getUserPlaylist(playlist.id);
+        } catch {
+          // Keep the playlist visible if one detail/cover request fails.
+          return {
+            ...playlist,
+            trackCount: localCount,
+            coverUrl: "",
+            coverUrls: [],
+          };
+        }
         const covers = extractCovers(detail.items);
         const entry: CoverCacheEntry = {
           coverUrls: covers,
