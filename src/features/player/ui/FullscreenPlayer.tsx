@@ -620,7 +620,7 @@ export function FullscreenPlayer({
             type="button"
             onClick={() => setMobileLyrics((v) => !v)}
             aria-pressed={mobileLyrics}
-            className={`inline-flex h-[34px] items-center gap-[6px] rounded-full border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
+            className={`inline-flex h-[34px] items-center gap-[6px] rounded-lg border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
               mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
             }`}
           >
@@ -632,7 +632,7 @@ export function FullscreenPlayer({
             type="button"
             onClick={() => setSpeedOpen(true)}
             aria-label={t("player.speed")}
-            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer ${
+            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer ${
               speedChanged ? "bg-white text-black" : "bg-black/45 text-white/85"
             }`}
           >
@@ -640,7 +640,7 @@ export function FullscreenPlayer({
           </button>
         )}
         <ConnectDevicesButton
-          className={`inline-flex ${isMobile ? "h-[34px] w-[34px] rounded-full" : "h-[32px] w-[32px] rounded-lg"} items-center justify-center border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none`}
+          className={`inline-flex ${isMobile ? "h-[34px] w-[34px]" : "h-[32px] w-[32px]"} items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none`}
         />
       </div>
     </div>
