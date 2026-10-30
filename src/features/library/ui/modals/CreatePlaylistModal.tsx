@@ -182,7 +182,7 @@ export default function CreatePlaylistModal() {
           </button>
         </div>
 
-        <div className="flex p-[3px] rounded-lg bg-border-alpha-14">
+        <div className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-border-alpha-14">
           {(
             [
               { id: "create", label: t("library.create_playlist") },
@@ -193,7 +193,7 @@ export default function CreatePlaylistModal() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`flex-1 h-[30px] rounded-md text-[13px] font-[500] transition-all cursor-pointer border-none ${
+              className={`relative inline-flex min-w-[160px] flex-1 items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none font-[500] transition-colors duration-150 cursor-pointer border-none ${
                 tab === item.id
                   ? "bg-bg-primary text-text-primary"
                   : "bg-transparent text-text-secondary hover:text-text-primary"
