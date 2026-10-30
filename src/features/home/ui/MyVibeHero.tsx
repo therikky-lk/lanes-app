@@ -630,9 +630,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     type="button"
                     aria-pressed={on}
                     onClick={() => toggle("character", c)}
-                    className={`relative flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-[10px] border-0 px-[4px] cursor-pointer transition-colors ${
-                      on ? "bg-white/[0.12]" : "bg-transparent hover:bg-white/[0.06]"
-                    } ${c !== "popular" ? "border-r border-white/10 rounded-r-none" : ""}`}
+                    className={`relative flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-[10px] border-0 px-[4px] cursor-pointer ${
+                      on ? "bg-white/[0.12]" : "bg-transparent"
+                    } ${c !== "popular" ? "border-r border-white/10" : ""}`}
                   >
                     <Icon size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
                     <span className="truncate max-w-full text-[10px] font-[600] leading-[12px] text-white/85">{label.character(c)}</span>
