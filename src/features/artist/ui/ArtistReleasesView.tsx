@@ -255,6 +255,7 @@ export default function ArtistReleasesView({
                       releaseType={kind}
                       year={release.releaseDate}
                       explicit={release.explicit}
+                      artistName={artistName}
                     />
                   ),
                 )}
@@ -265,7 +266,7 @@ export default function ArtistReleasesView({
                   <button
                     key={release.id}
                     type="button"
-                    onClick={() => navigate(`/collection?type=album&id=${encodeURIComponent(release.id)}`)}
+                    onClick={() => navigate(`/collection?type=release&id=${encodeURIComponent(release.id)}&title=${encodeURIComponent(release.title)}&artist=${encodeURIComponent(artistName)}`)}
                     className="group flex w-full items-center gap-[14px] rounded-md border-0 bg-transparent p-[8px] text-left cursor-pointer hover:bg-border-alpha-14 transition-colors"
                   >
                     <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">

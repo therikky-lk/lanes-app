@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, toClientTrack } from "@/shared/api";
 import type { PopularItem } from "./usePopularTracks";
 import { loadWithRetry, useSessionOwner } from "./sessionAwareLoad";
+import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 export const recentlyPlayedKeys = {
   all: ["recently_played"] as const,
@@ -36,7 +37,7 @@ export function useRecentlyPlayed(limit = 20) {
     setIsLoading(!cached);
     const fetchLimit = Math.min(100, Math.max(limit * 3, 60));
     loadWithRetry(() => api.getHistory(undefined, fetchLimit), () => active)
-      .then((res) => {
+      .then(async (res) => {
         if (!active) return;
         const seen = new Set<string>();
         const items: PopularItem[] = [];
@@ -81,8 +82,15 @@ export function useRecentlyPlayed(limit = 20) {
             break;
           }
         }
-        cache.set(key, { data: items, timestamp: Date.now() });
-        setData(items);
+        const tracks = items
+          .filter((item): item is Extract<PopularItem, { type: "track" }> => item.type === "track")
+          .map((item) => item.item);
+        const enriched = await replaceTrackCoversWithYandex(tracks);
+        let enrichedIndex = 0;
+        const finalItems = items.map((item) => item.type === "track" ? { ...item, item: enriched[enrichedIndex++] } : item);
+        if (!active) return;
+        cache.set(key, { data: finalItems, timestamp: Date.now() });
+        setData(finalItems);
       })
       .catch(() => {
         if (active) setData([]);

@@ -120,7 +120,7 @@ export default function HomePage() {
   const [vibeExpanded, setVibeExpanded] = useState(false);
 
   return (
-    <div data-page-scroller className={`relative h-full w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
+    <div data-page-scroller className={`relative h-full min-w-0 w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
       <ScrollBlurEdge height={72} />
 
       <div
@@ -129,7 +129,7 @@ export default function HomePage() {
         style={{ marginBottom: "-32px" }}
         aria-hidden="true"
       />
-      <div className={vibeExpanded ? "relative z-1 h-full" : "relative z-1"}>
+      <div className={vibeExpanded ? "relative z-1 h-full min-w-0" : "relative z-1 min-w-0"}>
         <MyVibeHero
           liked={likedData?.tracks}
           recent={vibeRecent}
@@ -142,13 +142,13 @@ export default function HomePage() {
       {/* expanded: only the vibe is on screen */}
       {!vibeExpanded && (
 
-      <div className="relative z-1 grid grid-cols-1 items-start w-full">
+      <div className="relative z-1 grid min-w-0 grid-cols-1 items-start w-full">
         {/* Real Content Layer */}
         {isReady && (
           <div className="col-start-1 row-start-1 w-full pb-[16px]">
             {/* two shortcuts: liked songs and history. A tile, the name with a
                 chevron, one line under it, and the latest track's cover */}
-            <div className="mt-[18px] mb-[12px] px-8 grid grid-cols-1 gap-x-[10px] gap-y-[2px] min-[460px]:grid-cols-2 md:px-8 md:gap-x-[8px]">
+            <div className="mt-[18px] mb-[12px] grid grid-cols-1 gap-x-[10px] gap-y-[8px] px-8 min-[460px]:grid-cols-2 md:gap-x-[8px] md:gap-y-[2px]">
               {(
                 [
                   {
@@ -161,7 +161,10 @@ export default function HomePage() {
                     ),
                     title: t("library.liked_songs"),
                     sub: `${likedData.total} ${likedData.total === 1 ? t("library.song") : t("library.songs")}`,
-                    thumb: likedData.tracks.find((tr) => tr.coverUrl)?.coverUrl,
+                    thumbs: likedData.tracks
+                      .filter((tr) => Boolean(tr.coverUrl))
+                      .slice(0, 3)
+                      .map((tr) => tr.coverUrl!),
                   },
                   {
                     key: "history",
@@ -175,7 +178,10 @@ export default function HomePage() {
                     sub:
                       [...new Set(vibeRecent.map((tr) => tr.artists.split(",")[0]?.trim()).filter(Boolean))].slice(0, 3).join(", ") ||
                       t("home.jumpBackIn"),
-                    thumb: vibeRecent.find((tr) => tr.coverUrl)?.coverUrl,
+                    thumbs: vibeRecent
+                      .filter((tr) => Boolean(tr.coverUrl))
+                      .slice(0, 3)
+                      .map((tr) => tr.coverUrl!),
                   },
                 ] as const
               ).map((item) => (
@@ -193,9 +199,26 @@ export default function HomePage() {
                     </span>
                     <span className="block truncate text-[12.5px] text-text-tertiary">{item.sub}</span>
                   </span>
-                  {item.thumb && (
-                    <span className="relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-md md:h-[44px] md:w-[44px]">
-                      <CoverImage src={item.thumb} alt="" fill sizes="40px" className="object-cover" />
+                  {item.thumbs.length > 0 && (
+                    <span className="flex h-[48px] shrink-0 items-center justify-end md:h-[52px]">
+                      {item.thumbs.map((thumb, index) => {
+                        const size = 44;
+                        return (
+                          <span
+                            key={`${item.key}-thumb-${index}`}
+                            className="relative shrink-0 overflow-hidden rounded-md border-2 border-[#1a1a1a] shadow-[0_2px_8px_rgba(0,0,0,0.2)] md:border-2"
+                            style={{
+                              width: `${size}px`,
+                              height: `${size}px`,
+                              marginLeft: index === 0 ? 0 : -30,
+                              zIndex: item.thumbs.length - index,
+                              opacity: Math.max(0.52, 1 - index * 0.2),
+                            }}
+                          >
+                            <CoverImage src={thumb} alt="" fill sizes="44px" className="object-cover" />
+                          </span>
+                        );
+                      })}
                     </span>
                   )}
                 </button>
@@ -266,7 +289,7 @@ export default function HomePage() {
       )}
 
       {/* Direct Crossfade Skeleton Layer */}
-      {!skeletonExited && (
+      {!vibeExpanded && !skeletonExited && (
         <div
           className={`col-start-1 row-start-1 w-full z-10 transition-opacity duration-300 ease-out ${
             isReady ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"

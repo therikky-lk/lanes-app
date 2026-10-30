@@ -12,6 +12,7 @@ export interface ReleaseCardProps {
   releaseType: "single" | "ep";
   year?: string;
   explicit?: boolean;
+  artistName?: string;
   className?: string;
 }
 
@@ -22,6 +23,7 @@ export default function ReleaseCard({
   releaseType,
   year,
   explicit = false,
+  artistName,
   className = "",
 }: ReleaseCardProps) {
   const label = releaseType === "ep" ? "EP" : "Single";
@@ -59,7 +61,7 @@ export default function ReleaseCard({
   return (
     <div onContextMenu={handleContextMenu} className="relative">
       <Link
-        to={`/collection?type=release&id=${encodeURIComponent(id)}`}
+        to={`/collection?type=release&id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}${artistName ? `&artist=${encodeURIComponent(artistName)}` : ""}`}
         className={`group flex flex-col gap-[8px] no-underline cursor-pointer ${className}`}
       >
         <div className="relative aspect-square w-full overflow-hidden rounded-md bg-border-alpha-14">

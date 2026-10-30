@@ -52,12 +52,15 @@ function CollectionContent() {
   const [searchParams] = useSearchParams();
   const typeParam = searchParams.get("type");
   const type = typeParam === "playlist" ? "playlist" : "album";
+  const isRelease = typeParam === "release";
   const id = searchParams.get("id");
+  const releaseTitle = searchParams.get("title");
+  const releaseArtist = searchParams.get("artist");
   const { t } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
 
-  const { data, loading } = useCollection(type, id);
+  const { data, loading } = useCollection(type, id, releaseTitle, releaseArtist, isRelease);
   const entityType = type === "playlist" ? "playlist" : "album";
   const decodedId = id ? decodeURIComponent(id) : "";
   const isDailyMix = Boolean(
