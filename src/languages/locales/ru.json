@@ -103,6 +103,8 @@
     "close": "Закрыть",
     "search": "Поиск",
     "from_scratch": "С нуля",
+    "playlist_cover": "Обложка плейлиста",
+    "choose_cover": "Выбрать изображение",
     "create_empty_playlist": "Создать новый пустой плейлист",
     "playlist_name": "Название плейлиста",
     "import_playlist": "Импортировать плейлист",
