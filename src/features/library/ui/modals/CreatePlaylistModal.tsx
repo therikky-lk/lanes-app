@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { LayoutGroup, motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import TextInput from "@/shared/ui/TextInput";
 import Tooltip from "@/shared/ui/Tooltip";
@@ -183,7 +183,8 @@ export default function CreatePlaylistModal() {
           </button>
         </div>
 
-        <div className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-border-alpha-14">
+        <LayoutGroup id="create-playlist-modal-tabs">
+          <div className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-border-alpha-14">
           {(
             [
               { id: "create", label: t("library.create_playlist") },
@@ -213,7 +214,8 @@ export default function CreatePlaylistModal() {
               <span className="relative z-10">{item.label}</span>
             </motion.button>
           ))}
-        </div>
+          </div>
+        </LayoutGroup>
 
         {isCreate ? (
           <form
