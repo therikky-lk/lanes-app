@@ -35,6 +35,7 @@ import KawarpWrapper from "./KawarpWrapper";
 import { SpeedPitchPicker } from "./SpeedPitchPicker";
 import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
+import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 
 const BRACCATO_TAG = "braccato-lyrics";
 const KAWARP_FADE_IN_MS = 600;
@@ -625,6 +626,12 @@ export function FullscreenPlayer({
           >
             {t("player.lyrics") || "Lyrics"}
           </button>
+        )}
+        {isMobile && (
+          <ConnectDevicesButton
+            size={18}
+            className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer"
+          />
         )}
         {isMobile && (
           <button
