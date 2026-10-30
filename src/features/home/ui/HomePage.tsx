@@ -34,13 +34,11 @@ import {
   RightLine,
 } from "@mingcute/react";
 import CoverImage from "@/features/covers/ui/CoverImage";
-import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
-  const isMobile = useIsMobile();
   const { data: likedData, isLoading: likedLoading } = useLikedTracks();
 
   const { data: popularItems, isLoading: popularLoading } = usePopular(100);
@@ -131,13 +129,6 @@ export default function HomePage() {
         style={{ marginBottom: "-32px" }}
         aria-hidden="true"
       />
-      {!hasCustomBg && isMobile && (
-        <div
-          aria-hidden="true"
-          className={`pointer-events-none absolute -top-8 -left-8 w-[380px] h-[200px] bg-gradient-to-br ${glowClass} blur-3xl opacity-60`}
-        />
-      )}
-
       <div className={vibeExpanded ? "relative z-1 h-full" : "relative z-1"}>
         <MyVibeHero
           liked={likedData?.tracks}
