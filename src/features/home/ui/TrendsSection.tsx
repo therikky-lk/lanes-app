@@ -9,6 +9,14 @@ import type { Track } from "@/shared/types/track";
 
 const PREVIEW = 10;
 
+function formatDuration(durationMs: number | undefined): string | null {
+  if (!durationMs || durationMs <= 0) return null;
+  const totalSeconds = Math.round(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
 /** the little sign under a rank: crown for #1, otherwise how the song moved */
 function RankMark({ rank, movement }: { rank: number; movement: Movement }) {
   if (rank === 1) {
@@ -171,7 +179,17 @@ export default function TrendsSection() {
                   <span className={`block truncate text-[14.5px] font-[550] ${(e.track && currentId === e.track.id) ? "text-accent-primary" : "text-text-primary"}`}>
                     {e.song.title}
                   </span>
-                  <span className="block truncate text-[12.5px] text-text-tertiary">{e.song.artist}</span>
+                  <span className="flex min-w-0 items-center gap-[5px] truncate text-[12.5px] text-text-tertiary">
+                    <span className="truncate">{e.song.artist}</span>
+                    {formatDuration(e.track?.durationMs) && (
+                      <>
+                        <span className="shrink-0 text-text-tertiary/60">·</span>
+                        <span className="shrink-0 tabular-nums text-text-tertiary">
+                          {formatDuration(e.track?.durationMs)}
+                        </span>
+                      </>
+                    )}
+                  </span>
                 </span>
               </button>
             ))}
