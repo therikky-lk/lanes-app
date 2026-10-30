@@ -223,6 +223,10 @@ if (typeof window !== "undefined") {
   };
   window.addEventListener("library:changed", handleRefresh);
   window.addEventListener("auth:changed", handleRefresh);
+  window.addEventListener("focus", handleRefresh);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") handleRefresh();
+  });
 }
 
 function toTrack(item: ApiUserPlaylistItem): Track {
