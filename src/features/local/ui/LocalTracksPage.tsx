@@ -149,7 +149,7 @@ export default function LocalTracksPage() {
             ref={fileRef}
             type="file"
             multiple
-            accept="audio/*,.mp3,.m4a,.flac,.ogg,.opus,.wav"
+            accept="audio/*,.mp3,.m4a,.m4b,.aac,.flac,.ogg,.oga,.opus,.wav,.webm,.aiff,.aif,.ape,.alac,.amr,.ac3,.dsf,.dff,.mka,.wma"
             className="hidden"
             onChange={(e) => {
               void upload(e.target.files);
