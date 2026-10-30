@@ -112,6 +112,12 @@ function traceRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
 
 /** Apple's flag emoji, as everywhere else in the app (react-apple-emojis) */
 const LANGUAGE_FLAG = { russian: "flag-russia", ukrainian: "flag-ukraine", english: "flag-united-states" } as const;
+const LANGUAGE_COLOR = {
+  russian: "#6b8cff",
+  ukrainian: "#ffd34e",
+  english: "#ff6b7a",
+  instrumental: "#b8becb",
+} as const;
 
 export default function MyVibeHero({ liked, recent, trending, expanded = false, onToggleExpanded }: MyVibeHeroProps) {
   const { t } = useTranslation();
@@ -435,6 +441,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     mood: (m: VibeMood) => t(`home.vibe.mood_${m}`),
     language: (l: VibeLanguage) => t(`home.vibe.language_${l}`),
   };
+  const characterDividerColor = settings.character ? CHARACTER_ICON[settings.character].color : "#ffffff";
+  const languageDividerColor = settings.language ? LANGUAGE_COLOR[settings.language] : "#ffffff";
   const active: { key: keyof VibeSettings; text: string }[] = [
     ...(settings.character ? [{ key: "character" as const, text: label.character(settings.character) }] : []),
     ...(settings.mood ? [{ key: "mood" as const, text: label.mood(settings.mood) }] : []),
@@ -649,8 +657,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   </button>
                 );
               })}
-              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/10" />
-              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/10" />
+              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px" style={{ backgroundColor: characterDividerColor, opacity: 0.28 }} />
+              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px" style={{ backgroundColor: characterDividerColor, opacity: 0.28 }} />
             </div>
             </LayoutGroup>
 
@@ -712,8 +720,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     </button>
                   );
                 })}
-                <span className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px bg-white/10" />
-                <span className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px bg-white/10" />
+                <span className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px" style={{ backgroundColor: languageDividerColor, opacity: 0.28 }} />
+                <span className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px" style={{ backgroundColor: languageDividerColor, opacity: 0.28 }} />
               </div>
               {/* "no vocals" on its own */}
               <button
