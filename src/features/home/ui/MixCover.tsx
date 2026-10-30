@@ -41,7 +41,7 @@ export interface MixCoverProps {
 export default function MixCover({ index, covers, label, sizes = "165px", className = "", showBadge = true }: MixCoverProps) {
   const [from, to] = PALETTE[(Math.max(1, index) - 1) % PALETTE.length];
   const [designFrom, designTo] = DESIGN_COLORS[(Math.max(1, index) - 1) % DESIGN_COLORS.length];
-  const shape = (Math.max(1, index) - 1) % 3;
+  const shape = (Math.max(1, index) - 1) % 5;
   const tiles = covers.length >= 4 ? covers.slice(0, 4) : covers.slice(0, 1);
   return (
     <div
@@ -81,6 +81,25 @@ export default function MixCover({ index, covers, label, sizes = "165px", classN
           <div className="pointer-events-none absolute -left-[38%] -top-[10%] h-[125%] w-[125%] rounded-[46%] border-[clamp(12px,2.5cqw,30px)] border-white/75 rotate-[-24deg]" />
           <div className="pointer-events-none absolute -left-[22%] top-[8%] h-[105%] w-[105%] rounded-[45%] border-[clamp(9px,1.8cqw,22px)] border-white/65 rotate-[-24deg]" />
           <div className="pointer-events-none absolute -left-[6%] top-[26%] h-[82%] w-[82%] rounded-[44%] border-[clamp(6px,1.2cqw,15px)] border-white/50 rotate-[-24deg]" />
+        </>
+      )}
+      {shape === 3 && (
+        <>
+          <div className="pointer-events-none absolute inset-[8%] grid grid-cols-3 grid-rows-3 rotate-[-8deg] border border-white/45">
+            {Array.from({ length: 9 }, (_, i) => (
+              <span key={i} className={`border border-white/35 ${i % 2 === 0 ? "bg-white/15" : "bg-black/10"}`} />
+            ))}
+          </div>
+          <div className="pointer-events-none absolute -right-[18%] -top-[18%] h-[62%] w-[62%] rounded-full border-[clamp(10px,2cqw,24px)] border-white/55" />
+          <div className="pointer-events-none absolute -bottom-[16%] -left-[12%] h-[48%] w-[48%] rounded-full bg-black/15" />
+        </>
+      )}
+      {shape === 4 && (
+        <>
+          <div className="pointer-events-none absolute left-[12%] top-[12%] h-[76%] w-[76%] rotate-[12deg] rounded-[22%] border-[clamp(10px,2.2cqw,27px)] border-white/70" />
+          <div className="pointer-events-none absolute left-[27%] top-[27%] h-[46%] w-[46%] rotate-[12deg] rounded-[18%] border-[clamp(7px,1.4cqw,17px)] border-white/55" />
+          <div className="pointer-events-none absolute inset-y-0 right-[12%] w-[14%] bg-white/20" />
+          <div className="pointer-events-none absolute bottom-[13%] left-[12%] h-[12%] w-[42%] rounded-full bg-white/25" />
         </>
       )}
       {showBadge && (
