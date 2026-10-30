@@ -29,13 +29,13 @@ export default function PhoneMenu({
     <>
       <div className="fixed inset-0 z-[180]" onClick={onClose} />
       <div
-        className="fixed z-[181] w-[230px] overflow-hidden rounded-2xl border border-white/[0.08] p-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+        className="fixed z-[181] w-[230px] overflow-hidden rounded-2xl border border-white/[0.06] p-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
         style={{
           top: pos.top,
           right: pos.right,
-          background: "color-mix(in srgb, var(--bg-elevated, #1a1a1e) 58%, transparent)",
-          backdropFilter: "blur(28px) saturate(1.6)",
-          WebkitBackdropFilter: "blur(28px) saturate(1.6)",
+          background: "color-mix(in srgb, var(--bg-panel, #121214) 88%, transparent)",
+          backdropFilter: "blur(16px) saturate(1.05)",
+          WebkitBackdropFilter: "blur(16px) saturate(1.05)",
           fontFamily: "var(--font-inter), sans-serif",
         }}
       >
