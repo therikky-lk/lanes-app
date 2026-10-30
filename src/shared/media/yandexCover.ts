@@ -71,11 +71,21 @@ export async function getCoverWithoutToken(
 export async function replaceTrackCoversWithYandex(tracks: Track[]): Promise<Track[]> {
   return Promise.all(
     tracks.map(async (track) => {
-      const coverUrl = await getCoverWithoutToken(
+      let coverUrl = await getCoverWithoutToken(
         `${track.title} ${track.artists}`,
         track.title,
         track.artists,
       );
+      if (!coverUrl) {
+        coverUrl = await getCoverWithoutToken(track.title, track.title, track.artists);
+      }
+      if (!coverUrl && track.album?.title) {
+        coverUrl = await getCoverWithoutToken(
+          `${track.album.title} ${track.artists}`,
+          track.album.title,
+          track.artists,
+        );
+      }
       return coverUrl ? { ...track, coverUrl } : track;
     }),
   );

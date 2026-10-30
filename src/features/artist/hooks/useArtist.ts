@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
+import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 export interface ArtistAlbumViewModel {
   id: string;
@@ -55,7 +56,7 @@ export function useArtist(id: string | null) {
       try {
         const artist = await api.getArtist(artistId);
         if (!active) return;
-        const tracks = artist.tracks.map(toClientTrack);
+        const tracks = await replaceTrackCoversWithYandex(artist.tracks.map(toClientTrack));
         const formatted: ArtistPageData = {
           title: artist.name,
           monthlyListeners: artist.monthlyListeners,
