@@ -649,8 +649,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   </button>
                 );
               })}
-              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/15" />
-              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/15" />
+              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-white/10" />
+              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-white/10" />
             </div>
             </LayoutGroup>
 
@@ -712,8 +712,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     </button>
                   );
                 })}
-                <span className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px bg-white/15" />
-                <span className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px bg-white/15" />
+                <span className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px bg-white/10" />
+                <span className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px bg-white/10" />
               </div>
               {/* "no vocals" on its own */}
               <button
