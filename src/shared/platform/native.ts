@@ -1,5 +1,6 @@
 import { registerPlugin } from "@capacitor/core";
 import { diag } from "./diag";
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
 // Lane on Android runs the same renderer inside Capacitor. Things Electron's
 // main process does for the desktop app (CORS-free networking, request header
 // rewriting) are done here instead.
@@ -65,6 +66,23 @@ function hostOf(url: string): string {
   } catch {
     return "";
   }
+}
+
+// Android WebView can leave ordinary fetch requests to the Lane services
+// hanging for ~15 seconds even while the device is online. Route the app's
+// own HTTP services through the same native client as YouTube. This keeps
+// authenticated playlist requests and cover sync independent from WebView
+// CORS/network quirks.
+function isNativeServiceUrl(url: string): boolean {
+  const host = hostOf(url);
+  if (!host) return false;
+  const serviceHosts = new Set([
+    hostOf(getApiBaseUrl()),
+    "covers.tryliner.fun",
+    "link.tryliner.fun",
+    "music.yandex.ru",
+  ]);
+  return serviceHosts.has(host);
 }
 
 /**
@@ -155,7 +173,8 @@ export function installNativeFetchHeaders(): void {
     const host = hostOf(url);
     const isYoutube = host.endsWith("youtube.com");
     const isVideo = host.endsWith("googlevideo.com");
-    if (!isYoutube && !isVideo) return original(input, init);
+    const isNativeService = isNativeServiceUrl(url);
+    if (!isYoutube && !isVideo && !isNativeService) return original(input, init);
 
     const headers = new Headers(input instanceof Request ? input.headers : undefined);
     if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
@@ -167,10 +186,12 @@ export function installNativeFetchHeaders(): void {
       const ua = userAgentFor(url);
       if (ua) headers.set("User-Agent", ua);
     }
-    const origin = host === "www.youtube.com" ? "https://www.youtube.com" : "https://music.youtube.com";
-    headers.set("Origin", origin);
-    headers.set("Referer", `${origin}/`);
-    if (!headers.has("User-Agent")) headers.set("User-Agent", navigator.userAgent);
+    if (isYoutube || isVideo) {
+      const origin = host === "www.youtube.com" ? "https://www.youtube.com" : "https://music.youtube.com";
+      headers.set("Origin", origin);
+      headers.set("Referer", `${origin}/`);
+      if (!headers.has("User-Agent")) headers.set("User-Agent", navigator.userAgent);
+    }
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
     return (async () => {
       let body = await bodyToBase64(init?.body);
