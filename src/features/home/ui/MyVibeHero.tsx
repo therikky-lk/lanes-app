@@ -125,6 +125,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const [starting, setStarting] = useState(false);
   const [settings, setSettings] = useState<VibeSettings>(() => storedSettings());
+  const [lastCharacterIndex, setLastCharacterIndex] = useState(() =>
+    Math.max(0, VIBE_CHARACTERS.indexOf(storedSettings().character ?? "favorite")),
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isMobile = useIsMobile();
   const mood = settings.mood;
@@ -424,6 +427,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   /** pick an option of a group, or clear it when it's picked already */
   const toggle = <K extends keyof VibeSettings>(key: K, value: NonNullable<VibeSettings[K]>) => {
     const next = { ...settings, [key]: settings[key] === value ? null : value } as VibeSettings;
+    if (key === "character") {
+      setLastCharacterIndex(Math.max(0, VIBE_CHARACTERS.indexOf(value as VibeCharacter)));
+    }
     setSettings(next);
     storeSettings(next);
     // already listening: the stream follows the new settings right away
@@ -627,10 +633,13 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-white/[0.09]"
                 style={{ width: "calc((100% - 8px) / 3)" }}
                 animate={{
-                  x: `${Math.max(0, VIBE_CHARACTERS.indexOf(settings.character ?? "favorite")) * 100}%`,
+                  x: `${(settings.character ? Math.max(0, VIBE_CHARACTERS.indexOf(settings.character)) : lastCharacterIndex) * 100}%`,
                   opacity: settings.character ? 1 : 0,
                 }}
-                transition={{ type: "spring", stiffness: 220, damping: 24, mass: 0.8 }}
+                transition={{
+                  x: { type: "spring", stiffness: 220, damping: 24, mass: 0.8 },
+                  opacity: { duration: 0.18, ease: "easeOut" },
+                }}
               />
               {VIBE_CHARACTERS.map((c) => {
                 const on = settings.character === c;
