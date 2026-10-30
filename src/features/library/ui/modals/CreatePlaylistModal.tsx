@@ -183,7 +183,14 @@ export default function CreatePlaylistModal() {
           </button>
         </div>
 
-        <div className="flex w-full items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated">
+        <div className="relative flex w-full items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated">
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-[4px] bottom-[4px] left-[4px] rounded-lg bg-border-alpha-14"
+            animate={{ left: tab === "create" ? "4px" : "calc(50% - 2px)" }}
+            transition={{ type: "spring", stiffness: 450, damping: 35 }}
+            style={{ width: "calc((100% - 12px) / 2)" }}
+          />
           {(
             [
               { id: "create", label: t("library.create_playlist") },
@@ -201,13 +208,6 @@ export default function CreatePlaylistModal() {
               }`}
               style={{ ...font, fontWeight: tab === item.id ? 500 : 400 }}
             >
-              {tab === item.id && (
-                <motion.div
-                  layoutId="activeCreatePlaylistTab"
-                  className="absolute inset-0 rounded-lg bg-border-alpha-14"
-                  transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                />
-              )}
               <span className="relative z-10">{item.label}</span>
             </button>
           ))}
