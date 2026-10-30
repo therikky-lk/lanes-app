@@ -649,8 +649,14 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   </button>
                 );
               })}
-              <span className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px" style={{ backgroundColor: "#262626" }} />
-              <span className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px" style={{ backgroundColor: "#262626" }} />
+              <span
+                className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px transition-opacity duration-150"
+                style={{ backgroundColor: "#262626", opacity: settings.character === "favorite" || settings.character === "unfamiliar" ? 0 : 1 }}
+              />
+              <span
+                className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px transition-opacity duration-150"
+                style={{ backgroundColor: "#262626", opacity: settings.character === "unfamiliar" || settings.character === "popular" ? 0 : 1 }}
+              />
             </div>
             </LayoutGroup>
 
@@ -712,8 +718,14 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     </button>
                   );
                 })}
-                <span className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px" style={{ backgroundColor: "#262626" }} />
-                <span className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px" style={{ backgroundColor: "#262626" }} />
+                <span
+                  className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px transition-opacity duration-150"
+                  style={{ backgroundColor: "#262626", opacity: settings.language === "russian" || settings.language === "ukrainian" ? 0 : 1 }}
+                />
+                <span
+                  className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px transition-opacity duration-150"
+                  style={{ backgroundColor: "#262626", opacity: settings.language === "ukrainian" || settings.language === "english" ? 0 : 1 }}
+                />
               </div>
               {/* "no vocals" on its own */}
               <button
