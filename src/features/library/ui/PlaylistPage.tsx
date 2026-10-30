@@ -444,17 +444,23 @@ function LibraryPlaylistContent() {
     }
   }, [navigate]);
 
-  const savePlaylistCover = useCallback(async (playlistId: string, cover: string | null) => {
+  const savePlaylistCover = useCallback(async (playlistId: string, cover: string | null): Promise<boolean> => {
     // User playlists do not have a dedicated cover field in the API. Keep the
     // compact image in their synced description metadata instead.
-    diag(`[Lane][PlaylistCover] syncing cover ${JSON.stringify({ playlistId, bytes: cover?.length ?? 0 })}`);
-    const detail = await api.getUserPlaylist(playlistId);
-    await api.updatePlaylist(playlistId, {
-      description: withCoverMarker(detail.playlist.description, cover ?? undefined),
-    });
-    diag(`[Lane][PlaylistCover] server sync complete ${JSON.stringify({ playlistId })}`);
     setPlaylistCover(playlistId, cover, { notify: false });
     window.dispatchEvent(new Event("library:changed"));
+    diag(`[Lane][PlaylistCover] saved locally, syncing ${JSON.stringify({ playlistId, bytes: cover?.length ?? 0 })}`);
+    try {
+      const detail = await api.getUserPlaylist(playlistId);
+      await api.updatePlaylist(playlistId, {
+        description: withCoverMarker(detail.playlist.description, cover ?? undefined),
+      });
+      diag(`[Lane][PlaylistCover] server sync complete ${JSON.stringify({ playlistId })}`);
+      return true;
+    } catch (error) {
+      diag(`[Lane][PlaylistCover] server sync failed ${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    }
   }, []);
 
   const targetScrollTopRef = useRef<number | null>(null);
@@ -611,9 +617,12 @@ function LibraryPlaylistContent() {
           e.target.value = "";
           if (!file || !decodedId) return;
           try {
-            await savePlaylistCover(decodedId, await imageFileToCover(file));
+            const synced = await savePlaylistCover(decodedId, await imageFileToCover(file));
+            if (!synced) {
+              diag(`[Lane][PlaylistCover] cover kept locally; retry scheduled`);
+            }
           } catch (error) {
-            diag(`[Lane][PlaylistCover] server sync failed ${error instanceof Error ? error.message : String(error)}`);
+            diag(`[Lane][PlaylistCover] cover processing failed ${error instanceof Error ? error.message : String(error)}`);
             toast(t("playlist.cover_failed") || "Could not use this image", "error");
           }
         }}
