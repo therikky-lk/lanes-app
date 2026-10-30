@@ -240,7 +240,11 @@ function toTrack(item: ApiUserPlaylistItem): Track {
 export function usePlaylistsList() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
   useEffect(() => {
-    void load();
+    void load(true);
+    const refreshTimer = window.setInterval(() => {
+      void load(true);
+    }, 30_000);
+    return () => window.clearInterval(refreshTimer);
   }, []);
   return state;
 }
