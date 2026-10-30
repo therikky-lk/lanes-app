@@ -4,6 +4,7 @@ import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
 import { detectLyricsFormat, getCustomLyrics, setCustomLyrics } from "@/shared/media/lyrics/customLyrics";
+import { CloseLine } from "@mingcute/react";
 
 export interface CustomLyricsDialogProps {
   open: boolean;
@@ -20,11 +21,21 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
   const { toast } = useToast();
   const [text, setText] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const existing = open ? getCustomLyrics(trackId) : null;
 
   useEffect(() => {
     if (open) setText(getCustomLyrics(trackId)?.content ?? "");
   }, [open, trackId]);
+
+  useEffect(() => {
+    const textarea = textAreaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const maxHeight = Math.floor(window.innerHeight * 0.55);
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [text, open]);
 
   const format = text.trim() ? detectLyricsFormat(text) : null;
 
@@ -38,22 +49,33 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
   return (
     <Dialog open={open} onOpenChange={onOpenChange} maxWidth={560}>
       <div className="flex flex-col gap-[12px] px-[20px] pb-[16px]" style={font}>
-        <div>
+        <div className="flex items-start justify-between gap-[12px]">
+          <div className="min-w-0">
           <h2 className="m-0 text-[18px] font-[500] text-text-primary">{t("player.custom_lyrics_title") || "Your lyrics"}</h2>
           <p className="m-0 mt-[2px] text-[13px] text-text-tertiary">
             {trackTitle ? `${trackTitle} · ` : ""}
             {t("player.custom_lyrics_hint") || "Paste LRC with [mm:ss.xx] timestamps for synced lyrics, or plain text."}
           </p>
+          </div>
+          <button
+            type="button"
+            aria-label={t("common.close") || "Close"}
+            onClick={() => onOpenChange(false)}
+            className="inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-text-tertiary hover:bg-white/[0.09] hover:text-text-primary cursor-pointer"
+          >
+            <CloseLine size={17} />
+          </button>
         </div>
 
         <textarea
+          ref={textAreaRef}
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
-          rows={14}
+          rows={1}
           spellCheck={false}
           placeholder={"[00:12.40] First line\n[00:16.10] Second line\n\n…or just the words"}
-          className="w-full resize-y min-h-[200px] max-h-[55vh] rounded-md border border-border-primary bg-bg-primary px-[14px] py-[10px] font-mono text-[13px] leading-[1.6] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,box-shadow] duration-150 focus:border-text-secondary focus:ring-1 focus:ring-text-secondary"
+          className="w-full min-h-[80px] max-h-[55vh] resize-none overflow-hidden rounded-xl border border-white/10 bg-bg-primary px-[14px] py-[10px] font-mono text-[13px] leading-[1.6] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,box-shadow] duration-150 focus:border-white/25 focus:ring-1 focus:ring-white/10"
         />
 
         <div className="flex flex-wrap items-center gap-[8px]">
