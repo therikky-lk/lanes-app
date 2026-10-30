@@ -13,6 +13,7 @@ export interface DialogProps {
   maxHeight?: number | string;
   className?: string;
   zIndex?: number;
+  animateLayout?: boolean;
 }
 
 const activeDialogs: Array<() => void> = [];
@@ -26,6 +27,7 @@ export default function Dialog({
   maxHeight,
   className = "",
   zIndex,
+  animateLayout = false,
 }: DialogProps) {
   const [mounted, setMounted] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number; target: EventTarget | null } | null>(null);
@@ -116,17 +118,20 @@ export default function Dialog({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.97, y: 10 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          layout={animateLayout}
           className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
           style={zIndex ? { zIndex } : undefined}
         >
-          <div
+          <motion.div
             className={`pointer-events-auto w-full mx-[16px] max-h-[85vh] flex flex-col rounded-xl border border-border-primary bg-bg-primary overflow-hidden relative ${
               className || "pt-[16px]"
             }`}
             style={{ maxWidth, minHeight, ...(maxHeight ? { maxHeight } : {}) }}
+            layout={animateLayout}
+            transition={animateLayout ? { layout: { type: "spring", stiffness: 360, damping: 34 } } : undefined}
           >
             {children}
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,
