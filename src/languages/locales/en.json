@@ -107,6 +107,8 @@
     "close": "Close",
     "search": "Search",
     "from_scratch": "From the scratch",
+    "playlist_cover": "Playlist cover",
+    "choose_cover": "Choose image",
     "create_empty_playlist": "Create a brand new empty playlist",
     "playlist_name": "Playlist name",
     "import_playlist": "Import a playlist",
