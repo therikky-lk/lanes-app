@@ -16,6 +16,7 @@ import {
   User2Fill,
   AlbumFill,
   PlaylistFill,
+  YoutubeFill,
 } from "@mingcute/react";
 import {
   useSearchTracks,
@@ -23,6 +24,7 @@ import {
   useSearchArtists,
   useSearchAlbums,
   useSearchPlaylists,
+  useSearchYoutube,
 } from "../hooks";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
 import SearchResultsList from "./SearchResultsList";
@@ -37,11 +39,12 @@ export interface SearchModalProps {
   containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-type SearchFilterKey = "all" | "tracks" | "artists" | "albums" | "playlists";
+type SearchFilterKey = "all" | "tracks" | "youtube" | "artists" | "albums" | "playlists";
 
 const filterKeys: SearchFilterKey[] = [
   "all",
   "tracks",
+  "youtube",
   "artists",
   "albums",
   "playlists",
@@ -71,6 +74,7 @@ export function SearchModal({
 
   const isAllSearchFilter = activeFilter === "all";
   const isTrackSearchFilter = activeFilter === "tracks";
+  const isYoutubeSearchFilter = activeFilter === "youtube";
   const isArtistSearchFilter = activeFilter === "artists";
   const isAlbumSearchFilter = activeFilter === "albums";
   const isPlaylistSearchFilter = activeFilter === "playlists";
@@ -79,6 +83,7 @@ export function SearchModal({
   const filterLabels: Record<SearchFilterKey, string> = {
     all: t("common.all"),
     tracks: t("common.songs"),
+    youtube: t("search.youtube"),
     artists: t("common.artists"),
     albums: t("common.albums"),
     playlists: t("common.playlists"),
@@ -167,6 +172,10 @@ export function SearchModal({
     limit: 20,
     debounceMs: 320,
   });
+  const { videos: youtubeResults, loading: youtubeLoading, hasLoaded: youtubeHasLoaded, runNow: runYoutubeSearchNow } = useSearchYoutube(searchQuery, {
+    enabled: isOpen && isYoutubeSearchFilter,
+    debounceMs: 320,
+  });
 
   const searchResults = useMemo(() => {
     if (isAllSearchFilter) {
@@ -231,6 +240,11 @@ export function SearchModal({
           artistList: clientTrack.artistList,
         };
       });
+    if (isYoutubeSearchFilter)
+      return youtubeResults.map((t: any) => {
+        const clientTrack = toClientTrack(t);
+        return { ...clientTrack, ...t, _type: "track", coverUrl: clientTrack.coverUrl || (t.cover ? mediaUrl(t.cover.url) : ""), artists: clientTrack.artists, artistId: clientTrack.artistId, artistList: clientTrack.artistList };
+      });
     if (isArtistSearchFilter)
       return artistResults.map((a: any) => ({
         ...a,
@@ -261,6 +275,7 @@ export function SearchModal({
   }, [
     isAllSearchFilter,
     isTrackSearchFilter,
+    isYoutubeSearchFilter,
     isArtistSearchFilter,
     isAlbumSearchFilter,
     isPlaylistSearchFilter,
@@ -269,12 +284,15 @@ export function SearchModal({
     artistResults,
     albumResults,
     playlistResults,
+    youtubeResults,
   ]);
 
   const searchLoading = isAllSearchFilter
     ? allLoading
     : isTrackSearchFilter
       ? trackLoading
+      : isYoutubeSearchFilter
+        ? youtubeLoading
       : isArtistSearchFilter
         ? artistLoading
         : isAlbumSearchFilter
@@ -285,6 +303,8 @@ export function SearchModal({
     ? allHasLoaded
     : isTrackSearchFilter
       ? trackHasLoaded
+      : isYoutubeSearchFilter
+        ? youtubeHasLoaded
       : isArtistSearchFilter
         ? artistHasLoaded
         : isAlbumSearchFilter
@@ -303,6 +323,7 @@ export function SearchModal({
       return;
     }
     if (isTrackSearchFilter) runTrackSearchNow();
+    if (isYoutubeSearchFilter) runYoutubeSearchNow();
     if (isArtistSearchFilter) runArtistSearchNow();
     if (isAlbumSearchFilter) runAlbumSearchNow();
     if (isPlaylistSearchFilter) runPlaylistSearchNow();
@@ -503,6 +524,7 @@ export function SearchModal({
                 const isActive = activeFilter === key;
                 let Icon = GridFill;
                 if (key === "tracks") Icon = Music2Fill;
+                else if (key === "youtube") Icon = YoutubeFill;
                 else if (key === "artists") Icon = User2Fill;
                 else if (key === "albums") Icon = AlbumFill;
                 else if (key === "playlists") Icon = PlaylistFill;

@@ -25,6 +25,7 @@ import {
   AlbumFill,
   PlaylistFill,
   BookmarksFill,
+  YoutubeFill,
 } from "@mingcute/react";
 import Sidebar from "./Sidebar";
 import WindowControls from "./WindowControls";
@@ -40,6 +41,7 @@ import {
   useSearchAlbums,
   useSearchPlaylists,
   useLibrarySearch,
+  useSearchYoutube,
 } from "@/features/search/hooks";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
 import {
@@ -200,11 +202,12 @@ export default function AppFrame({ children }: AppFrameProps) {
   const searchScrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  type SearchFilterKey = "all" | "library" | "tracks" | "artists" | "albums" | "playlists";
+  type SearchFilterKey = "all" | "library" | "tracks" | "youtube" | "artists" | "albums" | "playlists";
   const filterKeys: SearchFilterKey[] = [
     "all",
     "library",
     "tracks",
+    "youtube",
     "artists",
     "albums",
     "playlists",
@@ -213,6 +216,7 @@ export default function AppFrame({ children }: AppFrameProps) {
     all: t("common.all"),
     library: t("search.library"),
     tracks: t("common.songs"),
+    youtube: t("search.youtube"),
     artists: t("common.artists"),
     albums: t("common.albums"),
     playlists: t("common.playlists"),
@@ -221,6 +225,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   const [activeFilter, setActiveFilter] = useState<SearchFilterKey>("all");
   const isAllSearchFilter = activeFilter === "all";
   const isTrackSearchFilter = activeFilter === "tracks";
+  const isYoutubeSearchFilter = activeFilter === "youtube";
   const isArtistSearchFilter = activeFilter === "artists";
   const isAlbumSearchFilter = activeFilter === "albums";
   const isPlaylistSearchFilter = activeFilter === "playlists";
@@ -358,6 +363,10 @@ export default function AppFrame({ children }: AppFrameProps) {
     limit: 20,
     debounceMs: 320,
   });
+  const { videos: youtubeResults, loading: youtubeLoading, hasLoaded: youtubeHasLoaded, runNow: runYoutubeSearchNow } = useSearchYoutube(searchQuery, {
+    enabled: searchOpen && isYoutubeSearchFilter,
+    debounceMs: 320,
+  });
 
   const libraryResults = useLibrarySearch(
     searchQuery,
@@ -433,6 +442,11 @@ export default function AppFrame({ children }: AppFrameProps) {
           artistList: clientTrack.artistList,
         };
       });
+    if (isYoutubeSearchFilter)
+      return youtubeResults.map((t: any) => {
+        const clientTrack = toClientTrack(t);
+        return { ...clientTrack, ...t, _type: "track", coverUrl: clientTrack.coverUrl || (t.cover ? mediaUrl(t.cover.url) : ""), artists: clientTrack.artists, artistId: clientTrack.artistId, artistList: clientTrack.artistList };
+      });
     if (isArtistSearchFilter)
       return artistResults.map((a: any) => ({
         ...a,
@@ -464,6 +478,7 @@ export default function AppFrame({ children }: AppFrameProps) {
     isLibrarySearchFilter,
     isAllSearchFilter,
     isTrackSearchFilter,
+    isYoutubeSearchFilter,
     isArtistSearchFilter,
     isAlbumSearchFilter,
     isPlaylistSearchFilter,
@@ -472,6 +487,7 @@ export default function AppFrame({ children }: AppFrameProps) {
     artistResults,
     albumResults,
     playlistResults,
+    youtubeResults,
   ]);
 
   // results come in sections ("In your library", "Songs", "Playlists"…) with
@@ -521,6 +537,8 @@ export default function AppFrame({ children }: AppFrameProps) {
     ? allLoading
     : isTrackSearchFilter
       ? trackLoading
+        : isYoutubeSearchFilter
+          ? youtubeLoading
       : isArtistSearchFilter
         ? artistLoading
         : isAlbumSearchFilter
@@ -533,6 +551,8 @@ export default function AppFrame({ children }: AppFrameProps) {
     ? allHasLoaded
     : isTrackSearchFilter
       ? trackHasLoaded
+        : isYoutubeSearchFilter
+          ? youtubeHasLoaded
       : isArtistSearchFilter
         ? artistHasLoaded
         : isAlbumSearchFilter
@@ -552,6 +572,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       return;
     }
     if (isTrackSearchFilter) runTrackSearchNow();
+    if (isYoutubeSearchFilter) runYoutubeSearchNow();
     if (isArtistSearchFilter) runArtistSearchNow();
     if (isAlbumSearchFilter) runAlbumSearchNow();
     if (isPlaylistSearchFilter) runPlaylistSearchNow();
@@ -1146,6 +1167,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                       const isActive = activeFilter === key;
                       let Icon = GridFill;
                       if (key === "tracks") Icon = Music2Fill;
+                      else if (key === "youtube") Icon = YoutubeFill;
                       else if (key === "library") Icon = BookmarksFill;
                       else if (key === "artists") Icon = User2Fill;
                       else if (key === "albums") Icon = AlbumFill;

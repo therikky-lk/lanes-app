@@ -19,6 +19,13 @@ export const WEB_REMIX_PROFILE: InnertubeProfile = {
   origin: "https://music.youtube.com",
 };
 
+export const YOUTUBE_WEB_PROFILE: InnertubeProfile = {
+  clientName: "WEB",
+  clientVersion: "2.20260911.00.00",
+  clientIdHeader: "1",
+  origin: "https://www.youtube.com",
+};
+
 export const USER_AGENT_HEADER_OVERRIDE = "x-liner-user-agent";
 
 export class InnertubeError extends Error {
