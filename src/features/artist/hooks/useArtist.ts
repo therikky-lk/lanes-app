@@ -56,7 +56,7 @@ export function useArtist(id: string | null) {
       try {
         const artist = await api.getArtist(artistId);
         if (!active) return;
-        const tracks = await replaceTrackCoversWithYandex(artist.tracks.map(toClientTrack));
+        const tracks = artist.tracks.map(toClientTrack);
         const formatted: ArtistPageData = {
           title: artist.name,
           monthlyListeners: artist.monthlyListeners,
@@ -90,6 +90,23 @@ export function useArtist(id: string | null) {
         };
 
         setData(formatted);
+
+        // Artist catalogs can contain dozens of tracks. Resolve artwork for the
+        // visible popular songs only, and do it after the page can render.
+        const popular = tracks.slice(0, 5);
+        if (popular.length > 0) {
+          void replaceTrackCoversWithYandex(popular).then((enriched) => {
+            if (!active || enriched.every((track, index) => track.coverUrl === popular[index]?.coverUrl)) return;
+            setData((current) => {
+              if (!current || current.title !== formatted.title) return current;
+              return {
+                ...current,
+                tracks: current.tracks.map((track, index) => enriched[index] ?? track),
+                popularSongs: enriched,
+              };
+            });
+          });
+        }
       } catch {
         if (active) {
           setData(null);
