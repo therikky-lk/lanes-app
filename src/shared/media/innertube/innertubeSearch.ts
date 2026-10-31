@@ -1,6 +1,6 @@
-import type { SearchResult, SearchType } from "@/shared/contracts";
+import type { SearchResult, SearchType, Track } from "@/shared/contracts";
 import { postInnertube } from "./innertubeClient";
-import { mapSearchResponse } from "./innertubeSearchMapper";
+import { mapOfficialVideoSearchResponse, mapSearchResponse } from "./innertubeSearchMapper";
 import { isJunkVideo, matchesQueryWell } from "./innertubeSearchRanking";
 import { isVideoTrack } from "@/shared/media/isVideoTrack";
 
@@ -20,6 +20,26 @@ export async function searchRaw(query: string, filter?: InnertubeSearchFilter, s
   const params = filter ? SEARCH_PARAMS[filter] : undefined;
   const body = await postInnertube("search", { query, ...(params ? { params } : {}) }, { signal });
   return mapSearchResponse(body);
+}
+
+export async function searchArtistOfficialVideos(
+  artistId: string,
+  artistName: string,
+  signal?: AbortSignal,
+): Promise<Track[]> {
+  const query = `${artistName} official music video`;
+  const body = await postInnertube(
+    "search",
+    { query, params: SEARCH_PARAMS.video },
+    { signal },
+  );
+  const normalizedArtist = artistName.trim().toLocaleLowerCase();
+  return mapOfficialVideoSearchResponse(body)
+    .filter((item): item is TrackResult => item.type === "track")
+    .filter((track) => track.artists.some((artist) =>
+      artist.id === artistId || artist.name.trim().toLocaleLowerCase() === normalizedArtist,
+    ))
+    .map(({ type: _type, viewer: _viewer, ...track }) => track);
 }
 
 function onlyTracks(results: SearchResult[]): TrackResult[] {
