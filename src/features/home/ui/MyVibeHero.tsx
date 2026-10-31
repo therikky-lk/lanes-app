@@ -197,10 +197,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     const tracker = new BeatTracker();
     let palette: VibePalette = live.current.target;
     let raf = 0;
+    let scrollResumeTimer: ReturnType<typeof setTimeout> | null = null;
     let last = performance.now();
     let lastDraw = 0;
     let time = Math.random() * 100;
     let visible = true;
+    let scrolling = false;
     let w = 0;
     let h = 0;
     let glowScale = 1;
@@ -284,7 +286,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
 
     function frame(now: number) {
       raf = 0;
-      if (!visible || document.hidden) return;
+      if (!visible || document.hidden || scrolling) return;
       if (frameMs && now - lastDraw < frameMs) {
         raf = requestAnimationFrame(frame);
         return;
@@ -391,18 +393,39 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     }
 
     const onVis = () => {
-      if (!document.hidden && visible && !raf) {
+      if (!document.hidden && visible && !scrolling && !raf) {
         last = performance.now();
         raf = requestAnimationFrame(frame);
       }
     };
+    const onScroll = () => {
+      scrolling = true;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+      if (scrollResumeTimer) clearTimeout(scrollResumeTimer);
+      scrollResumeTimer = setTimeout(() => {
+        scrollResumeTimer = null;
+        scrolling = false;
+        if (!document.hidden && visible && !raf) {
+          last = performance.now();
+          raf = requestAnimationFrame(frame);
+        }
+      }, 180);
+    };
     document.addEventListener("visibilitychange", onVis);
+    // Give touch scrolling the GPU while the page is moving. The hero resumes
+    // its ambient animation shortly after the user's finger lifts.
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
     raf = requestAnimationFrame(frame);
     return () => {
       cancelAnimationFrame(raf);
+      if (scrollResumeTimer) clearTimeout(scrollResumeTimer);
       ro.disconnect();
       io.disconnect();
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, []);
 
