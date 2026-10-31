@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useState, Suspense, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import {
   PlayFill,
   AddLine,
@@ -79,62 +79,10 @@ function ArtistContent() {
   const { data: savedArtists } = useExternalItems("artist");
   const inLibrary = savedArtists.some((artist) => artist.id === decodedId);
 
-  const urlsToPreload = useMemo(() => {
-    if (!data) return [];
-    const urls = new Set<string>();
-    if (data.coverUrl) urls.add(data.coverUrl);
-    for (const track of data.tracks.slice(0, 8)) {
-      if (track.coverUrl) urls.add(track.coverUrl);
-    }
-    return Array.from(urls);
-  }, [data]);
-
   useEffect(() => {
-    if (loading || !data) {
-      setImagesLoaded(false);
-      setSkeletonExited(false);
-      return;
-    }
-    if (urlsToPreload.length === 0) {
-      setImagesLoaded(true);
-      return;
-    }
-    let active = true;
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (active && !settled) {
-        settled = true;
-        setImagesLoaded(true);
-      }
-    }, 1000);
-
-    const promises = urlsToPreload.map(
-      (url) =>
-        new Promise<void>((resolve) => {
-          const img = new Image();
-          img.src = url;
-          if (img.complete) {
-            resolve();
-            return;
-          }
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-        }),
-    );
-
-    Promise.all(promises).then(() => {
-      if (active && !settled) {
-        settled = true;
-        clearTimeout(timer);
-        setImagesLoaded(true);
-      }
-    });
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [loading, data, urlsToPreload]);
+    setImagesLoaded(!loading && !!data);
+    if (loading || !data) setSkeletonExited(false);
+  }, [loading, data]);
 
   const isReady = !loading && !!data && imagesLoaded;
 
