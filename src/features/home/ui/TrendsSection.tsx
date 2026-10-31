@@ -198,7 +198,9 @@ export default function TrendsSection() {
       setOpening(e.song.id);
       track = (await resolveSong(e.song).catch(() => null)) ?? undefined;
       setOpening(null);
-      setTrack(e.song.id, track ?? null);
+      setEntries((prev) => prev?.map((entry) =>
+        entry.song.id === e.song.id ? { ...entry, track: track ?? undefined } : entry,
+      ) ?? prev);
       if (!track) return;
     }
     // the queue: the chart from here on, with what's already found
