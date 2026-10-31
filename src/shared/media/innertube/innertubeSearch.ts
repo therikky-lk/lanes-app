@@ -1,8 +1,10 @@
 import type { SearchResult, SearchType, Track } from "@/shared/contracts";
-import { postInnertube } from "./innertubeClient";
+import { postInnertube, YOUTUBE_WEB_PROFILE } from "./innertubeClient";
 import { mapOfficialVideoSearchResponse, mapSearchResponse } from "./innertubeSearchMapper";
 import { isJunkVideo, matchesQueryWell } from "./innertubeSearchRanking";
 import { isVideoTrack } from "@/shared/media/isVideoTrack";
+import { asArray, asRecord } from "@/shared/utils/json";
+import { parseDurationMs } from "./innertubeTrackMapper";
 
 export type InnertubeSearchFilter = SearchType | "video";
 
@@ -20,6 +22,48 @@ export async function searchRaw(query: string, filter?: InnertubeSearchFilter, s
   const params = filter ? SEARCH_PARAMS[filter] : undefined;
   const body = await postInnertube("search", { query, ...(params ? { params } : {}) }, { signal });
   return mapSearchResponse(body);
+}
+
+/** Videos from regular YouTube, kept separate from the music catalog search. */
+export async function searchYoutubeVideos(query: string, signal?: AbortSignal): Promise<TrackResult[]> {
+  const body = await postInnertube("search", { query }, { profile: YOUTUBE_WEB_PROFILE, signal });
+  const found: TrackResult[] = [];
+  const seen = new Set<string>();
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    const record = asRecord(value);
+    if (!record) return;
+    const video = asRecord(record.videoRenderer);
+    if (video) {
+      const id = typeof video.videoId === "string" ? video.videoId : "";
+      const title = asArray(asRecord(video.title)?.runs)
+        .map((run) => asRecord(run)?.text)
+        .find((text): text is string => typeof text === "string");
+      const channel = asArray(asRecord(video.ownerText)?.runs)[0];
+      const channelRecord = asRecord(channel);
+      const channelName = typeof channelRecord?.text === "string" ? channelRecord.text : "YouTube";
+      const channelId = asRecord(asRecord(channelRecord?.navigationEndpoint)?.browseEndpoint)?.browseId;
+      const thumbnails = asArray(asRecord(video.thumbnail)?.thumbnails).map((item) => asRecord(item)).filter(Boolean);
+      const thumbnail = thumbnails[thumbnails.length - 1];
+      const duration = asRecord(video.lengthText)?.simpleText;
+      if (id && title && !seen.has(id)) {
+        seen.add(id);
+        found.push({
+          type: "track",
+          id,
+          title,
+          artists: [{ id: typeof channelId === "string" ? channelId : "", name: channelName }],
+          durationMs: typeof duration === "string" ? (parseDurationMs(duration) ?? 0) : 0,
+          ...(typeof thumbnail?.url === "string"
+            ? { cover: { url: thumbnail.url, width: Number(thumbnail.width) || 0, height: Number(thumbnail.height) || 0 } }
+            : {}),
+        });
+      }
+    }
+    Object.values(record).forEach(visit);
+  };
+  visit(body);
+  return found;
 }
 
 export async function searchArtistOfficialVideos(
