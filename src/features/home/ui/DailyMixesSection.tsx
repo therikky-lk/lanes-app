@@ -192,7 +192,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
   if (mixes.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden">
+    <div className="home-scroll-section flex min-w-0 flex-col overflow-hidden">
       <div className={`${headingMarginTop} flex min-w-0 items-center justify-between gap-[12px] px-[32px]`}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center shrink-0">

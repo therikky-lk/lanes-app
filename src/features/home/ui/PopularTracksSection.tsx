@@ -495,7 +495,7 @@ function PopularTracksSection({
   rowClassName = "",
 }: PopularTracksSectionProps) {
   return (
-    <div className="flex flex-col">
+    <div className="home-scroll-section flex flex-col">
       <div className={`${headingMarginTop} px-8 flex items-center justify-between`}>
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2.5">
