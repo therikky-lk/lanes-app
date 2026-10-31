@@ -127,6 +127,8 @@ function TrendRow({
 export default function TrendsSection() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
   const [region, setRegion] = useState<ChartRegion>(() => {
     try {
       return localStorage.getItem("lane_trends_region") === "world" ? "world" : "russia";
@@ -142,8 +144,22 @@ export default function TrendsSection() {
   const entriesRef = useRef<ChartEntry[] | null>(null);
   entriesRef.current = entries;
 
-  const setTrack = (songId: string, track: Track | null) =>
-    setEntries((prev) => prev?.map((e) => (e.song.id === songId ? { ...e, track: track ?? undefined } : e)) ?? prev);
+  useEffect(() => {
+    const element = sectionRef.current;
+    if (!element || nearViewport) return;
+    const scrollRoot = element.closest("[data-page-scroller]");
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { root: scrollRoot, rootMargin: "400px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [nearViewport]);
 
   // find the shown songs on YouTube Music in the background, top first, a
   // couple at a time; stops quietly when YouTube asks to slow down
@@ -154,13 +170,21 @@ export default function TrendsSection() {
     const ctrl = new AbortController();
     let cursor = 0;
     const worker = async () => {
+      const resolved = new Map<string, Track | null>();
       while (cursor < wanted.length && !ctrl.signal.aborted) {
         const song = wanted[cursor++];
         try {
-          setTrack(song.id, await resolveSong(song, ctrl.signal));
+          resolved.set(song.id, await resolveSong(song, ctrl.signal));
         } catch {
-          return;
+          break;
         }
+      }
+      if (resolved.size && !ctrl.signal.aborted) {
+        setEntries((prev) => prev?.map((entry) =>
+          resolved.has(entry.song.id)
+            ? { ...entry, track: resolved.get(entry.song.id) ?? undefined }
+            : entry,
+        ) ?? prev);
       }
     };
     void Promise.all([worker(), worker()]);
@@ -184,6 +208,7 @@ export default function TrendsSection() {
   };
 
   useEffect(() => {
+    if (!nearViewport) return;
     let active = true;
     setEntries(null);
     setFailed(false);
@@ -194,7 +219,7 @@ export default function TrendsSection() {
     return () => {
       active = false;
     };
-  }, [region]);
+  }, [region, nearViewport]);
 
   const pick = (r: ChartRegion) => {
     setRegion(r);
@@ -206,7 +231,7 @@ export default function TrendsSection() {
   if (failed) return null;
   const shown = entries ? (all ? entries : entries.slice(0, PREVIEW)) : [];
   return (
-    <div className="flex flex-col" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
+    <div ref={sectionRef} className="home-scroll-section home-scroll-section-tall flex flex-col" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
       <div className={`mt-[26px] ${isMobile ? "px-[16px]" : "px-8"} flex items-center justify-between gap-[12px]`}>
         <div className="flex items-center gap-2.5">
           <FireFill className="w-5 h-5 text-[#ff6a3d]" />

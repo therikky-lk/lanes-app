@@ -574,6 +574,13 @@ html[data-hover-reset] [data-window-controls] button:hover {
   content-visibility: auto;
   contain-intrinsic-size: auto 66px;
 }
+.lane-mobile .home-scroll-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
+.lane-mobile .home-scroll-section-tall {
+  contain-intrinsic-size: auto 430px;
+}
 @media (prefers-reduced-motion: reduce) {
   .page-transition { animation: none; }
 }
