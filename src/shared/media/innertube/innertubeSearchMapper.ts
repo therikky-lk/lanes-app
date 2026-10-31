@@ -3,7 +3,7 @@ import { asArray, asRecord, type JsonRecord } from "@/shared/utils/json";
 import { getBrowseEndpoint, getPageType, getRuns, getText, runsToArtists } from "./innertubeJson";
 import { mapCardShelf } from "./innertubeCardMapper";
 import { coverFromThumbnail } from "./innertubeThumbnail";
-import { isMusicVideo, mapInnertubeTrack } from "./innertubeTrackMapper";
+import { isMusicVideo, mapInnertubeTrack, musicVideoType } from "./innertubeTrackMapper";
 
 interface ListRow {
   renderer: JsonRecord;
@@ -90,6 +90,20 @@ export function mapSearchResponse(response: unknown): SearchResult[] {
     // an acceptable substitute for an audio track, even when no song result is
     // available.
     if (mapped.type === "track" && isMusicVideo(item)) continue;
+    results.push(mapped);
+  }
+  return results;
+}
+
+/** Official music videos for a single artist page; never includes user uploads. */
+export function mapOfficialVideoSearchResponse(response: unknown): SearchResult[] {
+  const results: SearchResult[] = [];
+  const seen = new Set<string>();
+  for (const raw of getSearchItems(response)) {
+    if (musicVideoType(raw) !== "MUSIC_VIDEO_TYPE_OMV") continue;
+    const mapped = mapInnertubeSearchResult(raw);
+    if (mapped?.type !== "track" || seen.has(mapped.id)) continue;
+    seen.add(mapped.id);
     results.push(mapped);
   }
   return results;
