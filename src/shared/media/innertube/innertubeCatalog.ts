@@ -25,7 +25,7 @@ import {
   mapInnertubePlaylistDetails,
 } from "./innertubeCollectionMapper";
 import { getQueueItems, getTrackItem, mapInnertubeRadioTrack, mapInnertubeTrackDetails } from "./innertubeQueueMapper";
-import { searchCatalog } from "./innertubeSearch";
+import { searchArtistOfficialVideos, searchCatalog } from "./innertubeSearch";
 import { soundcloudCatalog } from "@/shared/media/soundcloud";
 
 export interface RadioOptions {
@@ -118,6 +118,18 @@ function mergeReleases<T extends { id: string }>(primary: T[], extra: T[]): T[] 
   return [...primary, ...extra.filter((r) => !seen.has(r.id) && seen.add(r.id))];
 }
 
+function mergeArtistTracks(...groups: Track[][]): Track[] {
+  const seen = new Set<string>();
+  return groups.flat().filter((track) => {
+    const title = track.title.toLocaleLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, "");
+    const artists = track.artists.map((artist) => artist.name.toLocaleLowerCase().replace(/ё/g, "е")).sort().join("|");
+    const key = `${title}:${artists}`;
+    if (!title || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function loadArtist(artistId: string, signal?: AbortSignal): Promise<ArtistDetails | null> {
   const body = await browse(artistId, undefined, signal);
   const artist = mapInnertubeArtistDetails(artistId, body);
@@ -137,11 +149,14 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
   // stop resolving) while still returning the artist header and releases.
   // In that case, recover songs from catalog search, keeping only tracks
   // whose credited artist matches this artist.
-  let tracks = allTracks.length > 0 ? allTracks : artist.tracks;
-  if (tracks.length === 0) {
+  let tracks = mergeArtistTracks(allTracks, artist.tracks);
+  if (tracks.length < 5) {
     const normalizedArtist = artist.name.trim().toLocaleLowerCase();
-    const searchedTracks = await searchCatalog(artist.name, "track", signal).catch(() => []);
-    tracks = searchedTracks.flatMap((item) => {
+    const [searchedTracks, officialVideos] = await Promise.all([
+      searchCatalog(artist.name, "track", signal).catch(() => []),
+      searchArtistOfficialVideos(artist.id, artist.name, signal).catch(() => []),
+    ]);
+    const matchingSearchTracks = searchedTracks.flatMap((item) => {
       if (item.type !== "track") return [];
       const belongsToArtist = item.artists.some((credit) =>
         credit.id === artist.id || credit.name.trim().toLocaleLowerCase() === normalizedArtist,
@@ -150,19 +165,20 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
       const { type: _type, viewer: _viewer, ...track } = item;
       return [track];
     });
+    tracks = mergeArtistTracks(tracks, matchingSearchTracks, officialVideos);
 
-    // Use SoundCloud as an independent catalog when YouTube Music has no
-    // songs for an otherwise valid artist page. Keep only this artist's tracks.
-    if (tracks.length === 0) {
+    // SoundCloud can contain the artist's catalog even when YouTube Music's
+    // artist shelf only exposes a couple of tracks.
+    if (tracks.length < 5) {
       const soundcloudTracks = await soundcloudCatalog.search(artist.name, 20, signal).catch(() => []);
-      tracks = soundcloudTracks.filter((track) =>
+      const matchingSoundCloudTracks = soundcloudTracks.filter((track) =>
         track.artists.some((credit) => credit.name.trim().toLocaleLowerCase() === normalizedArtist),
       );
+      tracks = mergeArtistTracks(tracks, matchingSoundCloudTracks);
     }
 
-    // If both catalogs miss linked artist credits, recover songs from the
-    // artist's own releases.
-    if (tracks.length === 0) {
+    // As a final fallback, load songs from the artist's own releases.
+    if (tracks.length < 5) {
       const releases = mergeReleases(
         [...(artist.albums ?? []), ...(allAlbums?.albums ?? [])],
         [...(artist.singles ?? []), ...(allAlbums?.singles ?? []), ...(allSingles?.albums ?? []), ...(allSingles?.singles ?? [])],
@@ -177,8 +193,7 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
           }
         }),
       );
-      const seen = new Set<string>();
-      tracks = releaseTracks.flat().filter((track) => !seen.has(track.id) && Boolean(seen.add(track.id)));
+      tracks = mergeArtistTracks(tracks, ...releaseTracks);
     }
   }
   // a grid is one kind of release; anything the label sorts the other way stays in its shelf
