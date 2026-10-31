@@ -168,7 +168,7 @@ export function mapInnertubeArtistDetails(id: string, body: unknown): ArtistDeta
     verified: isVerifiedArtist(monthlyListeners),
     ...(cover ? { cover } : {}),
     ...(monthlyListeners ? { monthlyListeners } : {}),
-    tracks: mapInnertubeBrowseTracks(body, [{ id, name }]),
+    tracks: mapInnertubeBrowseTracks(body, [{ id, name }], true),
     albums: releases.albums,
     singles: releases.singles,
   };
