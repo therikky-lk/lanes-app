@@ -63,7 +63,6 @@ function ArtistContent() {
   const pinned = usePinsStore((st) => Boolean(id && st.pins.some((p) => p.kind === "artist" && p.id === id)));
 
   const { data, loading } = useArtist(id);
-  const [showAllTracks, setShowAllTracks] = useState(false);
   const [releasesView, setReleasesView] = useState<ReleaseFilter | null>(null);
   const ROW_LIMIT = 14;
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -97,7 +96,6 @@ function ArtistContent() {
 
   useEffect(() => {
     setIsScrolled(false);
-    setShowAllTracks(false);
     setIsProfileModalOpen(false);
     setImagesLoaded(false);
     setSkeletonExited(false);
@@ -417,21 +415,11 @@ function ArtistContent() {
                       className="text-[22px] font-[500] text-text-primary m-0"
                       style={{ fontFamily: "var(--font-inter), sans-serif" }}
                     >
-                      {t("artist.popular_songs")}
+                      {t("artist.all_songs")}
                     </h2>
-                    {data.tracks.length > 5 && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAllTracks((prev) => !prev)}
-                        className="text-[13px] font-[500] text-text-secondary hover:text-text-primary transition-colors cursor-pointer bg-transparent border-0 p-0"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {showAllTracks ? t("artist.show_less") : t("artist.show_all")}
-                      </button>
-                    )}
                   </div>
                   <div className="flex flex-col -mt-[14px] -mx-[8px]">
-                    {data.tracks.slice(0, 5).map((track) => (
+                    {data.tracks.map((track) => (
                       <SongCardWithMenu
                         key={track.id}
                         id={track.id}
@@ -461,50 +449,6 @@ function ArtistContent() {
                         }
                       />
                     ))}
-
-                    <AnimatePresence initial={false}>
-                      {showAllTracks && (
-                        <motion.div
-                          key="expanded-tracks"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
-                          className="overflow-hidden flex flex-col"
-                        >
-                          {data.tracks.slice(5).map((track) => (
-                            <SongCardWithMenu
-                              key={track.id}
-                              id={track.id}
-                              title={track.title}
-                              artists={track.artists}
-                              artistId={track.artistId}
-                              artistList={track.artistList}
-                              coverUrl={track.coverUrl || data.coverUrl}
-                              duration={
-                                track.durationMs
-                                  ? `${Math.floor(track.durationMs / 60000)}:${Math.floor(
-                                      (track.durationMs % 60000) / 1000,
-                                    )
-                                      .toString()
-                                      .padStart(2, "0")}`
-                                  : undefined
-                              }
-                              durationMs={track.durationMs}
-                              explicit={track.explicit}
-                              onPlay={() =>
-                                playerEngine.playTrack(
-                                  track,
-                                  data.tracks,
-                                  data.title,
-                                  data.coverUrl,
-                                )
-                              }
-                            />
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
 
                     {data.tracks.length === 0 && (
                       <p className="text-text-secondary px-[8px] py-[14px]">
