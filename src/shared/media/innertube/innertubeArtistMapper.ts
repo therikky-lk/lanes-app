@@ -33,13 +33,15 @@ function mapReleaseItem(raw: unknown): ArtistAlbum | null {
     asRecord(asRecord(titleRun?.navigationEndpoint)?.browseEndpoint) ??
     asRecord(asRecord(item?.navigationEndpoint)?.browseEndpoint);
   const title = getText(item?.title);
-  if (getPageType(endpoint) !== "MUSIC_PAGE_TYPE_ALBUM" || typeof endpoint?.browseId !== "string" || !title) {
+  const browseId = typeof endpoint?.browseId === "string" ? endpoint.browseId : "";
+  const isAlbum = getPageType(endpoint) === "MUSIC_PAGE_TYPE_ALBUM" || /^(MPRE|OLAK|MPLA|MPL)/.test(browseId);
+  if (!isAlbum || !browseId || !title) {
     return null;
   }
   const year = yearFromRuns(item?.subtitle);
   const cover = coverFromThumbnail(item?.thumbnailRenderer);
   return {
-    id: endpoint.browseId,
+    id: browseId,
     title,
     ...(year ? { year } : {}),
     ...(cover ? { cover } : {}),
@@ -58,8 +60,12 @@ type ReleaseShelf = "albums" | "singles";
 /** YouTube Music has used several labels for the two release shelves */
 export function releaseShelfKind(title: string | undefined): ReleaseShelf | null {
   const t = (title ?? "").trim().toLowerCase();
-  if (t === "albums" || t === "альбомы") return "albums";
-  if (/^(singles?|eps?)( (&|and) (eps?|singles?))?$/.test(t) || t === "синглы и ep" || t === "синглы") return "singles";
+  if (["albums", "album", "альбомы", "альбом", "альбоми"].includes(t)) return "albums";
+  if (
+    /^(singles?|eps?)( (&|and) (eps?|singles?))?$/.test(t) ||
+    /^(синглы?|сингли)(\s*(и|та|&|\+)\s*(ep|eps|эп|мини-?альбомы?))?$/.test(t) ||
+    /^(ep|eps|эп)(\s*(&|и|та)\s*(singles?|синглы?|сингли))$/.test(t)
+  ) return "singles";
   return null;
 }
 
