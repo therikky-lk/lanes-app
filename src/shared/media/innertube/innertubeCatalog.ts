@@ -26,6 +26,7 @@ import {
 } from "./innertubeCollectionMapper";
 import { getQueueItems, getTrackItem, mapInnertubeRadioTrack, mapInnertubeTrackDetails } from "./innertubeQueueMapper";
 import { searchCatalog } from "./innertubeSearch";
+import { soundcloudCatalog } from "@/shared/media/soundcloud";
 
 export interface RadioOptions {
   k?: number;
@@ -126,12 +127,57 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
   const [allTracks, allAlbums, allSingles] = await Promise.all([
     topSongs
       ? browse(topSongs.browseId, topSongs.params, signal)
-          .then((tracksBody) => mapInnertubeBrowseTracks(tracksBody, [{ id: artist.id, name: artist.name }]))
+          .then((tracksBody) => mapInnertubeBrowseTracks(tracksBody, [{ id: artist.id, name: artist.name }], true))
           .catch(() => [])
       : Promise.resolve([]),
     releaseRefs.albums ? loadAllReleases(releaseRefs.albums, signal).catch(() => null) : Promise.resolve(null),
     releaseRefs.singles ? loadAllReleases(releaseRefs.singles, signal).catch(() => null) : Promise.resolve(null),
   ]);
+  // Artist pages can omit the Top songs shelf (or its browse endpoint can
+  // stop resolving) while still returning the artist header and releases.
+  // In that case, recover songs from catalog search, keeping only tracks
+  // whose credited artist matches this artist.
+  let tracks = allTracks.length > 0 ? allTracks : artist.tracks;
+  if (tracks.length === 0) {
+    const normalizedArtist = artist.name.trim().toLocaleLowerCase();
+    const searchedTracks = await searchCatalog(artist.name, "track", signal).catch(() => []);
+    tracks = searchedTracks
+      .filter((item) => item.type === "track")
+      .filter((item) => item.artists.some((credit) =>
+        credit.id === artist.id || credit.name.trim().toLocaleLowerCase() === normalizedArtist,
+      ))
+      .map(({ type: _type, viewer: _viewer, ...track }) => track);
+
+    // Use SoundCloud as an independent catalog when YouTube Music has no
+    // songs for an otherwise valid artist page. Keep only this artist's tracks.
+    if (tracks.length === 0) {
+      const soundcloudTracks = await soundcloudCatalog.search(artist.name, 20, signal).catch(() => []);
+      tracks = soundcloudTracks.filter((track) =>
+        track.artists.some((credit) => credit.name.trim().toLocaleLowerCase() === normalizedArtist),
+      );
+    }
+
+    // If both catalogs miss linked artist credits, recover songs from the
+    // artist's own releases.
+    if (tracks.length === 0) {
+      const releases = mergeReleases(
+        [...(artist.albums ?? []), ...(allAlbums?.albums ?? [])],
+        [...(artist.singles ?? []), ...(allAlbums?.singles ?? []), ...(allSingles?.albums ?? []), ...(allSingles?.singles ?? [])],
+      );
+      const releaseTracks = await Promise.all(
+        releases.slice(0, 3).map(async (release) => {
+          try {
+            const details = mapInnertubeAlbumDetails(release.id, await browse(release.id, undefined, signal));
+            return details?.tracks ?? [];
+          } catch {
+            return [];
+          }
+        }),
+      );
+      const seen = new Set<string>();
+      tracks = releaseTracks.flat().filter((track) => !seen.has(track.id) && Boolean(seen.add(track.id)));
+    }
+  }
   // a grid is one kind of release; anything the label sorts the other way stays in its shelf
   const albums = mergeReleases(artist.albums ?? [], [...(allAlbums?.albums ?? []), ...(allAlbums?.singles ?? [])]);
   const singles = mergeReleases(
@@ -143,7 +189,7 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
   );
   return {
     ...artist,
-    ...(allTracks.length > 0 ? { tracks: allTracks } : {}),
+    tracks,
     albums,
     singles,
   };
