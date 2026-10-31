@@ -130,6 +130,40 @@ function mergeArtistTracks(...groups: Track[][]): Track[] {
   });
 }
 
+async function loadAllTopSongs(
+  ref: BrowseRef,
+  fallbackArtists: { id: string; name: string }[],
+  signal?: AbortSignal,
+): Promise<Track[]> {
+  const pages: Track[][] = [];
+  let body = await browse(ref.browseId, ref.params, signal);
+  for (let page = 0; page < 12; page++) {
+    pages.push(mapInnertubeBrowseTracks(body, fallbackArtists, true));
+    const token = getGridContinuation(body);
+    if (!token) break;
+    body = await postInnertube("browse", { continuation: token }, { signal });
+  }
+  return mergeArtistTracks(...pages);
+}
+
+async function loadArtistReleaseTracks(releases: { id: string }[], signal?: AbortSignal): Promise<Track[]> {
+  const result: Track[][] = [];
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < releases.length) {
+      const release = releases[cursor++];
+      try {
+        const details = mapInnertubeAlbumDetails(release.id, await browse(release.id, undefined, signal));
+        result.push(details?.tracks ?? []);
+      } catch {
+        result.push([]);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, releases.length) }, worker));
+  return mergeArtistTracks(...result);
+}
+
 async function loadArtist(artistId: string, signal?: AbortSignal): Promise<ArtistDetails | null> {
   const body = await browse(artistId, undefined, signal);
   const artist = mapInnertubeArtistDetails(artistId, body);
@@ -138,9 +172,7 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
   const releaseRefs = getArtistReleaseBrowses(body);
   const [allTracks, allAlbums, allSingles] = await Promise.all([
     topSongs
-      ? browse(topSongs.browseId, topSongs.params, signal)
-          .then((tracksBody) => mapInnertubeBrowseTracks(tracksBody, [{ id: artist.id, name: artist.name }], true))
-          .catch(() => [])
+      ? loadAllTopSongs(topSongs, [{ id: artist.id, name: artist.name }], signal).catch(() => [])
       : Promise.resolve([]),
     releaseRefs.albums ? loadAllReleases(releaseRefs.albums, signal).catch(() => null) : Promise.resolve(null),
     releaseRefs.singles ? loadAllReleases(releaseRefs.singles, signal).catch(() => null) : Promise.resolve(null),
@@ -149,52 +181,41 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
   // stop resolving) while still returning the artist header and releases.
   // In that case, recover songs from catalog search, keeping only tracks
   // whose credited artist matches this artist.
+  const releases = mergeReleases(
+    [...(artist.albums ?? []), ...(allAlbums?.albums ?? [])],
+    [...(artist.singles ?? []), ...(allAlbums?.singles ?? []), ...(allSingles?.albums ?? []), ...(allSingles?.singles ?? [])],
+  );
   let tracks = mergeArtistTracks(allTracks, artist.tracks);
-  if (tracks.length < 5) {
-    const normalizedArtist = artist.name.trim().toLocaleLowerCase();
-    const [searchedTracks, officialVideos] = await Promise.all([
-      searchCatalog(artist.name, "track", signal).catch(() => []),
-      searchArtistOfficialVideos(artist.id, artist.name, signal).catch(() => []),
-    ]);
-    const matchingSearchTracks = searchedTracks.flatMap((item) => {
-      if (item.type !== "track") return [];
-      const belongsToArtist = item.artists.some((credit) =>
-        credit.id === artist.id || credit.name.trim().toLocaleLowerCase() === normalizedArtist,
-      );
-      if (!belongsToArtist) return [];
-      const { type: _type, viewer: _viewer, ...track } = item;
-      return [track];
-    });
-    tracks = mergeArtistTracks(tracks, matchingSearchTracks, officialVideos);
+  const normalizedArtist = artist.name.trim().toLocaleLowerCase();
+  const [searchedTracks, officialVideos] = await Promise.all([
+    searchCatalog(artist.name, "track", signal).catch(() => []),
+    searchArtistOfficialVideos(artist.id, artist.name, signal).catch(() => []),
+  ]);
+  const matchingSearchTracks = searchedTracks.flatMap((item) => {
+    if (item.type !== "track") return [];
+    if (!item.artists.some((credit) =>
+      credit.id === artist.id || credit.name.trim().toLocaleLowerCase() === normalizedArtist,
+    )) return [];
+    const { type: _type, viewer: _viewer, ...track } = item;
+    return [track];
+  });
+  tracks = mergeArtistTracks(tracks, matchingSearchTracks, officialVideos);
 
-    // SoundCloud can contain the artist's catalog even when YouTube Music's
-    // artist shelf only exposes a couple of tracks.
-    if (tracks.length < 5) {
-      const soundcloudTracks = await soundcloudCatalog.search(artist.name, 20, signal).catch(() => []);
-      const matchingSoundCloudTracks = soundcloudTracks.filter((track) =>
+  // Sparse artist catalogs often have only one or two top-song entries. Load
+  // every discovered release (with bounded concurrency) so their full tracklists
+  // appear on the artist page and can be played as one queue.
+  if (tracks.length < 30 && releases.length > 0) {
+    tracks = mergeArtistTracks(tracks, await loadArtistReleaseTracks(releases, signal));
+  }
+
+  if (tracks.length < 30) {
+    const soundcloudTracks = await soundcloudCatalog.search(artist.name, 30, signal).catch(() => []);
+    tracks = mergeArtistTracks(
+      tracks,
+      soundcloudTracks.filter((track) =>
         track.artists.some((credit) => credit.name.trim().toLocaleLowerCase() === normalizedArtist),
-      );
-      tracks = mergeArtistTracks(tracks, matchingSoundCloudTracks);
-    }
-
-    // As a final fallback, load songs from the artist's own releases.
-    if (tracks.length < 5) {
-      const releases = mergeReleases(
-        [...(artist.albums ?? []), ...(allAlbums?.albums ?? [])],
-        [...(artist.singles ?? []), ...(allAlbums?.singles ?? []), ...(allSingles?.albums ?? []), ...(allSingles?.singles ?? [])],
-      );
-      const releaseTracks = await Promise.all(
-        releases.slice(0, 3).map(async (release) => {
-          try {
-            const details = mapInnertubeAlbumDetails(release.id, await browse(release.id, undefined, signal));
-            return details?.tracks ?? [];
-          } catch {
-            return [];
-          }
-        }),
-      );
-      tracks = mergeArtistTracks(tracks, ...releaseTracks);
-    }
+      ),
+    );
   }
   // a grid is one kind of release; anything the label sorts the other way stays in its shelf
   const albums = mergeReleases(artist.albums ?? [], [...(allAlbums?.albums ?? []), ...(allAlbums?.singles ?? [])]);
