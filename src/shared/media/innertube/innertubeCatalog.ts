@@ -97,13 +97,14 @@ const MAX_RELEASE_PAGES = 8;
 /** walks a "see all" release grid through its continuations */
 async function loadAllReleases(
   ref: BrowseRef,
+  kind: "albums" | "singles",
   signal?: AbortSignal,
 ): Promise<{ albums: ArtistAlbum[]; singles: ArtistRelease[] }> {
   const albums: ArtistAlbum[] = [];
   const singles: ArtistRelease[] = [];
   let body = await browse(ref.browseId, ref.params, signal);
   for (let page = 0; page < MAX_RELEASE_PAGES; page++) {
-    const mapped = mapReleaseGrid(body);
+    const mapped = mapReleaseGrid(body, kind);
     albums.push(...mapped.albums);
     singles.push(...mapped.singles);
     const token = getGridContinuation(body);
@@ -174,8 +175,8 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
     topSongs
       ? loadAllTopSongs(topSongs, [{ id: artist.id, name: artist.name }], signal).catch(() => [])
       : Promise.resolve([]),
-    releaseRefs.albums ? loadAllReleases(releaseRefs.albums, signal).catch(() => null) : Promise.resolve(null),
-    releaseRefs.singles ? loadAllReleases(releaseRefs.singles, signal).catch(() => null) : Promise.resolve(null),
+    releaseRefs.albums ? loadAllReleases(releaseRefs.albums, "albums", signal).catch(() => null) : Promise.resolve(null),
+    releaseRefs.singles ? loadAllReleases(releaseRefs.singles, "singles", signal).catch(() => null) : Promise.resolve(null),
   ]);
   // Artist pages can omit the Top songs shelf (or its browse endpoint can
   // stop resolving) while still returning the artist header and releases.

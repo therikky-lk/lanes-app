@@ -51,8 +51,10 @@ function mapReleaseItem(raw: unknown): ArtistAlbum | null {
 
 function releaseTypeOf(raw: unknown): ArtistRelease["releaseType"] {
   const item = asRecord(asRecord(raw)?.musicTwoRowItemRenderer);
-  const first = getRuns(item?.subtitle)[0]?.text;
-  return typeof first === "string" && first.trim().toLowerCase() === "ep" ? "ep" : "single";
+  const subtitle = getRuns(item?.subtitle)
+    .map((run) => typeof run.text === "string" ? run.text.trim().toLocaleLowerCase() : "")
+    .join(" ");
+  return /(?:^|\s)(?:ep|eps|е\.п\.|еп)(?:$|\s|[·•])/.test(subtitle) ? "ep" : "single";
 }
 
 type ReleaseShelf = "albums" | "singles";
@@ -63,8 +65,8 @@ export function releaseShelfKind(title: string | undefined): ReleaseShelf | null
   if (["albums", "album", "альбомы", "альбом", "альбоми"].includes(t)) return "albums";
   if (
     /^(singles?|eps?)( (&|and) (eps?|singles?))?$/.test(t) ||
-    /^(синглы?|сингли)(\s*(и|та|&|\+)\s*(ep|eps|эп|мини-?альбомы?))?$/.test(t) ||
-    /^(ep|eps|эп)(\s*(&|и|та)\s*(singles?|синглы?|сингли))$/.test(t)
+    /^(синглы?|сингли)(\s*(и|й|та|&|\+)\s*(ep|eps|эп|мини-?альбомы?))?$/.test(t) ||
+    /^(ep|eps|эп)(\s*(&|и|й|та)\s*(singles?|синглы?|сингли))$/.test(t)
   ) return "singles";
   return null;
 }
@@ -100,7 +102,10 @@ export function getArtistReleaseBrowses(body: unknown): Partial<Record<ReleaseSh
 }
 
 /** every release card of a "see all" grid page (or its continuation) */
-export function mapReleaseGrid(body: unknown): { albums: ArtistAlbum[]; singles: ArtistRelease[] } {
+export function mapReleaseGrid(
+  body: unknown,
+  fallbackKind?: ReleaseShelf,
+): { albums: ArtistAlbum[]; singles: ArtistRelease[] } {
   const albums: ArtistAlbum[] = [];
   const singles: ArtistRelease[] = [];
   walkRecords(body, (record) => {
@@ -108,10 +113,15 @@ export function mapReleaseGrid(body: unknown): { albums: ArtistAlbum[]; singles:
     const release = mapReleaseItem(record);
     if (release) {
       const type = releaseTypeOf(record);
-      const firstRun = getRuns(asRecord(record.musicTwoRowItemRenderer)?.subtitle)[0]?.text;
-      const first = typeof firstRun === "string" ? firstRun.trim().toLowerCase() : "";
-      if (first === "single" || first === "ep" || first === "сингл") singles.push({ ...release, releaseType: type });
-      else albums.push(release);
+      const subtitle = getRuns(asRecord(record.musicTwoRowItemRenderer)?.subtitle)
+        .map((run) => typeof run.text === "string" ? run.text.trim().toLocaleLowerCase() : "");
+      const explicitlySingle = subtitle.some((part) => /^(?:single|singles|сингл|синглы|сингли)$/.test(part));
+      const explicitlyAlbum = subtitle.some((part) => /^(?:album|albums|альбом|альбомы|альбоми)$/.test(part));
+      if (explicitlySingle || type === "ep" || (!explicitlyAlbum && fallbackKind === "singles")) {
+        singles.push({ ...release, releaseType: type });
+      } else {
+        albums.push(release);
+      }
     }
     return true;
   });
