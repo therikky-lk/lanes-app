@@ -141,12 +141,15 @@ async function loadArtist(artistId: string, signal?: AbortSignal): Promise<Artis
   if (tracks.length === 0) {
     const normalizedArtist = artist.name.trim().toLocaleLowerCase();
     const searchedTracks = await searchCatalog(artist.name, "track", signal).catch(() => []);
-    tracks = searchedTracks
-      .filter((item) => item.type === "track")
-      .filter((item) => item.artists.some((credit) =>
+    tracks = searchedTracks.flatMap((item) => {
+      if (item.type !== "track") return [];
+      const belongsToArtist = item.artists.some((credit) =>
         credit.id === artist.id || credit.name.trim().toLocaleLowerCase() === normalizedArtist,
-      ))
-      .map(({ type: _type, viewer: _viewer, ...track }) => track);
+      );
+      if (!belongsToArtist) return [];
+      const { type: _type, viewer: _viewer, ...track } = item;
+      return [track];
+    });
 
     // Use SoundCloud as an independent catalog when YouTube Music has no
     // songs for an otherwise valid artist page. Keep only this artist's tracks.
