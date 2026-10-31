@@ -602,9 +602,7 @@ function MiniPlayer({
                 hasCustomBg ? "" : "bg-bg-primary"
               }`
             : embedded
-              ? `rounded-sm ${
-                  isEdgeToEdge ? "rounded-br-none" : "rounded-br-xl"
-                } ${
+              ? `${isEdgeToEdge ? "rounded-none" : "rounded-[14px] border-[0.5px] border-border-tertiary"} ${
                   hasCustomBg ? "" : "bg-bg-primary"
                 }`
               : `rounded-3xl border-[0.5px] border-border-tertiary ${
@@ -693,7 +691,7 @@ function MiniPlayer({
         <div
           className={`relative grid h-full pointer-events-none ${
             embedded
-              ? "grid-cols-[280px_minmax(0,1fr)_auto]"
+              ? "grid-cols-[minmax(280px,38%)_minmax(0,1fr)_auto]"
               : "grid-cols-[286px_minmax(0,1fr)]"
           } ${!usesRoundedStyle && !embedded ? "pb-[4px]" : ""}`}
         >
