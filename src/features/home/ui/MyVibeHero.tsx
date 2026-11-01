@@ -130,6 +130,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isMobile = useIsMobile();
+  // weak phones: a smaller CSS blur radius on the two animated layers (the GPU
+  // re-blurs them on every drawn frame; the cost grows with the radius)
+  const [weakDevice] = useState(() => isLowEndDevice());
   const mood = settings.mood;
 
   const vibeActive = isVibeContext(playbackContext) && !!currentTrack;
@@ -138,8 +141,15 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   const sameAsPlaying = !!playingSettings && sameSettings(playingSettings, settings);
   const vibePlaying = vibeActive && isPlaying && sameAsPlaying;
 
-  const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0 });
+  const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0, covered: false });
   live.current.playing = status === "playing" && vibeActive;
+  // the full screen player covers the home page: no point drawing under it
+  const fullscreenOpen = usePlayerStore((s) => s.fullscreen);
+  live.current.covered = !!fullscreenOpen;
+  const resumeRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!fullscreenOpen) resumeRef.current();
+  }, [fullscreenOpen]);
 
   // colours: the mood's own; with no mood, the playing track's cover (violet
   // when nothing plays)
@@ -214,8 +224,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       w = rect.width;
       h = rect.height;
       // the glow and bloom layers are blurred by CSS: they need fewer pixels
-      glowScale = lite ? 0.35 : 0.75;
-      bloomScale = lite ? 0.35 : 0.6;
+      glowScale = weak ? 0.28 : lite ? 0.35 : 0.75;
+      bloomScale = weak ? 0.28 : lite ? 0.35 : 0.6;
       silkScale = Math.min(weak ? 1.25 : lite ? 1.35 : 2.5, window.devicePixelRatio || 1);
       bloomCanvas.width = Math.max(1, Math.round(w * bloomScale));
       bloomCanvas.height = Math.max(1, Math.round(h * bloomScale));
@@ -286,7 +296,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
 
     function frame(now: number) {
       raf = 0;
-      if (!visible || document.hidden || scrolling) return;
+      if (!visible || document.hidden || scrolling || live.current.covered) return;
       if (frameMs && now - lastDraw < frameMs) {
         raf = requestAnimationFrame(frame);
         return;
@@ -393,11 +403,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     }
 
     const onVis = () => {
-      if (!document.hidden && visible && !scrolling && !raf) {
+      if (!document.hidden && visible && !scrolling && !live.current.covered && !raf) {
         last = performance.now();
         raf = requestAnimationFrame(frame);
       }
     };
+    resumeRef.current = onVis;
     const onScroll = () => {
       scrolling = true;
       if (raf) {
@@ -424,6 +435,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       if (scrollResumeTimer) clearTimeout(scrollResumeTimer);
       ro.disconnect();
       io.disconnect();
+      resumeRef.current = () => {};
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("scroll", onScroll, true);
     };
@@ -485,7 +497,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   return (
     <section
       ref={wrapRef}
-      className="relative w-full select-none overflow-visible"
+      className="lane-vibe-hero relative w-full select-none overflow-visible"
       style={{
         height: expanded ? "100%" : HERO_HEIGHT,
         marginTop: "var(--lane-safe-top, 0px)",
@@ -502,7 +514,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             left: 0,
             width: "100%",
             height: expanded ? `calc(100% + ${BLEED}px)` : HERO_HEIGHT + BLEED,
-            filter: layer === "glow" ? "blur(20px) saturate(1.4)" : layer === "bloom" ? "blur(9px) saturate(1.3)" : "none",
+            filter:
+              layer === "glow"
+                ? weakDevice ? "blur(12px) saturate(1.4)" : "blur(20px) saturate(1.4)"
+                : layer === "bloom"
+                  ? weakDevice ? "blur(6px) saturate(1.3)" : "blur(9px) saturate(1.3)"
+                  : "none",
             // the light fades out downward: a smooth hand-off into the page
             WebkitMaskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
             maskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
