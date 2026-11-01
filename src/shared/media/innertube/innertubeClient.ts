@@ -1,4 +1,5 @@
 import { getClientVisitorData } from "@/shared/api/visitorSession";
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { getYoutubeAuthorization, getYoutubePageId } from "../youtube/auth/youtubeAuthSession";
 
 export type InnertubeEndpoint = "search" | "browse" | "next" | "player" | "account/accounts_list";
@@ -82,6 +83,14 @@ export async function postInnertube(
     ? await getYoutubeAuthorization(options.signal).catch(() => null)
     : null;
   const url = `${profile.origin}/youtubei/v1/${endpoint}?prettyPrint=false`;
+  const runtime = typeof window === "undefined" ? null : window as Window & {
+    linerElectron?: unknown;
+    Capacitor?: { isNativePlatform?: () => boolean };
+  };
+  const insecureBrowser = Boolean(runtime && runtime.location.protocol === "http:" && !runtime.isSecureContext && !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.());
+  const requestUrl = insecureBrowser && !authorization
+    ? `${getApiBaseUrl()}/v1/public/youtube/innertube/${endpoint}`
+    : url;
   const payload = {
     ...body,
     context: {
@@ -95,9 +104,11 @@ export async function postInnertube(
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetch(requestUrl, {
       method: "POST",
-      headers: buildHeaders(profile, visitorData, authorization),
+      headers: insecureBrowser && !authorization
+        ? { "content-type": "application/json", accept: "application/json" }
+        : buildHeaders(profile, visitorData, authorization),
       body: JSON.stringify(payload),
       signal: options.signal,
     });
