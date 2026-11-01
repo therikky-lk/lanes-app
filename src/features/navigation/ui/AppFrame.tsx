@@ -375,8 +375,10 @@ export default function AppFrame({ children }: AppFrameProps) {
 
   const catalogResults = useMemo(() => {
     if (isLibrarySearchFilter) return [];
-    if (isAllSearchFilter) {
-      return allResults.map((item: any) => {
+    // the YouTube tab mixes songs, videos, artists, albums and playlists just
+    // like "All": the same mapping keeps every kind of result shaped the same
+    if (isAllSearchFilter || isYoutubeSearchFilter) {
+      return ((isAllSearchFilter ? allResults : youtubeResults) as any[]).map((item: any) => {
         const coverUrl = item.cover
           ? mediaUrl(item.cover.url)
           : (item.coverUrl ?? "");
@@ -441,34 +443,6 @@ export default function AppFrame({ children }: AppFrameProps) {
           artistId: clientTrack.artistId,
           artistList: clientTrack.artistList,
         };
-      });
-    if (isYoutubeSearchFilter)
-      return youtubeResults.map((item: any) => {
-        const coverUrl = item.cover ? mediaUrl(item.cover.url) : (item.coverUrl ?? "");
-        if (item.type === "track") {
-          const clientTrack = toClientTrack(item);
-          return {
-            ...clientTrack,
-            ...item,
-            _type: "track",
-            coverUrl: clientTrack.coverUrl || coverUrl,
-            artists: clientTrack.artists,
-            artistId: clientTrack.artistId,
-            artistList: clientTrack.artistList,
-          };
-        }
-        if (item.type === "artist")
-          return { ...item, _type: "artist", title: item.name, coverUrl: toMaxQualityAvatarUrl(coverUrl), artists: "" };
-        if (item.type === "album")
-          return {
-            ...item,
-            _type: "album",
-            coverUrl,
-            artists: item.artists?.map((artist: any) => artist.name).join(", ") ?? item.artist ?? "",
-          };
-        if (item.type === "playlist")
-          return { ...item, _type: "playlist", coverUrl, artists: item.author || item.owner || "" };
-        return item;
       });
     if (isArtistSearchFilter)
       return artistResults.map((a: any) => ({
@@ -539,6 +513,9 @@ export default function AppFrame({ children }: AppFrameProps) {
       ]);
     };
     if (isLibrarySearchFilter) return grouped(libraryResults, "lib:");
+    // mixed YouTube results get the same section headings as "All", so a
+    // playlist or an album doesn't look like one more song
+    if (isYoutubeSearchFilter) return grouped(catalogResults, "yt:");
     if (!isAllSearchFilter) return catalogResults;
     const fromLibrary = libraryResults.slice(0, 5);
     const libraryIds = new Set(fromLibrary.map((it) => `${it._type}:${it.id}`));
@@ -552,7 +529,7 @@ export default function AppFrame({ children }: AppFrameProps) {
         : []),
       ...grouped(catalog, ""),
     ];
-  }, [isAllSearchFilter, isLibrarySearchFilter, libraryResults, catalogResults, t]);
+  }, [isAllSearchFilter, isLibrarySearchFilter, isYoutubeSearchFilter, libraryResults, catalogResults, t]);
 
   const searchLoading = isLibrarySearchFilter
     ? false
