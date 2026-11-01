@@ -7,6 +7,14 @@ import { diag } from "@/shared/platform/diag";
 
 export const RELAYS = ["https://ntfy.sh", "https://ntfy.envs.net"];
 const POLL_MS = 1500;
+// ntfy sends a keepalive about every 45 s: this much silence on an "open"
+// socket means it died without telling us (phone asleep, network switch)
+const SOCKET_IDLE_MS = 100_000;
+// back from the background after this long: the socket can't be trusted
+const RESUME_RECONNECT_MS = 20_000;
+// asleep for longer than this: don't replay everything missed, just the
+// last moments (the device asks the others for their state anyway)
+const LONG_SLEEP_MS = 120_000;
 
 export interface Relay {
   publish(text: string): Promise<void>;
@@ -17,6 +25,8 @@ interface NtfyMessage {
   id?: string;
   event?: string;
   message?: string;
+  /** when the relay got it (unix seconds, the relay's clock) */
+  time?: number;
 }
 
 type Sub = { close(): void };
@@ -24,7 +34,7 @@ type Sub = { close(): void };
 function browserSubscribe(
   relay: string,
   topic: string,
-  deliver: (text: string) => void,
+  deliver: (text: string, ageMs?: number) => void,
   status: (online: boolean, error?: string) => void,
 ): Sub {
   // A WebSocket is the primary channel: messages arrive within a fraction of a
@@ -38,12 +48,23 @@ function browserSubscribe(
   let pollTimer: ReturnType<typeof setTimeout> | null = null;
   let failures = 0;
   let since = String(Math.floor(Date.now() / 1000));
+  let lastActivity = Date.now();
+  let hiddenAt = document.visibilityState === "hidden" ? Date.now() : 0;
+  let lastRestart = 0;
+
+  // local clock minus the relay's clock, from its "open" / keepalive events:
+  // tells how long ago the relay got a message, so a message replayed after a
+  // sleep can be told from a live one without trusting other devices' clocks
+  let serverOffset: number | null = null;
 
   const handle = (data: NtfyMessage) => {
+    const time = typeof data.time === "number" && Number.isFinite(data.time) ? data.time * 1000 : null;
+    if (time !== null && (data.event === "open" || data.event === "keepalive")) serverOffset = Date.now() - time;
     if (data.event && data.event !== "message") return;
     if (typeof data.message !== "string") return;
     if (data.id) since = data.id;
-    deliver(data.message);
+    const ageMs = time !== null && serverOffset !== null ? Math.max(0, Date.now() - serverOffset - time) : undefined;
+    deliver(data.message, ageMs);
   };
 
   const socketOpen = () => socket?.readyState === WebSocket.OPEN;
@@ -91,6 +112,7 @@ function browserSubscribe(
     }, 6000);
     ws.onopen = () => {
       opened = true;
+      lastActivity = Date.now();
       clearTimeout(guard);
       failures = 0;
       if (pollTimer) clearTimeout(pollTimer);
@@ -98,6 +120,7 @@ function browserSubscribe(
       status(true);
     };
     ws.onmessage = (event) => {
+      lastActivity = Date.now(); // keepalives count too
       try {
         handle(JSON.parse(String(event.data)) as NtfyMessage);
       } catch {}
@@ -123,20 +146,61 @@ function browserSubscribe(
     retry = setTimeout(connect, delay);
   };
 
-  // phones suspend sockets in the background: reconnect as soon as we're back
-  const onVisible = () => {
-    if (closed || document.visibilityState !== "visible") return;
-    if (!socketOpen()) {
-      if (retry) clearTimeout(retry);
-      retry = null;
-      socket?.close();
-      socket = null;
-      failures = 0;
-      void poll();
-      connect();
-    }
+  /** drop the current socket (even one that still looks open) and start over */
+  const restart = (reason: string, sleptMs = 0) => {
+    if (closed) return;
+    const now = Date.now();
+    if (now - lastRestart < 2000) return; // several wake-up events fire at once
+    lastRestart = now;
+    if (reason) diag(`connect: ${relay.replace("https://", "")} reconnecting (${reason})`);
+    if (retry) clearTimeout(retry);
+    retry = null;
+    const ws = socket;
+    socket = null; // its onclose is ignored from now on
+    try {
+      ws?.close();
+    } catch {}
+    failures = 0;
+    if (sleptMs > LONG_SLEEP_MS) since = String(Math.floor(now / 1000) - 30);
+    lastActivity = now;
+    void poll();
+    connect();
   };
+
+  // phones suspend sockets in the background: reconnect as soon as we're back.
+  // A socket can survive the sleep as a zombie that still says OPEN, so after
+  // a real stay in the background it's replaced either way.
+  const onVisible = () => {
+    if (closed) return;
+    if (document.visibilityState !== "visible") {
+      if (!hiddenAt) hiddenAt = Date.now();
+      return;
+    }
+    const slept = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+    if (!socketOpen()) restart("", slept);
+    else if (slept > RESUME_RECONNECT_MS) restart("back from background", slept);
+  };
+  // Capacitor's own app-resume event (fires even when visibility doesn't flip)
+  const onResume = () => {
+    const slept = hiddenAt ? Date.now() - hiddenAt : RESUME_RECONNECT_MS + 1;
+    hiddenAt = 0;
+    restart("app resumed", slept);
+  };
+  const onPause = () => {
+    if (!hiddenAt) hiddenAt = Date.now();
+  };
+  const onOnline = () => restart("network back");
   document.addEventListener("visibilitychange", onVisible);
+  document.addEventListener("resume", onResume);
+  document.addEventListener("pause", onPause);
+  window.addEventListener("online", onOnline);
+
+  // the watchdog: a socket that went silent is dead even if it says OPEN
+  const watchdog = setInterval(() => {
+    if (closed || document.visibilityState !== "visible") return;
+    if (socketOpen() && Date.now() - lastActivity > SOCKET_IDLE_MS) restart("socket went silent");
+  }, 20_000);
 
   connect();
 
@@ -144,6 +208,10 @@ function browserSubscribe(
     close() {
       closed = true;
       document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("resume", onResume);
+      document.removeEventListener("pause", onPause);
+      window.removeEventListener("online", onOnline);
+      clearInterval(watchdog);
       if (retry) clearTimeout(retry);
       if (pollTimer) clearTimeout(pollTimer);
       const ws = socket;
@@ -153,18 +221,22 @@ function browserSubscribe(
   };
 }
 
-export function openRelay(topic: string, onMessage: (text: string) => void, onStatus: (online: boolean) => void): Relay {
+export function openRelay(
+  topic: string,
+  onMessage: (text: string, ageMs?: number) => void,
+  onStatus: (online: boolean) => void,
+): Relay {
   const electron = typeof window !== "undefined" ? window.linerElectron : undefined;
   const online = new Map<string, boolean>();
   const lastError = new Map<string, string>();
   const seen = new Set<string>();
 
-  const deliver = (text: string) => {
+  const deliver = (text: string, ageMs?: number) => {
     // the same message comes from every relay: handle it once
     if (seen.has(text)) return;
     seen.add(text);
     if (seen.size > 300) seen.delete(seen.values().next().value as string);
-    onMessage(text);
+    onMessage(text, ageMs);
   };
   const status = (relay: string, isOnline: boolean, error?: string) => {
     const was = online.get(relay);
