@@ -40,7 +40,7 @@ export default function MobileMiniPlayer() {
 
   return (
     <div
-      className="relative mx-[8px] mb-[6px] flex h-[56px] items-center gap-[10px] overflow-hidden rounded-xl bg-bg-elevated/75 backdrop-blur-2xl backdrop-saturate-150 border border-white/[0.06] px-[8px] shadow-[0_6px_24px_rgba(0,0,0,0.35)]"
+      className="lane-dock-glass lane-dock-glass--elevated relative mx-[8px] mb-[6px] flex h-[56px] items-center gap-[10px] overflow-hidden rounded-xl bg-bg-elevated/75 backdrop-blur-2xl backdrop-saturate-150 border border-white/[0.06] px-[8px] shadow-[0_6px_24px_rgba(0,0,0,0.35)]"
       style={{ fontFamily: "var(--font-inter), sans-serif" }}
       onClick={() => setFullscreen(true)}
       role="button"
@@ -106,7 +106,11 @@ export default function MobileMiniPlayer() {
         <SkipNext size={22} weight="Bold" />
       </button>
       <div className="absolute bottom-0 left-[8px] right-[8px] h-[2px] rounded-full bg-border-alpha-14">
-        <div className="h-full rounded-full bg-text-primary" style={{ width: `${progress * 100}%` }} />
+        {/* scaleX instead of width: no layout on every position tick */}
+        <div
+          className="h-full w-full origin-left rounded-full bg-text-primary will-change-transform"
+          style={{ transform: `scaleX(${progress})` }}
+        />
       </div>
     </div>
   );

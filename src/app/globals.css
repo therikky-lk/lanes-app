@@ -560,6 +560,48 @@ html[data-hover-reset] [data-window-controls] button:hover {
 }
 .lane-low-end .page-transition { animation-duration: 140ms; }
 
+/* weak phones, part 2 (Galaxy A17 and the like): anything frosted that sits
+   over moving content — the bottom dock, the mini player, sticky headers, the
+   search islands, the buttons over the animated full screen player — would
+   re-blur its backdrop on every scrolled / animated frame. On these GPUs that
+   alone drops frames, so the same surfaces become solid (or nearly solid)
+   tints instead: the look stays, the per-frame blur goes. */
+.lane-low-end .lane-dock-glass,
+.lane-low-end .lane-search-box,
+.lane-low-end .lane-search-panel,
+.lane-low-end .lane-fs-player [class*="backdrop-blur"],
+.lane-low-end .lane-vibe-hero [class*="backdrop-blur"],
+.lane-low-end .backdrop-blur-\[2px\] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.lane-low-end .lane-dock-glass { background-color: color-mix(in srgb, var(--bg-primary) 94%, transparent) !important; }
+.lane-low-end .lane-dock-glass.lane-dock-glass--elevated { background-color: color-mix(in srgb, var(--bg-elevated) 96%, transparent) !important; box-shadow: none !important; }
+.lane-low-end .lane-search-box,
+.lane-low-end .lane-search-panel { background-color: var(--bg-panel) !important; }
+.lane-low-end .lane-frost-sticky::before {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: color-mix(in srgb, var(--bg-primary, #0d0d10) 94%, transparent);
+}
+.lane-low-end .apple-glass-pill,
+.lane-low-end .apple-glass-action,
+.lane-low-end .apple-glass-static,
+.lane-low-end .apple-glass-pill-dark {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+/* lyrics: no per-line blur filter (each line would be its own filtered layer) */
+.lane-low-end .lyric-line {
+  filter: none !important;
+  will-change: transform, opacity;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              color 0.28s ease;
+}
+/* skeletons: keep the soft breathing, drop the extra sweeping layer */
+.lane-low-end .skeleton-shimmer::after { display: none; }
+
 /* smoother scrolling: big grids skip drawing what's off screen, and the
    rows / tiles are drawn on their own layers only while they're needed */
 .lane-grid-item {
