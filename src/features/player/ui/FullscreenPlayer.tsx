@@ -23,7 +23,7 @@ import {
   braccatoThemeCss,
   hasSyncedLyricsSources,
 } from "@/features/lyrics";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { PlayerUiElements } from "./PlayerUiElements";
 import { DownLine } from "@mingcute/react";
 import { preloadCoverArt, useCoverSrc } from "@/features/covers";
@@ -358,6 +358,7 @@ export function FullscreenPlayer({
   const isMobile = useIsMobile();
   const [mobileLyrics, setMobileLyrics] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
+  const speedSheetDragControls = useDragControls();
   const speedChanged = usePlayerStore(
     (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
   );
@@ -572,9 +573,18 @@ export function FullscreenPlayer({
             onClick={() => setSpeedOpen(false)}
           >
             <motion.div
-              initial={{ y: 40 }}
+              initial={{ y: "100%" }}
               animate={{ y: 0 }}
-              exit={{ y: 40 }}
+              exit={{ y: "100%" }}
+              drag="y"
+              dragListener={false}
+              dragControls={speedSheetDragControls}
+              dragConstraints={{ top: 0, bottom: typeof window === "undefined" ? 1000 : window.innerHeight }}
+              dragElastic={0}
+              dragMomentum={false}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 90 || info.velocity.y > 650) setSpeedOpen(false);
+              }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               data-no-sheet-drag
               className="w-full max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/[0.08] bg-black/20 p-[18px] backdrop-blur-xl"
@@ -585,7 +595,14 @@ export function FullscreenPlayer({
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mx-auto mb-[12px] h-[4px] w-[36px] rounded-full bg-white/20" />
+              <button
+                type="button"
+                aria-label="Drag down to close speed settings"
+                onPointerDown={(event) => speedSheetDragControls.start(event)}
+                className="mx-auto mb-[12px] flex h-[24px] w-[72px] touch-none cursor-grab items-center justify-center border-0 bg-transparent active:cursor-grabbing"
+              >
+                <span className="h-[4px] w-[36px] rounded-full bg-white/30" />
+              </button>
               <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />
             </motion.div>
           </motion.div>
@@ -605,7 +622,7 @@ export function FullscreenPlayer({
       {/* top-right group: phones get like + lyrics + devices together; on the
           desktop the devices button sits right next to the window controls */}
       <div
-        className="absolute z-30 flex items-center gap-[8px]"
+        className="absolute z-30 flex max-w-[calc(100vw-64px)] flex-wrap items-center justify-end gap-[8px]"
         style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 108 }}
         data-no-window-drag
       >

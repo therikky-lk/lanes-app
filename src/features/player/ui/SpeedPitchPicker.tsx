@@ -16,6 +16,7 @@ interface SliderRowProps {
   valueText: string;
   min: number;
   max: number;
+  neutralValue?: number;
   step: number;
   value: number;
   disabled?: boolean;
@@ -31,6 +32,7 @@ function SliderRow({
   valueText,
   min,
   max,
+  neutralValue,
   step,
   value,
   disabled = false,
@@ -48,19 +50,27 @@ function SliderRow({
   const currentValue = isDragging && dragValue !== null ? dragValue : value;
   const clampedValue = Math.max(min, Math.min(max, currentValue));
   const range = max - min || 1;
-  const percentage = Math.max(0, Math.min(100, ((clampedValue - min) / range) * 100));
+  const percentage = Math.max(0, Math.min(100, neutralValue !== undefined && neutralValue > min && neutralValue < max
+    ? clampedValue <= neutralValue
+      ? ((clampedValue - min) / (neutralValue - min)) * 50
+      : 50 + ((clampedValue - neutralValue) / (max - neutralValue)) * 50
+    : ((clampedValue - min) / range) * 100));
 
   const calculateValueFromPointer = useCallback(
     (clientX: number): number => {
       const rect = trackRef.current?.getBoundingClientRect();
       if (!rect || rect.width === 0) return clampedValue;
       const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      const raw = min + ratio * (max - min);
+      const raw = neutralValue !== undefined && neutralValue > min && neutralValue < max
+        ? ratio <= 0.5
+          ? min + (ratio / 0.5) * (neutralValue - min)
+          : neutralValue + ((ratio - 0.5) / 0.5) * (max - neutralValue)
+        : min + ratio * (max - min);
       const stepped = Math.round((raw - min) / step) * step + min;
       const precision = step.toString().split(".")[1]?.length || 0;
       return Math.max(min, Math.min(max, Number(stepped.toFixed(precision))));
     },
-    [clampedValue, min, max, step],
+    [clampedValue, min, max, step, neutralValue],
   );
 
   const handlePointerDown = useCallback(
@@ -292,6 +302,7 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
         valueText={`x${playbackRate.toFixed(2)}`}
         min={0.5}
         max={2.0}
+        neutralValue={1}
         step={0.05}
         value={playbackRate}
         onStepDown={() => handleSpeedChange(Math.max(0.5, Number((playbackRate - 0.05).toFixed(2))))}
