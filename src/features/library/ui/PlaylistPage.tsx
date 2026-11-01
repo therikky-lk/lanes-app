@@ -1062,7 +1062,6 @@ function LibraryPlaylistContent() {
                 style={{
                   willChange: "scroll-position",
                   marginTop: isMobile ? undefined : 8,
-                  paddingBottom: isMobile && isLikesMode ? "calc(var(--lane-dock-h, 120px) + 28px)" : undefined,
                 }}
               >
               <ScrollBlurEdge height={60} />
@@ -1285,6 +1284,13 @@ function LibraryPlaylistContent() {
                     className="bg-transparent"
                   />
                 </FloatingDragCard>
+              )}
+              {isMobile && isLikesMode && (
+                <div
+                  aria-hidden="true"
+                  className="w-full shrink-0"
+                  style={{ height: "calc(var(--lane-dock-h, 120px) + 24px)" }}
+                />
               )}
               </div>
               </div>
