@@ -1,4 +1,5 @@
-import { resolveDirectAudioStream, toVideoId } from "@/shared/media/innertube";
+import { resolveDirectAudioStream, toVideoId, type InnertubeProfile } from "@/shared/media/innertube";
+import { prefersAccountPlayback, isYoutubeSignedIn, TV_ACCOUNT_PROFILE, PLAYBACK_PROFILES } from "@/shared/media/youtube";
 import { resolveSoundCloudStream, toSoundCloudTrackId } from "@/shared/media/soundcloud";
 import { resolveLinerStream } from "@/shared/media/liner/linerPlayback";
 import { isAbortError } from "@/shared/utils/abort";
@@ -77,7 +78,18 @@ async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal
     log("cyan", "playback", `playing liner audio (r2) for "${track.title}"`);
     return fromLinerStream(liner, track);
   }
-  return withSoundCloudFallback(track, async () => fromInnertubeStream(await resolveDirectAudioStream(track.id, { signal, ...audioOptions(quality) })), signal);
+  return withSoundCloudFallback(track, async () => {
+    if (isYoutubeSignedIn() && prefersAccountPlayback()) {
+      const profiles: readonly InnertubeProfile[] = [TV_ACCOUNT_PROFILE, ...PLAYBACK_PROFILES];
+      try {
+        return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal, profiles, ...audioOptions(quality) }));
+      } catch (error) {
+        if (isAbortError(error, signal)) throw error;
+        log("yellow", "playback", `YouTube account playback failed, using public playback: ${String(error)}`);
+      }
+    }
+    return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal, ...audioOptions(quality) }));
+  }, signal);
 }
 
 export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {

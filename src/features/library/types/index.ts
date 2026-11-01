@@ -14,6 +14,7 @@ export interface LibraryItemViewModel {
   addedAt: string;
   trackCount?: number;
   isOwned?: boolean;
+  source?: "youtube";
 }
 export type LibrarySortOption = "recent" | "title" | "creator";
 

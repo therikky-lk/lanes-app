@@ -194,7 +194,7 @@ export function PlayerUiElements({
           aria-label={isLiked ? t("common.unlike") : t("common.like")}
           className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex h-[72px] w-[72px] items-center justify-center rounded-full ${
             isMobile ? (heartShown && burst === 0 ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover/cover:opacity-100"
-          } focus-visible:opacity-100 transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] bg-black/35 backdrop-blur-md border-none hover:bg-black/50 ${
+          } focus-visible:opacity-100 transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] bg-black/55 backdrop-blur-[2px] border-none hover:bg-black/65 ${
             isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"
           }`}
           onClick={() => {

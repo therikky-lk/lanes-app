@@ -59,7 +59,7 @@ export function DiscordTab({ searchQuery }: { searchQuery?: string }) {
   return (
     <div className="flex flex-col gap-[18px]">
       {/* Discord Connection Status */}
-      <div className="flex items-center justify-between px-[14px] py-[10px] rounded-lg bg-border-alpha-10">
+      <div className="lane-setting-status flex items-center justify-between px-[16px] py-[16px] rounded-xl border border-white/[0.025] bg-white/[0.09]">
         <div className="flex items-center gap-[10px]">
           <span
             className={`w-[8px] h-[8px] rounded-full shrink-0 ${
@@ -127,8 +127,12 @@ export function DiscordTab({ searchQuery }: { searchQuery?: string }) {
                 disabled={!enabled}
                 options={[
                   {
+                    value: "app",
+                    label: t("settings.discord.status_display.app") || "Lane (Default)",
+                  },
+                  {
                     value: "artist",
-                    label: t("settings.discord.status_display.artist") || "Artist (Default)",
+                    label: t("settings.discord.status_display.artist") || "Artist",
                   },
                   {
                     value: "title",
@@ -141,10 +145,6 @@ export function DiscordTab({ searchQuery }: { searchQuery?: string }) {
                   {
                     value: "title_artist",
                     label: t("settings.discord.status_display.song_artist") || "Song - Artist",
-                  },
-                  {
-                    value: "app",
-                    label: t("settings.discord.status_display.app") || "Lane (App name)",
                   },
                 ]}
               />

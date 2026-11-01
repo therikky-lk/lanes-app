@@ -490,6 +490,9 @@
     "reset_defaults": "Przywróć domyślne",
     "save_preferences": "Zapisz preferencje",
     "groups": {
+      "player": "Odtwarzacz",
+      "interface": "Interfejs",
+      "integrations": "Integracje",
       "preferences": "Preferencje",
       "application": "Aplikacja",
       "help": "Pomoc"
@@ -509,7 +512,8 @@
       "playback": "Odtwarzanie",
       "shortcuts": "Skróty",
       "overlay": "Nakładka",
-      "privacy": "Prywatność"
+      "privacy": "Prywatność",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Działanie kolejki, akcje po kliknięciu i wyjście audio."
@@ -885,7 +889,8 @@
       "never_run": "Testy nie zostały jeszcze uruchomione.",
       "last_run": "Testy OK: {ok}/{total} · {time}",
       "open_folder": "Otwórz lokalizację zapisu"
-    }
+    },
+    "youtube": {}
   },
   "toast": {
     "playlist_created": "Utworzono playlistę",

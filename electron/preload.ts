@@ -69,6 +69,10 @@ export interface LinerElectronApi {
     refresh: (input: { apiBaseUrl: string; refreshToken?: string }) => Promise<AuthRefreshResult>;
     onChange: (cb: (session: StoredAuthSession | null) => void) => () => void;
   };
+  youtubeAuthSession?: {
+    get: () => StoredAuthSession | null;
+    set: (next: StoredAuthSession | null) => Promise<StoredAuthSession | null>;
+  };
   onDeeplink: (cb: (target: DeeplinkTarget) => void) => () => void;
   diagnoseNetwork: (hosts: string[]) => Promise<MainNetResult>;
   openDownloads: (customPath?: string) => Promise<boolean>;
@@ -209,6 +213,10 @@ const api: LinerElectronApi = {
         ipcRenderer.removeListener("auth:session-changed", listener);
       };
     },
+  },
+  youtubeAuthSession: {
+    get: () => ipcRenderer.sendSync("youtube-auth:get-session") ?? null,
+    set: (next) => ipcRenderer.invoke("youtube-auth:set-session", next),
   },
   diagnoseNetwork: (hosts) => ipcRenderer.invoke("net:diagnose", hosts),
   openDownloads: (customPath) => ipcRenderer.invoke("shell:open-downloads", customPath),

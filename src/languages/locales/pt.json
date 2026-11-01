@@ -498,6 +498,9 @@
     "reset_defaults": "Restaurar padrões",
     "save_preferences": "Salvar preferências",
     "groups": {
+      "player": "Player",
+      "interface": "Interface",
+      "integrations": "Integrações",
       "preferences": "Preferências",
       "application": "Aplicativo",
       "help": "Ajuda"
@@ -518,7 +521,8 @@
       "shortcuts": "Atalhos",
       "overlay": "Overlay",
       "discord": "Discord RPC",
-      "privacy": "Privacidade"
+      "privacy": "Privacidade",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Comportamento da fila, ações de clique e saída de áudio."
@@ -622,11 +626,11 @@
       "status_display": {
         "title": "Formato do status",
         "description": "Escolhe o que aparece no cabeçalho do status \"Ouvindo\" do Discord.",
-        "artist": "Artista (padrão)",
+        "artist": "Artista",
         "song": "Título da música",
         "artist_song": "Artista - Música",
         "song_artist": "Música - Artista",
-        "app": "Lane (nome do app)"
+        "app": "Lane (Padrão)"
       },
       "show_timeline": {
         "title": "Linha do tempo da reprodução",
@@ -943,7 +947,8 @@
       "never_run": "As verificações ainda não foram executadas.",
       "last_run": "{ok}/{total} verificações OK · {time}",
       "open_folder": "Abrir local salvo"
-    }
+    },
+    "youtube": {}
   },
   "toast": {
     "playlist_created": "Playlist criada",

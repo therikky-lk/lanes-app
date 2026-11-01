@@ -369,14 +369,15 @@ function CollectionContent() {
               className={
                 isMobile
                   ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"
-                  : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"
+                  : "relative z-10 flex flex-col items-stretch px-[16px] h-full w-full min-h-0 box-border"
               }
             >
               <div
-                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}
+                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[4px]"}
                 data-no-window-drag
               >
                 <EntitySidebar
+                layout="hero"
                 coverClassName={
                   hasCustomBg && !data.coverUrl
                     ? "apple-glass-static pointer-events-none"
@@ -477,23 +478,23 @@ function CollectionContent() {
                   </div>
                 }
                   primaryAction={
-                    <div className="flex flex-col gap-[8px] w-full">
+                    <div className="flex w-full max-w-[640px] flex-row items-center gap-[8px] max-md:flex-col">
                       <Button
                         variant={hasCustomBg ? "glass-primary" : "primary"}
                         onClick={handlePlayAll}
                         disabled={!data || data.tracks.length === 0}
-                        className="!h-[36px] w-full !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px]"
+                        className="!h-[36px] w-auto shrink-0 !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px] max-md:w-full"
                       >
                         {isThisActive ? <PauseFill size={16} /> : <PlayFill size={16} />}
                         <span>{isThisActive ? t("common.pause") : t("common.play_all")}</span>
                       </Button>
 
-                      <div className="flex items-center gap-[8px] w-full">
+                      <div className="flex min-w-0 items-center gap-[8px] max-md:w-full">
                         <Button
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleAddToQueue}
                           disabled={!data || data.tracks.length === 0}
-                          className={`!h-[36px] flex-1 min-w-0 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
+                          className={`!h-[36px] !flex-none min-w-0 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
                             // optical centring: with three icon buttons beside it the label reads 1px right
                             !isDailyMix ? "[&>*]:-translate-x-px" : ""
                           }`}
@@ -594,8 +595,8 @@ function CollectionContent() {
                 }}
                 className={
                   isMobile
-                    ? "min-w-0 w-full pb-[24px]"
-                    : "min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
+                    ? "min-w-0 w-full mt-[16px] rounded-t-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] pt-[8px] pb-[24px] backdrop-blur-xl"
+                    : "min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] pt-[8px] pb-[24px] overscroll-contain backdrop-blur-xl"
                 }
                 style={{ willChange: "scroll-position" }}
               >

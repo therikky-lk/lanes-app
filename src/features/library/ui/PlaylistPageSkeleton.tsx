@@ -1,84 +1,85 @@
 import { memo } from "react";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
-const TRACK_TITLE_WIDTHS = [
-  "w-[42%]",
-  "w-[34%]",
-  "w-[50%]",
-  "w-[28%]",
-  "w-[46%]",
-  "w-[38%]",
-  "w-[52%]",
-  "w-[30%]",
-];
-
-const TRACK_ARTIST_WIDTHS = [
-  "w-[24%]",
-  "w-[18%]",
-  "w-[28%]",
-  "w-[22%]",
-  "w-[32%]",
-  "w-[20%]",
-  "w-[26%]",
-  "w-[16%]",
-];
+const TRACK_TITLE_WIDTHS = ["w-[42%]", "w-[34%]", "w-[50%]", "w-[28%]", "w-[46%]", "w-[38%]"];
+const TRACK_ARTIST_WIDTHS = ["w-[24%]", "w-[18%]", "w-[28%]", "w-[22%]", "w-[32%]", "w-[20%]"];
 
 export interface PlaylistPageSkeletonProps {
   className?: string;
 }
 
-function PlaylistPageSkeletonComponent({
-  className = "",
-}: PlaylistPageSkeletonProps) {
+function PlaylistPageSkeletonComponent({ className = "" }: PlaylistPageSkeletonProps) {
   const isMobile = useIsMobile();
+
   return (
-    <div
-      className={`relative h-full w-full overflow-hidden bg-transparent select-none ${className}`}
-    >
-      <div className={isMobile
-        ? "relative z-10 flex flex-col items-center gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto box-border"
-        : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"}>
-        <aside className={isMobile
-          ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]"
-          : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}>
-          <div className={`relative aspect-square w-full overflow-hidden ${isMobile ? "rounded-xl" : "rounded-md"} bg-border-alpha-14`}>
-            <div className="skeleton-shimmer h-full w-full" />
+    <div className={`relative h-full w-full overflow-hidden bg-transparent select-none ${className}`}>
+      <div
+        className={
+          isMobile
+            ? "relative z-10 flex h-full min-h-0 w-full flex-col items-center overflow-y-auto px-[14px]"
+            : "relative z-10 flex h-full min-h-0 w-full flex-col px-[16px]"
+        }
+      >
+        <header
+          className={
+            isMobile
+              ? "flex w-full shrink-0 flex-col items-center pt-[56px] pb-[8px]"
+              : "grid w-full shrink-0 grid-cols-[168px_minmax(0,1fr)] grid-rows-[auto_auto_auto_auto_auto] items-start gap-x-[22px] gap-y-[8px] pt-[56px] pb-[4px]"
+          }
+        >
+          <div
+            className={`skeleton-shimmer relative aspect-square overflow-hidden ${
+              isMobile
+                ? "mt-[12px] w-[min(72vw,300px)] rounded-xl"
+                : "col-start-1 row-span-5 row-start-1 h-[168px] w-[168px] rounded-[10px]"
+            }`}
+          />
+
+          <div
+            className={
+              isMobile
+                ? "mt-[18px] flex w-full flex-col items-center gap-[8px]"
+                : "col-start-2 row-start-1 mt-[4px] flex min-w-0 flex-col gap-[10px]"
+            }
+          >
+            <div className={`skeleton-shimmer h-[30px] w-[min(280px,70%)] rounded-md ${isMobile ? "h-[28px]" : "self-start"}`} />
+            <div className={`skeleton-shimmer h-[14px] w-[min(220px,52%)] rounded-sm ${isMobile ? "" : "self-start"}`} />
+            <div className={`skeleton-shimmer h-[26px] w-[150px] rounded-md ${isMobile ? "" : "self-start"}`} />
           </div>
 
-          <div className={`${isMobile ? "mx-auto" : ""} skeleton-shimmer h-[26px] w-[80%] rounded-[6px] mt-[16px]`} />
-          <div className={`${isMobile ? "mx-auto" : ""} skeleton-shimmer h-[16px] w-[60%] rounded-[4px] mt-[6px]`} />
-          <div className={`${isMobile ? "mx-auto" : ""} skeleton-shimmer h-[26px] w-[130px] rounded-md mt-[8px]`} />
-
-          <div className="skeleton-shimmer h-[36px] w-full rounded-md mt-[16px]" />
-          <div className="mt-[8px] flex items-center gap-[8px]">
-            <div className="skeleton-shimmer h-[36px] flex-1 rounded-md" />
-            <div className="skeleton-shimmer h-[36px] w-[36px] rounded-md" />
-            <div className="skeleton-shimmer h-[36px] w-[36px] rounded-md" />
+          <div
+            className={
+              isMobile
+                ? "mt-[16px] flex w-full max-w-[340px] flex-col gap-[8px]"
+                : "col-start-2 row-start-4 mt-[4px] flex w-full max-w-[640px] flex-col gap-[8px]"
+            }
+          >
+            <div className="skeleton-shimmer h-[36px] w-full rounded-md" />
+            <div className="flex items-center gap-[8px]">
+              <div className="skeleton-shimmer h-[36px] flex-1 rounded-md" />
+              <div className="skeleton-shimmer h-[36px] w-[36px] rounded-md" />
+              <div className="skeleton-shimmer h-[36px] w-[36px] rounded-md" />
+            </div>
           </div>
-        </aside>
+        </header>
 
-        <div className={isMobile
-          ? "min-w-0 w-full shrink-0 overflow-hidden px-0 pt-[4px] pb-[24px]"
-          : "min-w-0 flex-1 h-full min-h-0 overflow-hidden px-[8px] pt-[56px] pb-[24px]"}>
+        <section
+          className={
+            isMobile
+              ? "mt-[16px] w-full shrink-0 overflow-hidden rounded-t-[14px] px-0 pt-[8px] pb-[24px]"
+              : "mt-[16px] h-full min-h-0 w-full flex-1 overflow-hidden rounded-t-[14px] px-[8px] pt-[8px] pb-[24px]"
+          }
+        >
           <div className="flex flex-col">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between rounded-md p-[8px] h-[64px]"
-              >
-                <div className="flex items-center gap-[16px] min-w-0 flex-1">
+              <div key={i} className="flex h-[64px] items-center justify-between rounded-md p-[8px]">
+                <div className="flex min-w-0 flex-1 items-center gap-[16px]">
                   <div className="skeleton-shimmer h-[48px] w-[48px] shrink-0 rounded-md" />
-
-                  <div className="min-w-0 flex flex-col gap-[6px] flex-1">
-                    <div
-                      className={`skeleton-shimmer h-[15px] ${TRACK_TITLE_WIDTHS[i % TRACK_TITLE_WIDTHS.length]} rounded-[4px]`}
-                    />
-                    <div
-                      className={`skeleton-shimmer h-[13px] ${TRACK_ARTIST_WIDTHS[i % TRACK_ARTIST_WIDTHS.length]} rounded-[4px]`}
-                    />
+                  <div className="flex min-w-0 flex-1 flex-col gap-[6px]">
+                    <div className={`skeleton-shimmer h-[15px] ${TRACK_TITLE_WIDTHS[i % TRACK_TITLE_WIDTHS.length]} rounded-[4px]`} />
+                    <div className={`skeleton-shimmer h-[13px] ${TRACK_ARTIST_WIDTHS[i % TRACK_ARTIST_WIDTHS.length]} rounded-[4px]`} />
                   </div>
                 </div>
-
                 <div className="flex items-center gap-[16px] pr-[8px]">
                   <div className="skeleton-shimmer h-[13px] w-[36px] rounded-[4px]" />
                   <div className="skeleton-shimmer h-[32px] w-[32px] rounded-md" />
@@ -86,7 +87,7 @@ function PlaylistPageSkeletonComponent({
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

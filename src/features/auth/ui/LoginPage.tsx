@@ -177,56 +177,75 @@ export default function LoginPage() {
     <main
       className={`relative flex h-full w-full items-center justify-center overflow-hidden ${frameShape} ${
         isEdgeToEdge ? "border-0" : "border border-border-primary"
-      } bg-[#050505]`}
+      } bg-[#242426]`}
     >
       {!isNativeApp() && <WindowControls variant="glass" />}
 
-      <section className="relative z-10 mx-4 my-auto grid max-h-[calc(100%-48px)] w-full max-w-[860px] overflow-y-auto rounded-xl border border-white/10 bg-[#080808] md:grid-cols-[0.9fr_1.1fr]">
-        <aside className="hidden min-h-[490px] flex-col items-center justify-center border-r border-white/10 px-10 text-center md:flex">
-          <AppImage
-            src={logo}
-            alt="Lane"
-            width={92}
-            height={108}
-            className="theme-logo h-[92px] w-auto"
-            priority
-          />
-          <span className="mt-6 text-[27px] font-[500] tracking-[0.42em] text-white">Lane</span>
-          <p className="mt-3 max-w-[220px] text-[13px] leading-[1.45] text-white/65">
-            {t("login.auth_subtitle_login")}
-          </p>
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-[12%] -top-[32%] h-[140%] w-[38%] rotate-[28deg] bg-white/[0.025]" />
+        <div className="absolute right-[18%] -top-[42%] h-[150%] w-[20%] rotate-[28deg] bg-black/[0.12]" />
+        <div className="absolute -right-[8%] top-[35%] h-[110%] w-[28%] rotate-[28deg] bg-white/[0.018]" />
+      </div>
+
+      <section className="relative z-10 mx-4 my-auto grid max-h-[calc(100%-32px)] w-full max-w-[780px] grid-cols-1 gap-[10px] overflow-y-auto rounded-[22px] border border-white/[0.04] bg-[#1f1f20] p-[9px] shadow-[0_28px_90px_rgba(0,0,0,0.28)] md:grid-cols-[0.82fr_1.18fr]">
+        <aside className="relative hidden min-h-[378px] flex-col items-start overflow-hidden rounded-[14px] bg-[#303033] px-[28px] py-[24px] text-left md:flex">
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            <span className="absolute -left-[8px] -top-[112px] select-none text-[420px] font-black leading-none tracking-[-0.12em] text-white/[0.035]">N</span>
+            <span className="absolute -right-[48px] -top-[20px] h-[115%] w-[42%] rotate-[-28deg] bg-black/[0.12]" />
+            <span className="absolute -bottom-[34%] left-[42%] h-[90%] w-[20%] rotate-[-28deg] bg-white/[0.025]" />
+          </div>
+          <div className="relative z-10 flex items-center gap-[10px]">
+            <AppImage src={logo} alt="" width={32} height={32} className="h-[30px] w-[30px]" priority />
+            <span className="text-[17px] font-[600] tracking-[-0.02em] text-white">Liner</span>
+          </div>
+          <div className="relative z-10 mt-auto mb-auto w-[136px]">
+            <Select
+              options={LOCALE_OPTIONS}
+              value={locale}
+              onChange={setLocale}
+              align="bottom-left"
+              variant="transparent"
+              className="!h-[36px] !w-full !rounded-[10px] !border-transparent !bg-[#202022] !text-white hover:!bg-[#28282a]"
+              aria-label={t("login.select_language")}
+            />
+          </div>
+          <div className="relative z-10 mt-auto max-w-[255px]">
+            <h1 className="m-0 text-[29px] font-[700] leading-[1.08] tracking-[-0.045em] text-white">
+              {t("login.auth_title_login")}
+            </h1>
+            <p className="m-0 mt-[10px] text-[14px] leading-[1.4] text-white/65">
+              {t("login.auth_subtitle_login")}
+            </p>
+          </div>
         </aside>
 
-        <div className="flex min-h-full w-full flex-col justify-between p-[28px] md:p-[48px]">
-          {/* Top: logo + lang picker */}
-          <div className="flex shrink-0 items-center gap-[10px]">
+        <div className="flex min-h-[378px] w-full flex-col justify-center px-[22px] py-[22px] sm:px-[28px] md:px-[26px] md:py-[24px]">
+          {/* Compact brand header stays available on phones, where the side panel is hidden. */}
+          <div className="mb-[18px] flex shrink-0 items-center gap-[10px] md:hidden">
             <AppImage
               src={logo}
               alt="Lane"
-              width={25}
-              height={30}
-              className="theme-logo h-[22px] w-auto"
+              width={28}
+              height={28}
+              className="h-[26px] w-[26px]"
               priority
             />
-            <span className="text-[16px] font-[600] tracking-[-0.025em] text-text-primary">
-              Lane
-            </span>
+            <span className="text-[16px] font-[600] tracking-[-0.025em] text-white">Liner</span>
             <Select
               options={LOCALE_OPTIONS}
               value={locale}
               onChange={setLocale}
               align="bottom-right"
               variant="transparent"
-              className="ml-auto min-w-[120px]"
+              className="ml-auto min-w-[120px] !rounded-[10px] !bg-[#202022] !text-white"
               aria-label={t("login.select_language")}
             />
           </div>
 
           {/* Middle: grows + centers form content */}
-          <div className="my-auto flex flex-col justify-center py-6">
+          <div className="my-auto flex flex-col justify-center">
             <div className="w-full">
-              {/* mode switch, same segmented pattern as create-playlist tabs */}
-              <div className="mb-[16px] flex rounded-lg bg-bg-elevated p-[3px]">
+              <div className="mb-[20px] flex gap-[8px]">
                 {(
                   [
                     { id: "login", label: t("login.btn_sign_in") },
@@ -237,10 +256,10 @@ export default function LoginPage() {
                     key={item.id}
                     type="button"
                     onClick={() => selectMode(item.id)}
-                    className={`h-[30px] flex-1 cursor-pointer rounded-md border-none text-[13px] font-[500] transition-all ${
+                    className={`h-[38px] flex-1 cursor-pointer rounded-[10px] border-none text-[13px] font-[500] transition-colors duration-150 ${
                       mode === item.id
-                        ? "bg-bg-primary text-text-primary"
-                        : "bg-transparent text-text-secondary hover:text-text-primary"
+                        ? "bg-[#d9d9dd] text-[#111111]"
+                        : "bg-[#19191a] text-white/70 hover:bg-[#242426] hover:text-white"
                     }`}
                   >
                     {item.label}
@@ -261,35 +280,20 @@ export default function LoginPage() {
                     className="overflow-hidden"
                   >
                     <div className="mb-2">
-                      <span className="inline-flex items-center rounded-full border border-border-primary bg-bg-elevated px-2.5 py-0.5 text-[11px] font-[500] text-text-secondary">
+                      <span className="inline-flex items-center rounded-[8px] bg-white/[0.08] px-2.5 py-1 text-[11px] font-[500] text-white/65">
                         {t("login.step_indicator", { step: registerStep, total: 2 })}
                       </span>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-              <h1
-                className="m-0 text-[22px] font-[600] leading-tight tracking-[-0.02em] text-text-primary"
-                style={{ textWrap: "balance" }}
-              >
-                {mode === "login"
-                  ? t("login.auth_title_login")
-                  : registerStep === 1
-                    ? t("login.auth_title_register")
-                    : t("login.profile_setup_title")}
-              </h1>
-              <p
-                className="m-0 mt-[6px] text-[13px] font-[400] leading-[1.5] text-text-secondary"
-                style={{ textWrap: "pretty" }}
-              >
-                {mode === "login"
-                  ? t("login.auth_subtitle_login")
-                  : registerStep === 1
-                    ? t("login.auth_subtitle_register")
-                    : t("login.profile_setup_subtitle")}
-              </p>
+              {mode === "register" && registerStep === 2 && (
+                <div className="mb-[12px] text-[13px] font-[500] text-white/75">
+                  {t("login.profile_setup_title")}
+                </div>
+              )}
 
-              <form noValidate onSubmit={submit} className="mt-[20px] flex flex-col">
+              <form noValidate onSubmit={submit} className="flex flex-col">
                 <AnimatePresence initial={false}>
                   {mode === "login" || registerStep === 1 ? (
                     <motion.div
@@ -304,7 +308,7 @@ export default function LoginPage() {
                       className="overflow-hidden flex flex-col"
                     >
                       <label
-                        className="mb-[7px] text-[12px] font-[500] text-text-secondary"
+                        className="mb-[7px] text-[12px] font-[500] text-white/75"
                         htmlFor="auth-email"
                       >
                         {t("login.label_email")}
@@ -318,6 +322,7 @@ export default function LoginPage() {
                         spellCheck={false}
                         autoComplete="email"
                         placeholder={t("login.placeholder_email")}
+                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
                         value={email}
                         hasError={Boolean(error)}
                         aria-invalid={Boolean(error)}
@@ -330,7 +335,7 @@ export default function LoginPage() {
                       />
 
                       <label
-                        className="mb-[7px] mt-[15px] text-[12px] font-[500] text-text-secondary"
+                        className="mb-[7px] mt-[15px] text-[12px] font-[500] text-white/75"
                         htmlFor="auth-password"
                       >
                         {t("login.label_password")}
@@ -346,6 +351,7 @@ export default function LoginPage() {
                             ? t("login.placeholder_password")
                             : t("login.placeholder_password_new")
                         }
+                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
                         value={password}
                         hasError={Boolean(error)}
                         aria-invalid={Boolean(error)}
@@ -364,7 +370,7 @@ export default function LoginPage() {
                                 : t("login.show_password")
                             }
                             onClick={() => setShowPassword((v) => !v)}
-                            className="flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary cursor-pointer"
+                            className="flex h-7 w-7 items-center justify-center rounded-sm text-white/45 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50 cursor-pointer"
                           >
                             {showPassword ? (
                               <EyeCloseLine className="h-4 w-4" />
@@ -388,7 +394,7 @@ export default function LoginPage() {
                             className="overflow-hidden"
                           >
                             <label
-                              className="mb-[7px] mt-[15px] block text-[12px] font-[500] text-text-secondary"
+                              className="mb-[7px] mt-[15px] block text-[12px] font-[500] text-white/75"
                               htmlFor="auth-confirm"
                             >
                               {t("login.label_confirm_password")}
@@ -398,6 +404,7 @@ export default function LoginPage() {
                               type={showConfirmPassword ? "text" : "password"}
                               autoComplete="new-password"
                               placeholder={t("login.placeholder_confirm")}
+                              className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
                               value={confirmPassword}
                                     hasError={Boolean(error)}
                               aria-invalid={Boolean(error)}
@@ -416,7 +423,7 @@ export default function LoginPage() {
                                       : t("login.show_password")
                                   }
                                   onClick={() => setShowConfirmPassword((v) => !v)}
-                                  className="flex h-7 w-7 items-center justify-center rounded-sm text-text-tertiary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-secondary cursor-pointer"
+                                  className="flex h-7 w-7 items-center justify-center rounded-sm text-white/45 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50 cursor-pointer"
                                 >
                                   {showConfirmPassword ? (
                                     <EyeCloseLine className="h-4 w-4" />
@@ -443,7 +450,7 @@ export default function LoginPage() {
                       className="overflow-hidden flex flex-col"
                     >
                       <label
-                        className="mb-[7px] block text-[12px] font-[500] text-text-secondary"
+                        className="mb-[7px] block text-[12px] font-[500] text-white/75"
                         htmlFor="auth-username"
                       >
                         {t("login.label_username")}
@@ -456,9 +463,10 @@ export default function LoginPage() {
                         spellCheck={false}
                         autoComplete="username"
                         placeholder={t("login.placeholder_username")}
+                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
                         value={username}
                         icon={
-                          <span className="text-[14px] font-medium text-text-tertiary select-none">
+                          <span className="text-[14px] font-medium text-white/45 select-none">
                             @
                           </span>
                         }
@@ -475,13 +483,13 @@ export default function LoginPage() {
                       />
                       <span
                         id="auth-username-hint"
-                        className="mt-1 text-[11px] text-text-tertiary"
+                        className="mt-1 text-[11px] text-white/45"
                       >
                         {t("login.username_hint")}
                       </span>
 
                       <label
-                        className="mb-[7px] mt-[14px] block text-[12px] font-[500] text-text-secondary"
+                        className="mb-[7px] mt-[14px] block text-[12px] font-[500] text-white/75"
                         htmlFor="auth-display-name"
                       >
                         {t("login.label_display_name")}
@@ -491,6 +499,7 @@ export default function LoginPage() {
                         type="text"
                         autoComplete="name"
                         placeholder={t("login.placeholder_display_name")}
+                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
                         value={displayName}
                         hasError={Boolean(error)}
                         aria-invalid={Boolean(error)}
@@ -540,7 +549,7 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="mt-[2px] w-full"
+                        className="mt-[2px] !h-[44px] w-full !rounded-[10px] !bg-[#d9d9dd] !text-[#111111] hover:!bg-[#e4e4e7]"
                       >
                         {submitting ? (
                           <>
@@ -567,7 +576,7 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="mt-[2px] w-full"
+                        className="mt-[2px] !h-[44px] w-full !rounded-[10px] !bg-[#d9d9dd] !text-[#111111] hover:!bg-[#e4e4e7]"
                       >
                         {t("login.btn_continue")}
                       </Button>
@@ -593,7 +602,7 @@ export default function LoginPage() {
                             setError("");
                             setRegisterStep(1);
                           }}
-                          className="w-[110px] shrink-0"
+                          className="w-[110px] shrink-0 !bg-[#29292b] !text-white hover:!bg-[#333335]"
                         >
                           <ArrowLeftLine className="h-4 w-4" />
                           <span className="relative -left-[1.5px] top-[1px]">{t("login.btn_back")}</span>
@@ -601,7 +610,7 @@ export default function LoginPage() {
                         <Button
                           type="submit"
                           disabled={submitting}
-                          className="flex-1"
+                          className="flex-1 !h-[44px] !bg-[#d9d9dd] !text-[#111111] hover:!bg-[#e4e4e7]"
                         >
                           {submitting ? (
                             <>
@@ -617,6 +626,9 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
               </form>
+              <p className="m-0 mt-[22px] text-center text-[11px] leading-[1.5] text-white/45">
+                {t("login.legal")} {t("login.legal_tos")} {t("login.legal_and")} {t("login.legal_pp")}
+              </p>
             </div>
           </div>
 
