@@ -81,15 +81,6 @@ async function preferClient<T>(label: string, client: () => Promise<T>, server: 
   }
 }
 
-function needsBrowserCatalogFallback(): boolean {
-  if (typeof window === "undefined" || window.location.protocol !== "http:" || window.isSecureContext) return false;
-  const runtime = window as Window & {
-    linerElectron?: unknown;
-    Capacitor?: { isNativePlatform?: () => boolean };
-  };
-  return !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.();
-}
-
 const SNAPSHOT_TIMEOUT_MS = 4000;
 
 async function resolveSnapshot(id: string): Promise<Track | undefined> {
@@ -123,9 +114,7 @@ export const clientCatalog = {
   async search(query: string, type: SearchType, server: () => Promise<SearchResponse>): Promise<SearchResponse> {
     if (isSoundCloudUrl(query)) return { items: await resolveSoundCloudUrl(query, type).catch(() => []) };
     const [main] = await Promise.all([
-      needsBrowserCatalogFallback()
-        ? server().catch(() => ({ items: [] }))
-        : preferClient("search", async () => ({ items: await innertubeCatalog.search(query, type) }), server),
+      preferClient("search", async () => ({ items: await innertubeCatalog.search(query, type) }), server),
     ]);
     return { items: await withAudius(main.items, query, type) };
   },

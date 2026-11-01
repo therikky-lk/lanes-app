@@ -35,15 +35,6 @@ function mergeCandidates(left: Track[], right: Track[]): Track[] {
   return [...new Map([...left, ...right].map((track) => [track.id, track] as const)).values()];
 }
 
-function needsBrowserCatalogFallback(): boolean {
-  if (typeof window === "undefined" || window.location.protocol !== "http:" || window.isSecureContext) return false;
-  const runtime = window as Window & {
-    linerElectron?: unknown;
-    Capacitor?: { isNativePlatform?: () => boolean };
-  };
-  return !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.();
-}
-
 export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSignal): Promise<TrackMatchOutcome> {
   let searchFailed = false;
   const search = async (query: string, filter: SearchFilter) => {
@@ -60,11 +51,7 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
   };
 
   const meta = cleanSoundCloudMetadata(source.title, source.artists[0]);
-  // Hyprr serves the web app over plain HTTP. YouTube Music rejects browser
-  // preflight requests from that origin, so avoid firing requests that cannot
-  // succeed and match against the browser-accessible Audius catalog instead.
-  const browserFallback = needsBrowserCatalogFallback();
-  let candidates = browserFallback ? [] : await search(meta.searchQuery, "track");
+  let candidates = await search(meta.searchQuery, "track");
   let decision = candidates.length > 0 ? evaluateImportedTrack(source, candidates) : undefined;
 
   const attempt = async (query: string, filter: SearchFilter) => {
@@ -78,8 +65,8 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
     }
   };
 
-  if (!browserFallback && (!isMatch(decision) || decision.score < MATCH_CONFIDENCE_FLOOR)) await attempt(meta.searchQuery, "all");
-  if (!browserFallback && !isMatch(decision) && meta.title && meta.title !== meta.searchQuery) await attempt(meta.title, "track");
+  if (!isMatch(decision) || decision.score < MATCH_CONFIDENCE_FLOOR) await attempt(meta.searchQuery, "all");
+  if (!isMatch(decision) && meta.title && meta.title !== meta.searchQuery) await attempt(meta.title, "track");
 
   if (!isMatch(decision)) {
     const audius = await audiusCatalog.search(meta.searchQuery, 20, signal).catch((error) => {
