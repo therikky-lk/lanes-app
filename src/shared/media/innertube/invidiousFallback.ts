@@ -1,6 +1,5 @@
 import type { Track } from "@/shared/contracts";
 import { videoThumbnailCover } from "./innertubeThumbnail";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { isBrowserRuntime } from "@/shared/platform/browser";
 import type { ResolvedAudioStream } from "./innertubeAudioFormats";
 
@@ -129,17 +128,11 @@ export async function resolveInvidiousAudioStream(
   streamUrl.searchParams.set("local", "true");
   let playbackUrl = streamUrl.toString();
   if (isBrowserRuntime()) {
-    const response = await fetch(`${getApiBaseUrl()}/v1/public/youtube/stream/${videoId}?itag=${selected.itag}`, {
-      credentials: "omit",
-      signal: requestSignal(signal, 15_000),
-    });
-    if (!response.ok) throw new Error(`Audio redirect lookup returned HTTP ${response.status}.`);
-    const resolved = await response.json() as { url?: string };
-    const target = new URL(resolved.url ?? "");
-    if (target.protocol !== "https:" || !target.hostname.endsWith(".chocolatemoo53.com") || target.username || target.password) {
-      throw new Error("Audio proxy returned an invalid URL.");
-    }
-    playbackUrl = target.toString();
+    // The public instance's first redirect has no CORS headers. Its companion
+    // serves the same audio with CORS and does not require the RF API's egress.
+    const companion = new URL("https://yt-comp5.chocolatemoo53.com/companion/latest_version");
+    companion.search = streamUrl.search;
+    playbackUrl = companion.toString();
   }
   const mimeType = selected.type.split(";")[0]?.trim() || "audio/webm";
   const opus = /opus|webm/i.test(selected.type);
