@@ -1,5 +1,6 @@
 import type { ImportedTrack, ImportReviewReason, SearchResult, Track } from "@/shared/contracts";
 import { searchRaw } from "@/shared/media/innertube";
+import { audiusCatalog } from "@/shared/media/audius";
 import { soundcloudCatalog } from "@/shared/media/soundcloud/soundcloudCatalog";
 import { cleanSoundCloudMetadata } from "./artistTitle";
 import { evaluateImportedTrack, type MatchDecision } from "./evaluate";
@@ -34,6 +35,15 @@ function mergeCandidates(left: Track[], right: Track[]): Track[] {
   return [...new Map([...left, ...right].map((track) => [track.id, track] as const)).values()];
 }
 
+function needsBrowserCatalogFallback(): boolean {
+  if (typeof window === "undefined" || window.location.protocol !== "http:" || window.isSecureContext) return false;
+  const runtime = window as Window & {
+    linerElectron?: unknown;
+    Capacitor?: { isNativePlatform?: () => boolean };
+  };
+  return !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.();
+}
+
 export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSignal): Promise<TrackMatchOutcome> {
   let searchFailed = false;
   const search = async (query: string, filter: SearchFilter) => {
@@ -50,7 +60,11 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
   };
 
   const meta = cleanSoundCloudMetadata(source.title, source.artists[0]);
-  let candidates = await search(meta.searchQuery, "track");
+  // Hyprr serves the web app over plain HTTP. YouTube Music rejects browser
+  // preflight requests from that origin, so avoid firing requests that cannot
+  // succeed and match against the browser-accessible Audius catalog instead.
+  const browserFallback = needsBrowserCatalogFallback();
+  let candidates = browserFallback ? [] : await search(meta.searchQuery, "track");
   let decision = candidates.length > 0 ? evaluateImportedTrack(source, candidates) : undefined;
 
   const attempt = async (query: string, filter: SearchFilter) => {
@@ -64,8 +78,24 @@ export async function findCatalogMatch(source: ImportedTrack, signal?: AbortSign
     }
   };
 
-  if (!isMatch(decision) || decision.score < MATCH_CONFIDENCE_FLOOR) await attempt(meta.searchQuery, "all");
-  if (!isMatch(decision) && meta.title && meta.title !== meta.searchQuery) await attempt(meta.title, "track");
+  if (!browserFallback && (!isMatch(decision) || decision.score < MATCH_CONFIDENCE_FLOOR)) await attempt(meta.searchQuery, "all");
+  if (!browserFallback && !isMatch(decision) && meta.title && meta.title !== meta.searchQuery) await attempt(meta.title, "track");
+
+  if (!isMatch(decision)) {
+    const audius = await audiusCatalog.search(meta.searchQuery, 20, signal).catch((error) => {
+      if (signal?.aborted) throw error;
+      searchFailed = true;
+      return [] as Track[];
+    });
+    if (audius.length > 0) {
+      const combined = mergeCandidates(candidates, audius);
+      const next = evaluateImportedTrack(source, combined);
+      if (isMatch(next) || !decision) {
+        candidates = combined;
+        decision = next;
+      }
+    }
+  }
   // Do not fall back to the video tab: clips and official videos can have the
   // same title as the song but are a different audio source.
   if (!isMatch(decision)) {
