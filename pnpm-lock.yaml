@@ -51,6 +51,9 @@ importers:
       gsap:
         specifier: ^3.15.0
         version: 3.15.0
+      hash-wasm:
+        specifier: 4.12.0
+        version: 4.12.0
       lottie-web:
         specifier: ^5.13.0
         version: 5.13.0
@@ -1436,6 +1439,9 @@ packages:
 
   gsap@3.15.0:
     resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
+
+  hash-wasm@4.12.0:
+    resolution: {integrity: sha512-+/2B2rYLb48I/evdOIhP+K/DD2ca2fgBjp6O+GBEnCDk2e4rpeXIK8GvIyRPjTezgmWn9gmKwkQjjx6BtqDHVQ==}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -4179,6 +4185,8 @@ snapshots:
   graceful-fs@4.2.11: {}
 
   gsap@3.15.0: {}
+
+  hash-wasm@4.12.0: {}
 
   has-flag@4.0.0: {}
 

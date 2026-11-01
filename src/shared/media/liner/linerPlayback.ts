@@ -1,5 +1,7 @@
 import { getAuthSession, getValidAccessToken } from "@/shared/api/auth-session";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { signApiRequest } from "@/shared/api/requestSigner";
+import { syncServerTime } from "@/shared/api/serverTime";
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
 
@@ -28,11 +30,15 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
   try {
     const token = await getValidAccessToken();
     if (!token) return null;
-    const res = await fetch(`${getApiBaseUrl()}/v1/tracks/${encodeURIComponent(videoId)}/playback`, {
+    const path = `/v1/tracks/${encodeURIComponent(videoId)}/playback`;
+    const signedHeaders = await signApiRequest("POST", path);
+    const res = await fetch(`${getApiBaseUrl()}${path}`, {
       method: "POST",
-      headers: { authorization: `Bearer ${token}` },
+      headers: { authorization: `Bearer ${token}`, ...signedHeaders },
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
+    const dateHeader = res.headers.get("date");
+    if (dateHeader) syncServerTime(dateHeader);
     if (res.ok) return (await res.json()) as LinerAudioStream;
 
     const body = (await res.json().catch(() => ({}))) as { code?: string; retryAfterSeconds?: number };

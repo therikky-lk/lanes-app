@@ -1,6 +1,8 @@
 import { getAuthSession, getValidAccessToken } from "../api/auth-session";
 import { getApiBaseUrl } from "../api/baseUrl";
 import { APP_VERSION } from "../config/version";
+import { signApiRequest } from "../api/requestSigner";
+import { syncServerTime } from "../api/serverTime";
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const MIN_INTERVAL_MS = 15_000;
@@ -77,19 +79,28 @@ export class PresenceClient {
       const accessToken = await getValidAccessToken();
       if (!accessToken || !this.isRunning) return;
 
-      const res = await fetch(`${getApiBaseUrl()}/v1/presence/heartbeat`, {
+      const path = "/v1/presence/heartbeat";
+      const body = JSON.stringify({
+        username: session.user?.username,
+        email: session.user?.email,
+        displayName: session.user?.displayName,
+        clientVersion: APP_VERSION,
+        platform: getPlatform(),
+      });
+      const signedHeaders = await signApiRequest("POST", path, body);
+      const res = await fetch(`${getApiBaseUrl()}${path}`, {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({
-          username: session.user?.username,
-          email: session.user?.email,
-          displayName: session.user?.displayName,
-          clientVersion: APP_VERSION,
-          platform: getPlatform(),
-        }),
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${accessToken}`,
+          ...signedHeaders,
+        },
+        body,
         keepalive: true,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
+      const dateHeader = res.headers.get("date");
+      if (dateHeader) syncServerTime(dateHeader);
 
       const suggested = Number(res.headers.get("x-liner-heartbeat-interval")) * 1000;
       if (Number.isFinite(suggested) && suggested >= MIN_INTERVAL_MS && suggested <= MAX_INTERVAL_MS && suggested !== this.intervalMs) {
