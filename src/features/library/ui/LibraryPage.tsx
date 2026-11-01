@@ -544,7 +544,7 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            className="absolute inset-x-0 top-0 z-20 border-b border-white/[0.06] bg-bg-elevated/75 backdrop-blur-2xl backdrop-saturate-150"
+            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary/95 backdrop-blur-xl"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
@@ -557,9 +557,9 @@ export default function LibraryPage() {
                 type="button"
                 aria-label={t("library.create_playlist")}
                 onClick={() => setMobileAdd((v) => !v)}
-                className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+                className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 ${hasCustomBg ? "apple-glass-pill text-white" : "bg-bg-elevated text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"}`}
               >
-                <AddLine size={22} />
+                <AddLine size={18} />
               </button>
               <PhoneMenu open={mobileAdd} anchorRef={addButtonRef} onClose={() => setMobileAdd(false)}>
                 <PhoneMenuItem
@@ -583,9 +583,9 @@ export default function LibraryPage() {
                 type="button"
                 aria-label={t("common.search") || "Search"}
                 onClick={() => setMobileSearch((v) => !v)}
-                className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 cursor-pointer ${mobileSearch ? "bg-border-alpha-14 text-text-primary" : "bg-transparent text-text-primary"}`}
+                className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 ${mobileSearch ? (hasCustomBg ? "apple-glass-prominent text-white" : "bg-bg-panel text-text-primary") : hasCustomBg ? "apple-glass-pill text-white/80 hover:text-white" : "bg-bg-elevated text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"}`}
               >
-                <Search2Line size={21} />
+                <Search2Line size={18} />
               </button>
               <div className="relative">
                 <button
@@ -593,9 +593,9 @@ export default function LibraryPage() {
                   ref={menuButtonRef}
                   aria-label={t("common.more") || "More"}
                   onClick={() => setMobileMenu((v) => !v)}
-                  className="inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
+                  className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 ${hasCustomBg ? "apple-glass-pill text-white/80 hover:text-white" : "bg-bg-elevated text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"}`}
                 >
-                  <More2Fill size={22} />
+                  <More2Fill size={18} />
                 </button>
                 <PhoneMenu open={mobileMenu} anchorRef={menuButtonRef} onClose={() => setMobileMenu(false)}>
                   {(["playlists", "albums", "artists"] as const).map((tab) => (
@@ -635,7 +635,7 @@ export default function LibraryPage() {
                     setActiveTabState({ query: e.target.value, visibleCount: PAGE_SIZE, loadingMore: false })
                   }
                   placeholder={t("common.search") || "Search"}
-                  className="h-[38px] w-full rounded-[10px] border-0 bg-border-alpha-14 px-[12px] text-[15px] text-text-primary outline-none placeholder:text-text-tertiary"
+                  className="h-[40px] w-full rounded-[12px] border border-border-primary/40 bg-bg-elevated px-[14px] text-[14px] text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-border-primary/70"
                 />
               </div>
             )}

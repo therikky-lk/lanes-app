@@ -69,7 +69,7 @@ export function LyricsProviderIsland() {
       ref={containerRef}
       className="relative inline-flex items-center pointer-events-auto select-none"
     >
-      <div className="inline-flex items-center h-[32px] min-h-[32px] max-h-[32px] box-border rounded-lg bg-black/50 backdrop-blur-xl px-[3px] gap-[2px] text-white">
+      <div className="inline-flex h-[32px] min-h-[32px] max-h-[32px] box-border items-center gap-[2px] rounded-[10px] border border-white/[0.08] bg-black/55 px-[3px] text-white shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
         <button
           type="button"
           onClick={() => {
@@ -77,9 +77,9 @@ export function LyricsProviderIsland() {
               setDropdownOpen((v) => !v);
             }
           }}
-          className={`flex items-center gap-[6px] h-[26px] min-h-[26px] max-h-[26px] px-[8px] rounded-md text-[12px] font-[500] text-white transition-all border-none bg-transparent ${
+          className={`flex h-[26px] min-h-[26px] max-h-[26px] items-center gap-[6px] rounded-[7px] border-none bg-transparent px-[8px] text-[12px] font-[500] text-white transition-colors duration-150 ${
             hasMultiple
-              ? "hover:bg-white/10 cursor-pointer"
+              ? "hover:bg-white/[0.12] active:bg-white/[0.16] cursor-pointer"
               : "cursor-default"
           }`}
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
@@ -111,9 +111,9 @@ export function LyricsProviderIsland() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.12, ease: "easeOut" }}
-            className="absolute top-full left-0 mt-[6px] min-w-[140px] rounded-lg border border-white/10 bg-black/80 backdrop-blur-2xl p-[4px] z-50 flex flex-col gap-[2px] text-white"
+            className="absolute top-full left-0 z-50 mt-[6px] flex min-w-[152px] flex-col gap-[4px] rounded-[12px] border border-white/[0.08] bg-black/40 p-[6px] text-white shadow-[0_12px_32px_rgba(0,0,0,0.38)] backdrop-blur-2xl"
           >
-            {availableProviders.map((option, idx) => {
+            {availableProviders.map((option) => {
               const isActive = option.provider === currentProvider.provider;
               return (
                 <button
@@ -123,10 +123,10 @@ export function LyricsProviderIsland() {
                     selectProvider(option.provider);
                     setDropdownOpen(false);
                   }}
-                  className={`flex items-center justify-between gap-[8px] w-full px-[8px] py-[6px] rounded-md text-[12px] transition-colors border-none cursor-pointer text-left ${
+                  className={`flex min-h-[34px] w-full items-center justify-between gap-[8px] rounded-[8px] border-none px-[10px] py-[6px] text-left text-[12px] transition-colors duration-150 cursor-pointer ${
                     isActive
-                      ? "bg-white/15 text-white font-[500]"
-                      : "bg-transparent text-white/70 hover:bg-white/10 hover:text-white font-[400]"
+                      ? "bg-white/[0.12] text-white font-[500]"
+                      : "bg-transparent text-white/70 hover:bg-white/[0.08] hover:text-white font-[400]"
                   }`}
                   style={{ fontFamily: "var(--font-inter), sans-serif" }}
                 >
@@ -136,11 +136,7 @@ export function LyricsProviderIsland() {
                       size={14}
                       className="text-white shrink-0"
                     />
-                  ) : (
-                    <span className="text-[10px] font-mono text-white/40 shrink-0">
-                      {idx + 1}
-                    </span>
-                  )}
+                  ) : null}
                 </button>
               );
             })}

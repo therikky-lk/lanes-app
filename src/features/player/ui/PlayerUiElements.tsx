@@ -101,7 +101,9 @@ export function PlayerUiElements({
   // double tap likes the track (with a burst)
   const [heartShown, setHeartShown] = useState(false);
   const [burst, setBurst] = useState(0);
+  const [coverSwipeDirection, setCoverSwipeDirection] = useState(1);
   const lastTapRef = useRef(0);
+  const coverPointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showHeart = useCallback(() => {
     setHeartShown(true);
@@ -111,9 +113,28 @@ export function PlayerUiElements({
   useEffect(() => () => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   }, []);
+  const onCoverPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!isMobile || (e.target as HTMLElement).closest("button")) return;
+    coverPointerStartRef.current = { x: e.clientX, y: e.clientY };
+  }, [isMobile]);
+
   const onCoverTap = useCallback(
     (e: React.PointerEvent) => {
       if (!isMobile || (e.target as HTMLElement).closest("button")) return;
+      const start = coverPointerStartRef.current;
+      coverPointerStartRef.current = null;
+      if (start) {
+        const deltaX = e.clientX - start.x;
+        const deltaY = e.clientY - start.y;
+        if (Math.abs(deltaX) >= 56 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+          lastTapRef.current = 0;
+          setCoverSwipeDirection(deltaX < 0 ? 1 : -1);
+          if (deltaX < 0) void playerEngine.skipNext();
+          else void playerEngine.skipPrevious();
+          return;
+        }
+        if (Math.abs(deltaX) > 12 || Math.abs(deltaY) > 12) return;
+      }
       const now = Date.now();
       if (now - lastTapRef.current < 320) {
         lastTapRef.current = 0;
@@ -129,7 +150,7 @@ export function PlayerUiElements({
       showHeart();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [track, isLiked, likeMutation, showHeart],
+    [track, isLiked, likeMutation, showHeart, isMobile],
   );
 
   const { t } = useTranslation();
@@ -140,19 +161,26 @@ export function PlayerUiElements({
     <>
       {/* Artwork: grows with the window */}
       <div
-        style={{ width: S, height: S }}
+        style={{ width: S, height: S, touchAction: "pan-y" }}
         className={`group/cover relative shrink-0 overflow-hidden rounded-2xl bg-black/20 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${
           coverUrl && !isCoverLoaded ? "animate-pulse" : ""
         }`}
+        onPointerDown={onCoverPointerDown}
         onPointerUp={onCoverTap}
       >
-        <AnimatePresence>
+        <AnimatePresence initial={false} mode="wait" custom={coverSwipeDirection}>
           <motion.div
             key={track?.id || coverUrl || "empty"}
-            initial={isMobile ? { opacity: 0 } : { opacity: 0 }}
-            animate={isMobile ? { opacity: 1 } : { opacity: 1 }}
-            exit={isMobile ? { opacity: 0 } : { opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            custom={coverSwipeDirection}
+            variants={{
+              enter: (direction: number) => ({ opacity: 0, x: direction * 48 }),
+              center: { opacity: 1, x: 0 },
+              exit: (direction: number) => ({ opacity: 0, x: direction * -48 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
           >
             {coverUrl ? (

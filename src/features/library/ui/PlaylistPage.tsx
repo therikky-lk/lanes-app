@@ -630,11 +630,12 @@ function LibraryPlaylistContent() {
               }
             >
               <div
-                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[4px]"}
+                className={isMobile ? "shrink-0 w-full pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[4px]"}
                 data-no-window-drag
               >
                 <EntitySidebar
                   layout="hero"
+                  stretchMobile
                 coverClassName={
                   hasCustomBg && (viewData.coverUrls?.length ?? (viewData.coverUrl ? 1 : 0)) === 0
                     ? "apple-glass-static pointer-events-none"
@@ -887,10 +888,10 @@ function LibraryPlaylistContent() {
                               key="playlist-search-field"
                               layout
                               initial={{ opacity: 0, width: 0, scale: 0.96 }}
-                              animate={{ opacity: 1, width: isMobile ? 120 : 180, scale: 1 }}
+                              animate={{ opacity: 1, width: 180, scale: 1 }}
                               exit={{ opacity: 0, width: 0, scale: 0.96 }}
                               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                              className="shrink-0 overflow-hidden"
+                              className={isMobile ? "min-w-0 flex-1 overflow-hidden" : "shrink-0 overflow-hidden"}
                             >
                               <TrackSearchField
                                 search={search}
@@ -1027,10 +1028,10 @@ function LibraryPlaylistContent() {
                 }}
                 className={
                   isMobile
-                    ? `min-w-0 w-full flex-1 mt-[24px] rounded-[14px] px-[8px] pt-[8px] pb-[24px] ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
+                    ? `min-w-0 w-full flex-1 rounded-[14px] px-[8px] pt-[8px] pb-[24px] ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                     : `min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] px-[8px] pt-[8px] pb-[24px] overscroll-contain ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                 }
-                style={{ willChange: "scroll-position" }}
+                style={{ willChange: "scroll-position", marginTop: isMobile ? undefined : 8 }}
               >
               <ScrollBlurEdge height={60} />
               {isLikesMode && allTracks.length > 0 && (
