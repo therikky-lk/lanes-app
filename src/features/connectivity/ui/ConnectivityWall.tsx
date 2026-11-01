@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
-import { WifiOffLine, CopyLine, DownloadLine, CloseLine } from "@mingcute/react";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { WifiOffLine, CopyLine, DownloadLine, CloseLine, DownLine } from "@mingcute/react";
 import Button from "@/shared/ui/Button";
 import { useTranslation } from "@/languages";
 import { useToast } from "@/shared/ui";
+import { dismissToast } from "@/shared/ui/Toast";
 import { useConnectivityStore } from "../store/connectivityStore";
 import type { DiagCheck } from "../lib/diagnostics";
 import { DIAG_ENDPOINTS } from "../lib/diagnostics";
@@ -33,6 +35,12 @@ export default function ConnectivityWall() {
   const retry = useConnectivityStore((s) => s.retry);
   const reset = useConnectivityStore((s) => s.reset);
   const runDiagnostics = useConnectivityStore((s) => s.runDiagnostics);
+
+  useEffect(() => {
+    if (!visible) return;
+    dismissToast("network-timeout-toast");
+    dismissToast("network-error-toast");
+  }, [visible]);
 
   const dump = useMemo(
     () =>
@@ -70,13 +78,13 @@ export default function ConnectivityWall() {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-bg-primary/95 p-[24px] backdrop-blur-md">
-      <div className="relative flex max-h-full w-full max-w-[520px] flex-col overflow-hidden rounded-lg border border-bg-elevated bg-bg-panel p-[28px]">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/35 p-[16px] backdrop-blur-2xl sm:p-[24px]">
+      <div className="relative flex max-h-[calc(100dvh-32px)] w-full max-w-[520px] flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-bg-panel/70 p-[20px] shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl sm:max-h-[calc(100dvh-48px)] sm:p-[28px]">
         <button
           type="button"
           onClick={reset}
-          className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-md text-text-tertiary hover:bg-bg-elevated hover:text-text-primary transition-colors border-0"
-          title={t("common.close")}
+          aria-label={t("common.close") || "Close"}
+          className="absolute right-4 top-4 flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg bg-transparent text-text-tertiary hover:text-text-primary transition-colors border-0"
         >
           <CloseLine size={18} />
         </button>
@@ -120,23 +128,45 @@ export default function ConnectivityWall() {
 
           <button
             type="button"
+            aria-expanded={showChecks}
+            aria-controls="connectivity-check-details"
             onClick={() => {
               setShowChecks((prev) => !prev);
               if (checks.length === 0) void runDiagnostics();
             }}
-            className="mt-[16px] w-full rounded-md bg-bg-elevated px-[12px] py-[10px] text-left text-[13px] font-[500] text-text-primary transition-colors hover:bg-bg-panel cursor-pointer border-0"
+            className="mt-[16px] flex w-full items-center gap-[10px] rounded-lg bg-bg-elevated px-[12px] py-[10px] text-left text-[13px] font-[500] text-text-primary transition-colors hover:bg-bg-panel cursor-pointer border-0"
             style={{ fontFamily: "var(--font-inter), sans-serif" }}
           >
-            {checks.length > 0
-              ? t("connectivity.check_ok_count", { ok: okCount, total: checks.length })
-              : t("connectivity.checks_title")}
-            {lastRunAt
-              ? ` · ${new Date(lastRunAt).toLocaleTimeString()}`
-              : ` · ${t("connectivity.never_run")}`}
+            <span className="min-w-0 flex-1">
+              {running
+                ? t("connectivity.retrying")
+                : checks.length > 0
+                  ? t("connectivity.check_ok_count", { ok: okCount, total: checks.length })
+                  : t("connectivity.checks_title")}
+              {!running && lastRunAt
+                ? ` · ${new Date(lastRunAt).toLocaleTimeString()}`
+                : !running
+                  ? ` · ${t("connectivity.never_run")}`
+                  : ""}
+            </span>
+            <DownLine
+              size={16}
+              className={`shrink-0 text-text-tertiary transition-transform duration-200 ${showChecks ? "rotate-180" : ""}`}
+            />
           </button>
 
-          {showChecks ? (
-            <div className="mt-[8px] flex flex-col gap-[4px] rounded-md bg-bg-elevated/60 p-[10px]">
+          <AnimatePresence initial={false}>
+            {showChecks ? (
+              <motion.div
+                id="connectivity-check-details"
+                key="connectivity-check-details"
+                initial={{ height: 0, opacity: 0, y: -4 }}
+                animate={{ height: "auto", opacity: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, y: -4 }}
+                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                className="mt-[8px] overflow-hidden"
+              >
+                <div className="flex flex-col gap-[4px] rounded-lg bg-bg-elevated/60 p-[10px]">
               {running && checks.length === 0 ? (
                 <p
                   className="m-0 px-[2px] py-[4px] text-[12px] text-text-tertiary"
@@ -176,8 +206,10 @@ export default function ConnectivityWall() {
                   </span>
                 </div>
               ))}
-            </div>
-          ) : null}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
 
         <div className="mt-[18px] flex flex-wrap items-center gap-[8px]">

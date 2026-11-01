@@ -1,5 +1,23 @@
 import type { InnertubeProfile } from "./innertubeClient";
 
+const TV_USER_AGENT =
+  "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.30.1034943-gold (unlike Gecko), Unknown_TV_Unknown_0/Unknown (Unknown, Unknown)";
+
+export const TV_PROFILE: InnertubeProfile = {
+  clientName: "TVHTML5",
+  clientVersion: "7.20260707.07.00",
+  clientIdHeader: "7",
+  origin: "https://www.youtube.com",
+  userAgent: TV_USER_AGENT,
+  includeUserAgentInContext: true,
+  requiresJsPlayer: true,
+};
+
+export const TV_ACCOUNT_PROFILE: InnertubeProfile = {
+  ...TV_PROFILE,
+  acceptsOAuth: true,
+};
+
 export const VISIONOS_PROFILE: InnertubeProfile = {
   clientName: "VISIONOS",
   clientVersion: "1.04",

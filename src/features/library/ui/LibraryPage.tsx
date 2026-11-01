@@ -25,6 +25,7 @@ import { useImportStore } from "../store/importStore";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import ImportingPlaylistCard from "./ImportingPlaylistCard";
 import LikedCover from "./LikedCover";
+import { useYoutubeLibraryItems } from "@/features/youtube-auth";
 
 const PAGE_SIZE = 24;
 
@@ -216,6 +217,7 @@ export default function LibraryPage() {
   const { data: albumItems = [] } = useExternalItems("album");
   const { data: artistItems = [] } = useExternalItems("artist");
   const { data: externalPlaylistItems = [] } = useExternalItems("playlist");
+  const youtubePlaylistItems = useYoutubeLibraryItems();
   const { tracks: localTracks, isLoading: localLoading } = useLocalTracks();
   const { data: likedCount, isLoading: likedCountLoading } =
     useLikedTrackCount();
@@ -253,7 +255,7 @@ export default function LibraryPage() {
   const filteredItems = useMemo(() => {
     let source: LibraryItemViewModel[];
     if (activeTab === "playlists") {
-      source = [...playlistItems, ...externalPlaylistItems];
+      source = [...playlistItems, ...externalPlaylistItems, ...youtubePlaylistItems];
     } else if (activeTab === "albums") {
       source = albumItems;
     } else if (activeTab === "artists") {
@@ -276,6 +278,7 @@ export default function LibraryPage() {
     debouncedQuery,
     playlistItems,
     externalPlaylistItems,
+    youtubePlaylistItems,
     albumItems,
     artistItems,
   ]);

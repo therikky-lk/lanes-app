@@ -489,6 +489,9 @@
     "reset_defaults": "Restablecer valores predeterminados",
     "save_preferences": "Guardar preferencias",
     "groups": {
+      "player": "Reproductor",
+      "interface": "Interfaz",
+      "integrations": "Integraciones",
       "preferences": "Preferencias",
       "application": "Aplicación",
       "help": "Ayuda"
@@ -509,7 +512,8 @@
       "overlay": "Superposición",
       "discord": "Discord RPC",
       "privacy": "Privacidad",
-      "shortcuts": "Atajos"
+      "shortcuts": "Atajos",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Comportamiento de la cola, acciones de clic y salida de audio."
@@ -555,11 +559,11 @@
       "status_display": {
         "title": "Línea de estado",
         "description": "Elige qué se muestra en la cabecera 'Escuchando a...' de Discord.",
-        "artist": "Artista (Por defecto)",
+        "artist": "Artista",
         "song": "Canción",
         "artist_song": "Artista - Canción",
         "song_artist": "Canción - Artista",
-        "app": "Lane (Nombre de app)"
+        "app": "Lane (Predeterminado)"
       },
       "show_timeline": {
         "title": "Línea de tiempo de reproducción",
@@ -934,7 +938,8 @@
       "scope_main_app": "App principal",
       "scope_overlay": "Superposición",
       "reset_section": "Restablecer sección"
-    }
+    },
+    "youtube": {}
   },
   "toast": {
     "playlist_created": "Lista de reproducción creada",

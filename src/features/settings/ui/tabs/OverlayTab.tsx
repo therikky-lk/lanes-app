@@ -189,8 +189,8 @@ export function OverlayTab({ searchQuery }: { searchQuery?: string }) {
       <div
         className={
           enabled
-            ? "flex flex-col divide-y divide-solid divide-border-primary transition-all duration-200"
-            : "flex flex-col divide-y divide-solid divide-border-primary opacity-40 grayscale pointer-events-none select-none transition-all duration-200"
+            ? "flex flex-col gap-[8px] transition-all duration-200"
+            : "flex flex-col gap-[8px] opacity-40 grayscale pointer-events-none select-none transition-all duration-200"
         }
       >
         <SettingRow

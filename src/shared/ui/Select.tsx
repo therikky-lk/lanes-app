@@ -148,24 +148,21 @@ export function Select<T extends string = string>({
     const trigger = triggerRef.current.getBoundingClientRect();
     const menu = menuRef.current;
 
+    const availableWidth = Math.max(150, window.innerWidth - 24);
+    const menuWidth = Math.min(Math.max(trigger.width, 150), availableWidth);
+    const preferredLeft =
+      align === "bottom-right" ? trigger.right - menuWidth : trigger.left;
+    const left = Math.max(12, Math.min(preferredLeft, window.innerWidth - 12 - menuWidth));
+
     menu.style.top = `${trigger.bottom + 6}px`;
     menu.style.bottom = "";
-    if (align === "bottom-right") {
-      menu.style.right = `${window.innerWidth - trigger.right}px`;
-      menu.style.left = "";
-    } else {
-      menu.style.left = `${trigger.left}px`;
-      menu.style.right = "";
-    }
-    const computedMinWidth = Math.max(trigger.width, 150);
-    menu.style.minWidth = `${computedMinWidth}px`;
-    menu.style.width = "max-content";
-    menu.style.maxWidth = "calc(100vw - 32px)";
+    menu.style.left = `${left}px`;
+    menu.style.right = "";
+    menu.style.minWidth = `${menuWidth}px`;
+    menu.style.width = `${menuWidth}px`;
+    menu.style.maxWidth = `${availableWidth}px`;
 
-    menu.style.maxWidth = "calc(100vw - 24px)";
     const menuRect = menu.getBoundingClientRect();
-    // keep the whole menu on screen (phones: the trigger sits at the right edge)
-    const clampedLeft = Math.max(12, Math.min(trigger.left, window.innerWidth - 12 - menuRect.width));
     const top =
       menuRect.bottom > window.innerHeight
         ? trigger.top - menuRect.height - 6
@@ -173,17 +170,21 @@ export function Select<T extends string = string>({
 
     setMenuStyle({
       top,
-      minWidth: computedMinWidth,
-      width: "max-content",
-      maxWidth: "calc(100vw - 24px)",
-      ...(align === "bottom-right"
-        ? { right: Math.max(12, window.innerWidth - trigger.right) }
-        : { left: clampedLeft }),
+      minWidth: menuWidth,
+      width: menuWidth,
+      maxWidth: availableWidth,
+      left,
     });
   }, [open, align]);
 
   useEffect(() => {
     if (!open) return;
+    const preventBackgroundScroll = (event: WheelEvent | TouchEvent) => {
+      const target = event.target;
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      if (event.cancelable) event.preventDefault();
+    };
+    const scrollListenerOptions: AddEventListenerOptions = { capture: true, passive: false };
     const onMouseDown = (e: MouseEvent) => {
       if (
         menuRef.current?.contains(e.target as Node) ||
@@ -197,9 +198,13 @@ export function Select<T extends string = string>({
     };
     document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("wheel", preventBackgroundScroll, scrollListenerOptions);
+    document.addEventListener("touchmove", preventBackgroundScroll, scrollListenerOptions);
     return () => {
       document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("wheel", preventBackgroundScroll, scrollListenerOptions);
+      document.removeEventListener("touchmove", preventBackgroundScroll, scrollListenerOptions);
     };
   }, [open]);
 
@@ -213,7 +218,7 @@ export function Select<T extends string = string>({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-[36px] items-center justify-between gap-[8px] rounded-md border ${borderClass} ${bgClass} px-[12px] text-[13px] font-[400] text-text-primary transition-colors ${hoverClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary disabled:pointer-events-none disabled:opacity-50 cursor-pointer ${className}`.trim()}
+        className={`lane-select-trigger inline-flex h-[36px] items-center justify-between gap-[8px] rounded-[10px] border ${borderClass} ${bgClass} px-[12px] text-[13px] font-[400] text-text-primary transition-colors ${hoverClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary disabled:pointer-events-none disabled:opacity-50 cursor-pointer ${className}`.trim()}
         style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         <span className="inline-flex items-center gap-[7px] truncate min-w-0">
@@ -236,10 +241,10 @@ export function Select<T extends string = string>({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -4 }}
               transition={{ duration: 0.13, ease: "easeOut" }}
-              className="fixed z-[9999] overflow-hidden rounded-md border border-border-primary bg-bg-primary p-[6px]"
+              className="lane-select-menu fixed z-[9999] max-h-[min(360px,calc(100dvh-24px))] overflow-y-auto overscroll-contain rounded-[12px] border-0 bg-bg-elevated/70 p-[8px] shadow-[0_16px_44px_rgba(0,0,0,0.32)]"
               style={menuStyle}
             >
-              <div className="flex flex-col gap-[2px]">
+              <div className="flex flex-col gap-[4px]">
                 {options.map((option) => {
                   const isActive = option.value === value;
                   return (
@@ -252,7 +257,7 @@ export function Select<T extends string = string>({
                         onChange(option.value);
                         setOpen(false);
                       }}
-                      className={`flex w-full items-center justify-between gap-[8px] rounded-md px-[10px] py-[7px] text-[13px] transition-colors ${
+                      className={`lane-select-option flex w-full items-center justify-between gap-[8px] rounded-[8px] px-[12px] py-[10px] text-[13px] transition-colors ${
                         isActive
                           ? "bg-border-alpha-14 text-text-primary"
                           : "bg-transparent text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"

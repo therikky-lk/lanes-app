@@ -486,6 +486,9 @@
     "reset_defaults": "Ripristina predefiniti",
     "save_preferences": "Salva preferenze",
     "groups": {
+      "player": "Lettore",
+      "interface": "Interfaccia",
+      "integrations": "Integrazioni",
       "preferences": "Preferenze",
       "application": "Applicazione",
       "help": "Aiuto"
@@ -505,7 +508,8 @@
       "playback": "Riproduzione",
       "shortcuts": "Scorciatoie",
       "overlay": "Overlay",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Comportamento della coda, azioni al clic e uscita audio."
@@ -881,7 +885,8 @@
       "never_run": "I controlli non sono ancora stati eseguiti.",
       "last_run": "{ok}/{total} controlli ok · {time}",
       "open_folder": "Apri la posizione di salvataggio"
-    }
+    },
+    "youtube": {}
   },
   "toast": {
     "playlist_created": "Playlist creata",

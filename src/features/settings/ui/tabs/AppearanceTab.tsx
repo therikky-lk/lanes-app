@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { LayoutGroup, motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import {
   usePlayerStore,
@@ -117,12 +118,13 @@ function ThemeCard({
       aria-pressed={active}
       aria-disabled={disabled}
       title={disabled ? disabledReason : undefined}
-      className={`group flex flex-col gap-[6px] border-0 bg-transparent p-0 text-left ${
+      className={`lane-theme-card group relative isolate flex flex-col gap-[6px] border-0 bg-transparent p-0 text-left ${
         disabled ? "cursor-not-allowed opacity-40 select-none" : "cursor-pointer"
       }`}
     >
+      {active && <motion.span layoutId="settings-theme-active-pill" className="lane-theme-active-pill" transition={{ type: "spring", stiffness: 520, damping: 38 }} aria-hidden="true" />}
       <span
-        className={`relative block h-[76px] w-full overflow-hidden rounded-lg border transition-colors ${
+        className={`lane-theme-preview relative block h-[76px] w-full overflow-hidden rounded-lg border transition-colors ${
           disabled
             ? "border-border-primary"
             : active
@@ -157,7 +159,7 @@ function ThemeCard({
         ) : null}
       </span>
       <span
-        className={`text-[12.5px] leading-none ${
+        className={`lane-theme-label relative z-[1] text-[12.5px] leading-none ${
           disabled
             ? "text-text-tertiary"
             : active
@@ -226,6 +228,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
         searchQuery={searchQuery}
       >
         {mounted ? (
+          <LayoutGroup id="settings-theme-options">
           <div className="grid grid-cols-3 gap-[10px]">
             {(
               [
@@ -256,6 +259,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
               );
             })}
           </div>
+          </LayoutGroup>
         ) : null}
       </SettingBlock>
 

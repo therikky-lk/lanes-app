@@ -20,19 +20,26 @@ function fromApp(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
 }
 
 export function registerAuthSessionIpc(): AuthSessionStore {
+  const cipher = {
+    available: () => safeStorage.isEncryptionAvailable(),
+    encrypt: (plain: string) => safeStorage.encryptString(plain),
+    decrypt: (data: Buffer) => safeStorage.decryptString(data),
+  };
+  const deps = {
+    fetch: (url: string, init: RequestInit) => net.fetch(url, init),
+    syncClock: (dateHeader: string) => {
+      syncServerTime(dateHeader);
+    },
+  };
   const store = new AuthSessionStore(
     path.join(app.getPath("userData"), "auth", "session.json"),
-    {
-      available: () => safeStorage.isEncryptionAvailable(),
-      encrypt: (plain) => safeStorage.encryptString(plain),
-      decrypt: (data) => safeStorage.decryptString(data),
-    },
-    {
-      fetch: (url, init) => net.fetch(url, init),
-      syncClock: (dateHeader) => {
-        syncServerTime(dateHeader);
-      },
-    },
+    cipher,
+    deps,
+  );
+  const youtubeStore = new AuthSessionStore(
+    path.join(app.getPath("userData"), "auth", "youtube-session.json"),
+    cipher,
+    deps,
   );
 
   store.onChange((session, origin) => {
@@ -62,6 +69,14 @@ export function registerAuthSessionIpc(): AuthSessionStore {
       return store.refresh(apiBaseUrl, refreshToken, event.sender.id);
     },
   );
+
+  ipcMain.on("youtube-auth:get-session", (event) => {
+    event.returnValue = fromApp(event) ? youtubeStore.get() : null;
+  });
+  ipcMain.handle("youtube-auth:set-session", (event, next: unknown) => {
+    if (!fromApp(event)) return null;
+    return youtubeStore.set(next);
+  });
 
   return store;
 }

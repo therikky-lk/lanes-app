@@ -12,6 +12,7 @@ export interface DialogProps {
   minHeight?: number | string;
   maxHeight?: number | string;
   className?: string;
+  backdropClassName?: string;
   zIndex?: number;
   animateLayout?: boolean;
 }
@@ -26,6 +27,7 @@ export default function Dialog({
   minHeight,
   maxHeight,
   className = "",
+  backdropClassName = "",
   zIndex,
   animateLayout = false,
 }: DialogProps) {
@@ -104,7 +106,7 @@ export default function Dialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[199] bg-black/40 backdrop-blur-[2px] rounded-4xl overflow-hidden"
+          className={`fixed inset-0 z-[199] bg-black/40 backdrop-blur-[2px] rounded-4xl overflow-hidden ${backdropClassName}`}
           style={zIndex ? { zIndex: zIndex - 1 } : undefined}
           onPointerDown={handlePointerDown}
           onClick={handleBackdropClick}

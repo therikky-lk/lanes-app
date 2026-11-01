@@ -8,11 +8,11 @@ export interface ButtonProps
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "bg-btn-primary-bg text-btn-primary-text border border-border-primary hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
+    "bg-btn-primary-bg text-btn-primary-text border border-transparent hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
   secondary:
-    "bg-border-alpha-14 text-text-primary hover:bg-border-alpha-33 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
+    "bg-bg-panel text-text-primary hover:brightness-105 border border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
   outline:
-    "border border-border-alpha-14 bg-transparent text-text-primary hover:bg-border-alpha-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
+    "border border-transparent bg-bg-panel text-text-primary hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
   ghost:
     "bg-transparent text-text-secondary hover:text-text-primary border border-transparent hover:bg-border-alpha-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/70 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary",
   glass:
@@ -24,10 +24,10 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
-  default: "h-[44px] px-[18px] py-[8px]",
-  sm: "h-[36px] px-[14px] text-[13px]",
-  lg: "h-[52px] px-[24px] text-[15px]",
-  icon: "h-[44px] w-[44px]",
+  default: "h-[36px] px-[16px] py-[6px]",
+  sm: "h-[32px] px-[12px] text-[13px]",
+  lg: "h-[44px] px-[20px] text-[15px]",
+  icon: "h-[36px] w-[36px]",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -43,7 +43,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => (
     <button
       ref={ref}
-      className={`inline-flex items-center justify-center gap-[8px] rounded-md text-[14px] font-[500] transition-colors duration-150 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50 cursor-pointer ${
+      className={`inline-flex items-center justify-center gap-[8px] !rounded-[10px] text-[14px] font-[500] transition-all duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 cursor-pointer ${
         variantClasses[variant]
       } ${sizeClasses[size]} ${className}`.trim()}
       style={{

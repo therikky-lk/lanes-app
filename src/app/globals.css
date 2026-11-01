@@ -304,6 +304,18 @@ img {
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease !important;
 }
 
+button[data-transparent-back-button],
+button[data-transparent-back-button]:hover,
+button[data-transparent-back-button]:active {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
 
 button.apple-glass-pill:hover,
 button.apple-glass-action:hover,
@@ -516,12 +528,125 @@ html[data-hover-reset] [data-window-controls] button:hover {
   inset: 0 !important;
   margin: 0 !important;
   max-width: none !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 100vw !important;
+  height: 100dvh !important;
   max-height: none !important;
   border-radius: 0 !important;
   padding-top: var(--lane-safe-top, 0px) !important;
   padding-bottom: var(--lane-safe-bottom, 0px) !important;
+}
+.lane-settings-mobile.lane-settings-shell { box-sizing: border-box; }
+.lane-settings-backdrop {
+  background: rgba(0,0,0,.22) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(135%) !important;
+  backdrop-filter: blur(10px) saturate(135%) !important;
+}
+.lane-settings-shell {
+  border-radius: 24px !important;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 5%, transparent) !important;
+  background:
+    radial-gradient(75% 75% at 0% 70%, color-mix(in srgb, var(--accent-primary) 8%, transparent), transparent 72%),
+    color-mix(in srgb, var(--bg-primary) 50%, transparent) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+  box-shadow: 0 28px 90px rgba(0,0,0,.48);
+}
+.lane-settings-content {
+  border: 0;
+  background: color-mix(in srgb, var(--bg-primary) 34%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(145%);
+  backdrop-filter: blur(20px) saturate(145%);
+}
+.lane-settings-shell .lane-setting-row {
+  background: transparent;
+  border: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.lane-settings-shell .lane-setting-block { background: transparent; border-radius: 14px; }
+.lane-settings-shell .lane-setting-status { background: color-mix(in srgb, var(--text-primary) 7%, transparent); border: 0; }
+.lane-settings-nav-items {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-radius: 14px;
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+.lane-settings-shell .lane-shortcut-card { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
+.lane-settings-shell .lane-shortcuts-search,
+.lane-settings-shell .lane-shortcuts-reset {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+.lane-settings-shell .lane-shortcuts-search:focus-within,
+.lane-settings-shell .lane-shortcuts-reset:hover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+.lane-settings-shell .lane-setting-control [aria-haspopup="listbox"] {
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-color: transparent;
+  border-radius: 10px;
+}
+.lane-select-menu {
+  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent) !important;
+  border: 0 !important;
+  backdrop-filter: blur(30px) saturate(150%);
+  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lane-select-menu::-webkit-scrollbar { display: none; width: 0; }
+.lane-settings-shell input:not([type="file"]):not([type="range"]) {
+  background-color: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  border-radius: 10px;
+}
+.lane-settings-shell input.bg-transparent {
+  background-color: transparent !important;
+  border-radius: 0;
+}
+.lane-settings-shell .lane-setting-control [aria-pressed] {
+  border-radius: 9px;
+}
+.lane-glass-dialog {
+  border-color: color-mix(in srgb, var(--text-primary) 8%, transparent) !important;
+  background: color-mix(in srgb, var(--bg-primary) 68%, transparent) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  border-radius: 18px !important;
+}
+.lane-glass-dialog-backdrop {
+  background: rgba(0,0,0,.34) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(135%) !important;
+  backdrop-filter: blur(12px) saturate(135%) !important;
+}
+.lane-settings-shell.lane-settings-mobile { border-radius: 0 !important; }
+.lane-settings-mobile.lane-settings-shell {
+  background: var(--bg-primary) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.lane-settings-mobile-backdrop {
+  background: var(--bg-primary) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.lane-settings-mobile .lane-settings-content,
+.lane-settings-mobile .lane-settings-nav-items {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.lane-settings-mobile .lane-settings-content { border-radius: 0 !important; overflow-x: hidden; }
+.lane-settings-mobile .lane-settings-content,
+.lane-settings-mobile .lane-settings-content > div,
+.lane-settings-mobile aside nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lane-settings-mobile .lane-settings-content::-webkit-scrollbar,
+.lane-settings-mobile .lane-settings-content > div::-webkit-scrollbar,
+.lane-settings-mobile aside nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
 }
 .lane-settings-mobile .px-\[24px\] { padding-left: 16px !important; padding-right: 16px !important; }
 
@@ -533,6 +658,95 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-mobile .rounded-xl.bg-bg-primary { border-radius: 0 !important; }
 /* phone settings: a row's control drops under its title when space runs out */
 .lane-settings-mobile .lane-setting-row { flex-wrap: wrap; row-gap: 10px; }
+.lane-settings-mobile .lane-setting-control:has(.lane-select-trigger) { flex: 0 0 100%; width: 100%; }
+.lane-settings-mobile .lane-customization-targets {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+}
+.lane-settings-mobile .lane-customization-targets [role="group"] {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.lane-settings-mobile .lane-customization-targets [role="group"] > button {
+  min-width: 0;
+  justify-content: center;
+  padding-left: 4px;
+  padding-right: 4px;
+  font-size: 11px;
+}
+.lane-settings-mobile .lane-customization-target-actions { justify-content: flex-end; }
+.lane-settings-mobile .lane-customization-slider-row {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 6px;
+}
+.lane-settings-mobile .lane-customization-slider-row > div:first-child { max-width: none; }
+.lane-settings-mobile .lane-customization-slider { width: 100%; min-width: 0; }
+.lane-settings-mobile .lane-theme-card {
+  min-width: 0;
+  min-height: 44px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-panel) 58%, transparent);
+}
+.lane-settings-mobile .lane-theme-preview { display: none; }
+.lane-settings-mobile .lane-theme-label { font-size: 12px; }
+.lane-settings-mobile .lane-theme-card[aria-pressed="true"] { background: var(--text-primary); }
+.lane-settings-mobile .lane-theme-card[aria-pressed="true"] .lane-theme-label { color: var(--bg-primary); }
+.lane-theme-active-pill { display: none; }
+.lane-settings-mobile .lane-theme-active-pill {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 12px;
+  background: var(--text-primary);
+}
+.lane-settings-mobile .lane-theme-card[aria-pressed="true"] { background: transparent; }
+.lane-settings-mobile [data-settings-card]:has(.lane-theme-card) {
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+.lane-settings-mobile .lane-shortcuts-toolbar {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lane-settings-mobile .lane-shortcuts-scopes {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.lane-settings-mobile .lane-shortcuts-scopes > button {
+  min-width: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+.lane-settings-mobile .lane-shortcuts-scopes > button > span {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+}
+.lane-settings-mobile .lane-shortcuts-tools { width: 100%; }
+.lane-settings-mobile .lane-shortcuts-search { max-width: none; min-width: 0; }
+.lane-settings-mobile .lane-shortcuts-list { flex-direction: column; }
+.lane-settings-mobile .lane-shortcut-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  background: color-mix(in srgb, var(--bg-panel) 76%, transparent);
+}
+.lane-settings-mobile .lane-shortcut-card:hover { background: color-mix(in srgb, var(--bg-panel) 92%, var(--text-primary) 8%); }
 
 /* phones: cheaper effects so scrolling and transitions stay smooth */
 @keyframes page-enter-lite {

@@ -524,7 +524,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
           maskImage: "linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%)",
         }}
       />
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-[18px]">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-[14px]">
         <button
           type="button"
           onClick={onMainClick}
@@ -547,12 +547,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
           </span>
         </button>
 
-        <div className="flex flex-wrap items-center justify-center gap-[8px] px-[16px]">
+        <div className="flex items-center justify-center gap-[8px] px-[16px]">
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label={t("home.vibe.settings")}
-            className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white/90 hover:bg-white/[0.14] active:scale-95 transition-all cursor-pointer"
+            className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[12px] border-0 bg-white/[0.12] text-white/90 hover:bg-white/[0.2] active:scale-[0.97] transition-all cursor-pointer"
           >
             <Settings6Line size={18} />
           </button>
@@ -562,28 +562,36 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
               onClick={onToggleExpanded}
               aria-label={expanded ? t("home.vibe.collapse") : t("home.vibe.expand")}
               title={expanded ? t("home.vibe.collapse") : t("home.vibe.expand")}
-              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full border border-white/15 bg-white/[0.08] text-white/90 hover:bg-white/[0.14] active:scale-95 transition-all cursor-pointer"
+              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[12px] border-0 bg-white/[0.12] text-white/90 hover:bg-white/[0.2] active:scale-[0.97] transition-all cursor-pointer"
             >
               {expanded ? <UpLine size={18} /> : <DownLine size={18} />}
             </button>
           )}
-          {active.map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex h-[36px] items-center gap-[6px] rounded-full bg-white/[0.1] pl-[14px] pr-[8px] text-[13.5px] font-[550] text-white backdrop-blur-md"
-            >
-              {chip.text}
-              <button
-                type="button"
-                onClick={() => clear(chip.key)}
-                aria-label={t("common.remove") || "Remove"}
-                className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full border-none bg-transparent text-white/70 hover:text-white cursor-pointer"
-              >
-                <CloseLine size={14} />
-              </button>
-            </span>
-          ))}
         </div>
+        {active.length > 0 && (
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-[8px] px-[16px]">
+            {active.map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex h-[36px] items-center gap-[6px] rounded-[12px] border-0 bg-white/[0.1] pl-[14px] pr-[8px] text-[13.5px] font-[550] text-white shadow-[0_6px_24px_rgba(0,0,0,0.16)]"
+                style={{
+                  backdropFilter: "blur(20px) saturate(1.4)",
+                  WebkitBackdropFilter: "blur(20px) saturate(1.4)",
+                }}
+              >
+                {chip.text}
+                <button
+                  type="button"
+                  onClick={() => clear(chip.key)}
+                  aria-label={t("common.remove") || "Remove"}
+                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-[8px] border-none bg-transparent text-white/70 hover:text-white cursor-pointer"
+                >
+                  <CloseLine size={14} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {createPortal(

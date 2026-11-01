@@ -4,6 +4,7 @@ import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
 import { getDailyMixArtists } from "@/features/home/hooks/useDailyMixes";
 import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
+import { fetchYoutubeAccountPlaylist, isAccountPlaylistId } from "@/shared/media/youtube";
 
 export interface CollectionPageData {
   type?: "playlist" | "album";
@@ -61,6 +62,20 @@ export function useCollection(
         cacheKey,
         async () => {
           const decodedId = id ? decodeURIComponent(id) : "";
+          if (type === "playlist" && isAccountPlaylistId(decodedId)) {
+            const youtubeCollection = await fetchYoutubeAccountPlaylist(decodedId);
+            if (youtubeCollection) {
+              const tracks = await replaceTrackCoversWithYandex(youtubeCollection.tracks.map(toClientTrack));
+              return {
+                type: "playlist",
+                title: youtubeCollection.title,
+                author: youtubeCollection.author,
+                description: youtubeCollection.description,
+                coverUrl: youtubeCollection.cover?.url ? mediaUrl(youtubeCollection.cover.url) : tracks[0]?.coverUrl || "",
+                tracks,
+              } satisfies CollectionPageData;
+            }
+          }
           const isDailyMix =
             decodedId.startsWith("daily-mix") ||
             decodedId.startsWith("mix-") ||

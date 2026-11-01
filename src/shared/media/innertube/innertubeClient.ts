@@ -1,6 +1,7 @@
 import { getClientVisitorData } from "@/shared/api/visitorSession";
+import { getYoutubeAuthorization, getYoutubePageId } from "../youtube/auth/youtubeAuthSession";
 
-export type InnertubeEndpoint = "search" | "browse" | "next" | "player";
+export type InnertubeEndpoint = "search" | "browse" | "next" | "player" | "account/accounts_list";
 
 export interface InnertubeProfile {
   clientName: string;
@@ -9,6 +10,8 @@ export interface InnertubeProfile {
   origin: string;
   userAgent?: string;
   includeUserAgentInContext?: boolean;
+  requiresJsPlayer?: boolean;
+  acceptsOAuth?: boolean;
   extraContext?: Record<string, string | number>;
 }
 
@@ -55,8 +58,9 @@ function buildClientContext(profile: InnertubeProfile, visitorData: string): Rec
   };
 }
 
-function buildHeaders(profile: InnertubeProfile, visitorData: string): Record<string, string> {
+function buildHeaders(profile: InnertubeProfile, visitorData: string, authorization: string | null): Record<string, string> {
   return {
+    ...(authorization ? { authorization } : {}),
     "content-type": "application/json",
     accept: "application/json",
     "x-youtube-client-name": profile.clientIdHeader,
@@ -74,12 +78,18 @@ export async function postInnertube(
 ): Promise<unknown> {
   const profile = options.profile ?? WEB_REMIX_PROFILE;
   const visitorData = await getClientVisitorData().catch(() => "");
+  const authorization = profile.acceptsOAuth
+    ? await getYoutubeAuthorization(options.signal).catch(() => null)
+    : null;
   const url = `${profile.origin}/youtubei/v1/${endpoint}?prettyPrint=false`;
   const payload = {
     ...body,
     context: {
       client: buildClientContext(profile, visitorData),
-      user: { lockedSafetyMode: false },
+      user: {
+        lockedSafetyMode: false,
+        ...(authorization && getYoutubePageId() ? { onBehalfOfUser: getYoutubePageId() } : {}),
+      },
     },
   };
 
@@ -87,7 +97,7 @@ export async function postInnertube(
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: buildHeaders(profile, visitorData),
+      headers: buildHeaders(profile, visitorData, authorization),
       body: JSON.stringify(payload),
       signal: options.signal,
     });

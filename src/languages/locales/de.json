@@ -491,6 +491,9 @@
     "reset_defaults": "Auf Standard zurücksetzen",
     "save_preferences": "Einstellungen speichern",
     "groups": {
+      "player": "Player",
+      "interface": "Oberfläche",
+      "integrations": "Integrationen",
       "preferences": "Präferenzen",
       "application": "Anwendung",
       "help": "Hilfe"
@@ -509,7 +512,8 @@
       "about": "Info",
       "playback": "Wiedergabe",
       "overlay": "Overlay",
-      "privacy": "Datenschutz"
+      "privacy": "Datenschutz",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Verhalten der Warteschlange, Klickaktionen und Audioausgabe."
@@ -824,7 +828,8 @@
       "never_run": "Die Prüfungen wurden noch nicht ausgeführt.",
       "last_run": "{ok}/{total} Prüfungen ok · {time}",
       "open_folder": "Speicherort öffnen"
-    }
+    },
+    "youtube": {}
   },
   "toast": {
     "playlist_created": "Playlist erstellt",

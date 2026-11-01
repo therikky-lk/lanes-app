@@ -488,6 +488,9 @@
     "reset_defaults": "Rétablir les valeurs par défaut",
     "save_preferences": "Enregistrer les préférences",
     "groups": {
+      "player": "Lecteur",
+      "interface": "Interface",
+      "integrations": "Intégrations",
       "preferences": "Préférences",
       "application": "Application",
       "help": "Aide"
@@ -507,7 +510,8 @@
       "playback": "Lecture",
       "shortcuts": "Raccourcis",
       "overlay": "Overlay",
-      "privacy": "Confidentialité"
+      "privacy": "Confidentialité",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Comportement de la file d'attente, actions au clic et sortie audio."
@@ -883,6 +887,27 @@
       "never_run": "Les tests n'ont pas encore été lancés.",
       "last_run": "{ok}/{total} tests réussis · {time}",
       "open_folder": "Ouvrir l'emplacement"
+    },
+    "youtube": {
+      "description": "Connectez-vous à votre compte YouTube pour éviter les erreurs de lecture.",
+      "section_playback": "Lecture",
+      "account_playback": {
+        "title": "Lire via votre compte",
+        "description": "Demande l'audio YouTube avec votre compte connecté pour éviter que les flux ne soient bloqués."
+      },
+      "prompt_sign_in": {
+        "title": "Demander à se connecter",
+        "description": "Affiche la carte de connexion lorsque YouTube bloque la lecture au lieu de passer le titre."
+      },
+      "sync_library": {
+        "title": "Synchroniser la bibliothèque",
+        "description": "Affiche les playlists de votre compte YouTube dans la bibliothèque à côté des playlists Liner."
+      },
+      "sign_out": "Se déconnecter",
+      "sign_in": "Se connecter",
+      "signed_out_title": "Non connecté",
+      "signed_out_description": "Connectez-vous pour maintenir le bon fonctionnement de la lecture YouTube",
+      "section_account": "Compte"
     }
   },
   "toast": {
@@ -1076,5 +1101,16 @@
     "same": "No change",
     "all": "All {n}",
     "less": "Show less"
+  },
+  "youtube_auth": {
+    "title": "Connectez-vous à YouTube pour continuer à écouter",
+    "description": "YouTube bloque les flux audio sans connexion (vérification BotGuard). Vous connecter avec votre compte Google/YouTube confirme que vous êtes un véritable auditeur et lève les restrictions.",
+    "waiting": "En attente de connexion…",
+    "retry": "Réessayer",
+    "not_now": "Pas maintenant",
+    "or_enter_code": "ou saisissez le code sur",
+    "copy_code": "Copier le code",
+    "connected": "YouTube connecté",
+    "qr_label": "Code QR de connexion"
   }
 }

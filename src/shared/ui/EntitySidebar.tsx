@@ -9,6 +9,7 @@ export const SIDEBAR_SUBTITLE_CLASS =
   "m-0 text-[13px] leading-[1.55] text-text-secondary line-clamp-3";
 
 export interface EntitySidebarProps {
+  layout?: "sidebar" | "hero";
   cover: ReactNode;
   coverClassName?: string;
   title: ReactNode;
@@ -21,6 +22,7 @@ export interface EntitySidebarProps {
 }
 
 export function EntitySidebar({
+  layout = "sidebar",
   cover,
   coverClassName,
   title,
@@ -72,7 +74,12 @@ export function EntitySidebar({
     );
   }
   return (
-    <aside className="sticky top-[20px] w-[280px] shrink-0 self-start" data-no-window-drag>
+    <aside
+      className={layout === "hero"
+        ? "grid w-full min-w-0 grid-cols-[168px_minmax(0,1fr)] grid-rows-[auto_auto_auto_auto_auto] items-start gap-x-[22px] gap-y-[4px] max-md:flex max-md:w-full max-md:flex-col max-md:items-center max-md:gap-0"
+        : "sticky top-[20px] w-[280px] shrink-0 self-start"}
+      data-no-window-drag
+    >
       {onBack && (
         <button
           type="button"
@@ -86,7 +93,8 @@ export function EntitySidebar({
       )}
 
       <div
-        className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md ${
+        data-entity-cover
+        className={`relative flex aspect-square w-full items-center justify-center overflow-hidden ${layout === "hero" ? "col-start-1 row-span-5 row-start-1 h-[168px] w-[168px] rounded-[10px] max-md:mt-[12px] max-md:h-auto max-md:w-[min(72vw,300px)] max-md:rounded-xl" : "rounded-md"} ${
           coverClassName || "bg-border-alpha-14"
         } ${onBack ? "mt-[16px]" : ""}`}
       >
@@ -94,7 +102,8 @@ export function EntitySidebar({
       </div>
 
       <div
-        className="mt-[16px] min-w-0"
+        data-entity-title
+        className={`${layout === "hero" ? "col-start-2 row-start-1 mt-0 min-w-0 [&>h1]:text-[30px] [&>h1]:line-clamp-1 max-md:mt-[18px] max-md:w-full max-md:text-center max-md:[&>h1]:text-[24px]" : "mt-[16px] min-w-0"}`}
         style={{ fontFamily: "var(--font-inter), sans-serif", fontWeight: 600 }}
       >
         {title}
@@ -102,7 +111,8 @@ export function EntitySidebar({
 
       {subtitle && (
         <div
-          className="mt-[6px]"
+          data-entity-subtitle
+          className={layout === "hero" ? "col-start-2 row-start-2 mt-0 min-w-0 [&>p]:text-[15px] max-md:mt-[6px] max-md:w-full max-md:text-center" : "mt-[6px]"}
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
         >
           {subtitle}
@@ -111,17 +121,18 @@ export function EntitySidebar({
 
       {meta && (
         <div
-          className="m-0 mt-[8px] text-[12px] leading-[1.4] text-text-tertiary"
+          data-entity-meta
+          className={`m-0 text-[12px] leading-[1.4] text-text-tertiary ${layout === "hero" ? "col-start-2 row-start-3 mt-[8px] max-md:mt-[12px] max-md:flex max-md:justify-center" : "mt-[8px]"}`}
           style={{ fontFamily: "var(--font-inter), sans-serif", fontWeight: 400 }}
         >
           {meta}
         </div>
       )}
 
-      {primaryAction && <div className="mt-[16px]">{primaryAction}</div>}
+      {primaryAction && <div data-entity-primary className={layout === "hero" ? "col-start-2 row-start-4 mt-[12px] min-w-0 max-md:mt-[16px] max-md:w-full" : "mt-[16px]"}>{primaryAction}</div>}
 
       {actions && (
-        <div className="mt-[8px] flex items-center gap-[8px]">{actions}</div>
+        <div data-entity-actions className={layout === "hero" ? "col-start-2 row-start-5 mt-[8px] flex items-center gap-[8px] max-md:mt-[8px]" : "mt-[8px] flex items-center gap-[8px]"}>{actions}</div>
       )}
     </aside>
   );

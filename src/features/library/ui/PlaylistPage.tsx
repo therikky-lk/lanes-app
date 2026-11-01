@@ -1,5 +1,5 @@
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo, Suspense } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -12,9 +12,7 @@ import {
   HeartFill,
   PlaylistFill,
   PlaylistLine,
-  MusicLine,
   CheckLine,
-  ArrowLeftLine,
   Search2Line,
   PicLine,
   GridLine,
@@ -47,7 +45,7 @@ import { api } from "@/shared/api";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { isLocalPlaylistItemId, withLocalAvailability } from "@/features/local/localPlaylistTracks";
-import { useTrackTags, type TrackTag } from "../services/trackTags";
+import { TRACK_TAGS, useTrackTags, type TrackTag } from "../services/trackTags";
 import LikedCover from "./LikedCover";
 import {
   useTrackSearch,
@@ -142,7 +140,6 @@ const TrackItem = memo(function TrackItem({
 });
 
 function LibraryPlaylistContent() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
   const isLikesMode = id === "likes";
@@ -209,7 +206,6 @@ function LibraryPlaylistContent() {
       return {
         title: t("playlist.liked_songs"),
         bio: "",
-        countLabel: t("common.tracks", { count: tracks.length }),
         coverUrl: "",
         coverUrls: [] as string[],
         tracks,
@@ -221,7 +217,6 @@ function LibraryPlaylistContent() {
     return {
       title: playlistDetail.title || t("playlist.untitled_playlist"),
       bio,
-      countLabel: t("common.tracks", { count: playlistDetail.trackCount }),
       coverUrl: playlistDetail.coverUrl || "",
       coverUrls:
         playlistDetail.coverUrls ??
@@ -436,14 +431,6 @@ function LibraryPlaylistContent() {
       index,
   });
 
-  const handleBack = useCallback(() => {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate("/library");
-    }
-  }, [navigate]);
-
   const savePlaylistCover = useCallback(async (playlistId: string, cover: string | null): Promise<boolean> => {
     // User playlists do not have a dedicated cover field in the API. Keep the
     // compact image in their synced description metadata instead.
@@ -627,45 +614,6 @@ function LibraryPlaylistContent() {
           }
         }}
       />
-      <button
-        type="button"
-        onClick={handleBack}
-        aria-label={t("common.back")}
-        data-no-tooltip="true"
-        data-no-window-drag
-        className={`absolute top-[12px] left-[32px] z-20 group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-md px-[10px] active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto text-[13px] font-[500] border-0 !border-none ${
-          hasCustomBg
-            ? "apple-glass-pill !border-none"
-            : "bg-bg-panel/85 backdrop-blur-xl text-text-primary hover:bg-bg-panel border-0 !border-none"
-        }`}
-        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-      >
-        <ArrowLeftLine
-          size={16}
-          className="transition-transform duration-150 group-hover:-translate-x-0.5"
-        />
-        <span className="relative -left-[1.5px] top-[1px]">{t("common.back")}</span>
-      </button>
-      {/* track search sits centred in the page header */}
-      {viewData && isReady && (
-        <div
-          className={
-            isMobile
-              ? // phones: under the Back button, full width, so it never covers it
-                "absolute top-[52px] left-[12px] right-[12px] z-20 flex justify-center pointer-events-none"
-              : "absolute top-[12px] left-0 right-0 z-20 flex justify-center pointer-events-none"
-          }
-        >
-          <TrackSearchField
-            className={isMobile ? "!w-full !h-[38px]" : ""}
-            search={search}
-            totalCount={currentTracks.length}
-            placeholder={t("track_search.placeholder_playlist")}
-            glass={hasCustomBg}
-            onSubmit={handleSearchSubmit}
-          />
-        </div>
-      )}
       <div className="relative z-1 grid grid-cols-1 w-full h-full min-h-0 overflow-hidden">
         {viewData && (
           <div
@@ -675,18 +623,18 @@ function LibraryPlaylistContent() {
           >
             <div
               ref={isMobile ? scrollRef : undefined}
-              data-page-scroller={isMobile ? "with-back" : undefined}
               className={
                 isMobile
                   ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"
-                  : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"
+                  : "relative z-10 flex flex-col items-stretch px-[16px] h-full w-full min-h-0 box-border"
               }
             >
               <div
-                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}
+                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[4px]"}
                 data-no-window-drag
               >
                 <EntitySidebar
+                  layout="hero"
                 coverClassName={
                   hasCustomBg && (viewData.coverUrls?.length ?? (viewData.coverUrl ? 1 : 0)) === 0
                     ? "apple-glass-static pointer-events-none"
@@ -855,12 +803,6 @@ function LibraryPlaylistContent() {
                             : "bg-bg-panel border border-border-primary/40 text-text-tertiary"
                         }`}
                       >
-                        <MusicLine size={13} className={hasCustomBg ? "text-white shrink-0" : "text-text-tertiary shrink-0"} />
-                        <span>{viewData.countLabel}</span>
-                        <span
-                          className={`w-[3px] h-[3px] rounded-full shrink-0 ${hasCustomBg ? "bg-white/50" : "bg-text-tertiary/40"}`}
-                          aria-hidden
-                        />
                         <span>
                           {(() => {
                             const totalMs = viewData.tracks.reduce(
@@ -879,23 +821,23 @@ function LibraryPlaylistContent() {
                     </div>
                   }
                   primaryAction={
-                    <div className="flex flex-col gap-[8px] w-full">
+                    <div className="flex w-full max-w-[640px] flex-row items-center gap-[8px] max-md:flex-col max-md:items-stretch">
                       <Button
                         variant={hasCustomBg ? "glass-primary" : "primary"}
                         onClick={handlePlayAll}
                         disabled={currentTracks.length === 0}
-                        className="!h-[36px] w-full !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px]"
+                        className="!h-[36px] w-auto shrink-0 !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px] max-md:w-full"
                       >
                         <PlayFill size={16} />
                         <span>{t("common.play_all")}</span>
                       </Button>
 
-                      <div className="flex items-center gap-[8px] w-full">
+                      <div className="flex min-w-0 items-center gap-[8px] max-md:w-full">
                         <Button
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleAddToQueue}
                           disabled={currentTracks.length === 0}
-                          className={`!h-[36px] flex-1 min-w-0 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
+                          className={`!h-[36px] !flex-none min-w-0 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] max-md:flex-1 ${
                             // optical centring: with three icon buttons beside it the label reads 1px right
                             !isLikesMode ? "[&>*]:-translate-x-px" : ""
                           }`}
@@ -939,19 +881,61 @@ function LibraryPlaylistContent() {
                           <LuShuffle size={16} />
                         </Button>
 
-                        <Button
-                          variant={hasCustomBg ? "glass-action" : "outline"}
-                          onClick={search.toggle}
-                          // keep focus in the field so its blur-to-close doesn't fire first
-                          onMouseDown={(e) => {
-                            if (search.isOpen) e.preventDefault();
-                          }}
-                          disabled={currentTracks.length === 0}
-                          className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
-                          title={searchButtonLabel}
-                        >
-                          <Search2Line size={16} />
-                        </Button>
+                        <AnimatePresence mode="popLayout" initial={false}>
+                          {search.isOpen ? (
+                            <motion.div
+                              key="playlist-search-field"
+                              layout
+                              initial={{ opacity: 0, width: 0, scale: 0.96 }}
+                              animate={{ opacity: 1, width: isMobile ? 120 : 180, scale: 1 }}
+                              exit={{ opacity: 0, width: 0, scale: 0.96 }}
+                              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                              className="shrink-0 overflow-hidden"
+                            >
+                              <TrackSearchField
+                                search={search}
+                                totalCount={currentTracks.length}
+                                placeholder={t("track_search.placeholder_playlist")}
+                                glass={hasCustomBg}
+                                onSubmit={handleSearchSubmit}
+                                className="!h-[36px] !w-full !rounded-[10px]"
+                              />
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="playlist-search-trigger"
+                              layout
+                              initial={{ opacity: 0, width: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, width: 36, scale: 1 }}
+                              exit={{ opacity: 0, width: 0, scale: 0.9 }}
+                              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                              className="shrink-0 overflow-hidden"
+                            >
+                              <Button
+                                variant={hasCustomBg ? "glass-action" : "outline"}
+                                onClick={search.open}
+                                disabled={currentTracks.length === 0}
+                                className="!h-[36px] !w-[36px] !p-0 flex items-center justify-center text-text-primary"
+                                title={searchButtonLabel}
+                              >
+                                <Search2Line size={16} />
+                              </Button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {!isMobile && currentTracks.length > 0 && (
+                          <SegmentedTabs
+                            iconOnly
+                            value={trackView}
+                            onChange={setTrackView}
+                            className="shrink-0"
+                            options={[
+                              { id: "list" as const, label: <MenuLine size={16} />, title: t("common.list") || "List" },
+                              { id: "grid" as const, label: <GridLine size={16} />, title: t("common.grid") || "Grid" },
+                            ]}
+                          />
+                        )}
 
                         {!isLikesMode && (
                           <DropdownMenu
@@ -1043,53 +1027,44 @@ function LibraryPlaylistContent() {
                 }}
                 className={
                   isMobile
-                    ? "min-w-0 w-full pb-[24px]"
-                    : "min-w-0 flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden px-[8px] pt-[56px] pb-[24px] overscroll-contain"
+                    ? `min-w-0 w-full flex-1 mt-[24px] rounded-[14px] px-[8px] pt-[8px] pb-[24px] ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
+                    : `min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] px-[8px] pt-[8px] pb-[24px] overscroll-contain ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                 }
                 style={{ willChange: "scroll-position" }}
               >
               <ScrollBlurEdge height={60} />
-              {isLikesMode && trackTags.available.length > 0 && (
+              {isLikesMode && allTracks.length > 0 && (
                 <div
-                  className={`flex gap-[6px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-[10px] ${isMobile ? "px-0 pt-[4px]" : "px-[8px]"}`}
+                  className={`flex flex-nowrap snap-x snap-mandatory scroll-px-[8px] gap-[6px] overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[8px] pt-[8px] ${isMobile ? "pb-[16px]" : "pb-[12px]"}`}
                   style={{ fontFamily: "var(--font-inter), sans-serif" }}
                 >
-                  {[null, ...trackTags.available].map((tag) => {
+                  {[null, ...TRACK_TAGS].map((tag) => {
                     const on = activeTag === tag;
+                    const count = tag ? (trackTags.counts.get(tag) ?? 0) : allTracks.length;
                     return (
                       <button
                         key={tag ?? "all"}
                         type="button"
                         onClick={() => setActiveTag(tag)}
-                        className={`shrink-0 inline-flex h-[30px] items-center gap-[6px] rounded-full border-0 px-[13px] text-[13px] font-[500] cursor-pointer transition-colors ${
-                          on ? "bg-text-primary text-bg-primary" : "bg-border-alpha-14 text-text-secondary hover:text-text-primary"
+                        disabled={Boolean(tag && count === 0)}
+                        aria-pressed={on}
+                        className={`shrink-0 snap-start inline-flex h-[30px] items-center gap-[6px] rounded-[10px] border-0 px-[13px] text-[13px] font-[500] transition-colors duration-150 ${
+                          on
+                            ? "bg-text-primary text-bg-primary cursor-pointer"
+                            : count === 0 && tag
+                              ? "bg-border-alpha-14 text-text-tertiary opacity-55 cursor-not-allowed"
+                              : "bg-border-alpha-14 text-text-secondary hover:bg-border-alpha-22 hover:text-text-primary cursor-pointer"
                         }`}
                       >
                         {tag ? t(`tags.${tag}`) : t("common.all")}
                         {tag && (
                           <span className={on ? "opacity-60" : "text-text-tertiary"}>
-                            {trackTags.counts.get(tag)}
+                            {count}
                           </span>
                         )}
                       </button>
                     );
                   })}
-                </div>
-              )}
-              {currentTracks.length > 0 && !isMobile && (
-                <div className="flex items-center justify-between gap-[12px] px-[8px] pb-[10px]">
-                  <span className="text-[13px] text-text-tertiary" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
-                    {viewData.countLabel}
-                  </span>
-                  <SegmentedTabs
-                    iconOnly
-                    value={trackView}
-                    onChange={setTrackView}
-                    options={[
-                      { id: "list" as const, label: <MenuLine size={16} />, title: t("common.list") || "List" },
-                      { id: "grid" as const, label: <GridLine size={16} />, title: t("common.grid") || "Grid" },
-                    ]}
-                  />
                 </div>
               )}
               {currentTracks.length === 0 ? (

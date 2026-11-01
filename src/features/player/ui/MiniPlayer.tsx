@@ -588,7 +588,7 @@ function MiniPlayer({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.985 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute bottom-[74px] z-[92] w-[270px] rounded-xl bg-bg-primary border border-border-primary/50 p-[12px] shadow-2xl prevent-seek"
+            className="absolute bottom-[74px] z-[92] w-[300px] max-w-[calc(100vw-24px)] rounded-[18px] border border-white/[0.08] bg-black/20 p-[16px] shadow-2xl backdrop-blur-xl prevent-seek"
             style={speedPopupStyle}
             onPointerDown={(e) => e.stopPropagation()}
           >

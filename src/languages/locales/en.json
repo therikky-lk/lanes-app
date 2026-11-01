@@ -566,6 +566,9 @@
     "reset_defaults": "Reset to defaults",
     "save_preferences": "Save preferences",
     "groups": {
+      "player": "Player",
+      "interface": "Interface",
+      "integrations": "Integrations",
       "preferences": "Preferences",
       "application": "Application",
       "help": "Help"
@@ -586,7 +589,8 @@
       "shortcuts": "Shortcuts",
       "overlay": "Overlay",
       "discord": "Discord RPC",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Queue behavior, click actions and audio output."
@@ -690,11 +694,11 @@
       "status_display": {
         "title": "Status Format",
         "description": "Choose what appears in Discord's 'Listening to...' status header.",
-        "artist": "Artist (Default)",
+        "artist": "Artist",
         "song": "Song Title",
         "artist_song": "Artist - Song",
         "song_artist": "Song - Artist",
-        "app": "Lane (App name)"
+        "app": "Lane (Default)"
       },
       "show_timeline": {
         "title": "Playback Timeline",
@@ -1019,6 +1023,28 @@
       "ok": "Lane runs without battery restrictions: music and imports keep going in the background.",
       "restricted": "The system may put Lane to sleep in the background: music stops between tracks and imports stall. Allow unrestricted background work.",
       "allow": "Allow"
+    },
+    "youtube": {
+      "description": "Sign in to your YouTube account to prevent playback errors.",
+      "section_account": "Account",
+      "section_playback": "Playback",
+      "account_playback": {
+        "title": "Play through your account",
+        "description": "Request YouTube audio with your signed-in account so streams are not blocked."
+      },
+      "prompt_sign_in": {
+        "title": "Ask to sign in",
+        "description": "Show the sign-in card when YouTube blocks playback instead of skipping the track."
+      },
+      "sync_library": {
+        "title": "Sync library",
+        "description": "Show playlists from your YouTube account in the library next to Liner playlists."
+      },
+      "sign_out": "Sign out",
+      "sign_in": "Sign in",
+      "signed_out_title": "Not signed in",
+      "signed_out_description": "Sign in to keep YouTube playback working",
+      "signed_in": "Connected"
     }
   },
   "toast": {
@@ -1261,5 +1287,18 @@
     "electronic": "Electronic",
     "jazz": "Jazz",
     "classical": "Classical"
+  },
+  "youtube_auth": {
+    "title": "Sign in to YouTube to keep listening",
+    "description": "YouTube blocks audio streams without sign-in (BotGuard check). Signing in with your Google/YouTube account confirms you are a real listener and lifts the limits.",
+    "waiting": "Waiting for sign-in…",
+    "retry": "Try again",
+    "not_now": "Not now",
+    "or_enter_code": "or enter the code at",
+    "copy_code": "Copy code",
+    "connected": "YouTube connected",
+    "qr_label": "Sign-in QR code",
+    "activate_at": "Open the activation page and enter this code",
+    "open_activation": "Open activation page"
   }
 }

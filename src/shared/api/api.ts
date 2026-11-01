@@ -14,6 +14,7 @@ import { getLocalImportHandler } from "./localImports";
 import { streamFallbackLyrics } from "@/shared/media/lyrics/fallbackLyrics";
 import type { Track } from "@/shared/contracts";
 import { telemetry } from "@/shared/telemetry";
+import { APP_VERSION } from "@/shared/config/version";
 import type {
   PublicUser,
   UpdateProfileInput,
@@ -32,6 +33,7 @@ import {
   statusOf,
   stripQuery,
 } from "@/features/connectivity";
+import { useConnectivityStore } from "@/features/connectivity/store/connectivityStore";
 
 function translate(key: string, vars?: Record<string, string | number>) {
   try {
@@ -44,7 +46,7 @@ function translate(key: string, vars?: Record<string, string | number>) {
 import { getApiBaseUrl } from "./baseUrl";
 
 const CLIENT_VERSION =
-  (import.meta.env.VITE_CLIENT_VERSION as string | undefined) || "1.0.4-desktop";
+  (import.meta.env.VITE_CLIENT_VERSION as string | undefined) || `${APP_VERSION}-desktop`;
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -84,10 +86,12 @@ async function fetchWithTimeout(
     return res;
   } catch (err: any) {
     if (didTimeout) {
-      showToast(translate("common.error_timeout_title"), "error", {
-        id: "network-timeout-toast",
-        description: translate("common.error_network"),
-      });
+      if (!useConnectivityStore.getState().visible) {
+        showToast(translate("common.error_timeout_title"), "error", {
+          id: "network-timeout-toast",
+          description: translate("common.error_network"),
+        });
+      }
       throw new ApiError(
         0,
         "Request timed out. Please check your network connection.",
@@ -97,10 +101,12 @@ async function fetchWithTimeout(
     if (userSignal?.aborted) {
       throw err;
     }
-    showToast(translate("common.error_network_title"), "error", {
-      id: "network-error-toast",
-      description: translate("common.error_network"),
-    });
+    if (!useConnectivityStore.getState().visible) {
+      showToast(translate("common.error_network_title"), "error", {
+        id: "network-error-toast",
+        description: translate("common.error_network"),
+      });
+    }
     throw new ApiError(
       0,
       "Network error. Unable to reach server.",

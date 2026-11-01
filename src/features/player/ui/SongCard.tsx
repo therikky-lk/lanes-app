@@ -164,7 +164,7 @@ function SongCard({
 
   return (
     <div
-      className={`group w-full flex items-center justify-between rounded-md ${paddingClass} outline-none transition-colors duration-150 ease-out ${
+      className={`group w-full flex items-center justify-between rounded-[10px] ${paddingClass} outline-none transition-colors duration-150 ease-out ${
         className ?? ""
       } ${unavailableNote ? "opacity-[0.42]" : ""} ${onPlay ? "cursor-pointer" : ""} ${onPlay && !className?.includes("hover:bg-") ? "hover:bg-border-alpha-14" : ""}`}
       onClick={handleClick}

@@ -1,8 +1,8 @@
 import DiagnosticsBox from "./DiagnosticsBox";
 import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo } from "react";
-import { FaTelegramPlane, FaGithub, FaGlobe, FaDiscord } from "react-icons/fa";
-import { Refresh1Line, CheckLine } from "@mingcute/react";
+import { FaTelegramPlane, FaGithub, FaGlobe } from "react-icons/fa";
+import { Refresh1Line } from "@mingcute/react";
 import { QuestionCircle } from "@solar-icons/react";
 import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
@@ -38,8 +38,6 @@ const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
   scanlines: scanlinesLogo,
   vhs: vhsLogo,
 };
-
-const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
 
 export function AboutTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
@@ -161,111 +159,97 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
   if (!isMatch) return null;
 
   return (
-    <div className="flex w-full flex-col items-center justify-center py-[24px]">
-      {/* ── Unified Centered About Card ── */}
-      <div className="relative w-full max-w-[440px] overflow-hidden rounded-2xl bg-border-alpha-14 p-[24px] flex flex-col items-center text-center border border-border-primary/40 shadow-sm">
-        {/* Logo */}
-        <div className="bg-bg-elevated flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-2xl border border-border-primary/50 shadow-inner mb-[14px]">
-          <img
-            src={logo}
-            alt="Lane Logo"
-            width={44}
-            height={44}
-            className="h-[44px] w-[44px] theme-logo"
-            draggable={false}
-          />
-        </div>
-
-        {/* Title & Version badge */}
-        <div className="flex items-center gap-[8px] mb-[6px]">
-          <h2
-            className="text-text-primary text-[20px] font-[600] tracking-[-0.01em] leading-none m-0"
-            style={font}
-          >
-            {t("settings.about.liner")}
-          </h2>
-          <div
-            className="inline-flex items-center gap-[5px] h-[22px] rounded-full bg-border-alpha-14 px-[9px] border border-border-primary/40 text-[11.5px] font-[500] text-text-secondary leading-none select-none"
-            style={font}
-          >
-            <span className="h-[5.5px] w-[5.5px] rounded-full bg-emerald-400" />
+    <div className="flex w-full flex-col items-center py-[8px]">
+      <div
+        className="relative flex min-h-[340px] w-full max-w-[604px] flex-col justify-between overflow-hidden rounded-[20px] bg-white/[0.08] p-[28px] text-left"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(58deg, transparent 0 70px, rgba(255,255,255,.018) 70px 140px, transparent 140px 220px)",
+          fontFamily: "var(--font-inter), sans-serif",
+        }}
+      >
+        <div className="flex items-start justify-between gap-[16px]">
+          <div className="flex flex-col items-start">
+            <img
+              src={logo}
+              alt="Lane Logo"
+              width={48}
+              height={48}
+              className="h-[48px] w-[48px] theme-logo"
+              draggable={false}
+            />
+            <span className="mt-[2px] text-[22px] font-[600] leading-none text-text-primary">
+              {t("settings.about.liner")}
+            </span>
+          </div>
+          <div className="inline-flex h-[34px] items-center gap-[8px] rounded-full bg-white/[0.10] px-[14px] text-[14px] font-[600] text-text-primary select-none">
+            <span className="h-[8px] w-[8px] rounded-full bg-emerald-400" />
             <span>v{bundleInfo?.bundleVersion || appVersion}</span>
           </div>
         </div>
 
-        {/* Core & bundle info subtitle */}
-        <span
-          className="text-text-tertiary text-[12px] mb-[18px] select-none"
-          style={font}
-        >
-          {bundleInfo?.isOta
-            ? `Client ${bundleInfo.bundleVersion}${bundleInfo.sha256 ? ` (${bundleInfo.sha256.slice(0, 7)})` : ""} · Core ${appVersion}`
-            : `Client ${appVersion} (${isNativeApp() ? "Android" : "native"})`}
-          {lastCheckedTime ? ` · ${lastCheckedTime}` : ""}
-        </span>
+        <div className="flex flex-col items-start gap-[12px]">
+          <span className="text-[12.5px] text-text-secondary select-none">
+            {bundleInfo?.isOta
+              ? `Client ${bundleInfo.bundleVersion}${bundleInfo.sha256 ? ` (${bundleInfo.sha256.slice(0, 7)})` : ""} · Core ${appVersion}`
+              : `Client ${appVersion} (${isNativeApp() ? "Android" : "native"})`}
+            {lastCheckedTime ? ` · ${lastCheckedTime}` : ""}
+          </span>
 
-        {/* Update Checker Button */}
-        <div className="w-full flex items-center justify-center gap-[8px] mb-[20px]">
           <Button
             variant="primary"
             size="sm"
             onClick={handleCheckUpdates}
             disabled={checkingUpdate}
-            className="!h-[32px] !px-[16px] !text-[12.5px] !gap-[7px] !rounded-lg"
+            className="!h-[42px] !rounded-[12px] !px-[18px] !text-[14px] !font-[500] !gap-[10px]"
           >
-            <Refresh1Line
-              size={14}
-              className={checkingUpdate ? "animate-spin" : ""}
-            />
-            {t("settings.about.update_app", { defaultValue: "Обновить приложение" })}
+            <Refresh1Line size={17} className={checkingUpdate ? "animate-spin" : ""} />
+            {checkingUpdate
+              ? t("settings.about.checking_updates")
+              : t("settings.about.check_updates")}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openUrl("https://github.com/therikky-lk/lanes-app/releases")}
-            disabled={checkingUpdate}
-            className="!h-[32px] !px-[16px] !text-[12.5px] !gap-[7px] !rounded-lg"
-          >
-            <Refresh1Line
-              size={14}
-              className={checkingUpdate ? "animate-spin text-text-primary" : "text-text-tertiary"}
-            />
-            {t("settings.about.all_releases", { defaultValue: "All versions" })}
-          </Button>
-        </div>
 
-        {/* Links */}
-        <div className="flex flex-wrap items-center justify-center gap-[6px] w-full pt-[16px] border-t border-border-primary/30">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openUrl("https://t.me/therikky_ls")}
-            className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
-          >
-            <FaTelegramPlane size={13} className="text-[#2AABEE]" />
-            Telegram
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openUrl("https://discord.gg/D5saRWxcUx")}
-            className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
-          >
-            <FaDiscord size={14} className="text-[#5865F2]" />
-            Discord
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => openUrl("https://github.com/therikky-lk")}
-            className="!h-[28px] !px-[10px] !text-[12px] gap-[6px]"
-          >
-            <FaGithub size={13} />
-            GitHub
-          </Button>
+          <div className="mt-[16px] flex flex-wrap items-center gap-[8px]">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => openUrl("https://t.me/therikky_ls")}
+              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+            >
+              <FaTelegramPlane size={14} />
+              {t("settings.about.telegram")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => openUrl("https://discord.gg/D5saRWxcUx")}
+              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+            >
+              <QuestionCircle size={15} />
+              {t("settings.about.support")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => openUrl("https://github.com/therikky-lk/lanes-app")}
+              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+            >
+              <FaGithub size={14} />
+              {t("settings.about.github")}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => openUrl("https://github.com/therikky-lk/lanes-app#readme")}
+              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+            >
+              <FaGlobe size={14} />
+              {t("settings.about.website")}
+            </Button>
+          </div>
         </div>
       </div>
-      <DiagnosticsBox />
+      {isNativeApp() && <DiagnosticsBox />}
     </div>
   );
 }
