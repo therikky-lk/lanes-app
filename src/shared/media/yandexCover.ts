@@ -1,4 +1,5 @@
 import type { Track } from "@/shared/types";
+import { isBrowserRuntime } from "@/shared/platform/browser";
 
 const coverCache = new Map<string, string | null>();
 const pendingCovers = new Map<string, Promise<string | null>>();
@@ -15,6 +16,9 @@ export async function getCoverWithoutToken(
   expectedTitle = "",
   expectedArtists = "",
 ): Promise<string | null> {
+  // This optional enrichment endpoint does not allow browser CORS requests.
+  // Keep the provider's original artwork in the web player.
+  if (isBrowserRuntime()) return null;
   const normalized = query.trim();
   if (!normalized) return null;
   const cached = coverCache.get(normalized);

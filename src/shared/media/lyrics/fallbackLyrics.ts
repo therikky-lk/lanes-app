@@ -3,6 +3,7 @@
 // 2. YouTube Music - plain lyrics shown on the "Lyrics" tab of a track
 import type { LyricsCandidate, LyricsStreamEvent } from "@/shared/contracts/lyrics";
 import { postInnertube } from "@/shared/media/innertube/innertubeClient";
+import { isBrowserRuntime } from "@/shared/platform/browser";
 
 export interface FallbackLyricsHint {
   title: string;
@@ -23,6 +24,17 @@ interface LrclibRecord {
 
 const LRCLIB_BASE = "https://lrclib.net/api";
 const LRCLIB_HEADERS = { "Lrclib-Client": "Lane (https://github.com/therikky-lk)" };
+let lrclibRetryAt = 0;
+const lyricResponses = new Map<string, { data: unknown; expiresAt: number }>();
+
+export function normalizeLyricsHint(hint: FallbackLyricsHint): FallbackLyricsHint {
+  const artist = hint.artist.replace(/\s*-\s*Topic$/i, "").trim();
+  // Upload titles often carry the real artist while the author is an uploader.
+  const parts = hint.title.split(/\s+[–—-]\s+/);
+  return parts.length === 2 && parts.every((part) => part.trim())
+    ? { ...hint, title: parts[1].trim(), artist: parts[0].trim() }
+    : { ...hint, title: hint.title.trim(), artist };
+}
 
 export function normalizeForMatch(text: string): string {
   return text
@@ -69,12 +81,25 @@ export function scoreLrclibRecord(rec: LrclibRecord, hint: FallbackLyricsHint): 
 }
 
 async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T | null> {
+  signal?.throwIfAborted();
+  const cached = lyricResponses.get(url);
+  if (cached && cached.expiresAt > Date.now()) return cached.data as T | null;
+  if (Date.now() < lrclibRetryAt) return null;
   try {
-    const res = await fetch(url, { headers: LRCLIB_HEADERS, signal });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
+    const timeout = AbortSignal.timeout(8_000);
+    const res = await fetch(url, { headers: LRCLIB_HEADERS, signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+    if (res.status === 429 || res.status >= 500) {
+      lrclibRetryAt = Date.now() + 60_000;
+      return null;
+    }
+    if (!res.ok && res.status !== 404) return null;
+    const data = res.status === 404 ? null : await res.json();
+    if (lyricResponses.size >= 200) lyricResponses.clear();
+    lyricResponses.set(url, { data, expiresAt: Date.now() + 5 * 60_000 });
+    return data as T | null;
   } catch (err) {
     if (signal?.aborted) throw err;
+    lrclibRetryAt = Date.now() + 60_000;
     return null;
   }
 }
@@ -106,7 +131,7 @@ export async function findLrclibLyrics(
   let best: { rec: LrclibRecord; score: number } | null = null;
   for (const q of queries) {
     const list = await fetchJson<LrclibRecord[]>(`${LRCLIB_BASE}/search?${q}`, signal);
-    for (const rec of list ?? []) {
+    for (const rec of Array.isArray(list) ? list : []) {
       if (!usable(rec)) continue;
       const score = scoreLrclibRecord(rec, hint);
       if (!best || score > best.score) best = { rec, score };
@@ -132,6 +157,8 @@ function findFirst(node: unknown, predicate: (key: string, value: any) => boolea
 }
 
 export async function findYoutubeMusicLyrics(videoId: string, signal?: AbortSignal): Promise<string | null> {
+  // Anonymous web playback has no YouTube Music session for the lyrics tab.
+  if (isBrowserRuntime()) return null;
   try {
     const next = await postInnertube("next", { videoId, isAudioOnly: true }, { signal });
     const browseId = findFirst(
@@ -191,6 +218,7 @@ export async function* streamFallbackLyrics(
   let found: LyricsCandidate | null = null;
 
   if (hint?.title?.trim()) {
+    hint = normalizeLyricsHint(hint);
     const rec = await findLrclibLyrics(hint, signal);
     if (rec) {
       const score = scoreLrclibRecord(rec, hint);

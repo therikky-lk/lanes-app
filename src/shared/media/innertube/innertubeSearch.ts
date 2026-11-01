@@ -6,6 +6,7 @@ import { isVideoTrack } from "@/shared/media/isVideoTrack";
 import { asArray, asRecord } from "@/shared/utils/json";
 import { parseDurationMs } from "./innertubeTrackMapper";
 import { searchInvidiousTracks } from "./invidiousFallback";
+import { isBrowserRuntime } from "@/shared/platform/browser";
 
 export type InnertubeSearchFilter = SearchType | "video";
 
@@ -20,6 +21,9 @@ const SEARCH_PARAMS: Partial<Record<InnertubeSearchFilter, string>> = {
 };
 
 export async function searchRaw(query: string, filter?: InnertubeSearchFilter, signal?: AbortSignal): Promise<SearchResult[]> {
+  if (isBrowserRuntime() && (!filter || filter === "track" || filter === "video")) {
+    return (await searchInvidiousTracks(query, signal)).map((track) => ({ type: "track", ...track }));
+  }
   const params = filter ? SEARCH_PARAMS[filter] : undefined;
   try {
     const body = await postInnertube("search", { query, ...(params ? { params } : {}) }, { signal });
@@ -32,6 +36,9 @@ export async function searchRaw(query: string, filter?: InnertubeSearchFilter, s
 
 /** Videos from regular YouTube, kept separate from the music catalog search. */
 export async function searchYoutubeVideos(query: string, signal?: AbortSignal): Promise<TrackResult[]> {
+  if (isBrowserRuntime()) {
+    return (await searchInvidiousTracks(query, signal)).map((track) => ({ type: "track", ...track }));
+  }
   let body: unknown;
   try {
     body = await postInnertube("search", { query }, { profile: YOUTUBE_WEB_PROFILE, signal });
@@ -141,6 +148,7 @@ function isVideoResult(item: SearchResult): boolean {
 }
 
 async function searchTracksAndMixed(query: string, includeMixed: boolean, signal?: AbortSignal): Promise<SearchResult[]> {
+  if (isBrowserRuntime()) return searchRaw(query, "track", signal);
   // songs only: music videos, clips and uploads are not searched for at all
   const settled = await Promise.allSettled([searchRaw(query, undefined, signal), searchRaw(query, "track", signal)]);
   throwIfAllFailed(settled);

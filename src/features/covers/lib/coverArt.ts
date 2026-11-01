@@ -15,6 +15,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { prepareCoverFallback } from "./coverSigner";
+import { normalizeCoverUrl } from "./normalizeCoverUrl";
 
 type CoverStatus = "loading" | "loaded" | "error";
 
@@ -139,12 +140,13 @@ export function preloadCoverArt(url: string | undefined): Promise<void> {
     }
   }
 
+  const source = normalizeCoverUrl(url);
   const img = new window.Image();
   img.crossOrigin = "anonymous";
   img.decoding = "async";
 
   // mint and sign proxy fallback in parallel with direct cdn load
-  void prepareCoverFallback(url);
+  void prepareCoverFallback(source);
 
   const promise = new Promise<void>((resolve) => {
     let triedFallback = false;
@@ -166,7 +168,7 @@ export function preloadCoverArt(url: string | undefined): Promise<void> {
       // fallback, so it settles as an error immediately.
       if (!triedFallback) {
         triedFallback = true;
-        void prepareCoverFallback(url).then((fallback) => {
+        void prepareCoverFallback(source).then((fallback) => {
           if (fallback) img.src = fallback;
           else settle("error");
         });
@@ -176,8 +178,8 @@ export function preloadCoverArt(url: string | undefined): Promise<void> {
     };
   });
 
-  entries.set(url, { status: "loading", promise });
-  img.src = url;
+  entries.set(url, { status: "loading", promise, effectiveUrl: source });
+  img.src = source;
   return promise;
 }
 
@@ -210,7 +212,7 @@ export function useCoverReady(url: string | undefined): boolean {
  * to it, otherwise the direct `url` itself. */
 function effectiveCoverSrc(url: string | undefined): string | undefined {
   if (!url) return undefined;
-  return entries.get(url)?.effectiveUrl ?? url;
+  return entries.get(url)?.effectiveUrl ?? normalizeCoverUrl(url);
 }
 
 /**

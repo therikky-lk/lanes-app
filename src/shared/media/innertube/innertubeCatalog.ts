@@ -1,3 +1,5 @@
+import { isBrowserRuntime } from "@/shared/platform/browser";
+import { getInvidiousTrack, getInvidiousRadio } from "./invidiousFallback";
 import { isMusicVideo } from "./innertubeTrackMapper";
 import type {
   AlbumDetails,
@@ -48,6 +50,7 @@ function notFound(entity: string): InnertubeError {
 }
 
 async function getTrack(trackId: string, signal?: AbortSignal): Promise<TrackDetails> {
+  if (isBrowserRuntime()) return getInvidiousTrack(trackId.replace(/^yt:/, ""), signal);
   const fromNext = await next({ videoId: trackId }, signal)
     .then((body) => mapInnertubeTrackDetails(getTrackItem(body, trackId)))
     .catch(() => null);
@@ -63,6 +66,7 @@ async function getTrack(trackId: string, signal?: AbortSignal): Promise<TrackDet
 }
 
 async function getRadio(trackId: string, options: RadioOptions = {}): Promise<RadioResponse> {
+  if (isBrowserRuntime()) return { items: await getInvidiousRadio(trackId.replace(/^yt:/, ""), options.k ?? DEFAULT_RADIO_SIZE, options.signal) };
   let queue = getQueueItems(await next({ videoId: trackId, playlistId: `RDAMVM${trackId}` }, options.signal));
   if (queue.length === 0) {
     queue = getQueueItems(await next({ videoId: trackId }, options.signal));

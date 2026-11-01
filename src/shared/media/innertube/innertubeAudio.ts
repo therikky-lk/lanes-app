@@ -5,6 +5,7 @@ import { resetClientVisitorData } from "@/shared/api/visitorSession";
 import { log } from "@/shared/utils/logger";
 import { getWebPlayer, resetWebRemixSession, resolveWebRemixAudioStream } from "./webRemixAudio";
 import { resolveInvidiousAudioStream } from "./invidiousFallback";
+import { isBrowserRuntime } from "@/shared/platform/browser";
 import {
   extractAudioFormats,
   playabilityError,
@@ -189,6 +190,9 @@ export async function resolveDirectAudioStream(
 ): Promise<ResolvedAudioStream> {
   const videoId = toVideoId(trackId);
   if (!videoId) throw new InnertubeError(`Track ${trackId} is not a YouTube video.`, 400);
+  if (isBrowserRuntime() && !options.profiles) {
+    return resolveInvidiousAudioStream(videoId, options.signal, options);
+  }
   const failures: string[] = [];
   if (!options.profiles && Date.now() >= webRemixRetryAt) {
     const stream = await resolveViaWebRemix(videoId, options, failures);
@@ -209,7 +213,7 @@ export async function resolveDirectAudioStream(
     }
   }
   try {
-    return await resolveInvidiousAudioStream(videoId, options.signal);
+    return await resolveInvidiousAudioStream(videoId, options.signal, options);
   } catch (error) {
     if (options.signal?.aborted) throw error;
     failures.push(`Invidious: ${error instanceof Error ? error.message : String(error)}`);
