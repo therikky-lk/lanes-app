@@ -5,6 +5,7 @@ import { isJunkVideo, matchesQueryWell } from "./innertubeSearchRanking";
 import { isVideoTrack } from "@/shared/media/isVideoTrack";
 import { asArray, asRecord } from "@/shared/utils/json";
 import { parseDurationMs } from "./innertubeTrackMapper";
+import { searchInvidiousTracks } from "./invidiousFallback";
 
 export type InnertubeSearchFilter = SearchType | "video";
 
@@ -20,13 +21,24 @@ const SEARCH_PARAMS: Partial<Record<InnertubeSearchFilter, string>> = {
 
 export async function searchRaw(query: string, filter?: InnertubeSearchFilter, signal?: AbortSignal): Promise<SearchResult[]> {
   const params = filter ? SEARCH_PARAMS[filter] : undefined;
-  const body = await postInnertube("search", { query, ...(params ? { params } : {}) }, { signal });
-  return mapSearchResponse(body);
+  try {
+    const body = await postInnertube("search", { query, ...(params ? { params } : {}) }, { signal });
+    return mapSearchResponse(body);
+  } catch (error) {
+    if (signal?.aborted || (filter && filter !== "track" && filter !== "video")) throw error;
+    return (await searchInvidiousTracks(query, signal)).map((track) => ({ type: "track", ...track }));
+  }
 }
 
 /** Videos from regular YouTube, kept separate from the music catalog search. */
 export async function searchYoutubeVideos(query: string, signal?: AbortSignal): Promise<TrackResult[]> {
-  const body = await postInnertube("search", { query }, { profile: YOUTUBE_WEB_PROFILE, signal });
+  let body: unknown;
+  try {
+    body = await postInnertube("search", { query }, { profile: YOUTUBE_WEB_PROFILE, signal });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    return (await searchInvidiousTracks(query, signal)).map((track) => ({ type: "track", ...track }));
+  }
   const found: TrackResult[] = [];
   const seen = new Set<string>();
   const visit = (value: unknown) => {
