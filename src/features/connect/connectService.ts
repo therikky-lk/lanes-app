@@ -26,6 +26,19 @@ const DEVICE_ID_KEY = "lane_connect_device_id";
 const DEVICE_NAME_KEY = "lane_connect_device_name";
 const PRESENCE_TTL_MS = 150_000;
 const HEARTBEAT_MS = 25_000;
+// after waking up, the others get this long to answer before presence that
+// went stale during the sleep counts as "gone"
+const WAKE_GRACE_MS = 15_000;
+// A command / hand-over this old was sent while this device was asleep or
+// closed (the relay replays what was missed): acting on it now would start
+// playback here out of nowhere and stop the device that's actually playing.
+// The age comes from the relay's clock when known (phone); otherwise from the
+// sender's clock, with a lot more slack for clocks that are a bit off.
+const STALE_COMMAND_MS = 45_000;
+const STALE_COMMAND_SENDER_CLOCK_MS = 5 * 60_000;
+// a state this old is a replay, not news: don't start mirroring it
+const STALE_STATE_MS = 120_000;
+const STALE_STATE_SENDER_CLOCK_MS = 10 * 60_000;
 
 export type DeviceKind = "phone" | "desktop";
 
@@ -629,7 +642,7 @@ async function takeOver(message: Extract<Message, { t: "takeover" }>): Promise<v
 
 // ---- incoming ---------------------------------------------------------------
 
-async function onRelayMessage(text: string): Promise<void> {
+async function onRelayMessage(text: string, relayAgeMs?: number): Promise<void> {
   if (!keys) return;
   const message = await open<Message>(keys.key, text);
   if (!message || !message.from || message.from.id === useConnectStore.getState().me.id) return;
@@ -637,6 +650,10 @@ async function onRelayMessage(text: string): Promise<void> {
   if (message.t === "state") observe(message.state.epoch);
   seen(message.from);
   const { followingId, me: self } = useConnectStore.getState();
+  const senderAge = typeof message.from.lastSeen === "number" ? Date.now() - message.from.lastSeen : 0;
+  const isStale = (relayLimit: number, senderLimit: number) =>
+    relayAgeMs !== undefined ? relayAgeMs > relayLimit : senderAge > senderLimit;
+  const age = relayAgeMs ?? senderAge;
 
   switch (message.t) {
     case "hello":
@@ -658,6 +675,9 @@ async function onRelayMessage(text: string): Promise<void> {
       const seq = message.state.seq ?? 0;
       if (seq && seq <= (lastSeq.get(message.from.id) ?? 0)) break; // older than what we have
       if (seq) lastSeq.set(message.from.id, seq);
+      // a state replayed from long ago (this device was asleep): wait for the
+      // fresh one we asked for instead of mirroring something that has ended
+      if (followingId !== message.from.id && isStale(STALE_STATE_MS, STALE_STATE_SENDER_CLOCK_MS)) break;
       lastRemoteUpdate = Date.now();
       const local = usePlayerStore.getState();
       const playingHere = !followingId && isActive(local.status);
@@ -684,10 +704,19 @@ async function onRelayMessage(text: string): Promise<void> {
     }
     case "cmd":
       if (message.to !== self.id || followingId) break;
+      if (isStale(STALE_COMMAND_MS, STALE_COMMAND_SENDER_CLOCK_MS)) {
+        diag(`connect: ignored a stale ${message.action.type} command (${Math.round(age / 1000)} s old)`);
+        break;
+      }
       runCommand(message.action);
       break;
     case "takeover":
-      if (message.to === self.id) void takeOver(message);
+      if (message.to !== self.id) break;
+      if (isStale(STALE_COMMAND_MS, STALE_COMMAND_SENDER_CLOCK_MS)) {
+        diag(`connect: ignored a stale hand-over (${Math.round(age / 1000)} s old)`);
+        break;
+      }
+      void takeOver(message);
       break;
   }
 }
@@ -735,11 +764,11 @@ export async function startConnect(): Promise<void> {
   useConnectStore.setState({ fingerprint: keys.topic.slice(5, 11) });
   relay = openRelay(
     keys.topic,
-    (text) => void onRelayMessage(text),
+    (text, ageMs) => void onRelayMessage(text, ageMs),
     (online) => {
       if (online !== useConnectStore.getState().online) diag(`connect: relay ${online ? "connected" : "unreachable (ntfy.sh)"}`);
       useConnectStore.setState({ online });
-      if (online) void send({ t: "hello", from: me() });
+      if (online) askForState();
     },
   );
   installHooks();
@@ -747,16 +776,68 @@ export async function startConnect(): Promise<void> {
   if (isActive(usePlayerStore.getState().status)) becomePlayer();
   unsubscribeStore = usePlayerStore.subscribe(onPlayerChange);
   window.addEventListener("library:local-change", onLibraryChange);
+  lastBeatAt = Date.now();
   heartbeat = setInterval(() => {
     const now = Date.now();
-    useConnectStore.setState((s) => ({
-      devices: Object.fromEntries(Object.entries(s.devices).filter(([, d]) => now - d.lastSeen < PRESENCE_TTL_MS)),
-    }));
-    const following = useConnectStore.getState().followingId;
-    if (following && !useConnectStore.getState().devices[following]) stopFollowing();
+    // the timer didn't run for a while: the app was asleep (phone in the
+    // background), so everyone's presence looks stale. Ask around first
+    // instead of dropping the device that's playing.
+    if (now - lastBeatAt > HEARTBEAT_MS * 2) {
+      lastBeatAt = now;
+      onWake();
+      return;
+    }
+    lastBeatAt = now;
+    if (now >= wakeGraceUntil) {
+      useConnectStore.setState((s) => ({
+        devices: Object.fromEntries(Object.entries(s.devices).filter(([, d]) => now - d.lastSeen < PRESENCE_TTL_MS)),
+      }));
+      const following = useConnectStore.getState().followingId;
+      if (following && !useConnectStore.getState().devices[following]) stopFollowing();
+    }
     if (!useConnectStore.getState().followingId && usePlayerStore.getState().status === "playing") broadcastState(true);
     else void send({ t: "hello", from: me() });
   }, HEARTBEAT_MS);
+  document.addEventListener("visibilitychange", onVisibility);
+  document.addEventListener("resume", onWake);
+  window.addEventListener("online", onWake);
+}
+
+// ---- waking up / asking for the current state -------------------------------
+
+let lastBeatAt = 0;
+let wakeGraceUntil = 0;
+let lastWakeAt = 0;
+let stateAskTimers: ReturnType<typeof setTimeout>[] = [];
+
+/** ask the other devices what they're playing; ask again a couple of times
+ *  if nobody answers (a message can get lost, a socket may still be coming up) */
+function askForState(): void {
+  for (const timer of stateAskTimers) clearTimeout(timer);
+  const askedAt = Date.now();
+  void send({ t: "hello", from: me() });
+  stateAskTimers = [2500, 7000].map((delay) =>
+    setTimeout(() => {
+      if (lastRemoteUpdate > askedAt) return; // someone answered
+      void send({ t: "hello", from: me() });
+    }, delay),
+  );
+}
+
+function onVisibility(): void {
+  if (document.visibilityState === "visible") onWake();
+}
+
+/** the app came back to the foreground / the network came back */
+function onWake(): void {
+  if (!relay) return;
+  const now = Date.now();
+  if (now - lastWakeAt < 2000) return; // several wake-up events fire at once
+  lastWakeAt = now;
+  wakeGraceUntil = now + WAKE_GRACE_MS;
+  // whatever plays elsewhere shows up here again within a moment
+  if (!useConnectStore.getState().followingId && isActive(usePlayerStore.getState().status)) broadcastState(true);
+  askForState();
 }
 
 export function stopConnect(sayBye = true): void {
@@ -780,6 +861,11 @@ export function stopConnect(sayBye = true): void {
   lastSeq.clear();
   lastBroadcast = "";
   lastBroadcastState = null;
+  for (const timer of stateAskTimers) clearTimeout(timer);
+  stateAskTimers = [];
+  document.removeEventListener("visibilitychange", onVisibility);
+  document.removeEventListener("resume", onWake);
+  window.removeEventListener("online", onWake);
   stopFollowing();
   setRemoteHooks(null, null);
   useConnectStore.setState({ online: false, devices: {} });
