@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { searchYoutubeVideos } from "@/shared/media/innertube";
+import { searchCatalog, searchYoutubeVideos } from "@/shared/media/innertube";
 import type { SearchResult } from "@/shared/contracts";
 
 export function useSearchYoutube(
@@ -7,7 +7,7 @@ export function useSearchYoutube(
   options: { enabled?: boolean; debounceMs?: number } = {},
 ) {
   const { enabled = true, debounceMs = 250 } = options;
-  const [videos, setVideos] = useState<Extract<SearchResult, { type: "track" }>[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const requestId = useRef(0);
@@ -16,10 +16,24 @@ export function useSearchYoutube(
   const runRequest = useCallback(async (id: number, value: string) => {
     setLoading(true);
     try {
-      const result = await searchYoutubeVideos(value);
-      if (id === requestId.current) setVideos(result);
+      const [catalog, videos] = await Promise.allSettled([
+        searchCatalog(value, "all"),
+        searchYoutubeVideos(value),
+      ]);
+      const merged = [
+        ...(catalog.status === "fulfilled" ? catalog.value : []),
+        ...(videos.status === "fulfilled" ? videos.value : []),
+      ];
+      const seen = new Set<string>();
+      const unique = merged.filter((item) => {
+        const key = `${item.type}:${item.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (id === requestId.current) setResults(unique);
     } catch {
-      if (id === requestId.current) setVideos([]);
+      if (id === requestId.current) setResults([]);
     } finally {
       if (id === requestId.current) {
         setLoading(false);
@@ -31,7 +45,7 @@ export function useSearchYoutube(
   useEffect(() => {
     if (!enabled || trimmed.length < 2) {
       requestId.current += 1;
-      setVideos([]);
+      setResults([]);
       setLoading(false);
       setHasLoaded(false);
       return;
@@ -46,5 +60,5 @@ export function useSearchYoutube(
     if (enabled && trimmed.length >= 2) void runRequest(++requestId.current, trimmed);
   }, [enabled, runRequest, trimmed]);
 
-  return { videos, loading, hasLoaded, runNow };
+  return { results, loading, hasLoaded, runNow };
 }
