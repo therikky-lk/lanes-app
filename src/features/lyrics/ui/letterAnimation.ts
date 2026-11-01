@@ -8,6 +8,7 @@
 // the same way so the lift moves the letter and its light together.
 
 import { lyricsOutputLatencyMs } from "../engine/lyricsLatency";
+import { isLowEndDevice } from "@/shared/platform/deviceTier";
 
 const WORD = "blyrics--word";
 const HIGHLIGHT_RUN = "blyrics-highlight-run";
@@ -22,6 +23,9 @@ const RICHSYNC_LEAD_S = 0.15;
 // (our clock follows the speakers, braccato's runs ahead of them): its letters
 // are completed and held this long before going dark, instead of being cut off
 const FINISH_HOLD_MS = 650;
+// weak phones: the letters fade by CSS transition, so ~30 updates a second look
+// the same as 90 and leave the main thread free for scrolling the lyrics
+const FRAME_MS = isLowEndDevice() ? 33 : 0;
 
 interface WordLetters {
   time: number;
@@ -77,12 +81,16 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
   /** words of lines that just stopped being current: when to let them go dark */
   const finishing = new Map<WordLetters, number>();
   let raf = 0;
+  let lastFrame = 0;
+  /** the split words of each line, so a frame doesn't query the DOM per line */
+  let lineCache = new WeakMap<HTMLElement, WordLetters[]>();
   let scanQueued = false;
   let latencyS = lyricsOutputLatencyMs() / 1000;
   const latencyTimer = setInterval(() => (latencyS = lyricsOutputLatencyMs() / 1000), 2000);
 
   const scan = () => {
     scanQueued = false;
+    lineCache = new WeakMap();
     for (const run of Array.from(host.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN}`))) {
       const baseRun = Array.from(run.parentElement?.children ?? []).find(
         (el) => el !== run && el.classList.contains("blyrics-bidi-run") && !el.classList.contains(HIGHLIGHT_RUN),
@@ -126,19 +134,26 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
     word.count = count;
   };
 
-  const frame = () => {
+  const frame = (ts: number) => {
     raf = requestAnimationFrame(frame);
+    if (FRAME_MS && ts - lastFrame < FRAME_MS) return;
+    lastFrame = ts;
     const now = (host.currentTime ?? 0) + RICHSYNC_LEAD_S - latencyS;
     const next = new Set<WordLetters>();
     for (const line of Array.from(host.querySelectorAll<HTMLElement>(`.${ACTIVE_LINE}`))) {
-      const lineWords = Array.from(line.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} [${SPLIT_ATTR}]`))
-        .map((el) => words.get(el))
-        .filter((w): w is WordLetters => Boolean(w));
-      lineWords.forEach((word, i) => {
+      let lineWords = lineCache.get(line);
+      if (!lineWords) {
+        lineWords = Array.from(line.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} [${SPLIT_ATTR}]`))
+          .map((el) => words.get(el))
+          .filter((w): w is WordLetters => Boolean(w));
+        lineCache.set(line, lineWords);
+      }
+      const current = lineWords;
+      current.forEach((word, i) => {
         const progress = word.duration > 0 ? (now - word.time) / word.duration : now >= word.time ? 1 : 0;
         let count = Math.max(0, Math.min(word.lit.length, Math.ceil(progress * word.lit.length)));
         // the next word has begun: this one is done, even if its timing ran long
-        const later = lineWords[i + 1];
+        const later = current[i + 1];
         if (later && now >= later.time) count = word.lit.length;
         setCount(word, count);
         next.add(word);
