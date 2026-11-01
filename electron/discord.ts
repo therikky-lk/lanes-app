@@ -181,6 +181,7 @@ export class DiscordRpcManager {
       return {
         connected: this.isConnected,
         username: this.client?.user?.username,
+        avatarUrl: this.client?.user?.avatarUrl,
         error: this.lastError,
       };
     });

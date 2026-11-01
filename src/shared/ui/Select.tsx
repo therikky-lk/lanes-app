@@ -241,8 +241,13 @@ export function Select<T extends string = string>({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -4 }}
               transition={{ duration: 0.13, ease: "easeOut" }}
-              className="lane-select-menu fixed z-[9999] max-h-[min(360px,calc(100dvh-24px))] overflow-y-auto overscroll-contain rounded-[12px] border-0 bg-bg-elevated/70 p-[8px] shadow-[0_16px_44px_rgba(0,0,0,0.32)]"
-              style={menuStyle}
+              className="lane-select-menu fixed z-[9999] max-h-[min(360px,calc(100dvh-24px))] overflow-y-auto overscroll-contain rounded-[12px] border border-border-primary/35 bg-bg-primary/85 p-[8px] shadow-[0_16px_44px_rgba(0,0,0,0.32)] backdrop-blur-2xl"
+              style={{
+                ...menuStyle,
+                background: "color-mix(in srgb, var(--bg-primary) 82%, transparent)",
+                backdropFilter: "blur(24px) saturate(145%)",
+                WebkitBackdropFilter: "blur(24px) saturate(145%)",
+              }}
             >
               <div className="flex flex-col gap-[4px]">
                 {options.map((option) => {

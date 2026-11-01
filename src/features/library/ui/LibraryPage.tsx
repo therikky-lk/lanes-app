@@ -44,6 +44,7 @@ const initialTabState: TabState = {
 };
 
 const initialState: LibraryState = {
+  all: { ...initialTabState },
   playlists: { ...initialTabState },
   albums: { ...initialTabState },
   artists: { ...initialTabState },
@@ -172,13 +173,14 @@ function LikesPlaylistCard({
 export default function LibraryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<LibraryTab>("playlists");
+  const [activeTab, setActiveTab] = useState<LibraryTab>("all");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const [mobileAdd, setMobileAdd] = useState(false);
   const mobileTabLabels: Record<LibraryTab, string> = {
+    all: t("common.all"),
     playlists: t("library.tab_playlists"),
     albums: t("library.tab_albums"),
     artists: t("library.tab_artists"),
@@ -247,14 +249,22 @@ export default function LibraryPage() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as LibraryTab | null;
-    if (tab && ["playlists", "albums", "artists"].includes(tab)) {
+    if (tab && ["all", "playlists", "albums", "artists"].includes(tab)) {
       setActiveTab(tab);
     }
   }, []);
 
   const filteredItems = useMemo(() => {
     let source: LibraryItemViewModel[];
-    if (activeTab === "playlists") {
+    if (activeTab === "all") {
+      source = [
+        ...playlistItems,
+        ...externalPlaylistItems,
+        ...youtubePlaylistItems,
+        ...albumItems,
+        ...artistItems,
+      ];
+    } else if (activeTab === "playlists") {
       source = [...playlistItems, ...externalPlaylistItems, ...youtubePlaylistItems];
     } else if (activeTab === "albums") {
       source = albumItems;
@@ -499,7 +509,7 @@ export default function LibraryPage() {
                   viewMode={viewMode}
                   sentinelRef={sentinelRef}
                   prependNodes={
-                    activeTab === "playlists" && !hasSearchQuery
+                    (activeTab === "playlists" || activeTab === "all") && !hasSearchQuery
                       ? [
                           <LikesPlaylistCard
                             key="likes-playlist-card"
@@ -598,7 +608,7 @@ export default function LibraryPage() {
                   <More2Fill size={18} />
                 </button>
                 <PhoneMenu open={mobileMenu} anchorRef={menuButtonRef} onClose={() => setMobileMenu(false)}>
-                  {(["playlists", "albums", "artists"] as const).map((tab) => (
+                  {(["all", "playlists", "albums", "artists"] as const).map((tab) => (
                     <PhoneMenuItem
                       key={tab}
                       label={mobileTabLabels[tab]}

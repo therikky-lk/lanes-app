@@ -469,6 +469,7 @@
     "open_source": "Open original",
     "col_title": "Title",
     "col_album": "Album",
+    "col_date_added": "Hinzugefügt am",
     "change_cover": "Change cover",
     "reset_cover": "Reset cover",
     "cover_failed": "Could not use this image"

@@ -54,6 +54,7 @@ function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } 
             coverUrl: "",
             durationMs: 0,
             playCount: 0,
+            likedAt: overrideAt.get(id) ?? Date.now(),
           } as Track),
         ...tracks,
       ];
@@ -130,7 +131,12 @@ function load(force = false): Promise<void> {
     const remoteLocal = loadLocalLikes();
     do {
       const page = await api.listLikedTracks(100, cursor);
-      tracks.push(...page.items.map(({ track }) => toClientTrack(track)));
+      tracks.push(
+        ...page.items.map(({ track, likedAt }) => ({
+          ...toClientTrack(track),
+          likedAt,
+        })),
+      );
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
     // The library must become usable as soon as the API responds. Cover
@@ -174,7 +180,7 @@ function load(force = false): Promise<void> {
 }
 
 export function applyOptimisticLike(trackId: string, track?: Track): () => void {
-  if (track?.title) optimisticTracks.set(trackId, { ...track, id: trackId });
+  if (track?.title) optimisticTracks.set(trackId, { ...track, id: trackId, likedAt: track.likedAt ?? Date.now() });
   const prev = optimisticOverrides.get(trackId);
   optimisticOverrides.set(trackId, true);
   overrideAt.set(trackId, Date.now());
@@ -246,7 +252,10 @@ if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
   const refreshLocal = () =>
     listLikedLocalTracks()
       .then((records) => {
-        localLiked = records.map(localRecordToTrack);
+        localLiked = records.map((record) => ({
+          ...localRecordToTrack(record),
+          likedAt: record.likedAt,
+        }));
         emit(view.isLoading);
       })
       .catch(() => undefined);

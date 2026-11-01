@@ -137,7 +137,7 @@ export interface LinerElectronApi {
   setOverlayAuthenticated?: (authenticated: boolean) => void;
   discordUpdateState: (state: any) => void;
   discordUpdateSettings: (settings: any) => void;
-  getDiscordStatus: () => Promise<{ connected: boolean; username?: string; error?: string }>;
+  getDiscordStatus: () => Promise<{ connected: boolean; username?: string; avatarUrl?: string; error?: string }>;
   mintPoToken: (identifier: string) => Promise<string>;
   connectSubscribe?: (relay: string, topic: string) => Promise<boolean>;
   connectUnsubscribe?: (relay: string, topic: string) => Promise<boolean>;

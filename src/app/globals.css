@@ -586,10 +586,10 @@ html[data-hover-reset] [data-window-controls] button:hover {
   border-radius: 10px;
 }
 .lane-select-menu {
-  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent) !important;
-  border: 0 !important;
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
   overscroll-behavior: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;

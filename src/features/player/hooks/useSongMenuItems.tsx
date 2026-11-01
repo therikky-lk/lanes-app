@@ -7,6 +7,7 @@ import {
   LuPlus,
   LuTrash2,
   LuFolderPlus,
+  LuClock,
 } from "react-icons/lu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import { playerEngine } from "../engine/playerEngine";
@@ -32,6 +33,7 @@ export interface SongMenuContext {
   playlistId?: string;
   playlistItemId?: string;
   playlistTitle?: string;
+  addedDateLabel?: string;
 }
 
 export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
@@ -48,6 +50,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     playlistId,
     playlistItemId,
     playlistTitle,
+    addedDateLabel,
   } = ctx;
 
   const { data: playlistsData } = usePlaylistsList();
@@ -155,6 +158,17 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
               });
             },
           },
+          ...(addedDateLabel
+            ? [{
+                id: "date-added",
+                label: addedDateLabel,
+                icon: <LuClock size={15} />,
+                separatorBefore: true,
+                disabled: true,
+                info: true,
+                onClick: () => undefined,
+              }]
+            : []),
         ];
       }
 
@@ -237,6 +251,17 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
             });
           },
         },
+        ...(addedDateLabel
+          ? [{
+              id: "date-added",
+              label: addedDateLabel,
+              icon: <LuClock size={15} />,
+              separatorBefore: true,
+              disabled: true,
+              info: true,
+              onClick: () => undefined,
+            }]
+          : []),
       ];
     }
 
@@ -270,6 +295,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     playlistId,
     playlistItemId,
     playlistTitle,
+    addedDateLabel,
     liked,
     handleLike,
     playlistsData,

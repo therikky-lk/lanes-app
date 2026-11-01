@@ -30,6 +30,7 @@ export default function LibraryControls({
   const hasCustomBg = useIsContentTransparent();
 
   const placeholderByTab: Record<LibraryTab, string> = {
+    all: t("library.title"),
     playlists: t("library.search_playlists"),
     albums: t("library.search_albums"),
     artists: t("library.search_artists"),
@@ -49,33 +50,27 @@ export default function LibraryControls({
         }`}
       />
 
-      <div
-        className={`inline-flex items-center gap-[4px] rounded-xl p-[4px] ${
-          hasCustomBg
-            ? "apple-glass-pill"
-            : "bg-bg-elevated"
-        }`}
-      >
+      <div className="inline-flex items-center gap-[8px]">
         <button
           type="button"
           data-no-tooltip="true"
           aria-label={t("library.view_grid")}
           onClick={() => onViewModeChange("grid")}
-          className={`relative inline-flex items-center justify-center h-[30px] w-[34px] rounded-lg border-0 bg-transparent transition-colors duration-150 cursor-pointer select-none active:scale-[0.97] ${
+          className={`relative inline-flex items-center justify-center h-[32px] w-[36px] rounded-[10px] border-0 transition-colors duration-150 cursor-pointer select-none active:scale-[0.97] ${
             viewMode === "grid"
               ? hasCustomBg
                 ? "text-white dark:text-black"
-                : "text-text-primary"
+                : "text-bg-primary"
               : hasCustomBg
-                ? "bg-transparent text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
-                : "bg-transparent text-text-tertiary hover:text-text-secondary"
+                ? "apple-glass-pill text-white/65 hover:text-white"
+                : "bg-border-alpha-14 text-text-tertiary hover:bg-border-alpha-22 hover:text-text-primary"
           }`}
         >
           {viewMode === "grid" && (
             <motion.div
               layoutId="activeLibraryView"
-              className={`absolute inset-0 rounded-lg ${
-                hasCustomBg ? "apple-glass-prominent" : "bg-border-alpha-14"
+              className={`absolute inset-0 rounded-[10px] ${
+                hasCustomBg ? "apple-glass-prominent" : "bg-text-primary"
               }`}
               transition={{ type: "spring", stiffness: 450, damping: 35 }}
             />
@@ -91,21 +86,21 @@ export default function LibraryControls({
           data-no-tooltip="true"
           aria-label={t("library.view_list")}
           onClick={() => onViewModeChange("list")}
-          className={`relative inline-flex items-center justify-center h-[30px] w-[34px] rounded-lg border-0 bg-transparent transition-colors duration-150 cursor-pointer select-none active:scale-[0.97] ${
+          className={`relative inline-flex items-center justify-center h-[32px] w-[36px] rounded-[10px] border-0 transition-colors duration-150 cursor-pointer select-none active:scale-[0.97] ${
             viewMode === "list"
               ? hasCustomBg
                 ? "text-white dark:text-black"
-                : "text-text-primary"
+                : "text-bg-primary"
               : hasCustomBg
-                ? "bg-transparent text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white"
-                : "bg-transparent text-text-tertiary hover:text-text-secondary"
+                ? "apple-glass-pill text-white/65 hover:text-white"
+                : "bg-border-alpha-14 text-text-tertiary hover:bg-border-alpha-22 hover:text-text-primary"
           }`}
         >
           {viewMode === "list" && (
             <motion.div
               layoutId="activeLibraryView"
-              className={`absolute inset-0 rounded-lg ${
-                hasCustomBg ? "apple-glass-prominent" : "bg-border-alpha-14"
+              className={`absolute inset-0 rounded-[10px] ${
+                hasCustomBg ? "apple-glass-prominent" : "bg-text-primary"
               }`}
               transition={{ type: "spring", stiffness: 450, damping: 35 }}
             />
