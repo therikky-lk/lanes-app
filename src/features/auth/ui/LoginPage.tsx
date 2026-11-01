@@ -177,7 +177,7 @@ export default function LoginPage() {
     <main
       className={`relative flex h-full w-full items-center justify-center overflow-hidden ${frameShape} ${
         isEdgeToEdge ? "border-0" : "border border-border-primary"
-      } bg-[#242426]`}
+      } bg-black/25 backdrop-blur-[18px]`}
     >
       {!isNativeApp() && <WindowControls variant="glass" />}
 
@@ -187,7 +187,7 @@ export default function LoginPage() {
         <div className="absolute -right-[8%] top-[35%] h-[110%] w-[28%] rotate-[28deg] bg-white/[0.018]" />
       </div>
 
-      <section className="relative z-10 mx-4 my-auto grid max-h-[calc(100%-32px)] w-full max-w-[780px] grid-cols-1 gap-[10px] overflow-y-auto rounded-[22px] border border-white/[0.04] bg-[#1f1f20] p-[9px] shadow-[0_28px_90px_rgba(0,0,0,0.28)] md:grid-cols-[0.82fr_1.18fr]">
+      <section className="relative z-10 mx-4 my-auto grid max-h-[calc(100%-32px)] w-full max-w-[780px] grid-cols-1 gap-[10px] overflow-y-auto rounded-[22px] border border-white/[0.04] bg-[#1f1f20]/85 p-[9px] shadow-[0_28px_90px_rgba(0,0,0,0.28)] backdrop-blur-2xl md:grid-cols-[0.82fr_1.18fr]">
         <aside className="relative hidden min-h-[378px] flex-col items-start overflow-hidden rounded-[14px] bg-[#303033] px-[28px] py-[24px] text-left md:flex">
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             <span className="absolute -left-[8px] -top-[112px] select-none text-[420px] font-black leading-none tracking-[-0.12em] text-white/[0.035]">N</span>
@@ -196,7 +196,7 @@ export default function LoginPage() {
           </div>
           <div className="relative z-10 flex items-center gap-[10px]">
             <AppImage src={logo} alt="" width={32} height={32} className="h-[30px] w-[30px]" priority />
-            <span className="text-[17px] font-[600] tracking-[-0.02em] text-white">Liner</span>
+            <span className="text-[17px] font-[600] tracking-[-0.02em] text-white">Lane</span>
           </div>
           <div className="relative z-10 mt-auto mb-auto w-[136px]">
             <Select
@@ -230,7 +230,7 @@ export default function LoginPage() {
               className="h-[26px] w-[26px]"
               priority
             />
-            <span className="text-[16px] font-[600] tracking-[-0.025em] text-white">Liner</span>
+            <span className="text-[16px] font-[600] tracking-[-0.025em] text-white">Lane</span>
             <Select
               options={LOCALE_OPTIONS}
               value={locale}
@@ -626,9 +626,6 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
               </form>
-              <p className="m-0 mt-[22px] text-center text-[11px] leading-[1.5] text-white/45">
-                {t("login.legal")} {t("login.legal_tos")} {t("login.legal_and")} {t("login.legal_pp")}
-              </p>
             </div>
           </div>
 
