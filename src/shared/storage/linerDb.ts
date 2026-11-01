@@ -14,6 +14,7 @@ export interface CachedTrackRecord {
   albumId?: string;
   coverUrl?: string;
   durationMs: number;
+  likedAt?: string | number;
   savedAt: number;
 }
 
@@ -234,6 +235,7 @@ class LinerDb {
       albumId: track.album?.id,
       coverUrl: track.coverUrl,
       durationMs: track.durationMs,
+      likedAt: track.likedAt,
       savedAt: Date.now(),
     };
     this.memTracks.set(track.id, record);

@@ -46,18 +46,33 @@ function useFixedStyle(
     const rect = menuRef.current.getBoundingClientRect();
     let left = align === "end" ? position.x - rect.width : position.x;
     let top = side === "top" ? position.y - rect.height : position.y;
+    const isMobile = document.documentElement.classList.contains("lane-mobile");
+    const mobileDock = isMobile
+      ? document.querySelector<HTMLElement>("[data-mobile-dock]")
+      : null;
+    const dockTop = mobileDock?.getBoundingClientRect().top;
+    const bottomLimit = Number.isFinite(dockTop)
+      ? Math.min(window.innerHeight, dockTop as number) - 8
+      : window.innerHeight - 8;
 
     if (left + rect.width > window.innerWidth) {
       left = window.innerWidth - rect.width - 8;
     }
     if (left < 8) left = 8;
 
-    if (side !== "top" && top + rect.height > window.innerHeight) {
+    if (side !== "top" && top + rect.height > bottomLimit) {
       top = position.y - rect.height - 8;
     }
     if (top < 8) top = 8;
+    if (isMobile) top = Math.min(top, bottomLimit - rect.height);
 
-    setStyle({ left, top });
+    setStyle({
+      left,
+      top: Math.max(8, top),
+      ...(isMobile
+        ? { maxHeight: `max(96px, ${bottomLimit - 16}px)`, overflowY: "auto" }
+        : {}),
+    });
   }, [isFixed, position, open, menuRef, side, align]);
 
   return style;
