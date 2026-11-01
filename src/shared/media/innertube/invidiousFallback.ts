@@ -1,6 +1,7 @@
 import type { Track } from "@/shared/contracts";
 import { videoThumbnailCover } from "./innertubeThumbnail";
 import { isBrowserRuntime } from "@/shared/platform/browser";
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import type { ResolvedAudioStream } from "./innertubeAudioFormats";
 
 // Public instance from the Invidious project's maintained instance list.
@@ -128,11 +129,7 @@ export async function resolveInvidiousAudioStream(
   streamUrl.searchParams.set("local", "true");
   let playbackUrl = streamUrl.toString();
   if (isBrowserRuntime()) {
-    // The public instance's first redirect has no CORS headers. Its companion
-    // serves the same audio with CORS and does not require the RF API's egress.
-    const companion = new URL("https://yt-comp5.chocolatemoo53.com/companion/latest_version");
-    companion.search = streamUrl.search;
-    playbackUrl = companion.toString();
+    playbackUrl = `${getApiBaseUrl()}/v1/public/youtube/stream/${videoId}?itag=${selected.itag}`;
   }
   const mimeType = selected.type.split(";")[0]?.trim() || "audio/webm";
   const opus = /opus|webm/i.test(selected.type);
