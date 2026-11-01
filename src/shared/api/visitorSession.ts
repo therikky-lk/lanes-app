@@ -52,6 +52,10 @@ export async function getClientVisitorData(): Promise<string> {
       }
 
       const text = await res.text();
+      if (isBrowser && !text.trim()) {
+        cachedSession = { visitorData: "", expiresAt: Date.now() + SESSION_TTL_MS };
+        return "";
+      }
       const visitorData = parseVisitorData(text);
       if (!visitorData) {
         throw new Error("Could not parse visitorData from sw.js_data");
