@@ -4,6 +4,7 @@ import { PLAYBACK_PROFILES } from "./playbackProfiles";
 import { resetClientVisitorData } from "@/shared/api/visitorSession";
 import { log } from "@/shared/utils/logger";
 import { getWebPlayer, resetWebRemixSession, resolveWebRemixAudioStream } from "./webRemixAudio";
+import { resolveInvidiousAudioStream } from "./invidiousFallback";
 import {
   extractAudioFormats,
   playabilityError,
@@ -206,6 +207,12 @@ export async function resolveDirectAudioStream(
       if (options.signal?.aborted) throw error;
       failures.push(`${profile.clientName}: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+  try {
+    return await resolveInvidiousAudioStream(videoId, options.signal);
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    failures.push(`Invidious: ${error instanceof Error ? error.message : String(error)}`);
   }
   throw new InnertubeError(`Direct audio resolution failed (${failures.join("; ")}).`, 502);
 }
