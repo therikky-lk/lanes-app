@@ -727,6 +727,11 @@ export async function setManualCode(code: string | null): Promise<void> {
 
 export async function startConnect(): Promise<void> {
   stopConnect(false);
+  if (typeof crypto === "undefined" || !crypto.subtle) {
+    useConnectStore.setState({ code: null, online: false, fingerprint: null, devices: {} });
+    diag("connect: unavailable because this page does not have Web Crypto (HTTPS required)");
+    return;
+  }
   const manual = manualCode();
   const code = manual ? `lane-code:${manual}` : accountSecret();
   useConnectStore.setState({ code });
