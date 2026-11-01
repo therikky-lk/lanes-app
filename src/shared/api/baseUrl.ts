@@ -1,4 +1,4 @@
-export const DEFAULT_PRIMARY_API = "https://lucid-1.ru-west.hyprr.space:10262";
+export const DEFAULT_PRIMARY_API = "https://api.tryliner.fun";
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
