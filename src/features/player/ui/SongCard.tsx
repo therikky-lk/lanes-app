@@ -32,6 +32,8 @@ export interface SongCardProps {
   rowNumber?: number;
   /** Spotify-style table row: album column between title and duration */
   albumTitle?: string;
+  /** Saved date column used by the liked tracks table. */
+  addedDate?: string;
   /** highlight the row as the one playing now */
   isCurrent?: boolean;
   /** shows where the track streams from */
@@ -73,6 +75,7 @@ function SongCard({
   trackNumber,
   rowNumber,
   albumTitle,
+  addedDate,
   isCurrent = false,
   trackId,
   repostedBy,
@@ -164,9 +167,10 @@ function SongCard({
 
   return (
     <div
-      className={`group w-full flex items-center justify-between rounded-[10px] ${paddingClass} outline-none transition-colors duration-150 ease-out ${
+      className={`group w-full ${addedDate !== undefined ? "flex items-center justify-between md:grid md:items-center md:justify-normal" : "flex items-center justify-between"} rounded-[10px] ${paddingClass} outline-none transition-colors duration-150 ease-out ${
         className ?? ""
       } ${unavailableNote ? "opacity-[0.42]" : ""} ${onPlay ? "cursor-pointer" : ""} ${onPlay && !className?.includes("hover:bg-") ? "hover:bg-border-alpha-14" : ""}`}
+      style={addedDate !== undefined ? { gridTemplateColumns: "minmax(0, 1fr) minmax(120px, 30%) 140px 76px" } : undefined}
       onClick={handleClick}
       onPointerDown={(e) => {
         if (clickTimerRef.current) {
@@ -293,7 +297,7 @@ function SongCard({
 
       {albumTitle !== undefined && (
         <div
-          className="hidden md:block w-[30%] max-w-[360px] shrink-0 min-w-0 pl-[16px] truncate text-[14px] text-text-secondary"
+          className={`hidden md:block shrink-0 min-w-0 pl-[16px] truncate text-[14px] text-text-secondary ${addedDate !== undefined ? "" : "w-[30%] max-w-[360px]"}`}
           style={{ fontFamily: "var(--font-inter), sans-serif", fontWeight: 350 }}
           title={albumTitle}
         >
@@ -301,7 +305,17 @@ function SongCard({
         </div>
       )}
 
-      <div className={`flex items-center shrink-0 ml-auto gap-[16px] justify-end ${onToggleLike ? "w-[116px]" : ""}`}>
+      {addedDate !== undefined && (
+        <div
+          className="hidden md:block w-[140px] shrink-0 pl-[16px] truncate text-[14px] text-text-secondary"
+          style={{ fontFamily: "var(--font-inter), sans-serif", fontWeight: 350 }}
+          title={addedDate}
+        >
+          {addedDate}
+        </div>
+      )}
+
+      <div className={`flex items-center shrink-0 ml-auto gap-[16px] justify-end ${addedDate !== undefined ? "md:ml-0 md:w-[76px] md:gap-[8px]" : ""} ${onToggleLike ? "w-[116px]" : ""}`}>
         {releaseDate && (
           <span
             className="text-[14px] text-text-tertiary"

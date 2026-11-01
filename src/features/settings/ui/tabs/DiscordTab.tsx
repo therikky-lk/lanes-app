@@ -13,6 +13,7 @@ export function DiscordTab({ searchQuery }: { searchQuery?: string }) {
   const [discordStatus, setDiscordStatus] = useState<{
     connected: boolean;
     username?: string;
+    avatarUrl?: string;
     error?: string;
   }>({ connected: false });
 
@@ -59,42 +60,41 @@ export function DiscordTab({ searchQuery }: { searchQuery?: string }) {
   return (
     <div className="flex flex-col gap-[18px]">
       {/* Discord Connection Status */}
-      <div className="lane-setting-status flex items-center justify-between px-[16px] py-[16px] rounded-xl border border-white/[0.025] bg-white/[0.09]">
-        <div className="flex items-center gap-[10px]">
-          <span
-            className={`w-[8px] h-[8px] rounded-full shrink-0 ${
-              discordStatus.connected
-                ? "bg-[#23a55a] shadow-[0_0_8px_rgba(35,165,90,0.5)]"
-                : "bg-text-tertiary/40"
-            }`}
+      <div className="lane-setting-status flex items-center gap-[16px] rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
+        {discordStatus.avatarUrl ? (
+          <img
+            src={discordStatus.avatarUrl}
+            alt=""
+            className="h-[64px] w-[64px] shrink-0 rounded-[14px] object-cover"
           />
-          <span className="text-[13px] text-text-primary font-medium">
+        ) : (
+          <div className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[14px] bg-white/[0.08] text-text-secondary">
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[30px] w-[30px] fill-current">
+              <path d="M19.7 5.4a18 18 0 0 0-4.4-1.4l-.6 1.2a16 16 0 0 0-5.4 0l-.6-1.2a18 18 0 0 0-4.4 1.4C1.5 9.5.7 13.5 1.1 17.4a18 18 0 0 0 5.4 2.7l1.2-2a11 11 0 0 1-1.9-.9l.5-.4a12 12 0 0 0 11.4 0l.5.4a11 11 0 0 1-1.9.9l1.2 2a18 18 0 0 0 5.4-2.7c.5-4.5-.8-8.5-3.2-12Zm-11 9.1c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z" />
+            </svg>
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-[600] text-text-primary">
             {discordStatus.connected
-              ? t("settings.discord.status.connected", {
-                  user: discordStatus.username || "Discord",
-                }) || `Connected to Discord (${discordStatus.username || "Active"})`
+              ? discordStatus.username || "Discord"
               : t("settings.discord.status.disconnected") || "Discord not connected"}
-          </span>
+          </div>
+          <div className="mt-[3px] truncate text-[13px] text-text-secondary" title={discordStatus.error}>
+            {enabled
+              ? discordStatus.connected
+                ? t("settings.discord.status.ready") || "Ready"
+                : t("settings.discord.status.waiting") || "Waiting for Discord"
+              : t("settings.discord.status.disabled") || "Disabled"}
+          </div>
         </div>
-        <span className="text-[12px] text-text-tertiary font-mono" title={discordStatus.error}>
-          {enabled
-            ? discordStatus.connected
-              ? t("settings.discord.status.ready") || "Ready"
-              : t("settings.discord.status.waiting") || "Waiting for Discord"
-            : t("settings.discord.status.disabled") || "Disabled"}
-        </span>
       </div>
 
       {/* Main enable switch */}
       <SettingSection>
         <SettingRow
           title={t("settings.discord.enable.title") || "Discord Rich Presence"}
-          description={
-            t("settings.discord.enable.description") ||
-            "Broadcast your active music playback to your Discord profile."
-          }
           titleKey="settings.discord.enable.title"
-          descKey="settings.discord.enable.description"
           searchQuery={searchQuery}
           control={
             <ToggleSwitch

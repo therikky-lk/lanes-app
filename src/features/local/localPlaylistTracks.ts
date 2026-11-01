@@ -52,6 +52,7 @@ export function localEntryToTrack(entry: LocalPlaylistEntry): Track {
     coverUrl: "",
     durationMs: entry.durationMs,
     playCount: 0,
+    likedAt: entry.addedAt,
     album: { id: `${DEVICE_ALBUM_PREFIX}${entry.deviceId}`, title: entry.deviceName },
   };
 }
