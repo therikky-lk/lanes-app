@@ -1,4 +1,5 @@
 import { getSoundCloudClientId, refreshSoundCloudClientId, rememberSoundCloudClientId } from "./soundcloudClientId";
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
 
 export const SOUNDCLOUD_API = "https://api-v2.soundcloud.com";
 
@@ -23,6 +24,15 @@ export async function fetchSoundCloudApi(
   options: SoundCloudRequestOptions = {},
 ): Promise<Response> {
   const { signal } = options;
+  const runtime = typeof window === "undefined" ? null : window as Window & {
+    linerElectron?: unknown;
+    Capacitor?: { isNativePlatform?: () => boolean };
+  };
+  const browserHttp = Boolean(runtime && runtime.location.protocol === "http:" && !runtime.isSecureContext && !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.());
+  if (browserHttp && pathOrUrl === "/search/tracks") {
+    const query = new URLSearchParams(params);
+    return fetch(`${getApiBaseUrl()}/v1/public/soundcloud/search/tracks?${query}`, { signal });
+  }
   let clientId = await getSoundCloudClientId(undefined, signal);
   let response = await fetch(buildUrl(pathOrUrl, params, clientId), { signal });
   if (isClientIdRejection(response.status)) {
