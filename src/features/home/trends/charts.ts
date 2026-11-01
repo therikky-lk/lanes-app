@@ -22,6 +22,7 @@ export type ChartRegion = "russia" | "world";
 export type Movement = "same" | "up" | "down" | "new";
 
 export interface ChartSong {
+  stale?: boolean;
   /** Apple Music song id */
   id: string;
   title: string;
@@ -118,10 +119,10 @@ export async function fetchFeed(country: string, size: number, signal?: AbortSig
       const query = new URLSearchParams({ country, size: String(size) });
       const res = await fetch(`${getApiBaseUrl()}/v1/public/charts/apple?${query}`, { signal, headers: { accept: "application/json" }, cache: "no-store" });
       if (!res.ok) throw new Error(`chart feed ${country} failed (${res.status})`);
-      const data = (await res.json()) as { feed?: { results?: FeedResult[] } };
+      const data = (await res.json()) as { stale?: boolean; feed?: { results?: FeedResult[] } };
       const songs = (data.feed?.results ?? []).flatMap((r) => {
         const s = songOf(r);
-        return s ? [s] : [];
+        return s ? [{ ...s, stale: data.stale }] : [];
       });
       if (songs.length > 0) return songs;
       throw new Error(`chart feed ${country} returned no songs`);

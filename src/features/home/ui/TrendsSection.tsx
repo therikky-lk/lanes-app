@@ -250,6 +250,7 @@ export default function TrendsSection() {
         />
       </div>
 
+      {entries?.some((entry) => entry.song.stale) && <p className="px-8 text-xs text-text-secondary">Сохранённый чарт: источник временно недоступен.</p>}
       <div className="mt-[10px] grid w-full grid-cols-1 gap-x-[16px] px-[32px] md:grid-cols-2">
         {entries === null
           ? Array.from({ length: 6 }, (_, i) => (
