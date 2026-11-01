@@ -15,7 +15,20 @@ const OVERRIDE_KEY = "lane_perf_tier";
 const WEAK_GPU =
   /mali-(?:t\d+|g(?:31|51|52|57|68|71|72|76))\b|adreno[^0-9]*(?:[1-5]\d\d|6[0-1]\d)\b|powervr|\bimg\b|ge8320|bxm-/i;
 
+// Budget Samsung models by their model code (Galaxy A0x/A1x — A17 is
+// SM-A175F / SM-A176B —, M1x, F1x, E-series). A backup for WebViews that hide
+// the GPU name; Android WebView keeps the model in its user agent.
+const WEAK_MODEL = /\bSM-(?:A0\d|A1\d|M1\d|F1\d|E\d)\d{1,2}[A-Z]?\b/i;
+
 let cached: DeviceTier | null = null;
+
+function weakModel(): boolean {
+  try {
+    return WEAK_MODEL.test(navigator.userAgent || "");
+  } catch {
+    return false;
+  }
+}
 
 function gpuRenderer(): string {
   try {
@@ -48,7 +61,9 @@ export function deviceTier(): DeviceTier {
   }
   const cores = navigator.hardwareConcurrency || 8;
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
-  cached = cores <= 4 || memory <= 2 || WEAK_GPU.test(gpuRenderer()) ? "low" : "normal";
+  // 4 GB and less: these phones also run a weak GPU, and the WebView shares
+  // that memory with the decoded covers and the audio pipeline
+  cached = cores <= 4 || memory <= 4 || weakModel() || WEAK_GPU.test(gpuRenderer()) ? "low" : "normal";
   return cached;
 }
 
