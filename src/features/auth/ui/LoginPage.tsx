@@ -308,7 +308,7 @@ export default function LoginPage() {
                       className="overflow-hidden flex flex-col"
                     >
                       <label
-                        className="mb-[7px] text-[12px] font-[500] text-white/75"
+                        className="mb-[6px] text-[12px] font-[500] text-white/75"
                         htmlFor="auth-email"
                       >
                         {t("login.label_email")}
@@ -335,7 +335,7 @@ export default function LoginPage() {
                       />
 
                       <label
-                        className="mb-[7px] mt-[15px] text-[12px] font-[500] text-white/75"
+                        className="mb-[6px] mt-[13px] text-[12px] font-[500] text-white/75"
                         htmlFor="auth-password"
                       >
                         {t("login.label_password")}
@@ -394,7 +394,7 @@ export default function LoginPage() {
                             className="overflow-hidden"
                           >
                             <label
-                              className="mb-[7px] mt-[15px] block text-[12px] font-[500] text-white/75"
+                              className="mb-[6px] mt-[13px] block text-[12px] font-[500] text-white/75"
                               htmlFor="auth-confirm"
                             >
                               {t("login.label_confirm_password")}
@@ -450,7 +450,7 @@ export default function LoginPage() {
                       className="overflow-hidden flex flex-col"
                     >
                       <label
-                        className="mb-[7px] block text-[12px] font-[500] text-white/75"
+                        className="mb-[6px] block text-[12px] font-[500] text-white/75"
                         htmlFor="auth-username"
                       >
                         {t("login.label_username")}
@@ -489,7 +489,7 @@ export default function LoginPage() {
                       </span>
 
                       <label
-                        className="mb-[7px] mt-[14px] block text-[12px] font-[500] text-white/75"
+                        className="mb-[6px] mt-[12px] block text-[12px] font-[500] text-white/75"
                         htmlFor="auth-display-name"
                       >
                         {t("login.label_display_name")}
@@ -514,7 +514,7 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
 
-                <div className="min-h-[22px] py-[6px]">
+                <div className="min-h-[18px] py-[4px]">
                   <AnimatePresence mode="wait" initial={false}>
                     {error && (
                       <motion.p

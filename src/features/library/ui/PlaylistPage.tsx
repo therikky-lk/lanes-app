@@ -855,7 +855,7 @@ function LibraryPlaylistContent() {
                         variant={hasCustomBg ? "glass-primary" : "primary"}
                         onClick={handlePlayAll}
                         disabled={currentTracks.length === 0}
-                        className="!h-[36px] w-auto shrink-0 !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px] max-md:w-full"
+                        className="!h-[36px] w-auto shrink-0 !text-[13.5px] !font-[500] px-[20px] flex items-center justify-center gap-[6px] max-md:w-full"
                       >
                         <PlayFill size={16} />
                         <span>{t("common.play_all")}</span>
@@ -866,7 +866,7 @@ function LibraryPlaylistContent() {
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleAddToQueue}
                           disabled={currentTracks.length === 0}
-                          className={`!h-[36px] !flex-none min-w-0 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] max-md:flex-1 ${
+                          className={`!h-[36px] min-w-0 md:flex-none !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] max-md:flex-1 ${
                             // optical centring: with three icon buttons beside it the label reads 1px right
                             !isLikesMode ? "[&>*]:-translate-x-px" : ""
                           }`}
@@ -1054,16 +1054,28 @@ function LibraryPlaylistContent() {
                     targetScrollTopRef.current = null;
                   }
                 }}
-                className={
+                className={`relative isolate ${
                   isMobile
-                    ? `min-w-0 w-full flex-none rounded-[14px] px-[8px] pt-[8px] pb-[24px] ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
+                    ? `min-w-0 w-full flex-none rounded-[14px] px-[8px] pt-[8px] ${currentTracks.length > 0 && !isLikesMode ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                     : `min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] px-[8px] pt-[8px] pb-[24px] overscroll-contain ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
-                }
+                }`}
                 style={{
                   willChange: "scroll-position",
                   marginTop: isMobile ? undefined : 8,
+                  paddingBottom:
+                    isMobile && isLikesMode
+                      ? "calc(var(--lane-dock-h, 120px) + 48px)"
+                      : 24,
                 }}
               >
+              {isMobile && isLikesMode && currentTracks.length > 0 && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 z-0 rounded-[14px] bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl"
+                  style={{ bottom: "calc(var(--lane-dock-h, 120px) + 48px)" }}
+                />
+              )}
+              <div className="relative z-[1]">
               <ScrollBlurEdge height={60} />
               {isLikesMode && allTracks.length > 0 && (
                 <div
@@ -1285,13 +1297,7 @@ function LibraryPlaylistContent() {
                   />
                 </FloatingDragCard>
               )}
-              {isMobile && isLikesMode && (
-                <div
-                  aria-hidden="true"
-                  className="w-full shrink-0"
-                  style={{ height: "calc(var(--lane-dock-h, 120px) + 24px)" }}
-                />
-              )}
+              </div>
               </div>
               </div>
             </div>
