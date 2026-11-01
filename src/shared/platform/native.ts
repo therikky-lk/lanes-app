@@ -113,7 +113,7 @@ interface NativeHttpResponse {
 // a Capacitor plugin proxy answers every property, `then` included, so it must
 // never be returned from an async function (await would call "then" natively
 // and hang forever): keep it in a plain module constant
-const laneHttp = isNativeApp() ? registerPlugin<{
+export const laneHttp = isNativeApp() ? registerPlugin<{
   request(options: { url: string; method: string; headers: Record<string, string>; body?: string; withCookies?: boolean }): Promise<NativeHttpResponse>;
 }>("LaneHttp") : null;
 

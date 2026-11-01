@@ -66,3 +66,5 @@ scratch/
 # tests are kept and run locally only
 *.test.ts
 *.test.tsx
+
+/dist-web

@@ -2,16 +2,13 @@
 // lives outside the page (Electron: a separate session; Android: the app
 // cookie store); requests that need it are sent by the native side.
 import { registerPlugin } from "@capacitor/core";
-import { isNativeApp } from "@/shared/platform/native";
+import { isNativeApp, laneHttp } from "@/shared/platform/native";
 import type { ClientImportedTrack } from "../../importTypes";
 import { buildSpotifyTokenUrl } from "./spotifyAuth";
 
 export const SPOTIFY_LIKED_URL = "https://open.spotify.com/collection/tracks";
 
-interface NativeHttpResult {
-  status: number;
-  body: string;
-}
+
 
 const LaneSpotify = registerPlugin<{
   hasLogin(): Promise<{ value: boolean }>;
@@ -19,9 +16,7 @@ const LaneSpotify = registerPlugin<{
   logout(): Promise<void>;
 }>("LaneSpotify");
 
-const LaneHttp = registerPlugin<{
-  request(options: { url: string; method: string; headers: Record<string, string>; withCookies?: boolean }): Promise<NativeHttpResult>;
-}>("LaneHttp");
+
 
 export function spotifyAccountSupported(): boolean {
   return isNativeApp() || Boolean(window.linerElectron?.spotifyLogin);
@@ -46,7 +41,7 @@ export async function spotifyLogout(): Promise<void> {
 /** GET with the Spotify login cookies attached */
 async function fetchWithLogin(url: string): Promise<{ status: number; text: string }> {
   if (isNativeApp()) {
-    const res = await LaneHttp.request({ url, method: "GET", headers: { accept: "application/json" }, withCookies: true });
+    const res = await laneHttp!.request({ url, method: "GET", headers: { accept: "application/json" }, withCookies: true });
     const bin = atob(res.body);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
