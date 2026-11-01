@@ -53,7 +53,7 @@ export function EntitySidebar({
           </button>
         )}
         <div
-          className={`relative flex aspect-square w-[min(72vw,300px)] self-center items-center justify-center overflow-hidden rounded-xl shadow-[0_16px_50px_rgba(0,0,0,0.45)] ${
+          className={`relative flex aspect-square w-[min(82vw,340px)] self-center items-center justify-center overflow-hidden rounded-xl shadow-[0_16px_50px_rgba(0,0,0,0.45)] ${
             coverClassName || "bg-border-alpha-14"
           } ${onBack ? "mt-[12px]" : ""}`}
         >
@@ -70,8 +70,8 @@ export function EntitySidebar({
             {subtitle}
           </div>
         )}
-        {primaryAction && <div className={`mt-[18px] w-full ${stretchMobile ? "" : "max-w-[340px] self-center"}`}>{primaryAction}</div>}
-        {actions && <div className={`mt-[8px] flex w-full items-center justify-center gap-[8px] ${stretchMobile ? "" : "max-w-[340px] self-center"}`}>{actions}</div>}
+        {primaryAction && <div className={`mt-[18px] w-full ${stretchMobile ? "max-w-[min(82vw,340px)] self-center" : "max-w-[340px] self-center"}`}>{primaryAction}</div>}
+        {actions && <div className={`mt-[8px] flex w-full items-center justify-center gap-[8px] ${stretchMobile ? "max-w-[min(82vw,340px)] self-center" : "max-w-[340px] self-center"}`}>{actions}</div>}
       </aside>
     );
   }

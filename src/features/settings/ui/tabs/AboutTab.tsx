@@ -1,7 +1,7 @@
 import DiagnosticsBox from "./DiagnosticsBox";
 import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo } from "react";
-import { FaTelegramPlane, FaGithub, FaGlobe } from "react-icons/fa";
+import { FaTelegramPlane, FaGithub } from "react-icons/fa";
 import { Refresh1Line } from "@mingcute/react";
 import { QuestionCircle } from "@solar-icons/react";
 import Button from "@/shared/ui/Button";
@@ -51,7 +51,6 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
     sha256: string | null;
   } | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [lastCheckedTime, setLastCheckedTime] = useState<string | null>(null);
 
   const compareVersions = (a: string, b: string) => {
     const left = a.replace(/^v/i, "").split(".").map(Number);
@@ -135,9 +134,6 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
       toast(t("settings.about.latest_version_toast", { version: appVersion }), "info");
     } finally {
       setCheckingUpdate(false);
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setLastCheckedTime(timeStr);
     }
   };
 
@@ -189,13 +185,6 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
         </div>
 
         <div className="flex flex-col items-start gap-[12px]">
-          <span className="text-[12.5px] text-text-secondary select-none">
-            {bundleInfo?.isOta
-              ? `Client ${bundleInfo.bundleVersion}${bundleInfo.sha256 ? ` (${bundleInfo.sha256.slice(0, 7)})` : ""} · Core ${appVersion}`
-              : `Client ${appVersion} (${isNativeApp() ? "Android" : "native"})`}
-            {lastCheckedTime ? ` · ${lastCheckedTime}` : ""}
-          </span>
-
           <Button
             variant="primary"
             size="sm"
@@ -209,12 +198,12 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
               : t("settings.about.check_updates")}
           </Button>
 
-          <div className="mt-[16px] flex flex-wrap items-center gap-[8px]">
+          <div className="mt-[16px] flex w-full flex-wrap items-center gap-[8px]">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => openUrl("https://t.me/therikky_ls")}
-              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+              className="min-w-[104px] flex-1 !h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
             >
               <FaTelegramPlane size={14} />
               {t("settings.about.telegram")}
@@ -223,7 +212,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
               variant="secondary"
               size="sm"
               onClick={() => openUrl("https://discord.gg/D5saRWxcUx")}
-              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+              className="min-w-[104px] flex-1 !h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
             >
               <QuestionCircle size={15} />
               {t("settings.about.support")}
@@ -232,19 +221,10 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
               variant="secondary"
               size="sm"
               onClick={() => openUrl("https://github.com/therikky-lk/lanes-app")}
-              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
+              className="min-w-[104px] flex-1 !h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
             >
               <FaGithub size={14} />
               {t("settings.about.github")}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => openUrl("https://github.com/therikky-lk/lanes-app#readme")}
-              className="!h-[38px] !rounded-[12px] !bg-white/[0.08] !px-[14px] !text-[13px] !gap-[8px]"
-            >
-              <FaGlobe size={14} />
-              {t("settings.about.website")}
             </Button>
           </div>
         </div>
