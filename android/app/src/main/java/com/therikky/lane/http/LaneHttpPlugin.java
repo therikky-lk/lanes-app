@@ -1,6 +1,7 @@
 package com.therikky.lane.http;
 
 import android.util.Base64;
+import android.webkit.CookieManager;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -67,13 +68,10 @@ public class LaneHttpPlugin extends Plugin {
         byte[] body = b64 != null && !b64.isEmpty() && !"GET".equals(method) && !"HEAD".equals(method)
             ? Base64.decode(b64, Base64.DEFAULT) : null;
         Map<String, String> requestHeaders = new LinkedHashMap<>();
-        if (Boolean.TRUE.equals(call.getBoolean("withCookies", false))) {
-            // Spotify import: the user's login lives in the app cookie store
-            String host = android.net.Uri.parse(url).getHost();
-            if (host != null && host.endsWith(".spotify.com")) {
-                String cookies = android.webkit.CookieManager.getInstance().getCookie(url);
-                if (cookies != null && !cookies.isEmpty()) requestHeaders.put("Cookie", cookies);
-            }
+        boolean withCookies = Boolean.TRUE.equals(call.getBoolean("withCookies", false));
+        if (withCookies && !hasCookie(requestHeaders)) {
+            String cookies = CookieManager.getInstance().getCookie(url);
+            if (cookies != null && !cookies.isEmpty()) requestHeaders.put("Cookie", cookies);
         }
         if (headers != null) {
             Iterator<String> keys = headers.keys();
@@ -92,14 +90,14 @@ public class LaneHttpPlugin extends Plugin {
             CronetEngine engine = Net.engine();
             if (engine != null) {
                 try {
-                    result = viaCronet(engine, url, method, requestHeaders, body);
+                    result = viaCronet(engine, url, method, requestHeaders, body, withCookies);
                 } catch (Exception e) {
                     cronetError = e.getMessage();
                 }
             }
             if (result == null) {
                 try {
-                    result = viaJava(url, method, requestHeaders, body);
+                    result = viaJava(url, method, requestHeaders, body, 0, withCookies);
                 } catch (Exception e) {
                     String message = e.getClass().getSimpleName() + ": " + e.getMessage();
                     call.reject(cronetError != null ? "cronet: " + cronetError + "; java: " + message : message);
@@ -118,7 +116,7 @@ public class LaneHttpPlugin extends Plugin {
         });
     }
 
-    private Result viaCronet(CronetEngine engine, String url, String method, Map<String, String> headers, byte[] body) throws Exception {
+    private Result viaCronet(CronetEngine engine, String url, String method, Map<String, String> headers, byte[] body, boolean withCookies) throws Exception {
         Result result = new Result();
         result.via = "cronet";
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -132,7 +130,7 @@ public class LaneHttpPlugin extends Plugin {
         UrlRequest.Callback callback = new UrlRequest.Callback() {
             @Override
             public void onRedirectReceived(UrlRequest request, UrlResponseInfo info, String newLocationUrl) {
-                if (hasCookie(headers) && !isSpotify(newLocationUrl)) {
+                if (hasCookie(headers) && !sameOrigin(url, newLocationUrl)) {
                     offsite[0] = newLocationUrl;
                     offsiteStatus[0] = info.getHttpStatusCode();
                     request.cancel();
@@ -149,6 +147,7 @@ public class LaneHttpPlugin extends Plugin {
                     String key = e.getKey().toLowerCase();
                     if ("content-encoding".equals(key) || "content-length".equals(key)) continue;
                     result.headers.put(key, String.join(", ", e.getValue()));
+                    if (withCookies && "set-cookie".equals(key)) storeCookies(url, e.getValue());
                 }
                 request.read(ByteBuffer.allocateDirect(64 * 1024));
             }
@@ -204,16 +203,25 @@ public class LaneHttpPlugin extends Plugin {
         }
         if (offsite[0] != null) {
             boolean toGet = offsiteStatus[0] == 303 || ((offsiteStatus[0] == 301 || offsiteStatus[0] == 302) && "POST".equals(method));
-            return viaCronet(engine, offsite[0], toGet ? "GET" : method, withoutCookie(headers), toGet ? null : body);
+            return viaCronet(engine, offsite[0], toGet ? "GET" : method, withoutCookie(headers), toGet ? null : body, false);
         }
         if (failure[0] != null) throw failure[0];
         result.body = "HEAD".equals(method) ? new byte[0] : out.toByteArray();
         return result;
     }
 
-    private static boolean isSpotify(String url) {
-        String host = android.net.Uri.parse(url).getHost();
-        return host != null && (host.equals("spotify.com") || host.endsWith(".spotify.com"));
+    private static boolean sameOrigin(String first, String second) {
+        android.net.Uri a = android.net.Uri.parse(first);
+        android.net.Uri b = android.net.Uri.parse(second);
+        return a.getScheme() != null && a.getScheme().equalsIgnoreCase(b.getScheme())
+            && a.getHost() != null && a.getHost().equalsIgnoreCase(b.getHost())
+            && a.getPort() == b.getPort();
+    }
+
+    private static void storeCookies(String url, List<String> cookies) {
+        CookieManager manager = CookieManager.getInstance();
+        for (String cookie : cookies) manager.setCookie(url, cookie);
+        manager.flush();
     }
 
     private static boolean hasCookie(Map<String, String> headers) {
@@ -230,10 +238,10 @@ public class LaneHttpPlugin extends Plugin {
     }
 
     private Result viaJava(String url, String method, Map<String, String> headers, byte[] body) throws Exception {
-        return viaJava(url, method, headers, body, 0);
+        return viaJava(url, method, headers, body, 0, false);
     }
 
-    private Result viaJava(String url, String method, Map<String, String> headers, byte[] body, int redirects) throws Exception {
+    private Result viaJava(String url, String method, Map<String, String> headers, byte[] body, int redirects, boolean withCookies) throws Exception {
         Result result = new Result();
         result.via = "java";
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
@@ -259,7 +267,8 @@ public class LaneHttpPlugin extends Plugin {
                 String next = new URL(conn.getURL(), conn.getHeaderField("Location")).toString();
                 boolean toGet = result.status == 303 || ((result.status == 301 || result.status == 302) && "POST".equals(method));
                 if (redirects >= 10) throw new IllegalStateException("too many redirects");
-                return viaJava(next, toGet ? "GET" : method, isSpotify(next) ? headers : withoutCookie(headers), toGet ? null : body, redirects + 1);
+                boolean same = sameOrigin(conn.getURL().toString(), next);
+                return viaJava(next, toGet ? "GET" : method, same ? headers : withoutCookie(headers), toGet ? null : body, redirects + 1, same && withCookies);
             }
             result.url = conn.getURL().toString();
             InputStream in = result.status >= 400 ? conn.getErrorStream() : conn.getInputStream();
@@ -277,6 +286,7 @@ public class LaneHttpPlugin extends Plugin {
             }
             for (Map.Entry<String, List<String>> e : conn.getHeaderFields().entrySet()) {
                 if (e.getKey() == null || e.getValue() == null || e.getValue().isEmpty()) continue;
+                if (withCookies && "set-cookie".equalsIgnoreCase(e.getKey())) storeCookies(result.url, e.getValue());
                 String key = e.getKey().toLowerCase();
                 if ("content-encoding".equals(key) || "content-length".equals(key)) continue;
                 result.headers.put(key, String.join(", ", e.getValue()));

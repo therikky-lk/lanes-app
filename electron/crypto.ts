@@ -52,6 +52,17 @@ interface WasmSignerExports {
   liner_get_result_ptr: () => number;
   liner_get_result_len: () => number;
   liner_sign_cover_url: (ptr: number, len: number) => number;
+  liner_sign_request: (
+    method_ptr: number,
+    method_len: number,
+    path_ptr: number,
+    path_len: number,
+    body_ptr: number,
+    body_len: number,
+    timestamp: bigint,
+    nonce_ptr: number,
+    nonce_len: number,
+  ) => number;
   liner_sign_monitor_request: (
     method_ptr: number,
     method_len: number,
@@ -156,6 +167,37 @@ export function signMonitorRequest(input: SignRequestInput): SignedRequestHeader
     pathBuf.free();
     bodyBuf.free();
     nonceBuf.free();
+  }
+}
+
+export function signRequest(input: SignRequestInput): SignedRequestHeaders {
+  const wasm = getWasmExports();
+  const timestamp = input.timestamp ?? getAdjustedTimestamp();
+  const nonce = crypto.randomBytes(8).toString("hex");
+  const method = passStringToWasm(wasm, input.method.toUpperCase().trim());
+  const path = passStringToWasm(wasm, input.path.split("?")[0].trim());
+  const body = passStringToWasm(wasm, input.body ?? "");
+  const nonceInput = passStringToWasm(wasm, nonce);
+
+  try {
+    const code = wasm.liner_sign_request(
+      method.ptr,
+      method.len,
+      path.ptr,
+      path.len,
+      body.ptr,
+      body.len,
+      BigInt(timestamp),
+      nonceInput.ptr,
+      nonceInput.len,
+    );
+    if (code !== 0) throw new Error(`wasm sign_request failed with code ${code}`);
+    return { signature: readResultFromWasm(wasm), timestamp, nonce };
+  } finally {
+    method.free();
+    path.free();
+    body.free();
+    nonceInput.free();
   }
 }
 

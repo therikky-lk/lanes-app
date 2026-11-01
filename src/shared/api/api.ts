@@ -9,12 +9,22 @@ import {
   type AuthUser,
 } from "./auth-session";
 import { syncServerTime } from "./serverTime";
+import { signApiRequest } from "./requestSigner";
+import { isHumanCheckMode, runHumanCheck, type HumanCheckAction } from "./humanCheck";
+import {
+  PowTimeoutError,
+  SUPPORTED_POW_ALGORITHM,
+  type PowChallenge,
+  type PowSolution,
+} from "./proofOfWork";
+import { solvePow } from "./proofOfWorkRunner";
 import { clientCatalog } from "./clientCatalog";
 import { getLocalImportHandler } from "./localImports";
 import { streamFallbackLyrics } from "@/shared/media/lyrics/fallbackLyrics";
 import type { Track } from "@/shared/contracts";
 import { telemetry } from "@/shared/telemetry";
 import { APP_VERSION } from "@/shared/config/version";
+import { diag } from "@/shared/platform/diag";
 import type {
   PublicUser,
   UpdateProfileInput,
@@ -205,6 +215,8 @@ async function executeRequest<T>(
   if ((init?.method ?? "GET").toUpperCase() === "DELETE" && init?.body == null) {
     init = { ...init, body: "{}" };
   }
+  const rawBody = typeof init?.body === "string" ? init.body : null;
+  const signedHeaders = await signApiRequest(method, path, rawBody);
   const hasBody = init?.body != null;
   const extraHeaders = (init?.headers as Record<string, string>) ?? {};
   const { Authorization: _ignoredAuth, ...restHeaders } = extraHeaders;
@@ -244,6 +256,7 @@ async function executeRequest<T>(
           ...(hasBody ? { "Content-Type": "application/json" } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           ...correlationHeaders,
+          ...signedHeaders,
           ...restHeaders,
         },
       },
@@ -310,6 +323,7 @@ async function executeRequest<T>(
       throw new ApiError(res.status, message, code, requestId);
     }
 
+    const refreshedSignedHeaders = await signApiRequest(method, path, rawBody);
     try {
       res = await fetchWithTimeout(
         getApiBaseUrl() + path,
@@ -318,6 +332,7 @@ async function executeRequest<T>(
           headers: {
             ...(hasBody ? { "Content-Type": "application/json" } : {}),
             ...correlationHeaders,
+            ...refreshedSignedHeaders,
             ...restHeaders,
             ...(nextToken ? { Authorization: `Bearer ${nextToken}` } : {}),
           },
@@ -347,6 +362,28 @@ async function executeRequest<T>(
   telemetry.trackNetwork(method, path, res.status, durationMs, requestId);
 
   if (!res.ok) {
+    const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+    const cfServer = res.headers.get("server")?.toLowerCase() ?? "";
+    const cfRay = res.headers.get("cf-ray") ?? undefined;
+    const cloudflareBlocked =
+      res.status === 403 &&
+      contentType.includes("text/html") &&
+      (Boolean(cfRay) || cfServer.includes("cloudflare"));
+    let cloudflarePageDetails = "";
+    if (cloudflareBlocked) {
+      const html = await res.clone().text().catch(() => "");
+      const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
+        ?.replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const cfErrorCode = html.match(/(?:Error|error)\s+(\d{3,4})/)?.[1];
+      cloudflarePageDetails = [title, cfErrorCode ? `Cloudflare error ${cfErrorCode}` : ""]
+        .filter(Boolean)
+        .join("; ");
+      diag(
+        `API ${method} ${stripQuery(path)} -> 403 Cloudflare block; cf-ray=${cfRay ?? "unavailable"}${cloudflarePageDetails ? `; ${cloudflarePageDetails}` : ""}`,
+      );
+    }
     const body = (await res.json().catch(() => ({}))) as Record<
       string,
       unknown
@@ -369,9 +406,14 @@ async function executeRequest<T>(
 
     const apiErr = new ApiError(
       res.status,
-      typeof body.message === "string" ? body.message : res.statusText,
-      typeof body.code === "string" ? body.code : undefined,
-      resRequestId,
+      cloudflareBlocked
+        ? "The request was blocked by Cloudflare before reaching the Lane API."
+        : typeof body.message === "string" ? body.message : res.statusText,
+      cloudflareBlocked
+        ? "CLOUDFLARE_BLOCKED"
+        : typeof body.code === "string" ? body.code : undefined,
+      resRequestId ?? requestId,
+      cfRay,
     );
     if (isConnectivityFailure(apiErr) && !isPlaybackPath(path)) {
       recordConnectivityFailure({
@@ -417,6 +459,7 @@ export class ApiError extends Error {
     message: string,
     public readonly code?: string,
     public readonly requestId?: string,
+    public readonly cloudflareRayId?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -534,12 +577,102 @@ import type {
 
 // ---- Endpoints --------------------------------------------------------------
 
+const RETRYABLE_POW_CODES = new Set(["POW_EXPIRED", "POW_REUSED"]);
+
+interface AuthProof {
+  pow?: PowSolution;
+  turnstile?: string;
+  edge?: boolean;
+}
+
+function authBody(proof: AuthProof) {
+  return { pow: proof.pow, turnstile: proof.turnstile };
+}
+
+function authInit(proof: AuthProof, body: unknown): RequestInit {
+  return {
+    method: "POST",
+    body: JSON.stringify(body),
+    ...(proof.edge ? { credentials: "include" as const } : {}),
+  };
+}
+
+function blockedBeforeOurServer(error: unknown): boolean {
+  return error instanceof TypeError || statusOf(error) === 0;
+}
+
+async function humanCheck(
+  challenge: PowChallenge,
+  purpose: HumanCheckAction,
+): Promise<string | undefined> {
+  const requested = challenge.turnstile?.mode;
+  const mode = isHumanCheckMode(requested) ? requested : "off";
+  if (mode === "off" && !challenge.turnstile?.edge) return undefined;
+  return runHumanCheck(purpose, mode === "off" ? "optional" : mode);
+}
+
+async function authProofFor(
+  purpose: HumanCheckAction,
+  email: string,
+): Promise<AuthProof> {
+  let challenge: PowChallenge;
+  try {
+    challenge = await request<PowChallenge>(
+      "/v1/auth/challenge",
+      {
+        method: "POST",
+        body: JSON.stringify({ purpose, email }),
+        // The challenge may issue the edge cookie required by login/register.
+        // Android's native fetch bridge persists cookies only for credentialed requests.
+        credentials: "include",
+      },
+      false,
+    );
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return {};
+    throw error;
+  }
+
+  const work =
+    challenge.mode === "off" || challenge.algorithm !== SUPPORTED_POW_ALGORITHM
+      ? undefined
+      : solvePow(challenge);
+  void work?.catch(() => undefined);
+  const turnstile = await humanCheck(challenge, purpose);
+  return {
+    pow: await work,
+    turnstile,
+    edge: challenge.turnstile?.edge === true,
+  };
+}
+
+async function withAuthProof<T>(
+  purpose: HumanCheckAction,
+  email: string,
+  send: (proof: AuthProof) => Promise<T>,
+): Promise<T> {
+  let proof: AuthProof | undefined;
+  try {
+    proof = await authProofFor(purpose, email);
+    return await send(proof);
+  } catch (error) {
+    const retryable =
+      error instanceof PowTimeoutError ||
+      (error instanceof ApiError && !!error.code && RETRYABLE_POW_CODES.has(error.code)) ||
+      (proof?.edge === true && blockedBeforeOurServer(error));
+    if (!retryable) throw error;
+    return send(await authProofFor(purpose, email));
+  }
+}
+
 export const api = {
   async login(email: string, password: string): Promise<AuthTokens> {
-    const result = await request<AuthTokens>(
-      "/v1/auth/login",
-      { method: "POST", body: JSON.stringify({ email, password }) },
-      false,
+    const result = await withAuthProof("login", email, (proof) =>
+      request<AuthTokens>(
+        "/v1/auth/login",
+        authInit(proof, { email, password, ...authBody(proof) }),
+        false,
+      ),
     );
     setAuthSession(result);
     return result;
@@ -551,18 +684,18 @@ export const api = {
     username: string,
     displayName: string,
   ): Promise<AuthTokens> {
-    const result = await request<AuthTokens>(
-      "/v1/auth/register",
-      {
-        method: "POST",
-        body: JSON.stringify({
+    const result = await withAuthProof("register", email, (proof) =>
+      request<AuthTokens>(
+        "/v1/auth/register",
+        authInit(proof, {
           email,
           password,
+          ...authBody(proof),
           username: username.trim().toLowerCase(),
           displayName: displayName.trim(),
         }),
-      },
-      false,
+        false,
+      ),
     );
     setAuthSession(result);
     return result;
@@ -936,6 +1069,7 @@ export const api = {
           }).toString()
         : "";
     const path = `/v1/tracks/${encodeURIComponent(id)}/lyrics${hintParams ? `?${hintParams}` : ""}`;
+    const signedHeaders = await signApiRequest("GET", path);
     const accessToken = await getValidAccessToken();
     const requestId =
       typeof crypto !== "undefined" && crypto.randomUUID
@@ -958,6 +1092,7 @@ export const api = {
           headers: {
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             ...correlationHeaders,
+            ...signedHeaders,
           },
         },
       );

@@ -1,6 +1,8 @@
 import { registerPlugin } from "@capacitor/core";
 import { diag } from "./diag";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { signApiRequest } from "@/shared/api/requestSigner";
+import { syncServerTime } from "@/shared/api/serverTime";
 // Lane on Android runs the same renderer inside Capacitor. Things Electron's
 // main process does for the desktop app (CORS-free networking, request header
 // rewriting) are done here instead.
@@ -68,6 +70,16 @@ function hostOf(url: string): string {
   }
 }
 
+function desktopApiUserAgent(): string {
+  const chromiumVersion =
+    typeof navigator !== "undefined"
+      ? navigator.userAgent.match(/(?:Chrome|Chromium)\/([\d.]+)/)?.[1]
+      : undefined;
+  return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromiumVersion ?? "136.0.0.0"} Safari/537.36`;
+}
+
+let loggedDesktopApiUserAgent = false;
+
 // Android WebView can leave ordinary fetch requests to the Lane services
 // hanging for ~15 seconds even while the device is online. Route the app's
 // own HTTP services through the same native client as YouTube. This keeps
@@ -102,7 +114,7 @@ interface NativeHttpResponse {
 // never be returned from an async function (await would call "then" natively
 // and hang forever): keep it in a plain module constant
 const laneHttp = registerPlugin<{
-  request(options: { url: string; method: string; headers: Record<string, string>; body?: string }): Promise<NativeHttpResponse>;
+  request(options: { url: string; method: string; headers: Record<string, string>; body?: string; withCookies?: boolean }): Promise<NativeHttpResponse>;
 }>("LaneHttp");
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -125,7 +137,7 @@ async function bodyToBase64(body: BodyInit | null | undefined): Promise<string |
 }
 
 /** YouTube traffic goes through LaneHttp (see LaneHttpPlugin.java) */
-async function nativeHttpFetch(url: string, method: string, headers: Headers, body: string | undefined, signal?: AbortSignal | null): Promise<Response> {
+async function nativeHttpFetch(url: string, method: string, headers: Headers, body: string | undefined, signal?: AbortSignal | null, withCookies = false): Promise<Response> {
   if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
   const plain: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -144,7 +156,7 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
     });
     try {
       res = await Promise.race([
-      http.request({ url, method, headers: plain, body }),
+      http.request({ url, method, headers: plain, body, withCookies }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timed out after 40s")), 40_000)),
         aborted,
       ]);
@@ -189,6 +201,21 @@ export function installNativeFetchHeaders(): void {
 
     const headers = new Headers(input instanceof Request ? input.headers : undefined);
     if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    // Experiment: some Cloudflare rules reject Android's WebView/Cronet UA on
+    // the public API even though the same account works from the desktop app.
+    // Keep this scoped to Android API traffic; media providers retain their
+    // own client identities.
+    const isAndroidApi =
+      isNativeService &&
+      host === hostOf(getApiBaseUrl()) &&
+      nativePlatform() === "android";
+    if (isAndroidApi) {
+      headers.set("User-Agent", desktopApiUserAgent());
+      if (!loggedDesktopApiUserAgent) {
+        diag("Android API requests using Linux desktop Chrome User-Agent");
+        loggedDesktopApiUserAgent = true;
+      }
+    }
     const override = headers.get(UA_OVERRIDE);
     if (override) {
       headers.delete(UA_OVERRIDE);
@@ -216,6 +243,7 @@ export function installNativeFetchHeaders(): void {
         headers,
         body,
         init?.signal ?? (input instanceof Request ? input.signal : undefined),
+        (init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin")) === "include",
       );
 
       // Cloudflare blocks some Cronet requests to the Lane API with an HTML
@@ -231,10 +259,24 @@ export function installNativeFetchHeaders(): void {
         (server.includes("cloudflare") || response.headers.has("cf-ray"));
 
       if (isCloudflareChallenge) {
-        diag(`API ${method} ${url.replace(/^https?:\/\//, "").slice(0, 70)} blocked by Cloudflare via Cronet; retrying Capacitor HTTP`);
+        const rayId = response.headers.get("cf-ray");
+        diag(`API ${method} ${url.replace(/^https?:\/\//, "").slice(0, 70)} blocked by Cloudflare via Cronet; cf-ray=${rayId ?? "unavailable"}; retrying Capacitor HTTP`);
         try {
+          const serverDate = response.headers.get("date");
+          if (serverDate) syncServerTime(serverDate);
+          if (headers.has("x-liner-signature")) {
+            const retryBody = body ? new TextDecoder().decode(base64ToBytes(body)) : null;
+            const retrySignedHeaders = await signApiRequest(
+              method,
+              new URL(url).pathname,
+              retryBody,
+            );
+            for (const [name, value] of Object.entries(retrySignedHeaders)) {
+              if (value) headers.set(name, value);
+            }
+          }
           const retryResponse = await original(input, { ...init, method, headers });
-          diag(`Capacitor HTTP retry -> ${retryResponse.status}`);
+          diag(`Capacitor HTTP retry -> ${retryResponse.status}${retryResponse.headers.get("cf-ray") ? `; cf-ray=${retryResponse.headers.get("cf-ray")}` : ""}`);
           return retryResponse;
         } catch (error) {
           diag(`Capacitor HTTP retry failed: ${error instanceof Error ? error.message : String(error)}`);

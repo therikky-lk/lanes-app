@@ -10,15 +10,70 @@ import WindowControls from "@/features/navigation/ui/WindowControls";
 import { useWindowState } from "@/features/navigation/hooks/useWindowState";
 import logo from "@/assets/logo.svg";
 import AppImage from "@/features/covers/ui/AppImage";
+import { ApiError } from "@/shared/api/api";
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { APP_VERSION } from "@/shared/config/version";
+import { diagLines } from "@/shared/platform/diag";
 import {
   authErrorMessage,
   getAuthErrorCode,
   useAuthStore,
 } from "../store/authStore";
 import { useTranslation, LOCALE_OPTIONS } from "@/languages";
+import HumanCheckNotice from "./HumanCheckNotice";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
+
+function buildAuthFailureReport(error: unknown, path: "login" | "register"): string {
+  const apiError = error instanceof ApiError ? error : null;
+  const safeLogs = [...diagLines()]
+    .slice(-40)
+    .filter((line) => /\b(API|HTTP|Cloudflare|Capacitor)\b/i.test(line))
+    .map((line) =>
+      line.replace(/([?&](?:access_token|refresh_token|token|password|email)=)[^&\s]*/gi, "$1[redacted]"),
+    );
+  return JSON.stringify(
+    {
+      occurredAt: new Date().toISOString(),
+      app: {
+        version: APP_VERSION,
+        platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+        language: typeof navigator !== "undefined" ? navigator.language : "unknown",
+      },
+      request: {
+        method: "POST",
+        url: `${getApiBaseUrl()}/v1/auth/${path}`,
+        status: apiError?.status ?? 0,
+        code: apiError?.code ?? (error instanceof Error ? error.name : "UNKNOWN_ERROR"),
+        requestId: apiError?.requestId,
+        cloudflareRayId: apiError?.cloudflareRayId,
+      },
+      recentNetworkLog: safeLogs,
+      note: "This report excludes the email, password, access token, and refresh token.",
+    },
+    null,
+    2,
+  );
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = text;
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    return copied;
+  }
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -39,12 +94,15 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [errorReport, setErrorReport] = useState("");
+  const [reportCopied, setReportCopied] = useState(false);
 
   const selectMode = (next: "login" | "register") => {
     if (submitting || next === mode) return;
     setMode(next);
     setRegisterStep(1);
     setError("");
+    setErrorReport("");
     setConfirmPassword("");
   };
 
@@ -54,6 +112,8 @@ export default function LoginPage() {
       return t("login.errors.server_unavailable");
     if (code === "server_error")
       return t("login.errors.server_error");
+    if (code === "cloudflare_blocked")
+      return t("login.errors.cloudflare_blocked");
     if (code === "invalid_credentials")
       return t("login.errors.invalid_credentials");
     if (code === "email_already_used")
@@ -64,6 +124,8 @@ export default function LoginPage() {
       return t("login.errors.username_invalid");
     if (code === "invalid_input")
       return t("login.errors.display_name_required");
+    if (code === "human_check_cancelled") return t("login.errors.human_check_cancelled");
+    if (code === "human_check_failed") return t("login.errors.human_check_failed");
     return authErrorMessage(nextError);
   };
 
@@ -124,6 +186,8 @@ export default function LoginPage() {
         navigate("/", { replace: true });
       } catch (nextError) {
         setError(resolveErrorMessage(nextError));
+        setErrorReport(buildAuthFailureReport(nextError, "login"));
+        setReportCopied(false);
       } finally {
         setSubmitting(false);
       }
@@ -162,6 +226,8 @@ export default function LoginPage() {
       navigate("/", { replace: true });
     } catch (nextError) {
       const code = getAuthErrorCode(nextError);
+      setErrorReport(buildAuthFailureReport(nextError, "register"));
+      setReportCopied(false);
       if (code === "email_already_used") {
         setRegisterStep(1);
         setError(t("login.errors.email_already_used"));
@@ -532,6 +598,33 @@ export default function LoginPage() {
                   </AnimatePresence>
                 </div>
 
+                {error && errorReport && (
+                  <div className="mb-[10px] rounded-[10px] border border-white/[0.08] bg-black/20 px-[10px] py-[8px] text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-[500] text-white/65">
+                        {t("login.errors.error_details")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={async () => setReportCopied(await copyText(errorReport))}
+                        className="shrink-0 cursor-pointer rounded-[7px] border-0 bg-white/[0.08] px-[9px] py-[5px] text-[11px] font-[500] text-white/85 transition-colors hover:bg-white/[0.14]"
+                      >
+                        {reportCopied
+                          ? t("login.errors.error_log_copied")
+                          : t("login.errors.copy_error_log")}
+                      </button>
+                    </div>
+                    <details className="mt-[6px]">
+                      <summary className="cursor-pointer select-none text-[11px] text-white/50">
+                        {t("login.errors.show_error_log")}
+                      </summary>
+                      <pre className="mb-0 mt-[6px] max-h-[150px] overflow-auto whitespace-pre-wrap break-all rounded-[7px] bg-black/25 p-[8px] text-[10px] leading-[1.4] text-white/65">
+                        {errorReport}
+                      </pre>
+                    </details>
+                  </div>
+                )}
+
                 {/* Submit / Action buttons */}
                 <AnimatePresence initial={false}>
                   {mode === "login" ? (
@@ -631,6 +724,7 @@ export default function LoginPage() {
 
         </div>
       </section>
+      <HumanCheckNotice />
     </main>
   );
 }
