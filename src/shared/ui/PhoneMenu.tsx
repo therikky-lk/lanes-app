@@ -1,5 +1,6 @@
 import { useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import { CheckLine } from "@mingcute/react";
 
 /**
@@ -22,25 +23,28 @@ export default function PhoneMenu({
   useLayoutEffect(() => {
     if (!open) return;
     const rect = anchorRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 18, right: Math.max(14, window.innerWidth - rect.right + 4) });
+    if (rect) setPos({ top: rect.bottom + 14, right: Math.max(14, window.innerWidth - rect.right + 4) });
   }, [open, anchorRef]);
   if (!open || !pos) return null;
   return createPortal(
     <>
       <div className="fixed inset-0 z-[180]" onClick={onClose} />
-      <div
-        className="fixed z-[181] w-[230px] overflow-hidden rounded-2xl border border-white/[0.06] p-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+      <motion.div
+        className="fixed z-[181] w-[248px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[16px] border border-border-primary/40 p-[6px] shadow-[0_18px_48px_rgba(0,0,0,0.42)]"
+        initial={{ opacity: 0, y: -5, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
         style={{
           top: pos.top,
           right: pos.right,
-          background: "color-mix(in srgb, var(--bg-panel, #121214) 88%, transparent)",
-          backdropFilter: "blur(16px) saturate(1.05)",
-          WebkitBackdropFilter: "blur(16px) saturate(1.05)",
+          background: "color-mix(in srgb, var(--bg-panel, #121214) 68%, transparent)",
+          backdropFilter: "blur(24px) saturate(1.14)",
+          WebkitBackdropFilter: "blur(24px) saturate(1.14)",
           fontFamily: "var(--font-inter), sans-serif",
         }}
       >
         {children}
-      </div>
+      </motion.div>
     </>,
     document.body,
   );
@@ -63,12 +67,12 @@ export function PhoneMenuItem({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-[12px] rounded-xl border-0 bg-transparent px-[14px] py-[11px] text-left text-[14.5px] text-text-primary active:bg-border-alpha-14 cursor-pointer"
+      className="flex min-h-[40px] w-full cursor-pointer items-center gap-[11px] rounded-[10px] border-0 bg-transparent px-[11px] py-[9px] text-left text-[14px] text-text-primary transition-colors duration-150 hover:bg-border-alpha-14 active:bg-border-alpha-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/40 [&>svg]:shrink-0 [&>svg]:text-text-secondary"
     >
       {icon}
       <span className="flex-1 truncate">{label}</span>
       {hint !== undefined && <span className="text-text-tertiary tabular-nums">{hint}</span>}
-      <span className="flex w-[16px] justify-center">{checked && <CheckLine size={16} />}</span>
+      {checked && <span className="flex w-[16px] shrink-0 justify-center"><CheckLine size={16} /></span>}
     </button>
   );
 }
