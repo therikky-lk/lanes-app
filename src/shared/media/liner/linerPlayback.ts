@@ -39,6 +39,10 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
     });
     const dateHeader = res.headers.get("date");
     if (dateHeader) syncServerTime(dateHeader);
+    if (res.status === 204) {
+      pausedUntil = Date.now() + UNAVAILABLE_BACKOFF_MS;
+      return null;
+    }
     if (res.ok) return (await res.json()) as LinerAudioStream;
 
     const body = (await res.json().catch(() => ({}))) as { code?: string; retryAfterSeconds?: number };
