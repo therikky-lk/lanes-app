@@ -15,6 +15,8 @@ export interface DropdownMenuItem {
   onClick: () => void | Promise<void>;
   danger?: boolean;
   disabled?: boolean;
+  separatorBefore?: boolean;
+  info?: boolean;
 }
 
 export interface DropdownMenuProps {
@@ -138,37 +140,40 @@ export default function DropdownMenu({
         >
           <div className="flex flex-col gap-0.5">
             {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                disabled={item.disabled}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setOpen(false);
-                  await item.onClick();
-                }}
-                className={`group flex min-h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-normal tracking-tight transition-colors border-none bg-transparent text-left cursor-pointer select-none outline-none ${
-                  item.danger
-                    ? "text-red-400 hover:bg-red-500/10 hover:text-red-400"
-                    : "text-text-primary hover:bg-border-alpha-14"
-                } disabled:pointer-events-none disabled:opacity-40`}
-                style={{
-                  fontFamily: "var(--font-inter), sans-serif",
-                }}
-              >
-                {item.icon && (
-                  <span
-                    className={`shrink-0 flex items-center justify-center text-[15px] ${
-                      item.danger
-                        ? "text-red-400"
-                        : "text-text-secondary group-hover:text-text-primary"
-                    } transition-colors`}
-                  >
-                    {item.icon}
-                  </span>
-                )}
-                <span className="truncate flex-1">{item.label}</span>
-              </button>
+              <div key={item.id}>
+                {item.separatorBefore && <div className="my-1.5 h-px bg-border-alpha-14" aria-hidden="true" />}
+                <button
+                  type="button"
+                  disabled={item.disabled}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    await item.onClick();
+                  }}
+                  className={`group flex min-h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-normal tracking-tight transition-colors border-none bg-transparent text-left cursor-pointer select-none outline-none ${
+                    item.danger
+                      ? "text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                      : "text-text-primary hover:bg-border-alpha-14"
+                  } disabled:pointer-events-none disabled:opacity-40`}
+                  style={{
+                    fontFamily: "var(--font-inter), sans-serif",
+                    opacity: item.info ? 1 : undefined,
+                  }}
+                >
+                  {item.icon && (
+                    <span
+                      className={`shrink-0 flex items-center justify-center text-[15px] ${
+                        item.danger
+                          ? "text-red-400"
+                          : "text-text-secondary group-hover:text-text-primary"
+                      } transition-colors`}
+                    >
+                      {item.icon}
+                    </span>
+                  )}
+                  <span className="truncate flex-1">{item.label}</span>
+                </button>
+              </div>
             ))}
           </div>
         </motion.div>

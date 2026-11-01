@@ -17,6 +17,8 @@ export interface Track {
   playCount: number;
   explicit?: boolean;
   releaseDate?: string;
+  /** When this track was liked/saved in the user's library. */
+  likedAt?: string | number;
   album?: {
     id: string;
     title: string;

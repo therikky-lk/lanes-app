@@ -197,6 +197,7 @@ export function localRecordToTrack(record: LocalTrackRecord): Track {
     coverUrl: record.coverDataUrl ?? "",
     durationMs: record.durationMs,
     playCount: 0,
+    ...(record.likedAt ? { likedAt: record.likedAt } : {}),
     artistList,
     ...(record.album ? { album: { id: "local", title: record.album } } : {}),
   };

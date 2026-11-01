@@ -65,6 +65,8 @@ interface TrackItemProps {
   onGrabStart?: (e: React.PointerEvent<HTMLDivElement>) => void;
   highlight?: string;
   isCurrent?: boolean;
+  showLikedDate?: boolean;
+  showLikedDateInMenu?: boolean;
 }
 
 function albumTitleOf(track: Track): string {
@@ -72,6 +74,17 @@ function albumTitleOf(track: Track): string {
   if (typeof album === "string") return album;
   if (album && typeof album === "object" && "title" in album) return String((album as { title?: string }).title ?? "");
   return "";
+}
+
+function formatLikedDate(value: Track["likedAt"]): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }
 
 const TrackItem = memo(function TrackItem({
@@ -85,6 +98,8 @@ const TrackItem = memo(function TrackItem({
   onGrabStart,
   highlight,
   isCurrent,
+  showLikedDate,
+  showLikedDateInMenu,
 }: TrackItemProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -121,6 +136,8 @@ const TrackItem = memo(function TrackItem({
         highlight={highlight}
         isCurrent={isCurrent}
         albumTitle={albumTitleOf(track)}
+        addedDate={showLikedDate ? formatLikedDate(track.likedAt) ?? "—" : undefined}
+        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) ?? "—" : undefined}
         duration={
           track.durationMs
             ? `${Math.floor(track.durationMs / 60000)}:${String(
@@ -781,7 +798,7 @@ function LibraryPlaylistContent() {
                     )
                   }
                   meta={
-                    <div className="flex items-center flex-wrap gap-[6px]">
+                    <div className={`flex ${isLikesMode ? "flex-col items-start gap-[4px]" : "flex-row flex-wrap items-center gap-[6px]"}`}>
                       {importMeta?.source === "spotify" && (
                         <button
                           type="button"
@@ -797,6 +814,17 @@ function LibraryPlaylistContent() {
                           <span>{importMeta.owner ? `Spotify · ${importMeta.owner}` : "Spotify"}</span>
                         </button>
                       )}
+                      {isLikesMode && (
+                        <div
+                          className={`inline-flex h-[26px] items-center rounded-md px-[8px] text-[12px] font-[400] select-none ${
+                            hasCustomBg
+                              ? "apple-glass-pill"
+                              : "bg-bg-panel border border-border-primary/40 text-text-tertiary"
+                          }`}
+                        >
+                          {viewData.tracks.length} {t("playlist.tracks")}
+                        </div>
+                      )}
                       <div
                         className={`inline-flex h-[26px] items-center gap-[6px] rounded-md px-[8px] text-[12px] font-[400] select-none ${
                           hasCustomBg
@@ -811,11 +839,11 @@ function LibraryPlaylistContent() {
                               0,
                             );
                             const totalMins = Math.floor(totalMs / 60000);
-                            if (totalMins > 60) {
-                              return `${Math.floor(totalMins / 60)} ${t("playlist.hr")} ${totalMins % 60} ${t("playlist.min")}`;
-                            }
                             const totalSecs = Math.floor((totalMs % 60000) / 1000);
-                            return `${totalMins} ${t("playlist.min")} ${totalSecs} ${t("playlist.sec")}`;
+                            const duration = totalMins > 60
+                              ? `${Math.floor(totalMins / 60)} ${t("playlist.hr")} ${totalMins % 60} ${t("playlist.min")}`
+                              : `${totalMins} ${t("playlist.min")} ${totalSecs} ${t("playlist.sec")}`;
+                            return duration;
                           })()}
                         </span>
                       </div>
@@ -1028,10 +1056,14 @@ function LibraryPlaylistContent() {
                 }}
                 className={
                   isMobile
-                    ? `min-w-0 w-full flex-1 rounded-[14px] px-[8px] pt-[8px] pb-[24px] ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
+                    ? `min-w-0 w-full flex-none rounded-[14px] px-[8px] pt-[8px] pb-[24px] ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                     : `min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] px-[8px] pt-[8px] pb-[24px] overscroll-contain ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                 }
-                style={{ willChange: "scroll-position", marginTop: isMobile ? undefined : 8 }}
+                style={{
+                  willChange: "scroll-position",
+                  marginTop: isMobile ? undefined : 8,
+                  paddingBottom: isMobile && isLikesMode ? "calc(var(--lane-dock-h, 120px) + 28px)" : undefined,
+                }}
               >
               <ScrollBlurEdge height={60} />
               {isLikesMode && allTracks.length > 0 && (
@@ -1066,6 +1098,17 @@ function LibraryPlaylistContent() {
                       </button>
                     );
                   })}
+                </div>
+              )}
+              {isLikesMode && !isMobile && trackView === "list" && currentTracks.length > 0 && (
+                <div
+                  className="grid h-[38px] items-center px-[8px] text-[12px] text-text-tertiary md:grid-cols-[minmax(0,1fr)_minmax(120px,30%)_140px_76px]"
+                  style={{ fontFamily: "var(--font-inter), sans-serif" }}
+                >
+                  <span className="min-w-0 pl-[72px]">{t("playlist.col_title") || "Title"}</span>
+                  <span className="hidden min-w-0 pl-[16px] md:block">{t("playlist.col_album") || "Album"}</span>
+                  <span className="hidden min-w-0 pl-[16px] md:block">{t("playlist.col_date_added") || "Date added"}</span>
+                  <span aria-hidden="true" />
                 </div>
               )}
               {currentTracks.length === 0 ? (
@@ -1182,6 +1225,8 @@ function LibraryPlaylistContent() {
                       isCurrent={currentTrackId === track.id}
                       playlistId={isLikesMode ? undefined : (decodedId ?? undefined)}
                       playlistTitle={viewData.title}
+                      showLikedDate={isLikesMode}
+                      showLikedDateInMenu={isLikesMode && isMobile}
                       playlistCoverUrl={viewData.coverUrl}
                       allTracks={playableTracks}
                       showReorderHandle={canReorder}

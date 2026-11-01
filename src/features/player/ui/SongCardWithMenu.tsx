@@ -26,6 +26,8 @@ export interface SongCardWithMenuProps {
   trackNumber?: number;
   rowNumber?: number;
   albumTitle?: string;
+  addedDate?: string;
+  addedDateLabel?: string;
   isCurrent?: boolean;
   repostedBy?: string;
   searchType?: "track" | "album" | "artist" | "playlist";
@@ -62,6 +64,8 @@ function SongCardWithMenu({
   trackNumber,
   rowNumber,
   albumTitle,
+  addedDate,
+  addedDateLabel,
   isCurrent,
   repostedBy,
   searchType,
@@ -103,6 +107,7 @@ function SongCardWithMenu({
     playlistId,
     playlistItemId,
     playlistTitle,
+    addedDateLabel,
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -204,6 +209,7 @@ function SongCardWithMenu({
       trackNumber={trackNumber}
       rowNumber={rowNumber}
       albumTitle={albumTitle}
+      addedDate={addedDate}
       isCurrent={isCurrent}
       trackId={id}
       repostedBy={repostedBy}
