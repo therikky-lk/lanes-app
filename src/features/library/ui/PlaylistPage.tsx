@@ -136,8 +136,8 @@ const TrackItem = memo(function TrackItem({
         highlight={highlight}
         isCurrent={isCurrent}
         albumTitle={albumTitleOf(track)}
-        addedDate={showLikedDate ? formatLikedDate(track.likedAt) ?? "—" : undefined}
-        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) ?? "—" : undefined}
+        addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
+        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
         duration={
           track.durationMs
             ? `${Math.floor(track.durationMs / 60000)}:${String(
