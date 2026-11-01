@@ -1,8 +1,9 @@
-export const DEFAULT_PRIMARY_API = "http://lucid-1.ru-west.hyprr.space:10262";
+export const DEFAULT_PRIMARY_API = "https://api.lane-app.site";
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const HTTP_API_HOST = "lucid-1.ru-west.hyprr.space";
 const HTTP_API_PORT = "10262";
+const PRIMARY_API_HOST = "api.lane-app.site";
 
 export function isSecureBaseUrl(url: string): boolean {
   try {
