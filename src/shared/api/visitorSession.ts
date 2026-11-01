@@ -1,4 +1,6 @@
 import { parseVisitorData } from "./visitorData";
+import { getApiBaseUrl } from "./baseUrl";
+import { isNativeApp } from "@/shared/platform/native";
 
 /**
  * Client-side YouTube visitorData session manager.
@@ -32,7 +34,11 @@ export async function getClientVisitorData(): Promise<string> {
 
   pendingFetch = (async () => {
     try {
-      const res = await fetch("https://www.youtube.com/sw.js_data", {
+      const isBrowser = typeof window !== "undefined" && !window.linerElectron && !isNativeApp();
+      const source = isBrowser
+        ? `${getApiBaseUrl()}/v1/public/youtube/visitor-data`
+        : "https://www.youtube.com/sw.js_data";
+      const res = await fetch(source, {
         headers: {
           "user-agent":
             typeof navigator !== "undefined"
