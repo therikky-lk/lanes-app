@@ -1,3 +1,4 @@
+import { normalizeCoverUrl } from "../lib/normalizeCoverUrl";
 import {
   useState,
   useRef,
@@ -44,7 +45,7 @@ export default function AppImage({
   draggable = false,
   ...rest
 }: ImageProps) {
-  const resolvedSrc = typeof src === "string" ? src : src?.src ?? "";
+  const resolvedSrc = normalizeCoverUrl(typeof src === "string" ? src : src?.src ?? "");
   const [currentSrc, setCurrentSrc] = useState(resolvedSrc);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
