@@ -210,7 +210,38 @@ export function installNativeFetchHeaders(): void {
         const buf = await input.clone().arrayBuffer();
         if (buf.byteLength) body = bytesToBase64(new Uint8Array(buf));
       }
-      return nativeHttpFetch(url, method, headers, body, init?.signal ?? (input instanceof Request ? input.signal : undefined));
+      const response = await nativeHttpFetch(
+        url,
+        method,
+        headers,
+        body,
+        init?.signal ?? (input instanceof Request ? input.signal : undefined),
+      );
+
+      // Cloudflare blocks some Cronet requests to the Lane API with an HTML
+      // 403 challenge. Retry only those responses through Capacitor's normal
+      // native fetch adapter, which has a different TLS/client fingerprint.
+      const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+      const server = response.headers.get("server")?.toLowerCase() ?? "";
+      const isCloudflareChallenge =
+        isNativeService &&
+        host === hostOf(getApiBaseUrl()) &&
+        response.status === 403 &&
+        contentType.includes("text/html") &&
+        (server.includes("cloudflare") || response.headers.has("cf-ray"));
+
+      if (isCloudflareChallenge) {
+        diag(`API ${method} ${url.replace(/^https?:\/\//, "").slice(0, 70)} blocked by Cloudflare via Cronet; retrying Capacitor HTTP`);
+        try {
+          const retryResponse = await original(input, { ...init, method, headers });
+          diag(`Capacitor HTTP retry -> ${retryResponse.status}`);
+          return retryResponse;
+        } catch (error) {
+          diag(`Capacitor HTTP retry failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      return response;
     })();
   };
 }
