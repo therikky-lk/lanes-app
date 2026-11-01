@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import {
   signCoverUrl,
   signMonitorRequest,
+  signRequest,
   signRawPayload,
   syncServerTime,
   getServerTimeOffset,
@@ -1351,6 +1352,15 @@ if (!gotTheLock) {
         }
       },
     );
+
+    ipcMain.handle("signer:sign-request", (_event, request: SignRequestInput) => {
+      try {
+        return signRequest(request);
+      } catch (err: any) {
+        console.error("\x1b[41;37m signer \x1b[0m signRequest error:", err);
+        return { error: String(err?.message || err) };
+      }
+    });
 
     ipcMain.handle(
       "signer:sign-raw-payload",

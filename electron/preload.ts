@@ -59,6 +59,12 @@ export interface LinerElectronApi {
     nonce?: string;
     error?: string;
   }>;
+  signRequest: (input: { method: string; path: string; body?: string | null; timestamp?: number }) => Promise<{
+    signature?: string;
+    timestamp?: number;
+    nonce?: string;
+    error?: string;
+  }>;
   syncServerTime: (dateHeaderOrMs: string | number) => Promise<number>;
   getServerTimeOffset: () => Promise<number>;
   signCoverUrl: (payload: string) => Promise<string>;
@@ -198,6 +204,7 @@ const api: LinerElectronApi = {
     ipcRenderer.send("window:drag-end");
   },
   signMonitorRequest: (input) => ipcRenderer.invoke("signer:sign-monitor-request", input),
+  signRequest: (input) => ipcRenderer.invoke("signer:sign-request", input),
   syncServerTime: (dateHeaderOrMs) => ipcRenderer.invoke("signer:sync-time", dateHeaderOrMs),
   getServerTimeOffset: () => ipcRenderer.invoke("signer:get-time-offset"),
   signCoverUrl: (payload) => ipcRenderer.invoke("signer:sign-cover-url", payload),

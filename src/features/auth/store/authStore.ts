@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api, ApiError } from "@/shared/api";
+import { api, ApiError, HumanCheckCancelledError } from "@/shared/api";
 import {
   clearAuthSession,
   getAuthSession,
@@ -156,8 +156,10 @@ useAuthStore.subscribe((state, previous) => {
 });
 
 export function getAuthErrorCode(error: unknown): string {
+  if (error instanceof HumanCheckCancelledError) return "human_check_cancelled";
   if (!(error instanceof ApiError)) return "server_unavailable";
   if (error.status === 0) return "server_unavailable";
+  if (error.code === "CLOUDFLARE_BLOCKED") return "cloudflare_blocked";
   // 5xx and cloudflare 52x: the server is down, not the user's input or connection
   if (error.status >= 500) return "server_error";
   if (error.code === "INVALID_CREDENTIALS") return "invalid_credentials";
@@ -165,6 +167,7 @@ export function getAuthErrorCode(error: unknown): string {
   if (error.code === "USERNAME_TAKEN") return "username_taken";
   if (error.code === "INVALID_USERNAME") return "invalid_username";
   if (error.code === "INVALID_INPUT") return "invalid_input";
+  if (error.code?.startsWith("TURNSTILE_")) return "human_check_failed";
   return "unknown_error";
 }
 
@@ -178,6 +181,10 @@ export function authErrorMessage(error: unknown): string {
     return "This username is already taken. Please choose another.";
   if (error.code === "INVALID_USERNAME")
     return "Username must be 3-30 lowercase characters (a-z, 0-9, _).";
+  if (error.code === "CLOUDFLARE_BLOCKED") {
+    const ray = error.cloudflareRayId ? ` Cloudflare Ray ID: ${error.cloudflareRayId}.` : "";
+    return `Cloudflare rejected the Lane API request (HTTP 403). This is not an incorrect-password response.${ray} Copy the error log and send it to Lane support.`;
+  }
   // unknown api errors stay generic, never surface raw bodies
   return "Something went wrong. Please try again.";
 }
