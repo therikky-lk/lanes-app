@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080808" />
+    <meta name="description" content="Lane — в разработке." />
+    <title>Lane — в разработке</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, Geist, system-ui, sans-serif; background: #080808; color: #f5f5f5; }
+      * { box-sizing: border-box; }
+      body { min-height: 100svh; margin: 0; display: grid; place-items: center; padding: 24px; }
+      main { width: min(100%, 520px); text-align: center; }
+      .mark { display: inline-flex; align-items: center; gap: 3px; height: 30px; margin-bottom: 34px; }
+      .mark i { width: 4px; border-radius: 4px; background: #f5f5f5; }
+      .mark i:nth-child(1) { height: 11px; }.mark i:nth-child(2) { height: 24px; }.mark i:nth-child(3) { height: 17px; }.mark i:nth-child(4) { height: 28px; }
+      .brand { display: block; margin-top: -30px; margin-bottom: 62px; font-size: 21px; font-weight: 750; letter-spacing: -.06em; }
+      .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #292929; border-radius: 999px; color: #b9b9b9; font-size: 12px; }
+      .status::before { width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; content: ""; box-shadow: 0 0 12px #ff4d4d; }
+      h1 { margin: 22px 0 12px; font-size: clamp(38px, 9vw, 58px); line-height: 1.02; letter-spacing: -.07em; }
+      h1 span { color: #ff4d4d; }
+      p { margin: 0; color: #888; font-size: 15px; line-height: 1.7; }
+      footer { position: fixed; right: 22px; bottom: 18px; left: 22px; color: #555; font-size: 10px; text-align: center; letter-spacing: .12em; }
+      @media (prefers-reduced-motion: no-preference) { .status::before { animation: pulse 1.7s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .4; } } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand">lane</span>
+      <span class="status">В РАЗРАБОТКЕ</span>
+      <h1>Скоро будет<br /><span>Lane.</span></h1>
+      <p>Мы готовим приложение. Загляни сюда немного позже.</p>
+    </main>
+    <footer>LANE MUSIC PLAYER</footer>
+  </body>
+</html>
