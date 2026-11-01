@@ -10,6 +10,7 @@ import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
 import { downloadAudioBytes } from "@/shared/media/innertube";
 import { isNativeApp, streamHeadersFor } from "@/shared/platform/native";
+import { isBotCheckError, isYoutubeSignedIn, isYoutubeSignInDeclined, prefersSignInPrompt, requestYoutubeSignIn } from "@/shared/media/youtube";
 import {
   clearNativeNext,
   createNativeAudioElement,
@@ -993,6 +994,11 @@ export class PlayerRuntime {
           : error instanceof Error
             ? error.message
             : "Playback failed to start.";
+      if (isBotCheckError(error) && !isYoutubeSignedIn() && !isYoutubeSignInDeclined() && prefersSignInPrompt()) {
+        usePlayerStore.getState().setStatus("paused");
+        requestYoutubeSignIn();
+        return;
+      }
       console.error("[LoadAndPlayError]", track.id, error);
       log("red", "playback", `failed: ${message}`);
       usePlayerStore.getState().setStatus("error", message);

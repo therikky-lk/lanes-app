@@ -130,7 +130,7 @@ export default function DropdownMenu({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: side === "top" ? 2 : -2 }}
           transition={{ duration: 0.1, ease: "easeOut" }}
-          className={`overflow-hidden rounded-md border border-border-primary/80 bg-bg-primary/95 backdrop-blur-md p-1 min-w-[160px] ${
+          className={`overflow-hidden rounded-xl border border-white/[0.07] bg-bg-elevated/95 shadow-[0_16px_48px_rgba(0,0,0,0.35)] backdrop-blur-xl p-1.5 min-w-[180px] ${
             isFixed ? "fixed z-[99999]" : side === "top" ? "absolute right-0 bottom-full mb-1 z-50" : "absolute right-0 top-full mt-1 z-50"
           }`}
           style={isFixed ? fixedStyle : {}}
@@ -147,7 +147,7 @@ export default function DropdownMenu({
                   setOpen(false);
                   await item.onClick();
                 }}
-                className={`group flex w-full items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13px] font-normal tracking-tight transition-colors border-none bg-transparent text-left cursor-pointer select-none outline-none ${
+                className={`group flex min-h-[34px] w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-normal tracking-tight transition-colors border-none bg-transparent text-left cursor-pointer select-none outline-none ${
                   item.danger
                     ? "text-red-400 hover:bg-red-500/10 hover:text-red-400"
                     : "text-text-primary hover:bg-border-alpha-14"

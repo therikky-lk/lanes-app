@@ -6,6 +6,7 @@ export interface AudioFormat {
   mimeType: string;
   bitrate: number;
   contentLength?: number;
+  signatureCipher?: string;
 }
 
 export interface ResolvedAudioStream {
@@ -23,8 +24,10 @@ const PREFERRED_ITAGS = [251, 140, 250, 249, 139];
 function toAudioFormat(raw: unknown): AudioFormat | null {
   const format = asRecord(raw);
   if (!format) return null;
-  const { itag, url, mimeType } = format;
-  if (typeof itag !== "number" || typeof url !== "string" || typeof mimeType !== "string") return null;
+  const { itag, mimeType } = format;
+  const url = typeof format.url === "string" ? format.url : "";
+  const signatureCipher = typeof format.signatureCipher === "string" ? format.signatureCipher : undefined;
+  if (typeof itag !== "number" || typeof mimeType !== "string" || (!url && !signatureCipher)) return null;
   if (!mimeType.startsWith("audio/")) return null;
   const bitrate = typeof format.bitrate === "number" ? format.bitrate : Number(format.averageBitrate) || 0;
   const contentLength = Number(format.contentLength);
@@ -34,6 +37,7 @@ function toAudioFormat(raw: unknown): AudioFormat | null {
     mimeType,
     bitrate,
     ...(Number.isFinite(contentLength) && contentLength > 0 ? { contentLength } : {}),
+    ...(signatureCipher ? { signatureCipher } : {}),
   };
 }
 

@@ -564,6 +564,7 @@ export function FullscreenPlayer({
         {isMobile && speedOpen && (
           <motion.div
             key="speed-sheet"
+            data-no-sheet-drag
             className="absolute inset-0 z-40 flex items-end bg-black/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -575,8 +576,13 @@ export function FullscreenPlayer({
               animate={{ y: 0 }}
               exit={{ y: 40 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full rounded-t-2xl bg-bg-primary p-[16px]"
-              style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 16px)" }}
+              data-no-sheet-drag
+              className="w-full max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/[0.08] bg-black/20 p-[18px] backdrop-blur-xl"
+              style={{
+                maxHeight: "min(88dvh, calc(100dvh - var(--lane-safe-top, 0px) - 16px))",
+                paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 16px)",
+                touchAction: "pan-y",
+              }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mx-auto mb-[12px] h-[4px] w-[36px] rounded-full bg-white/20" />

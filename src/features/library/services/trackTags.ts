@@ -205,8 +205,8 @@ export function useTrackTags(
   return useMemo(() => {
     const counts = new Map<TrackTag, number>();
     for (const t of tracks) for (const tag of tags[t.id] ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-    // a tag shows up once it covers a few songs
-    const available = TRACK_TAGS.filter((tag) => (counts.get(tag) ?? 0) >= 3);
+    // Show a filter as soon as at least one liked track has been classified.
+    const available = TRACK_TAGS.filter((tag) => (counts.get(tag) ?? 0) > 0);
     const shown = new Set<TrackTag>(available);
     const isPlain = (id: string) => id in tags && !tags[id].some((tag) => shown.has(tag));
     const seen = new Set<string>();

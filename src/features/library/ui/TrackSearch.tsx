@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { CloseLine } from "@mingcute/react";
 import { CloseCircleFill, Search2Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { isMacPlatform } from "@/features/shortcuts";
@@ -97,6 +98,9 @@ interface TrackSearchFieldProps {
   /** Enter: play the first result */
   onSubmit?: () => void;
   className?: string;
+  /** Expand horizontally from the trigger when shown in a compact action row. */
+  expandOnOpen?: boolean;
+  expandWidth?: number;
 }
 
 export const TrackSearchField = memo(function TrackSearchField({
@@ -106,6 +110,8 @@ export const TrackSearchField = memo(function TrackSearchField({
   glass = false,
   onSubmit,
   className = "",
+  expandOnOpen = false,
+  expandWidth = 220,
 }: TrackSearchFieldProps) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,12 +133,13 @@ export const TrackSearchField = memo(function TrackSearchField({
         <motion.div
           key="track-search"
           role="search"
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+          initial={expandOnOpen ? { opacity: 0, width: 0, x: 0 } : { opacity: 0, y: -4 }}
+          animate={expandOnOpen ? { opacity: 1, width: expandWidth, x: 0 } : { opacity: 1, y: 0 }}
+          exit={expandOnOpen ? { opacity: 0, width: 0, x: 0 } : { opacity: 0, y: -4 }}
+          transition={{ duration: expandOnOpen ? 0.2 : 0.14, ease: [0.22, 1, 0.36, 1] }}
+          layout={expandOnOpen}
           data-no-window-drag
-          className={`flex h-[32px] w-[300px] items-center gap-[8px] rounded-md px-[10px] pointer-events-auto ${
+          className={`flex ${expandOnOpen ? "h-[36px] overflow-hidden rounded-[10px]" : "h-[32px] w-[300px] rounded-md"} items-center gap-[8px] px-[10px] pointer-events-auto ${
             glass
               ? "apple-glass-pill !border-none"
               : "bg-bg-panel/85 backdrop-blur-xl text-text-primary"
@@ -182,6 +189,17 @@ export const TrackSearchField = memo(function TrackSearchField({
             >
               {t("track_search.count", { count: matches.length, total: totalCount })}
             </span>
+          )}
+          {expandOnOpen && (
+            <button
+              type="button"
+              aria-label={t("common.close") || "Close search"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={close}
+              className={`inline-flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[7px] border-0 bg-transparent p-0 transition-colors hover:text-text-primary ${glass ? "text-white/60" : "text-text-tertiary"}`}
+            >
+              <CloseLine size={15} />
+            </button>
           )}
           <AnimatePresence>
             {hasQuery && (

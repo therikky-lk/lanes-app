@@ -3,7 +3,7 @@ import { InnertubeError, postInnertube, type InnertubeProfile } from "./innertub
 import { PLAYBACK_PROFILES } from "./playbackProfiles";
 import { resetClientVisitorData } from "@/shared/api/visitorSession";
 import { log } from "@/shared/utils/logger";
-import { resetWebRemixSession, resolveWebRemixAudioStream } from "./webRemixAudio";
+import { getWebPlayer, resetWebRemixSession, resolveWebRemixAudioStream } from "./webRemixAudio";
 import {
   extractAudioFormats,
   playabilityError,
@@ -15,7 +15,7 @@ import {
 
 export type { ResolvedAudioStream } from "./innertubeAudioFormats";
 
-export { ANDROID_VR_PROFILE, PLAYBACK_PROFILES, VISIONOS_PROFILE } from "./playbackProfiles";
+export { ANDROID_VR_PROFILE, PLAYBACK_PROFILES, TV_ACCOUNT_PROFILE, TV_PROFILE, VISIONOS_PROFILE } from "./playbackProfiles";
 
 let lastWorkingProfile: InnertubeProfile | null = null;
 
@@ -151,8 +151,14 @@ async function resolveWithProfile(
   profile: InnertubeProfile,
   options: ResolveAudioOptions,
 ): Promise<ResolvedAudioStream> {
+  const player = profile.requiresJsPlayer ? await getWebPlayer() : null;
   const request = () =>
-    postInnertube("player", { videoId, contentCheckOk: true, racyCheckOk: true }, { profile, signal: options.signal });
+    postInnertube("player", {
+      videoId,
+      contentCheckOk: true,
+      racyCheckOk: true,
+      ...(player ? { playbackContext: { contentPlaybackContext: { signatureTimestamp: player.signature_timestamp } } } : {}),
+    }, { profile, signal: options.signal });
   let response = await request();
   if (requiresBotCheck(response)) {
     resetClientVisitorData();
@@ -160,9 +166,14 @@ async function resolveWithProfile(
   }
   const unplayable = playabilityError(response);
   if (unplayable) throw new InnertubeError(unplayable, 403);
-  const best = selectBestAudioFormat(extractAudioFormats(response), options.preferredCodec, options.preferHighest);
+  const formats = extractAudioFormats(response).filter((format) => player || format.url);
+  const best = selectBestAudioFormat(formats, options.preferredCodec, options.preferHighest);
   if (!best) throw new InnertubeError(`${profile.clientName} returned no direct audio formats.`, 502);
-  const stream = toResolvedStream(best);
+  const url = player
+    ? await player.decipher(best.url || undefined, best.signatureCipher)
+    : best.url;
+  if (!url) throw new InnertubeError(`${profile.clientName} stream url could not be deciphered.`, 502);
+  const stream = toResolvedStream({ ...best, url });
   // googlevideo checks the stream against the client that asked for it (Android app only)
   setStreamUserAgent(profile.userAgent);
   rememberStreamUserAgent(stream.url, profile.userAgent);
@@ -184,7 +195,9 @@ export async function resolveDirectAudioStream(
   } else if (!options.profiles) {
     failures.push(`WEB_REMIX paused: ${lastWebRemixError}`);
   }
-  for (const profile of orderedProfiles(options.profiles ?? PLAYBACK_PROFILES)) {
+  // Explicit profile lists are ordered by the caller (for example, signed-in
+  // YouTube TV first); only the default public list follows the last good client.
+  for (const profile of options.profiles ?? orderedProfiles(PLAYBACK_PROFILES)) {
     try {
       const stream = await resolveWithProfile(videoId, profile, options);
       lastWorkingProfile = profile;

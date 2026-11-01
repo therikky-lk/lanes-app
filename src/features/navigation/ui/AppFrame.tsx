@@ -67,6 +67,7 @@ import {
 import { SettingsModal, useCustomizationStore, getBlockStyle } from "@/features/settings";
 import { UpdateModal, UpdateToastBridge } from "@/features/updater";
 import ArtistSheet from "@/features/artist/ui/ArtistSheet";
+import { YoutubeSignInNotice } from "@/features/youtube-auth";
 
 
 interface AppFrameProps {
@@ -1101,7 +1102,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           >
             {/* 1. Search Input Island */}
             <div
-              className="w-[min(660px,calc(100vw-72px))] lane-search-box h-[54px] shrink-0 rounded-[8px] pointer-events-auto flex items-center px-[18px] gap-[14px] bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
+              className="w-[min(660px,calc(100vw-72px))] lane-search-box h-[54px] shrink-0 rounded-[12px] pointer-events-auto flex items-center px-[18px] gap-[14px] bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_10px_36px_rgba(0,0,0,0.24)]"
             >
               <span className="shrink-0 flex items-center justify-center text-text-tertiary">
                 <AnimatePresence mode="wait" initial={false}>
@@ -1182,7 +1183,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
                   transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[500px] h-[500px] rounded-[8px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
+                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[500px] h-[500px] rounded-[14px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
                 >
                   <div className="flex gap-[6px] px-[14px] pt-[12px] pb-[6px] shrink-0 overflow-x-auto">
                     {filterKeys.map((key) => {
@@ -1297,7 +1298,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
                   transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[480px] h-auto rounded-[8px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/95 border border-border-primary/50 backdrop-blur-2xl"
+                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[480px] h-auto rounded-[14px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
                 >
                   <SearchHistoryList
                     onSelectQuery={handleSelectHistoryQuery}
@@ -1326,6 +1327,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       <CreatePlaylistModal />
       <ImportReviewModal />
       <SettingsModal />
+      <YoutubeSignInNotice />
       <UpdateModal />
       <UpdateToastBridge />
       {!isMobile && <WindowControls

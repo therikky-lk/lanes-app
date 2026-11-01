@@ -1,7 +1,7 @@
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, ExitLine, DiscordFill, KeyboardLine, DeviceLine } from "@mingcute/react";
+import { CloseLine, Search2Line, CloseCircleFill, ExitLine, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
@@ -9,8 +9,6 @@ import {
   Gallery,
   HeadphonesRound,
   InfoCircle,
-  Book2,
-  QuestionCircle,
   Database,
   Widget5,
 } from "@solar-icons/react";
@@ -32,9 +30,10 @@ import {
   AboutTab,
   OverlayTab,
   DiscordTab,
+  YoutubeTab,
 } from "./tabs";
 
-type TabId = "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
+type TabId = "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Playback: Play,
@@ -42,6 +41,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Shortcuts: KeyboardLine,
   Overlay: Widget5,
   Discord: DiscordFill,
+  Youtube: YoutubeFill,
   Appearance: Palette,
   Customization: Gallery,
   Audio: HeadphonesRound,
@@ -51,13 +51,15 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
 
 // Android has no keyboard shortcuts, desktop overlay or Discord presence
 const DESKTOP_ONLY_TABS = new Set<TabId>(["Shortcuts", "Overlay", "Discord"]);
-const TAB_GROUPS: { labelKey: "preferences" | "application"; ids: TabId[] }[] = [
-  { labelKey: "preferences", ids: ["Playback", "Connect", "Shortcuts", "Overlay", "Discord", "Audio", "Appearance"] },
+const TAB_GROUPS: { labelKey: "player" | "interface" | "integrations" | "application"; ids: TabId[] }[] = [
+  { labelKey: "player", ids: ["Playback", "Audio", "Shortcuts"] },
+  { labelKey: "interface", ids: ["Appearance", "Overlay"] },
+  { labelKey: "integrations", ids: ["Youtube", "Connect", "Discord"] },
   { labelKey: "application", ids: ["Storage", "About"] },
 ].map((group) => ({
   ...group,
   ids: isNativeApp() ? (group.ids as TabId[]).filter((id) => !DESKTOP_ONLY_TABS.has(id)) : (group.ids as TabId[]),
-})) as { labelKey: "preferences" | "application"; ids: TabId[] }[];
+})) as { labelKey: "player" | "interface" | "integrations" | "application"; ids: TabId[] }[];
 
 
 const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
@@ -92,6 +94,12 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Discord", titleKey: "settings.discord.show_paused.title", descKey: "settings.discord.show_paused.description" },
   { tabId: "Discord", titleKey: "settings.discord.show_button.title", descKey: "settings.discord.show_button.description" },
   { tabId: "Discord", titleKey: "settings.discord.show_download_button.title", descKey: "settings.discord.show_download_button.description" },
+
+  // YouTube
+  { tabId: "Youtube", titleKey: "settings.youtube.description" },
+  { tabId: "Youtube", titleKey: "settings.youtube.account_playback.title", descKey: "settings.youtube.account_playback.description" },
+  { tabId: "Youtube", titleKey: "settings.youtube.prompt_sign_in.title", descKey: "settings.youtube.prompt_sign_in.description" },
+  { tabId: "Youtube", titleKey: "settings.youtube.sync_library.title", descKey: "settings.youtube.sync_library.description" },
 
   // Appearance
   { tabId: "Appearance", titleKey: "settings.language.label", descKey: "settings.language.description" },
@@ -139,6 +147,7 @@ export default function SettingsModal() {
     Shortcuts: t("settings.tabs.shortcuts") || "Shortcuts",
     Overlay: t("settings.tabs.overlay") || "Overlay",
     Discord: t("settings.tabs.discord") || "Discord RPC",
+    Youtube: t("settings.tabs.youtube") || "YouTube",
     Appearance: t("settings.tabs.appearance"),
     Customization: t("settings.tabs.customization") || "Customization",
     Audio: t("settings.tabs.audio"),
@@ -152,6 +161,7 @@ export default function SettingsModal() {
     Shortcuts: t("settings.shortcuts.description") || "System-wide and player keyboard shortcuts.",
     Overlay: t("settings.overlay.description") || "Desktop overlay behavior, position and lyrics display.",
     Discord: t("settings.discord.description") || "Show what you're listening to on Discord with artwork, artist badge and progress bar.",
+    Youtube: t("settings.youtube.description") || "Sign in to your YouTube account to prevent playback errors.",
     Appearance: t("settings.theme.description"),
     Customization: t("settings.customization.description") || "Window background wallpaper, transparency and block blur effects.",
     Audio: t("settings.audio.description"),
@@ -170,6 +180,7 @@ export default function SettingsModal() {
       Shortcuts: "settings.tabs.shortcuts",
       Overlay: "settings.tabs.overlay",
       Discord: "settings.tabs.discord",
+      Youtube: "settings.tabs.youtube",
       Appearance: "settings.theme.title",
       Customization: "settings.tabs.customization",
       Audio: "settings.tabs.audio",
@@ -183,6 +194,7 @@ export default function SettingsModal() {
       Shortcuts: "settings.shortcuts.description",
       Overlay: "settings.overlay.description",
       Discord: "settings.discord.description",
+      Youtube: "settings.youtube.description",
       Appearance: "settings.theme.description",
       Customization: "settings.customization.description",
       Audio: "settings.audio.description",
@@ -233,10 +245,6 @@ export default function SettingsModal() {
     }
   }, [searchQuery, matchingTabIds, activeTab]);
 
-  const openExternal = (url: string) => {
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
   // phone: the tab list and a tab's page are two screens
   const isMobile = useIsMobile();
   const [mobilePage, setMobilePage] = useState(false);
@@ -265,8 +273,10 @@ export default function SettingsModal() {
     <Dialog
       open={open}
       onOpenChange={(next) => (!next ? handleClose() : undefined)}
-      maxWidth={880}
-      className={`p-0 h-[620px] max-h-[86vh] !flex-row overflow-hidden !bg-bg-elevated !border-0 ${isMobile ? "lane-settings-mobile" : ""}`}
+      maxWidth={900}
+      maxHeight="92vh"
+      backdropClassName={`lane-settings-backdrop ${isMobile ? "lane-settings-mobile-backdrop" : ""}`}
+      className={`lane-settings-shell p-0 h-[700px] !flex-row overflow-hidden ${isMobile ? "lane-settings-mobile" : ""}`}
     >
       <aside className={`${isMobile ? (mobilePage ? "hidden" : "flex-1 w-full") : "w-[248px] shrink-0"} flex flex-col min-h-0 bg-transparent`}>
         {isMobile && (
@@ -275,7 +285,7 @@ export default function SettingsModal() {
               type="button"
               aria-label={t("common.back") || "Back"}
               onClick={handleClose}
-              className="w-[36px] h-[36px] shrink-0 inline-flex items-center justify-center rounded-md text-text-primary hover:bg-border-alpha-14 border-0 bg-transparent p-0 cursor-pointer"
+              className="w-[36px] h-[36px] shrink-0 inline-flex items-center justify-center rounded-md text-text-secondary hover:text-white transition-colors border-0 bg-transparent p-0 cursor-pointer"
             >
               <ArrowLeftLine size={21} />
             </button>
@@ -295,7 +305,7 @@ export default function SettingsModal() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("settings.search_placeholder")}
-              className="w-full h-[32px] pl-[30px] pr-[26px] bg-border-alpha-14 text-text-primary text-[13px] rounded-[8px] border-0 outline-none placeholder:text-text-tertiary focus:bg-border-alpha-20 transition-colors"
+              className="w-full h-[40px] pl-[30px] pr-[26px] bg-border-alpha-14 text-text-primary text-[13px] rounded-[8px] border-0 outline-none placeholder:text-text-tertiary focus:bg-border-alpha-20 transition-colors"
               style={font}
             />
             {searchQuery && (
@@ -321,13 +331,14 @@ export default function SettingsModal() {
             </p>
           ) : (
             filteredGroups.map((group) => (
-            <div key={group.labelKey} className="flex flex-col gap-[2px]">
+            <div key={group.labelKey} className="lane-settings-nav-group flex flex-col gap-[2px]">
               <p
-                className="text-text-tertiary text-[11px] font-[500] m-0 px-[10px] pb-[4px] pt-[2px]"
+                className="text-text-tertiary text-[12px] font-[500] m-0 px-[10px] pb-[6px] pt-[2px]"
                 style={font}
               >
                 {t(`settings.groups.${group.labelKey}`)}
               </p>
+              <div className="lane-settings-nav-items flex flex-col gap-[2px] rounded-xl p-[4px]">
               {group.ids.map((id) => {
                 const isActive = id === activeTab;
                 const Icon = TAB_ICONS[id];
@@ -343,20 +354,29 @@ export default function SettingsModal() {
                     }}
                     className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] border-0 cursor-pointer text-left transition-colors ${
                       isActive
-                        ? "bg-border-alpha-14 text-text-primary"
-                        : "bg-transparent text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"
+                        ? "relative text-text-primary"
+                        : "bg-transparent text-text-secondary"
                     }`}
-                    style={{ ...font, fontSize: "13.5px", fontWeight: isActive ? 500 : 400 }}
+                    style={{ ...font, fontSize: "14.5px", fontWeight: isActive ? 500 : 400 }}
                   >
+                    {isActive && (
+                      <motion.span
+                        layoutId="settings-nav-active"
+                        transition={{ type: "spring", stiffness: 520, damping: 40 }}
+                        className="absolute inset-0 rounded-[8px] bg-black/[0.07] dark:bg-white/[0.12]"
+                        aria-hidden="true"
+                      />
+                    )}
                     <Icon
                       size={18}
                       weight="Bold"
-                      className={isActive ? "text-text-primary shrink-0" : "text-text-tertiary shrink-0"}
+                      className={`relative shrink-0 ${isActive ? "text-text-primary" : "text-text-tertiary"}`}
                     />
-                    <span className="truncate leading-none">{tabLabels[id]}</span>
+                    <span className="relative truncate leading-none">{tabLabels[id]}</span>
                   </button>
                 );
               })}
+              </div>
             </div>
           )))}
 
@@ -388,9 +408,8 @@ export default function SettingsModal() {
                 handleClose();
                 await logout();
               }}
-              title={t("settings.profile.sign_out") || "Log out"}
               aria-label={t("settings.profile.sign_out") || "Log out"}
-              className="p-1.5 rounded-md text-text-tertiary hover:text-[#E81123] hover:bg-border-alpha-14 transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0"
+              className="p-1.5 rounded-md text-text-tertiary hover:text-[#E81123] transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0"
             >
               <ExitLine size={18} className="shrink-0" />
             </button>
@@ -400,21 +419,21 @@ export default function SettingsModal() {
 
       {/* ── Right secondary frame: same roundness, inset with padding, darker ── */}
       <div className={`flex-1 min-w-0 min-h-0 p-[2px] ${isMobile && !mobilePage ? "hidden" : "flex"}`}>
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col rounded-xl bg-bg-primary overflow-hidden">
-        <div className="flex items-start justify-between gap-[16px] px-[24px] pt-[20px] pb-[10px] shrink-0">
+        <div className="lane-settings-content flex-1 min-w-0 min-h-0 flex flex-col rounded-[20px] overflow-hidden">
+        <div className="flex items-start justify-between gap-[16px] px-[24px] pt-[24px] pb-[14px] shrink-0">
           {isMobile && (
             <button
               type="button"
               aria-label={t("common.back") || "Back"}
               onClick={() => setMobilePage(false)}
-              className="-ml-[6px] w-[32px] h-[32px] shrink-0 inline-flex items-center justify-center rounded-md text-text-primary hover:bg-border-alpha-14 border-0 bg-transparent p-0 cursor-pointer"
+              className="-ml-[6px] w-[32px] h-[32px] shrink-0 inline-flex items-center justify-center rounded-md text-text-primary hover:text-text-secondary border-0 bg-transparent p-0 cursor-pointer transition-colors"
             >
               <ArrowLeftLine size={20} />
             </button>
           )}
           <div className="min-w-0 flex-1">
             <h3
-              className="text-text-primary text-[15px] m-0 font-[600] tracking-[-0.01em]"
+              className="text-text-primary text-[20px] m-0 font-[650] tracking-[-0.02em]"
               style={font}
             >
               {tabLabels[activeTab]}
@@ -426,14 +445,16 @@ export default function SettingsModal() {
               {tabDescriptions[activeTab]}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={t("common.close") || "Close"}
-            onClick={handleClose}
-            className="w-[28px] h-[28px] shrink-0 inline-flex items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-border-alpha-14 transition-colors border-0 bg-transparent p-0 cursor-pointer"
-          >
-            <CloseLine size={17} />
-          </button>
+          {!isMobile && (
+            <button
+              type="button"
+              aria-label={t("common.close") || "Close"}
+              onClick={handleClose}
+              className="w-[28px] h-[28px] shrink-0 inline-flex items-center justify-center rounded-md text-text-tertiary hover:text-text-primary transition-colors border-0 bg-transparent p-0 cursor-pointer"
+            >
+              <CloseLine size={17} />
+            </button>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-[24px] pb-[16px] flex flex-col">
@@ -449,6 +470,7 @@ export default function SettingsModal() {
             {activeTab === "Shortcuts" && <ShortcutsTab searchQuery={searchQuery} />}
             {activeTab === "Overlay" && <OverlayTab searchQuery={searchQuery} />}
             {activeTab === "Discord" && <DiscordTab searchQuery={searchQuery} />}
+            {activeTab === "Youtube" && <YoutubeTab searchQuery={searchQuery} />}
             {(activeTab === "Appearance" || activeTab === "Customization") && (
               <div className="flex flex-col gap-[28px]">
                 <AppearanceTab searchQuery={searchQuery} />

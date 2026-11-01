@@ -117,7 +117,7 @@ function builtInApplicationId(): string {
 
 const DEFAULT_SETTINGS: DiscordRpcSettings = {
   enabled: true,
-  statusDisplayType: "artist",
+  statusDisplayType: "app",
   showArtwork: true,
   showArtistSmallImage: true,
   showTime: true,

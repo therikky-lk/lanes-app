@@ -68,6 +68,16 @@ export function resetWebRemixSession(): void {
   sessionPromise = null;
 }
 
+export type WebPlayer = NonNullable<Innertube["session"]["player"]>;
+
+export async function getWebPlayer(): Promise<WebPlayer> {
+  installPlayerEvaluator();
+  const { innertube } = await getSession(await getClientVisitorData());
+  const player = innertube.session.player;
+  if (!player) throw new InnertubeError("YouTube player script is unavailable.", 502);
+  return player;
+}
+
 async function mintContentPoToken(videoId: string): Promise<string> {
   if (isNativeApp()) {
     try {

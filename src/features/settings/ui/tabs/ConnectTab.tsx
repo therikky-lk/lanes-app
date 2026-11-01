@@ -29,7 +29,7 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
   const activeId = followingId ?? me.id;
 
   return (
-    <div className="flex flex-col gap-[16px]">
+    <div className="flex min-w-0 w-full flex-col gap-[16px]">
       <SettingSection>
         <SettingRow
           title={tr("connect.name_title", "Device name")}
@@ -41,7 +41,7 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => setDeviceName(name)}
-              className="h-[36px] w-full max-w-[220px] rounded-[8px] border-0 bg-border-alpha-14 px-[12px] text-[14px] text-text-primary outline-none"
+              className="h-[36px] w-full min-w-0 max-w-[220px] rounded-[10px] border border-transparent bg-white/[0.06] px-[12px] text-[14px] text-text-primary outline-none transition-colors focus:border-white/[0.12] focus:bg-white/[0.08]"
             />
           }
         />
@@ -49,11 +49,11 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
 
       <SettingSection label={tr("connect.online_title", "Online now")}>
         {!channel ? (
-          <span className="py-[10px] text-[13px] text-text-tertiary">
+          <span className="px-[16px] py-[10px] text-[13px] text-text-tertiary">
             {tr("connect.sign_in", "Sign in to the same account on your devices to switch playback between them.")}
           </span>
         ) : (
-          <div className="flex flex-col py-[6px]">
+          <div className="flex min-w-0 flex-col gap-[3px] px-[8px] py-[6px]">
             {[me, ...Object.values(devices)].map((d) => {
               const active = d.id === activeId;
               return (
@@ -61,19 +61,34 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
                   key={d.id}
                   type="button"
                   onClick={() => !active && transferTo(d.id)}
-                  className={`flex items-center gap-[10px] rounded-lg border-0 bg-transparent px-[6px] py-[9px] text-left cursor-pointer hover:bg-border-alpha-14 ${active ? "text-accent-primary" : "text-text-primary"}`}
+                  aria-pressed={active}
+                  className={`group flex min-h-[48px] w-full min-w-0 items-center gap-[10px] rounded-[10px] border-0 px-[8px] py-[7px] text-left transition-colors cursor-pointer ${
+                    active
+                      ? "bg-white/[0.07] text-text-primary"
+                      : "bg-transparent text-text-primary"
+                  }`}
                 >
-                  {d.kind === "phone" ? <CellphoneLine size={18} /> : <ComputerLine size={18} />}
-                  <span className="flex-1 truncate text-[14px]">{d.name}</span>
-                  <span className="text-[12px] text-text-tertiary">
-                    {active ? tr("connect.playing_here", "Playing") : d.id === me.id ? tr("connect.this_device", "This device") : ""}
+                  <span className={`inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-[9px] ${active ? "bg-white/[0.09] text-text-primary" : "bg-white/[0.05] text-text-secondary"}`}>
+                    {d.kind === "phone" ? <CellphoneLine size={17} /> : <ComputerLine size={17} />}
                   </span>
+                  <span className="flex-1 truncate text-[13.5px] font-[500]">{d.name}</span>
+                  {active ? (
+                    <span className="inline-flex shrink-0 items-center gap-[6px] rounded-full bg-white/[0.08] px-[9px] py-[5px] text-[11px] font-[500] text-text-secondary">
+                      <span className="h-[6px] w-[6px] rounded-full bg-emerald-400" />
+                      {tr("connect.playing_here", "Playing")}
+                    </span>
+                  ) : d.id === me.id ? (
+                    <span className="shrink-0 rounded-full bg-white/[0.05] px-[9px] py-[5px] text-[11px] text-text-tertiary">
+                      {tr("connect.this_device", "This device")}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
             {fingerprint && (
-              <span className="px-[6px] pt-[4px] text-[11px] text-text-tertiary">
-                {online ? "●" : "○"} channel {fingerprint}
+              <span className="inline-flex items-center gap-[6px] self-start px-[8px] pt-[4px] text-[11px] text-text-tertiary">
+                <span className={`h-[6px] w-[6px] rounded-full ${online ? "bg-emerald-400" : "bg-text-tertiary"}`} />
+                <span className="font-mono">{tr("connect.channel", "Channel")} {fingerprint}</span>
               </span>
             )}
             {Object.keys(devices).length === 0 && (
@@ -86,28 +101,28 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
       </SettingSection>
 
       <SettingSection label={tr("connect.code_section", "Pair by code")}>
-        <div className="flex flex-col gap-[8px] py-[10px]">
-          <span className="text-[12.5px] text-text-tertiary">
+        <div className="flex min-w-0 flex-col gap-[10px] px-[16px] py-[10px]">
+          <span className="min-w-0 text-[12.5px] leading-[1.5] text-text-tertiary">
             {tr("connect.code_hint", "If the devices don't find each other on their own: create a code on one and enter it on the other.")}
           </span>
           {code ? (
             <div className="flex flex-wrap items-center gap-[8px]">
-              <span className="rounded-[8px] bg-border-alpha-14 px-[10px] py-[7px] font-mono text-[14px] tracking-[0.06em] text-text-primary select-all">
+              <span className="rounded-[10px] bg-white/[0.07] px-[12px] py-[8px] font-mono text-[14px] tracking-[0.06em] text-text-primary select-all">
                 {code}
               </span>
-              <Button variant="secondary" size="sm" onClick={() => void navigator.clipboard?.writeText(code)}>
+              <Button variant="secondary" size="sm" className="!h-[34px] !rounded-[10px] !bg-white/[0.08] !text-text-primary hover:!bg-white/[0.12]" onClick={() => void navigator.clipboard?.writeText(code)}>
                 {tr("connect.copy", "Copy")}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => applyCode(null)}>
+              <Button variant="secondary" size="sm" className="!h-[34px] !rounded-[10px] !bg-white/[0.08] !text-text-primary hover:!bg-white/[0.12]" onClick={() => applyCode(null)}>
                 {tr("connect.use_account", "Use the account instead")}
               </Button>
             </div>
           ) : (
             <>
-              <Button variant="secondary" size="sm" className="self-start" onClick={() => applyCode(generatePairingCode())}>
+              <Button variant="secondary" size="sm" className="self-start !h-[34px] !rounded-[10px] !bg-white/[0.08] !text-text-primary hover:!bg-white/[0.12]" onClick={() => applyCode(generatePairingCode())}>
                 {tr("connect.create", "Create code")}
               </Button>
-              <div className="flex items-center gap-[8px]">
+            <div className="flex min-w-0 items-center gap-[8px]">
                 <input
                   value={input}
                   onChange={(e) => {
@@ -116,10 +131,11 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
                   }}
                   placeholder="XXXX-XXXX-XXXX-XXXX"
                   autoCapitalize="characters"
-                  className="h-[36px] w-full rounded-[8px] border-0 bg-border-alpha-14 px-[12px] font-mono text-[14px] tracking-[0.06em] text-text-primary outline-none placeholder:text-text-tertiary"
+                  className="h-[38px] min-w-0 flex-1 rounded-[10px] border border-transparent bg-white/[0.06] px-[12px] font-mono text-[13px] tracking-[0.06em] text-text-primary outline-none transition-colors focus:border-white/[0.12] focus:bg-white/[0.08] placeholder:text-text-tertiary"
                 />
                 <Button
                   variant="secondary"
+                  className="!h-[38px] !rounded-[10px] !bg-white/[0.08] !px-[16px] !text-text-primary hover:!bg-white/[0.12]"
                   size="sm"
                   onClick={() => {
                     const normalized = normalizePairingCode(input);

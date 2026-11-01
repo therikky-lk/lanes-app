@@ -128,8 +128,8 @@ function SliderRow({
   const isActive = (isHovered || isDragging) && !disabled;
 
   return (
-    <div className={`flex flex-col gap-[6px] ${disabled ? "opacity-45" : ""}`}>
-      <div className="flex items-center justify-between text-[12px]">
+    <div className={`flex flex-col gap-[5px] ${disabled ? "opacity-45" : ""}`}>
+      <div className="flex items-center text-[12px]">
         <span className="font-medium text-text-primary select-none flex items-center gap-[6px]">
           {label}
           <AnimatePresence>
@@ -146,40 +146,6 @@ function SliderRow({
             ) : null}
           </AnimatePresence>
         </span>
-        <div className="flex items-center gap-[4px] select-none">
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            type="button"
-            disabled={disabled || clampedValue <= min}
-            onClick={(e) => {
-              e.stopPropagation();
-              onStepDown();
-            }}
-            className="flex h-[20px] w-[20px] items-center justify-center rounded-md bg-white/[0.05] hover:bg-white/[0.12] text-text-secondary hover:text-text-primary text-[13px] font-bold leading-none disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border-0"
-            aria-label="Decrease"
-          >
-            −
-          </motion.button>
-          <span
-            className="w-[52px] text-center text-[12px] font-semibold tabular-nums text-text-primary"
-            style={{ fontFamily: "var(--font-inter), sans-serif" }}
-          >
-            {valueText}
-          </span>
-          <motion.button
-            whileTap={{ scale: 0.85 }}
-            type="button"
-            disabled={disabled || clampedValue >= max}
-            onClick={(e) => {
-              e.stopPropagation();
-              onStepUp();
-            }}
-            className="flex h-[20px] w-[20px] items-center justify-center rounded-md bg-white/[0.05] hover:bg-white/[0.12] text-text-secondary hover:text-text-primary text-[13px] font-bold leading-none disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer border-0"
-            aria-label="Increase"
-          >
-            +
-          </motion.button>
-        </div>
       </div>
 
       <div
@@ -195,29 +161,42 @@ function SliderRow({
         onWheel={handleWheel}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="group relative flex h-[20px] w-full items-center cursor-pointer select-none outline-none"
+        className="group relative flex h-[38px] w-full items-end cursor-pointer select-none outline-none"
       >
         <div
           ref={trackRef}
-          className={`relative h-[6px] w-full rounded-full overflow-hidden transition-colors duration-150 ${
-            isActive
-              ? "bg-black/[0.20] dark:bg-white/[0.22]"
-              : "bg-black/[0.10] dark:bg-white/[0.14]"
-          }`}
-        >
-          <div
-            className={`relative h-full rounded-full bg-text-primary transition-[width] ease-out ${
-              isDragging ? "duration-0" : "duration-100"
-            }`}
-            style={{ width: `${percentage}%` }}
-          >
-            <motion.div
-              animate={{ scale: isActive ? 1.25 : 1 }}
-              transition={{ type: "spring", stiffness: 450, damping: 28 }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-[10px] w-[10px] rounded-full bg-text-primary shadow-[0_1px_4px_rgba(0,0,0,0.35)]"
-            />
-          </div>
-        </div>
+          className="absolute inset-x-0 bottom-0 h-[25px] rounded-md"
+          style={{
+            backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,.20) 0 3px, transparent 3px 8px)",
+            maskImage: "linear-gradient(to bottom, transparent, black 30%)",
+          }}
+        />
+        <motion.span
+          animate={{ left: `${percentage}%`, scale: isActive ? 1.12 : 1 }}
+          transition={{ type: "spring", stiffness: 450, damping: 32 }}
+          className="absolute top-[1px] z-[1] -translate-x-1/2"
+          style={{
+            width: 0,
+            height: 0,
+            borderLeft: "7px solid transparent",
+            borderRight: "7px solid transparent",
+            borderTop: "10px solid rgba(255,255,255,.58)",
+          }}
+        />
+        <span
+          className="absolute bottom-0 h-[19px] w-[3px] -translate-x-1/2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,.35)]"
+          style={{ left: `${percentage}%` }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between select-none">
+        <motion.button whileTap={{ scale: 0.9 }} type="button" disabled={disabled || clampedValue <= min}
+          onClick={(e) => { e.stopPropagation(); onStepDown(); }}
+          className="flex h-[28px] w-[36px] items-center justify-center rounded-lg bg-white/[0.10] hover:bg-white/[0.18] text-white/75 text-[18px] leading-none disabled:opacity-30 cursor-pointer border-0" aria-label="Decrease">−</motion.button>
+        <span className="min-w-[64px] rounded-lg bg-white/[0.10] px-3 py-[5px] text-center text-[12px] font-semibold tabular-nums text-white" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{valueText}</span>
+        <motion.button whileTap={{ scale: 0.9 }} type="button" disabled={disabled || clampedValue >= max}
+          onClick={(e) => { e.stopPropagation(); onStepUp(); }}
+          className="flex h-[28px] w-[36px] items-center justify-center rounded-lg bg-white/[0.10] hover:bg-white/[0.18] text-white/75 text-[18px] leading-none disabled:opacity-30 cursor-pointer border-0" aria-label="Increase">+</motion.button>
       </div>
     </div>
   );
@@ -273,6 +252,7 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
 
   return (
     <div
+      data-no-sheet-drag
       className={`flex flex-col gap-[14px] select-none text-text-primary ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -289,14 +269,14 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
               onClick={() => handlePresetClick(preset.rate)}
               className={`relative flex h-[26px] items-center justify-center rounded-md text-[11px] font-semibold transition-colors duration-150 cursor-pointer border-0 ${
                 isActive
-                  ? "text-bg-primary"
-                  : "bg-white/[0.04] text-text-secondary hover:bg-white/[0.08] hover:text-text-primary"
+                  ? "text-[#171616]"
+                  : "bg-white/[0.08] text-white/70 hover:bg-white/[0.14] hover:text-white"
               }`}
             >
               {isActive && (
                 <motion.div
                   layoutId="active-speed-preset"
-                  className="absolute inset-0 rounded-md bg-text-primary shadow-sm"
+                  className="absolute inset-0 rounded-md bg-white/80 shadow-sm"
                   transition={{ type: "spring", stiffness: 450, damping: 32 }}
                 />
               )}

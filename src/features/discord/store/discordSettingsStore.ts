@@ -71,7 +71,16 @@ export const useDiscordSettingsStore = create<DiscordSettingsState>()(
     }),
     {
       name: "liner_discord_settings_v1",
+      version: 2,
       storage: createJSONStorage(() => debouncedStorage),
+      migrate: (persistedState, version) => {
+        const settings = persistedState as DiscordRpcSettings;
+        // The previous app's default was Artist. Move that old default to Lane.
+        if (version < 2 && settings?.statusDisplayType === "artist") {
+          return { ...settings, statusDisplayType: "app" };
+        }
+        return settings;
+      },
       partialize: (state): DiscordRpcSettings => ({
         enabled: state.enabled,
         statusDisplayType: state.statusDisplayType,

@@ -588,9 +588,9 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
   return (
     <div className="flex flex-col">
       {/* ── Top Bar: Scope Tabs (Left) + Tiny Search Field (Right) ── */}
-      <div className="flex items-center justify-between gap-3 mt-[8px] mb-[6px] w-full min-w-0">
+      <div className="lane-shortcuts-toolbar flex items-center justify-between gap-3 mt-[8px] mb-[10px] w-full min-w-0">
         <div
-          className="inline-flex items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated select-none shrink-0"
+          className="lane-shortcuts-scopes inline-flex items-center gap-[4px] rounded-xl p-[2px] select-none shrink-0"
           role="tablist"
           aria-label="Shortcut filter scopes"
         >
@@ -606,22 +606,23 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
                   if (localSearchQuery) setLocalSearchQuery("");
                   setActiveScope(tab.value);
                 }}
-                className={`group relative inline-flex items-center justify-center rounded-lg ${
+                className={`group relative inline-flex items-center justify-center rounded-xl ${
                   isRu ? "px-[13px]" : "px-[16px]"
-                } py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
+                  } py-[9px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
                   isActive
-                    ? "text-text-primary"
-                    : "text-text-secondary hover:text-text-primary"
+                    ? "text-bg-primary"
+                    : "text-text-secondary bg-border-alpha-14 hover:text-text-primary"
                 }`}
                 style={{
                   fontFamily: "var(--font-inter), sans-serif",
                   fontWeight: 500,
+                  backgroundColor: isActive ? "transparent" : undefined,
                 }}
               >
                 {isActive && (
                   <motion.div
                     layoutId="shortcutsScopeTab"
-                    className="absolute inset-0 rounded-lg bg-bg-primary shadow-sm"
+                    className="absolute inset-0 rounded-xl bg-text-primary shadow-sm"
                     transition={{
                       type: "spring",
                       stiffness: 500,
@@ -635,7 +636,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
                   <span
                     className={`text-[12px] font-normal tabular-nums leading-none transition-colors ${
                       isActive
-                        ? "text-text-tertiary"
+                        ? "text-bg-primary/65"
                         : "text-text-tertiary/60 group-hover:text-text-tertiary"
                     }`}
                   >
@@ -648,8 +649,8 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
         </div>
 
         {/* Right Tools: Search Field + Small Reset Button */}
-        <div className="relative flex items-center justify-end flex-1 min-w-0 gap-2">
-          <div className="h-[35px] px-3 rounded-lg bg-bg-elevated flex items-center gap-2.5 transition-colors w-full max-w-[240px] min-w-[130px] border-none outline-none ring-0">
+        <div className="lane-shortcuts-tools relative flex items-center justify-end flex-1 min-w-0 gap-2">
+          <div className="lane-shortcuts-search h-[36px] px-3 rounded-xl flex items-center gap-2.5 transition-colors w-full max-w-[240px] min-w-[130px] border-none outline-none ring-0">
             <Search2Line size={16} className="text-text-tertiary shrink-0" />
             <input
               type="text"
@@ -680,7 +681,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
               type="button"
               onClick={() => setIsResetModalOpen(true)}
               aria-label={t("settings.shortcuts.reset_all") || "Reset all shortcuts"}
-              className="h-[35px] w-[35px] rounded-lg bg-bg-elevated hover:bg-border-alpha-14 flex items-center justify-center text-text-tertiary hover:text-text-primary transition-colors cursor-pointer shrink-0 border-0 p-0 active:scale-[0.95]"
+              className="lane-shortcuts-reset h-[36px] w-[36px] rounded-xl flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors cursor-pointer shrink-0 border-0 p-0 active:scale-[0.95]"
             >
               <ResetIcon size={14.5} className="-top-[1px]" style={{ top: "-1px" }} />
             </button>
@@ -696,7 +697,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.12, ease: "easeOut" }}
-          className="flex flex-col gap-0.5"
+          className="lane-shortcuts-list flex flex-wrap gap-[8px]"
         >
           {filteredItems.length === 0 ? (
             <div className="py-8 text-center text-text-tertiary text-[13px]" style={font}>
@@ -713,14 +714,14 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
                   onClick={() => {
                     setRecordingId((prev) => (prev === item.id ? null : item.id));
                   }}
-                  className="h-[44px] min-h-[44px] flex items-center justify-between gap-4 px-3 rounded-xl hover:bg-border-alpha-10 transition-colors group select-none cursor-pointer"
+                  className="lane-shortcut-card min-h-[52px] flex items-center justify-between gap-4 px-3 py-[8px] rounded-xl transition-colors group select-none cursor-pointer"
                 >
                   {/* Left: Icon + Title + Scope Badge */}
                   <div className="flex items-center gap-3 min-w-0 pointer-events-none">
                     <span className="text-text-tertiary group-hover:text-text-primary transition-colors shrink-0 flex items-center justify-center w-[20px] h-[20px]">
                       <Icon size={18} weight="Bold" />
                     </span>
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex flex-col items-start gap-[3px] min-w-0">
                       <span className="text-[13.5px] font-[500] text-text-primary truncate" style={font}>
                         {item.title}
                       </span>

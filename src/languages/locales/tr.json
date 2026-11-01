@@ -486,6 +486,9 @@
     "reset_defaults": "Varsayılanlara sıfırla",
     "save_preferences": "Tercihleri kaydet",
     "groups": {
+      "player": "Oynatıcı",
+      "interface": "Arayüz",
+      "integrations": "Entegrasyonlar",
       "preferences": "Tercihler",
       "application": "Uygulama",
       "help": "Yardım"
@@ -505,7 +508,8 @@
       "playback": "Çalma",
       "shortcuts": "Kısayollar",
       "overlay": "Katman",
-      "privacy": "Gizlilik"
+      "privacy": "Gizlilik",
+      "youtube": "YouTube"
     },
     "playback": {
       "description": "Sıra davranışı, tıklama eylemleri ve ses çıkışı."
@@ -881,7 +885,8 @@
       "never_run": "Testler henüz çalıştırılmadı.",
       "last_run": "{ok}/{total} test başarılı · {time}",
       "open_folder": "Kaydedilen konumu aç"
-    }
+    },
+    "youtube": {}
   },
   "toast": {
     "playlist_created": "Çalma listesi oluşturuldu",

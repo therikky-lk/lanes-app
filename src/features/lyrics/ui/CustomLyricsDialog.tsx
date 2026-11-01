@@ -47,8 +47,15 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} maxWidth={560}>
-      <div className="flex flex-col gap-[12px] px-[20px] pb-[16px]" style={font}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      maxWidth={560}
+      maxHeight="calc(100dvh - 32px)"
+      className="lane-glass-dialog"
+      backdropClassName="lane-glass-dialog-backdrop"
+    >
+      <div className="flex flex-col gap-[14px] px-[20px] pt-[18px] pb-[20px]" style={font}>
         <div className="flex items-start justify-between gap-[12px]">
           <div className="min-w-0">
           <h2 className="m-0 text-[18px] font-[500] text-text-primary">{t("player.custom_lyrics_title") || "Your lyrics"}</h2>
@@ -61,7 +68,7 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
             type="button"
             aria-label={t("common.close") || "Close"}
             onClick={() => onOpenChange(false)}
-            className="inline-flex h-[32px] w-[32px] shrink-0 items-center justify-center border-0 bg-transparent p-0 text-text-tertiary cursor-pointer"
+            className="inline-flex h-[32px] w-[32px] shrink-0 cursor-pointer items-center justify-center rounded-[9px] border-0 bg-transparent p-0 text-text-tertiary transition-colors hover:text-text-primary"
           >
             <CloseLine size={17} />
           </button>
@@ -75,7 +82,7 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
           rows={1}
           spellCheck={false}
           placeholder={"[00:12.40] First line\n[00:16.10] Second line\n\n…or just the words"}
-          className="w-full min-h-[80px] max-h-[55vh] resize-none overflow-hidden rounded-xl border border-white/10 bg-bg-primary px-[14px] py-[10px] font-mono text-[13px] leading-[1.6] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,box-shadow] duration-150 focus:border-white/25 focus:ring-1 focus:ring-white/10"
+          className="w-full min-h-[80px] max-h-[55vh] resize-none overflow-hidden rounded-[10px] border border-white/[0.08] bg-white/[0.035] px-[14px] py-[10px] font-mono text-[13px] leading-[1.6] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,background-color,box-shadow] duration-150 focus:border-white/[0.16] focus:bg-white/[0.05] focus:ring-1 focus:ring-white/[0.06]"
         />
 
         <div className="flex flex-wrap items-center gap-[8px]">
@@ -90,7 +97,13 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
               if (file) setText(await file.text());
             }}
           />
-          <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="!h-[36px] !rounded-[10px] !bg-white/[0.08] !px-[14px] !text-text-primary hover:!bg-white/[0.12]"
+            onClick={() => fileRef.current?.click()}
+          >
             {t("player.custom_lyrics_load_file") || "Load .lrc file"}
           </Button>
           {format && (
@@ -102,8 +115,9 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
           {existing && (
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
+              className="!h-[36px] !rounded-[10px] !bg-white/[0.06] !px-[14px] !text-text-secondary hover:!bg-white/[0.1] hover:!text-text-primary"
               onClick={() => {
                 setText("");
                 if (trackId) setCustomLyrics(trackId, "");
@@ -113,7 +127,14 @@ export default function CustomLyricsDialog({ open, onOpenChange, trackId, trackT
               {t("player.custom_lyrics_delete") || "Remove"}
             </Button>
           )}
-          <Button type="button" variant="primary" size="sm" disabled={!trackId} onClick={save}>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            className="!h-[36px] !rounded-[10px] !px-[18px]"
+            disabled={!trackId}
+            onClick={save}
+          >
             {t("player.save") || "Save"}
           </Button>
         </div>

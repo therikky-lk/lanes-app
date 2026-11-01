@@ -459,7 +459,7 @@ export function SearchModal({
         >
           {/* 1. Sleek Floating Search Bar Island */}
           <div
-            className="w-[min(660px,calc(100vw-90px))] h-[54px] rounded-[8px] bg-bg-panel/98 backdrop-blur-2xl px-[18px] flex items-center gap-[14px]"
+            className="w-[min(660px,calc(100vw-90px))] h-[54px] rounded-[12px] bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl px-[18px] flex items-center gap-[14px] shadow-[0_10px_36px_rgba(0,0,0,0.24)]"
           >
         <span className="shrink-0 flex items-center justify-center text-text-tertiary">
           <AnimatePresence mode="wait" initial={false}>
@@ -645,7 +645,7 @@ export function SearchModal({
               duration: 0.1,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="w-[min(660px,calc(100vw-90px))] mt-[8px] max-h-[480px] h-auto rounded-[8px] bg-bg-panel/98 backdrop-blur-2xl flex flex-col overflow-hidden"
+            className="w-[min(660px,calc(100vw-90px))] mt-[8px] max-h-[480px] h-auto rounded-[14px] bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl flex flex-col overflow-hidden shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
           >
             <SearchHistoryList
               onSelectQuery={handleSelectHistoryQuery}
