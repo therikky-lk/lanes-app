@@ -178,8 +178,9 @@ export function SearchModal({
   });
 
   const searchResults = useMemo(() => {
-    if (isAllSearchFilter) {
-      return allResults.map((item: any) => {
+    // "All" and the YouTube tab both return mixed kinds of results
+    if (isAllSearchFilter || isYoutubeSearchFilter) {
+      return ((isAllSearchFilter ? allResults : youtubeResults) as any[]).map((item: any) => {
         const coverUrl = item.cover
           ? mediaUrl(item.cover.url)
           : (item.coverUrl ?? "");
@@ -209,9 +210,10 @@ export function SearchModal({
             ...item,
             _type: "album",
             coverUrl,
-            artists: item.artists
+            // artists can come as a list of { id, name } or as plain text
+            artists: Array.isArray(item.artists)
               ? item.artists.map((a: any) => a.name).join(", ")
-              : (item.artist ?? ""),
+              : (item.artists || item.artist || ""),
           };
         }
         if (item.type === "playlist") {
@@ -239,34 +241,6 @@ export function SearchModal({
           artistId: clientTrack.artistId,
           artistList: clientTrack.artistList,
         };
-      });
-    if (isYoutubeSearchFilter)
-      return youtubeResults.map((item: any) => {
-        const coverUrl = item.cover ? mediaUrl(item.cover.url) : (item.coverUrl ?? "");
-        if (item.type === "track") {
-          const clientTrack = toClientTrack(item);
-          return {
-            ...clientTrack,
-            ...item,
-            _type: "track",
-            coverUrl: clientTrack.coverUrl || coverUrl,
-            artists: clientTrack.artists,
-            artistId: clientTrack.artistId,
-            artistList: clientTrack.artistList,
-          };
-        }
-        if (item.type === "artist")
-          return { ...item, _type: "artist", title: item.name, coverUrl: toMaxQualityAvatarUrl(coverUrl), artists: "" };
-        if (item.type === "album")
-          return {
-            ...item,
-            _type: "album",
-            coverUrl,
-            artists: item.artists?.map((artist: any) => artist.name).join(", ") ?? item.artist ?? "",
-          };
-        if (item.type === "playlist")
-          return { ...item, _type: "playlist", coverUrl, artists: item.author || item.owner || "" };
-        return item;
       });
     if (isArtistSearchFilter)
       return artistResults.map((a: any) => ({

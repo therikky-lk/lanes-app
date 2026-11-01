@@ -11,6 +11,7 @@ export function useSearchYoutube(
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const requestId = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trimmed = query.trim();
 
   const runRequest = useCallback(async (id: number, value: string) => {
@@ -52,12 +53,26 @@ export function useSearchYoutube(
     }
     const id = ++requestId.current;
     setLoading(true);
-    const timer = setTimeout(() => void runRequest(id, trimmed), debounceMs);
-    return () => clearTimeout(timer);
+    const timer = setTimeout(() => {
+      timerRef.current = null;
+      void runRequest(id, trimmed);
+    }, debounceMs);
+    timerRef.current = timer;
+    return () => {
+      clearTimeout(timer);
+      if (timerRef.current === timer) timerRef.current = null;
+    };
   }, [debounceMs, enabled, runRequest, trimmed]);
 
+  // Enter: search right away and drop the pending debounced request, so the
+  // same query isn't sent to YouTube twice
   const runNow = useCallback(() => {
-    if (enabled && trimmed.length >= 2) void runRequest(++requestId.current, trimmed);
+    if (!enabled || trimmed.length < 2) return;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    void runRequest(++requestId.current, trimmed);
   }, [enabled, runRequest, trimmed]);
 
   return { results, loading, hasLoaded, runNow };
