@@ -4,10 +4,6 @@
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
-  "author": {
-    "name": "hkamori",
-    "email": "dev@tryliner.fun"
-  },
   "desktopName": "lane",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -57,7 +53,6 @@
     "linux": {
       "executableName": "lane",
       "syncDesktopName": true,
-      "maintainer": "hkamori <dev@tryliner.fun>",
       "icon": "build/icons",
       "target": [
         {
