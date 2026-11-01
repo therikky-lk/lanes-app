@@ -170,7 +170,13 @@ export default function CreatePlaylistModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (!next ? close() : undefined)} maxWidth={440} animateLayout>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (!next ? close() : undefined)}
+      maxWidth={440}
+      animateLayout
+      className="!rounded-[20px] !border-border-primary/40 !bg-bg-elevated/90 pt-[18px] shadow-[0_24px_80px_rgba(0,0,0,0.38)] backdrop-blur-2xl"
+    >
       <div className="flex flex-col gap-[14px] px-[20px] pb-[16px]">
         <div className="flex items-start justify-between gap-[12px]">
           <div>
@@ -185,16 +191,16 @@ export default function CreatePlaylistModal() {
             type="button"
             aria-label={t("common.close")}
             onClick={close}
-            className="inline-flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-md border-0 bg-transparent text-text-secondary transition-colors hover:bg-border-alpha-14 hover:text-text-primary cursor-pointer"
+            className="inline-flex h-[32px] w-[32px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-secondary transition-colors duration-150 hover:text-text-primary"
           >
             <CloseLine size={18} />
           </button>
         </div>
 
-        <div className="relative flex w-full items-center gap-[4px] rounded-xl p-[4px] bg-bg-elevated">
+        <div className="relative flex w-full items-center gap-[4px] rounded-[12px] border border-border-primary/25 bg-bg-primary/70 p-[4px]">
           <motion.div
             aria-hidden="true"
-            className="pointer-events-none absolute top-[4px] bottom-[4px] left-[4px] rounded-lg bg-border-alpha-14"
+            className="pointer-events-none absolute top-[4px] bottom-[4px] left-[4px] rounded-[9px] bg-bg-elevated shadow-sm"
             animate={{ left: tab === "create" ? "4px" : "calc(50% - 2px)" }}
             transition={{ type: "spring", stiffness: 450, damping: 35 }}
             style={{ width: "calc((100% - 12px) / 2)" }}
@@ -209,7 +215,7 @@ export default function CreatePlaylistModal() {
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`relative inline-flex flex-1 items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
+              className={`relative inline-flex flex-1 cursor-pointer select-none items-center justify-center rounded-[9px] border-0 bg-transparent px-[16px] py-[8px] text-[13px] leading-none transition-colors duration-150 active:scale-[0.98] ${
                 tab === item.id
                   ? "text-text-primary"
                   : "bg-transparent text-text-secondary hover:text-text-primary"
@@ -242,12 +248,12 @@ export default function CreatePlaylistModal() {
             <button
               type="button"
               onClick={() => coverInputRef.current?.click()}
-              className="flex w-full items-center gap-[12px] border-0 bg-transparent p-0 text-left cursor-pointer"
+              className="flex w-full cursor-pointer items-center gap-[12px] rounded-[14px] border border-border-primary/30 bg-bg-primary/55 p-[10px] text-left transition-colors hover:bg-bg-primary/80"
               aria-label={t("common.choose_cover")}
             >
               <span
                 aria-hidden="true"
-                className="relative inline-flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-primary bg-bg-primary text-text-tertiary"
+                className="relative inline-flex h-[64px] w-[64px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border-primary/35 bg-bg-elevated text-text-tertiary"
               >
                 {cover ? (
                   <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -273,7 +279,7 @@ export default function CreatePlaylistModal() {
                 if (createError) setCreateError("");
               }}
               disabled={createPlaylist.isPending}
-              className="cursor-pointer hover:border-border-primary focus-within:border-border-primary [&_input]:cursor-pointer"
+              className="!h-[44px] !rounded-[12px] !border-border-primary/35 !bg-bg-primary/60 focus-within:!border-border-primary/70 [&_input]:cursor-text"
               rightSlot={
                 <span className="text-[11px] text-text-tertiary tabular-nums" style={font}>
                   {title.length}/{TITLE_MAX}
@@ -287,7 +293,7 @@ export default function CreatePlaylistModal() {
               rows={2}
               disabled={createPlaylist.isPending}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full cursor-pointer resize-none rounded-md border border-border-primary bg-bg-primary px-[14px] py-[10px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none hover:border-border-primary focus:border-border-primary focus:ring-0 transition-[border-color,box-shadow] duration-150 disabled:opacity-50"
+              className="w-full resize-none rounded-[12px] border border-border-primary/35 bg-bg-primary/60 px-[14px] py-[11px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,background-color] duration-150 hover:border-border-primary/55 focus:border-border-primary/75 focus:bg-bg-primary/80 focus:ring-0 disabled:opacity-50"
               style={font}
             />
             {createError && (
@@ -320,6 +326,7 @@ export default function CreatePlaylistModal() {
                 if (importError) setImportError("");
               }}
               disabled={importing}
+              className="!h-[44px] !rounded-[12px] !border-border-primary/35 !bg-bg-primary/60 focus-within:!border-border-primary/70"
               rightSlot={
                 detectedSource ? (
                   <Tooltip content={detectedSource} side="top">
