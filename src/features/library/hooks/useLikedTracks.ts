@@ -87,6 +87,7 @@ function cachedTrackToClient(record: CachedTrackRecord): Track {
     coverUrl: record.coverUrl ?? "",
     durationMs: record.durationMs,
     playCount: 0,
+    ...(record.likedAt !== undefined ? { likedAt: record.likedAt } : {}),
     ...(record.albumTitle
       ? { album: { id: record.albumId ?? `cached_${record.id}`, title: record.albumTitle } }
       : {}),
@@ -143,6 +144,7 @@ function load(force = false): Promise<void> {
     // replacement is optional enrichment and must never block likes or the
     // home page on a slow Yandex connection.
     cache = { tracks, total: tracks.length };
+    void Promise.all(tracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
     loaded = true;
     // keep the optimistic state the server doesn't show yet: overrides made

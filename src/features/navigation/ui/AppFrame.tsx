@@ -1015,7 +1015,7 @@ export default function AppFrame({ children }: AppFrameProps) {
             }}
           />
           {/* floating dock: mini player + translucent tab bar over the content */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex flex-col">
+          <div data-mobile-dock className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex flex-col">
             {shouldShowMiniPlayer && (
               <div ref={miniPlayerContainerRef} className="pointer-events-auto w-full">
                 <MobileMiniPlayer />
