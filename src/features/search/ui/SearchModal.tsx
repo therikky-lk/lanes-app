@@ -172,7 +172,7 @@ export function SearchModal({
     limit: 20,
     debounceMs: 320,
   });
-  const { videos: youtubeResults, loading: youtubeLoading, hasLoaded: youtubeHasLoaded, runNow: runYoutubeSearchNow } = useSearchYoutube(searchQuery, {
+  const { results: youtubeResults, loading: youtubeLoading, hasLoaded: youtubeHasLoaded, runNow: runYoutubeSearchNow } = useSearchYoutube(searchQuery, {
     enabled: isOpen && isYoutubeSearchFilter,
     debounceMs: 320,
   });
@@ -241,9 +241,32 @@ export function SearchModal({
         };
       });
     if (isYoutubeSearchFilter)
-      return youtubeResults.map((t: any) => {
-        const clientTrack = toClientTrack(t);
-        return { ...clientTrack, ...t, _type: "track", coverUrl: clientTrack.coverUrl || (t.cover ? mediaUrl(t.cover.url) : ""), artists: clientTrack.artists, artistId: clientTrack.artistId, artistList: clientTrack.artistList };
+      return youtubeResults.map((item: any) => {
+        const coverUrl = item.cover ? mediaUrl(item.cover.url) : (item.coverUrl ?? "");
+        if (item.type === "track") {
+          const clientTrack = toClientTrack(item);
+          return {
+            ...clientTrack,
+            ...item,
+            _type: "track",
+            coverUrl: clientTrack.coverUrl || coverUrl,
+            artists: clientTrack.artists,
+            artistId: clientTrack.artistId,
+            artistList: clientTrack.artistList,
+          };
+        }
+        if (item.type === "artist")
+          return { ...item, _type: "artist", title: item.name, coverUrl: toMaxQualityAvatarUrl(coverUrl), artists: "" };
+        if (item.type === "album")
+          return {
+            ...item,
+            _type: "album",
+            coverUrl,
+            artists: item.artists?.map((artist: any) => artist.name).join(", ") ?? item.artist ?? "",
+          };
+        if (item.type === "playlist")
+          return { ...item, _type: "playlist", coverUrl, artists: item.author || item.owner || "" };
+        return item;
       });
     if (isArtistSearchFilter)
       return artistResults.map((a: any) => ({
