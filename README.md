@@ -21,9 +21,6 @@
   <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest.AppImage">
     <img src="https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux">
   </a>
-  <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest.apk">
-    <img src="https://img.shields.io/badge/Download-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Download for Android">
-  </a>
 </p>
 
 ---
