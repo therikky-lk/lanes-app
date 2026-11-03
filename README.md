@@ -106,6 +106,8 @@ pnpm install
 pnpm exec vite build
 ```
 
+Для сборки веб-версии без оболочки Electron выполни `pnpm build:web`. Готовые файлы появятся в `dist-web/`.
+
 Для Linux:
 
 ```bash
