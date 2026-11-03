@@ -5,7 +5,7 @@ import { SHARE_BASE_URL } from "@/shared/utils/share";
 // close an import cycle (api hooks record failures into this feature).
 const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ||
-  "http://lucid-1.ru-west.hyprr.space:10262";
+  "https://api.lane-app.site";
 const COVERS_BASE =
   (import.meta.env.VITE_COVERS_PROXY_URL as string | undefined)?.replace(/\/+$/, "") ||
   "https://covers.tryliner.fun";
