@@ -20,6 +20,8 @@
       h1 { margin: 22px 0 12px; font-size: clamp(38px, 9vw, 58px); line-height: 1.02; letter-spacing: -.07em; }
       h1 span { color: #ff4d4d; }
       p { margin: 0; color: #888; font-size: 15px; line-height: 1.7; }
+      .launch { display: inline-flex; margin-top: 28px; padding: 12px 20px; border-radius: 999px; background: #f5f5f5; color: #111; font-size: 14px; font-weight: 650; text-decoration: none; transition: transform .18s ease, background .18s ease; }
+      .launch:hover { transform: translateY(-2px); background: #fff; }
       footer { position: fixed; right: 22px; bottom: 18px; left: 22px; color: #555; font-size: 10px; text-align: center; letter-spacing: .12em; }
       @media (prefers-reduced-motion: no-preference) { .status::before { animation: pulse 1.7s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .4; } } }
     </style>
@@ -31,6 +33,7 @@
       <span class="status">В РАЗРАБОТКЕ</span>
       <h1>Скоро будет<br /><span>Lane.</span></h1>
       <p>Мы готовим приложение. Загляни сюда немного позже.</p>
+      <a class="launch" href="/app/">Открыть приложение</a>
     </main>
     <footer>LANE MUSIC PLAYER</footer>
   </body>
