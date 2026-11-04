@@ -1282,7 +1282,6 @@ class PlayerEngine {
     void linerDb.putTrack(nextTrack);
 
     if (playerRuntime) {
-      void playerRuntime.preloadTrack(nextTrack);
       // Android: the native player moves on through the next few by itself
       // (not on repeat-one, which plays the same track again)
       if (state.currentTrack) {

@@ -957,7 +957,7 @@
       "your_music": "Your music",
       "cache_title": "Cache",
       "free_space": "{size} free",
-      "liked_toggle": "Download liked songs",
+      "liked_toggle": "Keep played liked songs",
       "liked_desc": "On this device: {songs}",
       "local_desc": "{songs} · original files are kept",
       "remove": "Remove downloads",

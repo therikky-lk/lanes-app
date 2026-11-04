@@ -5,7 +5,6 @@ import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@
 import { loadLocalLikes } from "@/features/local/localLikesSync";
 import { localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { linerDb, type CachedTrackRecord } from "@/shared/storage/linerDb";
-import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
@@ -24,8 +23,8 @@ let reloadQueued = false;
 // A like click is optimistic and updates the UI immediately. Background
 // refreshes should not be frequent enough to replace that state with a
 // temporarily stale server snapshot while the request is settling.
-const LIKE_SYNC_MIN_AGE_MS = 45_000;
-const LIKE_SYNC_POLL_MS = 15_000;
+const LIKE_SYNC_MIN_AGE_MS = 5 * 60_000;
+const LIKE_SYNC_POLL_MS = 60_000;
 
 // liked uploads live on this device and are shown first
 let localLiked: Track[] = [];
@@ -140,9 +139,8 @@ function load(force = false): Promise<void> {
       );
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
-    // The library must become usable as soon as the API responds. Cover
-    // replacement is optional enrichment and must never block likes or the
-    // home page on a slow Yandex connection.
+    // Keep the API artwork; bulk cover searches made opening a large library
+    // issue thousands of unrelated requests.
     cache = { tracks, total: tracks.length };
     void Promise.all(tracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
@@ -159,12 +157,6 @@ function load(force = false): Promise<void> {
       }
     }
     emit(false);
-    void replaceTrackCoversWithYandex(tracks).then(async (enrichedTracks) => {
-      if (enrichedTracks.every((track, index) => track === tracks[index])) return;
-      cache = { tracks: enrichedTracks, total: enrichedTracks.length };
-      await Promise.all(enrichedTracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
-      emit(false);
-    });
   })()
     .catch(() => {
       if (!loaded) void restoreCachedLibrary();
@@ -237,7 +229,7 @@ if (typeof window !== "undefined") {
   setInterval(() => refreshIfStale(LIKE_SYNC_MIN_AGE_MS), LIKE_SYNC_POLL_MS);
 }
 
-export function useLikedTracks(_params?: { limit?: number; offset?: number }) {
+export function useLikedTracks() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
   useEffect(() => {
     void load();

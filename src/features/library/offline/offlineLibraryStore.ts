@@ -3,8 +3,6 @@ import { downloadsDb, type DownloadEntry } from "@/shared/storage/downloadsDb";
 import { linerDb } from "@/shared/storage/linerDb";
 import { audioCache } from "@/shared/storage/audioCache";
 import { isStandaloneAudioFile } from "@/shared/storage/audioFormat";
-import { resolvePlaybackStream } from "@/features/player/engine/streamResolver";
-import { downloadAudioBytes } from "@/shared/media/innertube/chunkedAudioDownload";
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { likedTracksSnapshot, subscribeLikedTracks, loadLikedTracks } from "../hooks/useLikedTracks";
@@ -103,7 +101,9 @@ async function syncDownloads() {
   if (!navigator.onLine) { store.setState({ phase: "offline" }); return; }
   await store.getState().refresh();
   const saved = new Set(store.getState().downloads.map(entry => entry.track.id));
-  const tracks = likedTracksSnapshot().filter(track => !isLocalTrackId(track.id) && !saved.has(track.id));
+  // Pin only audio already cached by playback; never download unheard likes.
+  const cachedIds = new Set(store.getState().cached.map(track => track.id));
+  const tracks = likedTracksSnapshot().filter(track => cachedIds.has(track.id) && !isLocalTrackId(track.id) && !saved.has(track.id));
   let usage = store.getState().downloads.reduce((sum, entry) => sum + entry.byteSize, 0);
   let failed = 0;
   let attempted = 0;
@@ -125,17 +125,8 @@ async function syncDownloads() {
     try {
       const track = tracks[i];
       const cached = await linerDb.getAudio(track.id);
-      let blob = cached?.blob;
-      if (!blob) {
-        const stream = await resolvePlaybackStream(track, signal, usePlayerStore.getState().audioQuality);
-        if (limit > 0 && stream.contentLength && usage + stream.contentLength > limit) { store.setState({ phase: "limit" }); return; }
-        if (stream.blob) blob = stream.blob;
-        else {
-          const bytes = await downloadAudioBytes(stream.url, { contentLength: stream.contentLength, signal, concurrency: 1 });
-          if (!bytes) throw new Error("Empty download");
-          blob = new Blob([bytes], { type: stream.mimeType });
-        }
-      }
+      const blob = cached?.blob;
+      if (!blob) continue;
       if (signal.aborted || !store.getState().enabled) return;
       if (!isStandaloneAudioFile(new Uint8Array(await blob.slice(0, 16).arrayBuffer()))) throw new Error("Invalid audio file");
       const currentLimit = store.getState().limitBytes;
@@ -173,5 +164,7 @@ export function initOfflineLibrary() {
     controller?.abort();
     if (useOfflineLibraryStore.getState().enabled) useOfflineLibraryStore.setState({ phase: "offline" });
   });
-  window.addEventListener("lane:audio-cache-changed", () => { void useOfflineLibraryStore.getState().refresh().catch(() => {}); });
+  window.addEventListener("lane:audio-cache-changed", () => {
+    void useOfflineLibraryStore.getState().refresh().then(scheduleDownloads).catch(() => {});
+  });
 }

@@ -944,7 +944,7 @@
       "your_music": "Sua música",
       "cache_title": "Cache",
       "free_space": "{size} grátis",
-      "liked_toggle": "Baixar músicas favoritas",
+      "liked_toggle": "Guardar favoritos ouvidos",
       "liked_desc": "Neste dispositivo: {songs}",
       "local_desc": "{songs} · arquivos originais são mantidos",
       "remove": "Remover downloads",
