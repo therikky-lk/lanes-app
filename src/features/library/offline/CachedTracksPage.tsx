@@ -19,7 +19,10 @@ export default function CachedTracksPage() {
   const current = usePlayerStore(state => state.currentTrack?.id);
   const [query, setQuery] = useState("");
   useEffect(() => { void refresh().catch(() => toast(t("settings.cache.local_cache.error"), "error")); }, [refresh, t, toast]);
-  const totalSeconds = Math.floor(cached.reduce((sum, track) => sum + track.durationMs, 0) / 1000);
+  const totalMinutes = Math.floor(cached.reduce((sum, track) => sum + (Number.isFinite(track.durationMs) ? Math.max(0, track.durationMs) : 0), 0) / 60_000);
+  const duration = totalMinutes >= 60
+    ? t("history.hours_minutes", { h: Math.floor(totalMinutes / 60), m: totalMinutes % 60 })
+    : t("history.minutes", { m: totalMinutes });
   const tracks = cached.filter(track => `${track.title} ${track.artists}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <div className="h-full overflow-y-auto px-4 sm:px-8 pt-5 pb-24" data-page-scroller>
     <Button variant="secondary" onClick={() => navigate("/library")}><ArrowLeftLine size={16} />{t("common.back")}</Button>
@@ -28,7 +31,7 @@ export default function CachedTracksPage() {
       <div><h1 className="m-0 text-[28px] font-semibold text-text-primary">{t("library.cached_songs")}</h1>
         <div className="my-3 flex flex-wrap gap-1 text-[12px] text-text-tertiary">
           <span className="rounded-[8px] bg-black/5 dark:bg-white/[0.07] px-2 py-1 tabular-nums">{t("common.songs", { count: cached.length })}</span>
-          <span className="rounded-[8px] bg-black/5 dark:bg-white/[0.07] px-2 py-1 tabular-nums">{Math.floor(totalSeconds / 60)}:{String(totalSeconds % 60).padStart(2, "0")}</span>
+          <span className="rounded-[8px] bg-black/5 dark:bg-white/[0.07] px-2 py-1 tabular-nums">{duration}</span>
         </div>
         <Button variant="primary" disabled={!tracks.length} onClick={() => playerEngine.playTrack(tracks[0], tracks, "cache:tracks")}><PlayFill size={16} />{t("common.play_all")}</Button>
       </div>
