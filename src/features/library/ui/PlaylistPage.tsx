@@ -58,6 +58,7 @@ interface TrackItemProps {
   track: Track;
   playlistId?: string;
   playlistTitle: string;
+  playbackContext: string;
   playlistCoverUrl: string;
   allTracks: Track[];
   style?: React.CSSProperties;
@@ -91,6 +92,7 @@ const TrackItem = memo(function TrackItem({
   track,
   playlistId,
   playlistTitle,
+  playbackContext,
   playlistCoverUrl,
   allTracks,
   style,
@@ -109,14 +111,13 @@ const TrackItem = memo(function TrackItem({
       toast(t("local.only_on_device_toast", { device: track.onlyOnDevice }), "info", { description: track.title });
       return;
     }
-    const context = playlistId ? `playlist:${playlistId}` : playlistTitle;
     playerEngine.playTrack(
       track,
       allTracks,
-      context,
+      playbackContext,
       playlistCoverUrl,
     );
-  }, [track, allTracks, playlistId, playlistTitle, playlistCoverUrl, toast, t]);
+  }, [track, allTracks, playbackContext, playlistCoverUrl, toast, t]);
 
   return (
     <div style={style} data-reorder-item>
@@ -1164,7 +1165,7 @@ function LibraryPlaylistContent() {
                           : playerEngine.playTrack(
                               track,
                               playableTracks,
-                              decodedId && !isLikesMode ? `playlist:${decodedId}` : viewData.title,
+                              decodedId ? `playlist:${decodedId}` : viewData.title,
                               viewData.coverUrl,
                             )
                       }
@@ -1236,6 +1237,7 @@ function LibraryPlaylistContent() {
                       isCurrent={currentTrackId === track.id}
                       playlistId={isLikesMode ? undefined : (decodedId ?? undefined)}
                       playlistTitle={viewData.title}
+                      playbackContext={decodedId ? `playlist:${decodedId}` : viewData.title}
                       showLikedDate={isLikesMode}
                       showLikedDateInMenu={isLikesMode && isMobile}
                       playlistCoverUrl={viewData.coverUrl}
