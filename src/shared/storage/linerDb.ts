@@ -341,15 +341,17 @@ class LinerDb {
       savedAt: existing?.savedAt ?? now,
       lastPlayedAt: lastPlayedAt ?? now,
     };
-    this.rememberAudio(trackId, record);
-
-    await this.runTransaction("audio", "readwrite", (store) => {
-      return new Promise<void>((resolve, reject) => {
-        const req = store.put(record);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
+    // Do not report a cached song until the disk transaction commits. A
+    // successful request can still be followed by a quota/transaction failure.
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("audio", "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("Audio cache write failed"));
+      tx.onabort = () => reject(tx.error ?? new Error("Audio cache write aborted"));
+      tx.objectStore("audio").put(record);
     });
+    this.rememberAudio(trackId, record);
   }
 
   async touchAudio(trackId: string): Promise<void> {
