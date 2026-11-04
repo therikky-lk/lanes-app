@@ -48,15 +48,12 @@ export class PlayerRuntime {
   // source stays attached (paused) until the next one is ready, so this can lag
   // currentTrackId for a moment.
   private attachedTrackId: string | null = null;
-  private preloadingTrackId: string | null = null;
   /** Android: the track handed to the native player to play next */
   private nativeQueued: { afterTrackId: string; ids: string; expiry: Map<string, number | null> } | null = null;
   private nativeQueuePending: string | null = null;
   private nativeQueueAbort: AbortController | null = null;
   /** stream links resolved for the native look-ahead, by track id */
   private nativeStreams = new Map<string, PlaybackStream>();
-  private preloadingPromise: Promise<void> | null = null;
-  private preloadAbortController: AbortController | null = null;
   private backgroundCacheAbortController: AbortController | null = null;
   private currentSessionExpiresAt: number | null = null;
   private recoveryAttempts = 0;
@@ -727,49 +724,6 @@ export class PlayerRuntime {
     });
   }
 
-  public async preloadTrack(track: Track): Promise<void> {
-    // Android streams natively; downloading ahead would just double the traffic
-    if (isNativeApp()) return;
-    if (this.currentTrackId === track.id) return;
-    if (this.preloadingTrackId === track.id) return;
-
-    if (await audioCache.hasAudio(track.id)) return;
-
-    this.preloadAbortController?.abort();
-    const controller = new AbortController();
-    this.preloadAbortController = controller;
-    this.preloadingTrackId = track.id;
-
-    const generation = audioCache.currentGeneration();
-    const promise = (async () => {
-      try {
-        const stream = await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
-        if (controller.signal.aborted) return;
-
-        const blob = await this.downloadAudioBlob(stream, controller.signal);
-        if (!blob || controller.signal.aborted) return;
-        if (!(await audioCache.saveAudioBlob(track.id, blob, blob.type, generation))) return;
-        await linerDb.putTrack(track);
-        window.dispatchEvent(new Event("lane:audio-cache-changed"));
-        log(
-          "green",
-          "preload",
-          `preloaded audio: "${track.title}" (${Math.round(blob.size / 1024)} KB)`,
-        );
-      } catch {
-      } finally {
-        if (this.preloadingTrackId === track.id) {
-          this.preloadingTrackId = null;
-          this.preloadingPromise = null;
-          this.preloadAbortController = null;
-        }
-      }
-    })();
-
-    this.preloadingPromise = promise;
-    await promise;
-  }
-
   private pendingStartPositionMs = 0;
 
   public stop(): void {
@@ -816,18 +770,6 @@ export class PlayerRuntime {
     if (this.currentTrackId !== track.id) {
       this.recoveryAttempts = 0;
       this.recoveryHoldUntilMs = null;
-    }
-
-    if (this.preloadingTrackId === track.id && this.preloadingPromise) {
-      // Do not make a user initiated skip wait for a background download. The
-      // normal resolver can start immediately and will pick up the cache if
-      // the preload finishes first.
-      void this.preloadingPromise.catch(() => undefined);
-    } else if (this.preloadingTrackId && this.preloadingTrackId !== track.id) {
-      this.preloadAbortController?.abort();
-      this.preloadAbortController = null;
-      this.preloadingTrackId = null;
-      this.preloadingPromise = null;
     }
 
     this.loadAbortController?.abort();
@@ -1194,7 +1136,6 @@ export class PlayerRuntime {
   }
 
   private cacheAudioInBackground(track: Track, stream: PlaybackStream, signal: AbortSignal) {
-    if (track.durationMs && track.durationMs > 20 * 60 * 1000) return;
     const generation = audioCache.currentGeneration();
     void (async () => {
       try {

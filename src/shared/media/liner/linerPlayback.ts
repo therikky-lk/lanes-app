@@ -34,10 +34,12 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
     const token = await getValidAccessToken();
     if (!token || Date.now() < pausedUntil) return null;
     const path = `/v1/tracks/${encodeURIComponent(videoId)}/playback`;
-    const signedHeaders = await signApiRequest("POST", path);
+    const requestBody = "{}";
+    const signedHeaders = await signApiRequest("POST", path, requestBody);
     const res = await fetch(`${getApiBaseUrl()}${path}`, {
       method: "POST",
-      headers: { authorization: `Bearer ${token}`, ...signedHeaders },
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...signedHeaders },
+      body: requestBody,
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
     const dateHeader = res.headers.get("date");
@@ -65,7 +67,7 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
       return null;
     }
     if (res.status === 429) pause(Math.max(1, body.retryAfterSeconds ?? 60) * 1000, "rate limited");
-    else if (res.status === 404 || res.status === 503) pause(UNAVAILABLE_BACKOFF_MS, `api answered ${res.status}`);
+    else if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404 || res.status === 415 || res.status >= 500) pause(UNAVAILABLE_BACKOFF_MS, `api answered ${res.status}`);
     return null;
   } catch (error) {
     if (isAbortError(error, signal) && signal?.aborted) throw error;

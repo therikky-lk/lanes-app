@@ -836,7 +836,7 @@
       "your_music": "Deine Musik",
       "cache_title": "Cache",
       "free_space": "{size} gratis",
-      "liked_toggle": "Lieblingstitel herunterladen",
+      "liked_toggle": "Gehörte Lieblingstitel behalten",
       "liked_desc": "Auf diesem Gerät: {songs}",
       "local_desc": "{songs} · Originaldateien bleiben erhalten",
       "remove": "Downloads entfernen",
