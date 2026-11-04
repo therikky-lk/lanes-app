@@ -14,7 +14,8 @@
 // Movement in the ranking: each region's list is kept from one day to the
 // next and a song's place is compared with the previous day's.
 import { toClientTrack } from "@/shared/api";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { getApiBaseUrl, DEFAULT_PRIMARY_API } from "@/shared/api/baseUrl";
+import { usesLocalAppTransport } from "@/shared/api/localAppTransport";
 import { findCatalogMatch } from "@/shared/media/matching";
 import type { Track } from "@/shared/types/track";
 
@@ -112,13 +113,23 @@ function songOf(r: FeedResult): ChartSong | null {
   };
 }
 
+class ChartFeedError extends Error {
+  constructor(country: string, public status: number) { super(`chart feed ${country} failed (${status})`); }
+  get retryable() { return this.status === 429 || this.status >= 500; }
+}
+
 export async function fetchFeed(country: string, size: number, signal?: AbortSignal): Promise<ChartSong[]> {
   let lastError: unknown = new Error(`chart feed ${country} failed`);
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const query = new URLSearchParams({ country, size: String(size) });
-      const res = await fetch(`${getApiBaseUrl()}/v1/public/charts/apple?${query}`, { signal, headers: { accept: "application/json" }, cache: "no-store" });
-      if (!res.ok) throw new Error(`chart feed ${country} failed (${res.status})`);
+      const url = getApiBaseUrl() !== DEFAULT_PRIMARY_API
+        ? `${getApiBaseUrl()}/v1/public/charts/apple?${query}`
+        : usesLocalAppTransport()
+          ? `/__lane/charts/${country}/${size}`
+          : `https://rss.marketingtools.apple.com/api/v2/${country}/music/most-played/${size}/songs.json`;
+      const res = await fetch(url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(12_000)]) : AbortSignal.timeout(12_000), headers: { accept: "application/json" }, cache: "no-store" });
+      if (!res.ok) throw new ChartFeedError(country, res.status);
       const data = (await res.json()) as { stale?: boolean; feed?: { results?: FeedResult[] } };
       const songs = (data.feed?.results ?? []).flatMap((r) => {
         const s = songOf(r);
@@ -128,7 +139,7 @@ export async function fetchFeed(country: string, size: number, signal?: AbortSig
       throw new Error(`chart feed ${country} returned no songs`);
     } catch (error) {
       lastError = error;
-      if (signal?.aborted) throw error;
+      if (signal?.aborted || (error instanceof ChartFeedError && !error.retryable)) throw error;
       if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
     }
   }
@@ -238,7 +249,7 @@ export function loadChart(region: ChartRegion): Promise<ChartEntry[]> {
           return entries;
         } catch (error) {
           lastError = error;
-          if (attempt === 1) break;
+          if (attempt === 1 || (error instanceof ChartFeedError && !error.retryable)) break;
           await new Promise((resolve) => window.setTimeout(resolve, 400));
         }
       }

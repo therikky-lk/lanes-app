@@ -69,6 +69,12 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Playback", titleKey: "settings.default_playback_context.title", descKey: "settings.default_playback_context.description" },
   { tabId: "Playback", titleKey: "settings.audio.pause_on_device_change.title", descKey: "settings.audio.pause_on_device_change.description" },
 
+  { tabId: "Audio", titleKey: "player.equalizer", descKey: "player.equalizer_hint" },
+  { tabId: "Storage", titleKey: "settings.storage.downloads_limit", descKey: "settings.storage.downloads_limit_hint" },
+  { tabId: "Storage", titleKey: "settings.storage.categories.liked", descKey: "settings.storage.liked_toggle" },
+  { tabId: "Storage", titleKey: "settings.storage.cached_in_library", descKey: "settings.storage.cached_in_library_desc" },
+  { tabId: "Storage", titleKey: "settings.storage.cache_row_title", descKey: "settings.storage.cache_row_desc" },
+
   // Shortcuts
   { tabId: "Shortcuts", titleKey: "settings.shortcuts.global_section", descKey: "settings.shortcuts.global_desc" },
   { tabId: "Shortcuts", titleKey: "settings.shortcuts.main_app_section", descKey: "settings.shortcuts.main_app_desc" },

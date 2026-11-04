@@ -1,600 +1,132 @@
-import { isNativeApp } from "@/shared/platform/native";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import lottie, { type AnimationItem } from "lottie-web";
-import { FolderOpenLine, CheckLine } from "@mingcute/react";
-import { CheckCircle } from "@solar-icons/react";
-import Button from "@/shared/ui/Button";
-import { useToast } from "@/shared/ui";
+import { useModalStore } from "@/features/library/store/modalStore";
+import { useCallback, useEffect, useState } from "react";
+import { FolderOpenLine, HeartFill, MusicLine } from "@mingcute/react";
+import { ToggleSwitch, useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
-import cleanDuckAnimationData from "@/assets/animations/clean_duck.json";
+import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
+import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
+import { useNavigate } from "react-router-dom";
+import { SettingRow, SettingSection } from "../controls";
 import {
-  getCachedStorageAnalytics,
-  setStorageTabOpen,
-  refreshStorageAnalytics,
-  clearStorageCategories,
-  openCacheFolder,
-  formatStorageBytes,
-  getAudioCacheLimitBytes,
-  setAudioCacheLimitBytes,
-  type StorageAnalytics,
-  type StorageCategoryId,
+  getCachedStorageAnalytics, refreshStorageAnalytics, setStorageTabOpen,
+  clearStorageCategories, openCacheFolder, formatStorageBytes,
+  getAudioCacheLimitBytes, setAudioCacheLimitBytes, type StorageAnalytics,
 } from "@/shared/utils/cacheManager";
 
-function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
-  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-  return {
-    x: centerX + radius * Math.cos(angleInRadians),
-    y: centerY + radius * Math.sin(angleInRadians),
-  };
+const GB = 1024 ** 3;
+function LimitPills({ value, options, onChange, label, disabled }: {
+  value: number; options: number[]; onChange: (bytes: number) => void; label: string; disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+  // Keep older, custom cache limits visible after upgrading.
+  const values = options.includes(value / GB) ? options : [value / GB, ...options];
+  return <div role="group" aria-label={label} className="flex flex-wrap gap-1">
+    {values.map(size => <button key={size} type="button" disabled={disabled} aria-pressed={value === size * GB}
+      onClick={() => onChange(size * GB)}
+      className={`h-[30px] rounded-[9px] border-0 px-[11px] text-[12px] font-medium transition-colors disabled:opacity-50 ${value === size * GB ? "bg-text-primary text-bg-primary" : "bg-black/[0.06] dark:bg-white/[0.07] text-text-secondary hover:bg-black/10 dark:hover:bg-white/10"}`}>
+      {size === 0 ? t("settings.storage.no_limit") : `${Number(size.toFixed(2))} GB`}
+    </button>)}
+  </div>;
 }
 
-function describeDonutSegment(
-  x: number,
-  y: number,
-  innerRadius: number,
-  outerRadius: number,
-  startAngle: number,
-  endAngle: number,
-) {
-  const delta = Math.max(0.1, endAngle - startAngle);
-  const safeEndAngle = delta >= 360 ? startAngle + 359.99 : startAngle + delta;
-  const startOuter = polarToCartesian(x, y, outerRadius, startAngle);
-  const endOuter = polarToCartesian(x, y, outerRadius, safeEndAngle);
-  const startInner = polarToCartesian(x, y, innerRadius, safeEndAngle);
-  const endInner = polarToCartesian(x, y, innerRadius, startAngle);
-
-  const largeArcFlag = delta > 180 ? "1" : "0";
-
-  return [
-    "M",
-    startOuter.x,
-    startOuter.y,
-    "A",
-    outerRadius,
-    outerRadius,
-    0,
-    largeArcFlag,
-    1,
-    endOuter.x,
-    endOuter.y,
-    "L",
-    startInner.x,
-    startInner.y,
-    "A",
-    innerRadius,
-    innerRadius,
-    0,
-    largeArcFlag,
-    0,
-    endInner.x,
-    endInner.y,
-    "Z",
-  ].join(" ");
-}
-
-// authentic telegram animated tgs duck sticker for cache cleaning
-function TelegramCleaningDuck({ size = 130 }: { size?: number }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<AnimationItem | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    animRef.current = lottie.loadAnimation({
-      container: containerRef.current,
-      renderer: "svg",
-      loop: true,
-      autoplay: true,
-      animationData: cleanDuckAnimationData,
-    });
-
-    return () => {
-      animRef.current?.destroy();
-      animRef.current = null;
-    };
-  }, []);
-
-  return (
-    <div
-      ref={containerRef}
-      style={{ width: size, height: size }}
-      className="select-none pointer-events-none flex items-center justify-center overflow-hidden my-1"
-    />
-  );
-}
-
-export function StorageTab({ searchQuery: _searchQuery }: { searchQuery?: string }) {
+export function StorageTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
   const { toast } = useToast();
-
-  const initialCached = getCachedStorageAnalytics();
-  const [analytics, setAnalytics] = useState<StorageAnalytics | null>(initialCached);
-  const [loading, setLoading] = useState(!initialCached);
-  const [selectedCategories, setSelectedCategories] = useState<Set<StorageCategoryId>>(() => {
-    if (initialCached) {
-      return new Set(initialCached.categories.filter((c) => c.bytes > 0).map((c) => c.id));
-    }
-    return new Set(["covers", "audio", "lyrics", "metadata"]);
-  });
-  const [clearing, setClearing] = useState(false);
-  const [clearingProgress, setClearingProgress] = useState(0);
-  const [clearedSuccess, setClearedSuccess] = useState(false);
-  const [hoveredCategoryId, setHoveredCategoryId] = useState<StorageCategoryId | null>(null);
-  const [cacheLimit, setCacheLimit] = useState<number>(() => getAudioCacheLimitBytes());
-
-  const steps = useMemo(
-    () => [
-      { label: "250 MB", bytes: 250 * 1024 * 1024 },
-      { label: "1 GB", bytes: 1024 * 1024 * 1024 },
-      { label: "2 GB", bytes: 2 * 1024 * 1024 * 1024 },
-      { label: "3 GB", bytes: 3 * 1024 * 1024 * 1024 },
-      { label: "5 GB", bytes: 5 * 1024 * 1024 * 1024 },
-      { label: "10 GB", bytes: 10 * 1024 * 1024 * 1024 },
-      { label: t("settings.storage.no_limit"), bytes: 0 },
-    ],
-    [t],
-  );
-
-  const foundIdx = steps.findIndex((s) => s.bytes === cacheLimit);
-  const activeIdx = foundIdx >= 0 ? foundIdx : 3;
-  const pct = (activeIdx / (steps.length - 1)) * 100;
-
-  const handleLimitChange = async (newLimit: number) => {
-    setCacheLimit(newLimit);
-    await setAudioCacheLimitBytes(newLimit);
-    const updated = await refreshStorageAnalytics();
-    setAnalytics(updated);
-  };
-
+  const navigate = useNavigate();
+  const offline = useOfflineLibraryStore();
+  const { records: local } = useLocalTracks();
+  const [analytics, setAnalytics] = useState<StorageAnalytics | null>(() => getCachedStorageAnalytics());
+  const [cacheLimit, setCacheLimit] = useState(getAudioCacheLimitBytes);
+  const [busy, setBusy] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmDownloads, setConfirmDownloads] = useState(false);
+  const refresh = useCallback(async () => { setAnalytics(await refreshStorageAnalytics()); }, []);
   useEffect(() => {
     setStorageTabOpen(true);
-    return () => {
-      setStorageTabOpen(false);
-    };
-  }, []);
+    let active = true;
+    const update = () => { void refreshStorageAnalytics().then(data => { if (active) setAnalytics(data); }).catch(() => {
+      if (active) toast(t("settings.cache.local_cache.error"), "error");
+    }); };
+    update();
+    window.addEventListener("lane:storage-changed", update);
+    const timer = setInterval(update, 10_000);
+    return () => { active = false; setStorageTabOpen(false); clearInterval(timer); window.removeEventListener("lane:storage-changed", update); };
+  }, [t, toast]);
 
-  useEffect(() => {
-    if (!analytics) {
-      setLoading(true);
-      refreshStorageAnalytics()
-        .then((data) => {
-          setAnalytics(data);
-          setSelectedCategories((prev) => {
-            if (prev.size === 0) {
-              return new Set(data.categories.filter((c) => c.bytes > 0).map((c) => c.id));
-            }
-            return prev;
-          });
-        })
-        .catch(() => {
-          toast(t("settings.cache.local_cache.error"), "error");
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
-  }, [analytics, t, toast]);
-
-  const toggleCategory = (id: StorageCategoryId) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const downloadedBytes = offline.downloads.reduce((sum, entry) => sum + entry.byteSize, 0);
+  const localBytes = local.reduce((sum, entry) => sum + entry.size, 0);
+  const musicBytes = downloadedBytes + localBytes;
+  const cacheCategories = analytics?.categories.filter(category => category.id !== "liked" && category.id !== "local") ?? [];
+  const cacheBytes = cacheCategories.reduce((sum, entry) => sum + entry.bytes, 0);
+  const total = musicBytes + cacheBytes;
+  const average = offline.downloads.length ? Math.max(2 * 1024 ** 2, downloadedBytes / offline.downloads.length) : 4 * 1024 ** 2;
+  const run = async (work: () => Promise<unknown>) => {
+    setBusy(true);
+    try { await work(); await offline.refresh(); await refresh(); }
+    catch { toast(t("settings.cache.local_cache.error"), "error"); }
+    finally { setBusy(false); setConfirmClear(false); setConfirmDownloads(false); }
   };
+  const likedDescription = !offline.enabled ? t("settings.storage.liked_status.disabled")
+    : offline.phase === "saving" ? t("settings.storage.liked_status.saving", { count: offline.pending })
+    : offline.phase === "limit" ? t("settings.storage.liked_status.limit", { count: offline.pending })
+    : offline.phase === "offline" ? t("settings.storage.liked_status.offline")
+    : offline.phase === "error" ? t("settings.storage.download_failed")
+    : t("settings.storage.liked_desc", { songs: t("common.songs", { count: offline.downloads.length }) });
+  const folderButton = <button type="button" title={t("settings.storage.open_folder")} aria-label={t("settings.storage.open_folder")}
+    className="border-0 bg-transparent text-text-tertiary hover:text-text-primary cursor-pointer"
+    onClick={() => { void openCacheFolder().then(opened => { if (!opened) toast(t("settings.connection.open_folder"), "info"); }); }}><FolderOpenLine size={18} /></button>;
 
-  const selectedBytes = useMemo(() => {
-    if (!analytics) return 0;
-    return analytics.categories
-      .filter((c) => selectedCategories.has(c.id))
-      .reduce((sum, c) => sum + c.bytes, 0);
-  }, [analytics, selectedCategories]);
-
-  // handles selective or complete cache clearance with cute progression
-  const handleClearSelected = async () => {
-    if (selectedCategories.size === 0) return;
-    setClearing(true);
-    setClearingProgress(15);
-
-    try {
-      const targetIds = Array.from(selectedCategories);
-      setClearingProgress(40);
-      await clearStorageCategories(targetIds);
-      setClearingProgress(80);
-
-      // brief pause so user sees the telegram sweeping duck animation
-      await new Promise((resolve) => setTimeout(resolve, 260));
-      setClearingProgress(100);
-      await new Promise((resolve) => setTimeout(resolve, 140));
-
-      const fresh = await refreshStorageAnalytics();
-      setAnalytics(fresh);
-      setClearing(false);
-      setClearedSuccess(true);
-    } catch {
-      setClearing(false);
-      toast(t("settings.cache.local_cache.error"), "error");
-    }
-  };
-
-  const handleOpenFolder = async () => {
-    const opened = await openCacheFolder();
-    if (opened) {
-      toast(t("settings.storage.open_folder"), "success");
-    } else {
-      toast(t("settings.connection.open_folder"), "info");
-    }
-  };
-
-  const formattedCenter = useMemo(() => {
-    if (selectedBytes <= 0) return { val: "0", unit: "" };
-    const parts = formatStorageBytes(selectedBytes).split(" ");
-    return { val: parts[0] || "0", unit: parts[1] || "" };
-  }, [selectedBytes]);
-
-  const donutSlices = useMemo((): Array<{
-    id: StorageCategoryId;
-    color: string;
-    startAngle: number;
-    endAngle: number;
-  }> => {
-    if (!analytics || selectedBytes <= 0) return [];
-    const active = analytics.categories.filter((c) => selectedCategories.has(c.id) && c.bytes > 0);
-
-    if (active.length === 0) return [];
-    if (active.length === 1) {
-      return [
-        {
-          id: active[0].id,
-          color: active[0].color,
-          startAngle: 0,
-          endAngle: 359.99,
-        },
-      ];
-    }
-
-    const baseGap = 2;
-    let currentAngle = 0;
-
-    return active.map((item) => {
-      const sliceFraction = item.bytes / selectedBytes;
-      const rawSpan = sliceFraction * 360;
-      const sliceGap = Math.min(baseGap, rawSpan * 0.35);
-      const startAngle = currentAngle + sliceGap / 2;
-      const endAngle = Math.max(startAngle + 0.8, currentAngle + rawSpan - sliceGap / 2);
-      currentAngle += rawSpan;
-
-      return {
-        id: item.id,
-        color: item.color,
-        startAngle,
-        endAngle,
-      };
-    });
-  }, [analytics, selectedBytes, selectedCategories]);
-
-  return (
-    <div className="flex-1 flex flex-col relative w-full h-full min-h-[460px]">
-      <AnimatePresence mode="popLayout">
-        {clearing ? (
-          <motion.div
-            key="clearing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="flex-1 flex flex-col items-center justify-center my-auto py-6 text-center px-4 w-full h-full"
-          >
-            <TelegramCleaningDuck size={140} />
-            <h3 className="text-text-primary text-[17px] font-[600] m-0 mt-3">
-              {t("settings.storage.clearing_title")}
-            </h3>
-            <p className="text-text-tertiary text-[13px] max-w-[320px] m-0 mt-1 leading-normal">
-              {t("settings.storage.clearing_subtitle")}
-            </p>
-            <div className="w-[200px] h-[4px] bg-border-alpha-14 rounded-full overflow-hidden mt-5">
-              <div
-                className="h-full bg-text-primary transition-all duration-200 ease-out rounded-full"
-                style={{ width: `${clearingProgress}%` }}
-              />
-            </div>
-            <span className="text-text-tertiary text-[12px] font-mono mt-2">
-              {clearingProgress}%
-            </span>
-          </motion.div>
-        ) : clearedSuccess ? (
-          <motion.div
-            key="cleared"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="flex-1 flex flex-col items-center justify-center my-auto py-6 text-center px-4 w-full h-full"
-          >
-            <div className="w-[64px] h-[64px] rounded-full bg-[#10B981]/15 flex items-center justify-center text-[#10B981] mb-2">
-              <CheckCircle size={40} weight="Bold" />
-            </div>
-            <h3 className="text-text-primary text-[18px] font-[600] m-0 mt-2">
-              {t("settings.storage.cleared_title")}
-            </h3>
-            <p className="text-text-tertiary text-[13px] max-w-[340px] m-0 mt-1 leading-normal">
-              {t("settings.storage.cleared_subtitle")}
-            </p>
-            <Button
-              variant="secondary"
-              size="default"
-              type="button"
-              onClick={() => setClearedSuccess(false)}
-              className="mt-6 min-w-[120px]"
-            >
-              {t("settings.storage.done_button")}
-            </Button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="main"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16, ease: "easeOut" }}
-            className="flex-1 flex flex-col gap-[20px] pt-[8px] w-full"
-          >
-      <div className="bg-bg-panel border border-border-primary/60 dark:border-transparent dark:bg-white/[0.035] pl-[10px] pr-[16px] py-[10px] rounded-2xl">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex-1 w-full flex flex-col gap-0.5">
-            {analytics?.categories.map((cat) => {
-              const isSelected = selectedCategories.has(cat.id);
-              const isHovered = hoveredCategoryId === cat.id;
-              const total = analytics.totalBytes || 1;
-              const pct = Math.round((cat.bytes / total) * 100);
-              const pctLabel = cat.bytes === 0 ? "0%" : pct === 0 ? "<1%" : `${pct}%`;
-
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => toggleCategory(cat.id)}
-                  onMouseEnter={() => setHoveredCategoryId(cat.id)}
-                  onMouseLeave={() => setHoveredCategoryId(null)}
-                  className={`group w-full flex items-center justify-between px-[10px] py-[8px] rounded-lg transition-all border-0 cursor-pointer text-left ${
-                    isSelected
-                      ? isHovered
-                        ? "bg-border-alpha-14 opacity-100"
-                        : "bg-transparent opacity-100"
-                      : isHovered
-                      ? "bg-border-alpha-14/60 opacity-65"
-                      : "bg-transparent opacity-40"
-                  }`}
-                >
-                  <div className="flex items-center gap-[9px] min-w-0">
-                    <div
-                      className={`w-[15px] h-[15px] rounded-[4px] flex items-center justify-center transition-all shrink-0 border ${
-                        isSelected
-                          ? "bg-text-primary border-text-primary text-bg-primary"
-                          : "border-border-secondary bg-border-alpha-14 group-hover:border-text-secondary"
-                      }`}
-                    >
-                      {isSelected && (
-                        <motion.div
-                          initial={{ scale: 0.5, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.5, opacity: 0 }}
-                          transition={{ duration: 0.12 }}
-                          className="flex items-center justify-center"
-                        >
-                          <CheckLine size={11} className="stroke-[1.5]" />
-                        </motion.div>
-                      )}
-                    </div>
-
-                    <div
-                      className="w-[8px] h-[8px] rounded-full shrink-0 transition-opacity"
-                      style={{ backgroundColor: cat.color }}
-                    />
-
-                    <span className="text-text-primary text-[12.5px] font-[500] truncate">
-                      {t(cat.labelKey)}
-                    </span>
-
-                    <span className="text-[10px] font-[600] px-[5px] py-[0.5px] rounded bg-border-alpha-14 text-text-tertiary">
-                      {pctLabel}
-                    </span>
-                  </div>
-
-                  <span className="text-text-secondary text-[12px] font-[500] shrink-0">
-                    {formatStorageBytes(cat.bytes)}
-                    {cat.count !== undefined && (
-                      <span className="text-text-tertiary"> · {t("settings.storage.saved_items", { count: cat.count })}</span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-col items-center justify-center shrink-0 px-6">
-            <div className="flex flex-col items-center">
-              <div className="relative w-[136px] h-[136px] flex items-center justify-center">
-                <svg
-                  width="136"
-                  height="136"
-                  viewBox="0 0 200 200"
-                  className="overflow-visible"
-                >
-                  <circle
-                    cx="100"
-                    cy="100"
-                    r="70"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="24"
-                    className="text-border-alpha-14"
-                  />
-
-                  <AnimatePresence>
-                    {donutSlices.map((slice) => {
-                      const isHovered = hoveredCategoryId === slice.id;
-                      const pathData = describeDonutSegment(
-                        100,
-                        100,
-                        isHovered ? 57.5 : 58,
-                        isHovered ? 83.5 : 82,
-                        slice.startAngle,
-                        slice.endAngle
-                      );
-
-                      return (
-                        <motion.path
-                          key={slice.id}
-                          d={pathData}
-                          fill={slice.color}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.15, ease: "easeOut" }}
-                          className="cursor-pointer transition-opacity origin-center"
-                          onMouseEnter={() => setHoveredCategoryId(slice.id)}
-                          onMouseLeave={() => setHoveredCategoryId(null)}
-                        />
-                      );
-                    })}
-                  </AnimatePresence>
-                </svg>
-
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-                  <div className="relative flex items-center justify-center">
-                    <span className="text-[19px] font-[700] text-text-primary tracking-tight leading-none">
-                      {formattedCenter.val}
-                    </span>
-                    {formattedCenter.unit ? (
-                      <span className="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 text-[10px] font-[600] text-text-tertiary uppercase leading-none whitespace-nowrap">
-                        {formattedCenter.unit}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-              <span className="text-[11.5px] font-[500] text-text-tertiary -mt-1 text-center select-none tracking-tight">
-                {t("settings.storage.usage_title")}
-              </span>
-            </div>
-          </div>
-        </div>
+  return <div className="flex flex-col gap-[24px] py-2">
+    {!searchQuery?.trim() && <div className="pt-1 pb-0.5" aria-busy={!analytics}>
+      <div className="flex items-baseline justify-between gap-4 mb-3">
+        <span className="text-[30px] font-semibold tracking-tight text-text-primary tabular-nums">
+          {analytics ? formatStorageBytes(total).split(" ")[0] : "…"}
+          <span className="ml-1.5 text-[14px] font-normal text-text-tertiary">{analytics ? formatStorageBytes(total).split(" ")[1] : ""}</span>
+        </span>
+        {analytics?.freeBytes !== undefined && <span className="text-[12px] text-text-tertiary">{t("settings.storage.free_space", { size: formatStorageBytes(analytics.freeBytes) })}</span>}
       </div>
-
-      <div className="flex flex-col gap-[14px] bg-bg-panel border border-border-primary/60 dark:border-transparent dark:bg-white/[0.035] p-[16px] rounded-2xl">
-        <div className="pl-[6px]">
-          <h5 className="text-text-primary text-[13.5px] font-[600] m-0">
-            {t("settings.storage.cache_limit")}
-          </h5>
-          <p className="text-text-tertiary text-[11.5px] m-0 mt-0.5">
-            {t("settings.storage.cache_limit_desc")}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 pt-2 pb-1 px-6">
-          <div className="relative w-full h-[18px] flex items-center select-none group">
-            <div className="absolute left-0 right-0 h-[2px] rounded-full bg-border-alpha-33 dark:bg-white/15 pointer-events-none" />
-            <div
-              className="absolute left-0 h-[2px] rounded-full bg-text-primary transition-all duration-150 pointer-events-none"
-              style={{ width: `${pct}%` }}
-            />
-
-            {steps.map((s, i) => {
-              const tickPct = (i / (steps.length - 1)) * 100;
-              const isPassed = i <= activeIdx;
-              return (
-                <div
-                  key={s.bytes}
-                  className={`absolute w-[2px] h-[6px] rounded-full -translate-x-1/2 transition-colors pointer-events-none ${
-                    isPassed ? "bg-text-primary opacity-80" : "bg-border-alpha-33 dark:bg-white/35"
-                  }`}
-                  style={{ left: `${tickPct}%` }}
-                />
-              );
-            })}
-
-            <div
-              className="absolute w-[12px] h-[12px] rounded-full bg-text-primary -translate-x-1/2 transition-all duration-150 pointer-events-none group-hover:scale-125"
-              style={{ left: `${pct}%` }}
-            />
-
-            <input
-              type="range"
-              min={0}
-              max={steps.length - 1}
-              step={1}
-              value={activeIdx}
-              onChange={(e) => {
-                const idx = Number(e.target.value);
-                if (steps[idx]) {
-                  void handleLimitChange(steps[idx].bytes);
-                }
-              }}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 m-0 p-0"
-            />
-          </div>
-
-          <div className="relative w-full h-[16px] select-none text-[11px]">
-            {steps.map((s, i) => {
-              const tickPct = (i / (steps.length - 1)) * 100;
-              const isActive = i === activeIdx;
-              return (
-                <span
-                  key={s.bytes}
-                  onClick={() => void handleLimitChange(s.bytes)}
-                  style={{ left: `${tickPct}%` }}
-                  className={`absolute -translate-x-1/2 whitespace-nowrap cursor-pointer transition-colors ${
-                    isActive
-                      ? "text-text-primary font-[600]"
-                      : "text-text-tertiary hover:text-text-secondary font-[500]"
-                  }`}
-                >
-                  {s.label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
+      <div className="flex h-[8px] gap-[3px] overflow-hidden rounded-full bg-black/10 dark:bg-white/10" aria-label={t("settings.storage.usage_title")}>
+        {total > 0 && <><span className="rounded-full bg-text-primary min-w-[3px] transition-all" style={{ width: `${100 * musicBytes / total}%` }} />
+          <span className="rounded-full bg-text-tertiary min-w-[3px] transition-all" style={{ width: `${100 * cacheBytes / total}%` }} /></>}
       </div>
-
-      <div className="mt-auto flex items-center gap-[8px] pt-4">
-        <Button
-          variant="primary"
-          size="default"
-          type="button"
-          disabled={selectedBytes === 0 || loading}
-          onClick={handleClearSelected}
-          className="flex-1 justify-center !h-[40px] !text-[13.5px] font-[500] rounded-xl"
-        >
-          {selectedBytes > 0
-            ? t("settings.storage.clear_button", {
-                size: formatStorageBytes(selectedBytes),
-              })
-            : t("settings.storage.clear_selected")}
-        </Button>
-
-        {!isNativeApp() && <Button
-          variant="secondary"
-          size="default"
-          type="button"
-          onClick={handleOpenFolder}
-          title={t("settings.storage.open_folder")}
-          className="flex items-center gap-[6px] !h-[40px] px-[14px] font-[500] text-[13px] rounded-xl shrink-0"
-        >
-          <FolderOpenLine size={16} />
-          <span>{t("settings.storage.open_folder")}</span>
-        </Button>}
+      <div className="mt-3 flex flex-wrap gap-5 text-[12px] text-text-tertiary">
+        <span className="flex items-center gap-2"><span className="h-[7px] w-[7px] rounded-full bg-text-primary" />{t("settings.storage.your_music")} {formatStorageBytes(musicBytes)}</span>
+        <span className="flex items-center gap-2"><span className="h-[7px] w-[7px] rounded-full bg-text-tertiary" />{t("settings.storage.cache_title")} {formatStorageBytes(cacheBytes)}</span>
       </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+    </div>}
+    <SettingSection label={t("settings.storage.downloads_title")}>
+      <SettingRow title={t("settings.storage.categories.liked")} titleKey="settings.storage.categories.liked" searchQuery={searchQuery}
+        description={likedDescription} icon={<HeartFill />}
+        control={<div className="flex items-center gap-3"><button type="button" disabled={busy || downloadedBytes === 0}
+          onClick={() => confirmDownloads ? void run(offline.removeDownloads) : setConfirmDownloads(true)}
+          onBlur={() => setConfirmDownloads(false)}
+          title={t("settings.storage.remove")}
+          className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary disabled:cursor-default">
+          {confirmDownloads ? t("settings.storage.remove_size", { size: formatStorageBytes(downloadedBytes) }) : formatStorageBytes(downloadedBytes)}
+        </button><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
+      <SettingRow title={t("settings.storage.categories.local")} titleKey="settings.storage.categories.local" searchQuery={searchQuery}
+        description={t("settings.storage.local_desc", { songs: t("common.songs", { count: local.length }) })} icon={<MusicLine />}
+        control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary">{formatStorageBytes(localBytes)}</button>} />
+      <SettingRow title={t("settings.storage.downloads_limit")} titleKey="settings.storage.downloads_limit" searchQuery={searchQuery}
+        description={offline.limitBytes ? t("settings.storage.downloads_limit_hint", { count: Math.floor(offline.limitBytes / average) }) : t("settings.storage.downloads_limit_unlimited")}
+        control={<LimitPills value={offline.limitBytes} options={[2, 5, 20, 0]} onChange={offline.setLimitBytes} disabled={busy} label={t("settings.storage.downloads_limit")} />} />
+    </SettingSection>
+    <SettingSection label={t("settings.storage.cache_title")} action={folderButton}>
+      <SettingRow title={t("settings.storage.cache_row_title")} titleKey="settings.storage.cache_row_title" searchQuery={searchQuery}
+        description={`${t("common.songs", { count: offline.cached.length })} · ${t("settings.storage.cache_row_desc")}`}
+        control={<button type="button" disabled={busy || !analytics || cacheBytes === 0}
+          onClick={() => confirmClear ? void run(() => clearStorageCategories(cacheCategories.map(category => category.id))) : setConfirmClear(true)}
+          onBlur={() => setConfirmClear(false)} title={t("settings.storage.clear")}
+          className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary disabled:opacity-50">
+          {busy ? "…" : confirmClear ? t("settings.storage.clear_size", { size: formatStorageBytes(cacheBytes) }) : formatStorageBytes(cacheBytes)}
+        </button>} />
+      <SettingRow title={t("settings.storage.cache_limit")} titleKey="settings.storage.cache_limit" searchQuery={searchQuery}
+        description={cacheLimit ? t("settings.storage.cache_limit_hint", { count: Math.floor(cacheLimit / average) }) : t("settings.storage.cache_limit_unlimited")}
+        control={<LimitPills value={cacheLimit} options={[1, 3, 10, 0]} label={t("settings.storage.cache_limit")} disabled={busy}
+          onChange={value => { void run(async () => { await setAudioCacheLimitBytes(value); setCacheLimit(value); }); }} />} />
+      <SettingRow title={t("settings.storage.cached_in_library")} titleKey="settings.storage.cached_in_library" searchQuery={searchQuery}
+        description={t("settings.storage.cached_in_library_desc")}
+        control={<ToggleSwitch checked={offline.visibleOnline} onChange={offline.setVisibleOnline} ariaLabel={t("settings.storage.cached_in_library")} />} />
+    </SettingSection>
+  </div>;
 }

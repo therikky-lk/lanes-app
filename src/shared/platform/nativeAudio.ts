@@ -33,6 +33,7 @@ interface LaneAudioPlugin {
   stop(): Promise<void>;
   seek(options: { positionMs: number }): Promise<void>;
   setVolume(options: { volume: number }): Promise<void>;
+  setEqualizer(options: { enabled: boolean; gains: number[] }): Promise<void>;
   setRate(options: { rate: number }): Promise<void>;
   setLiked(options: { liked: boolean }): Promise<void>;
   setRepeat(options: { mode: number }): Promise<void>;
@@ -414,4 +415,8 @@ export function createNativeAudioElement(): HTMLAudioElement {
   };
 
   return el;
+}
+
+export async function setNativeEqualizer(enabled: boolean, gains: number[]): Promise<void> {
+  await LaneAudio.setEqualizer({ enabled, gains });
 }

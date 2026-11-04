@@ -840,3 +840,127 @@ html[data-hover-reset] [data-window-controls] button:hover {
 @media (prefers-reduced-motion: reduce) {
   .page-transition { animation: none; }
 }
+
+/* Native vertical sliders retain pointer, touch and keyboard support. */
+.lane-eq-band { appearance: none; background: transparent; cursor: ns-resize; touch-action: none; }
+.lane-eq-band::-webkit-slider-runnable-track { width: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 12%, transparent); }
+.lane-eq-band::-webkit-slider-thumb { appearance: none; width: 14px; height: 10px; margin-left: -5px; border-radius: 4px; background: currentColor; }
+.lane-eq-band::-moz-range-track { width: 4px; border-radius: 99px; background: color-mix(in srgb, currentColor 12%, transparent); }
+.lane-eq-band::-moz-range-thumb { width: 14px; height: 10px; border: 0; border-radius: 4px; background: currentColor; }
+.lane-eq-band:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; border-radius: 4px; }
+
+/* Desktop fullscreen frame: a continuous top edge with integrated control cutouts. */
+.lane-fs-player--desktop {
+  --lane-fs-glass: rgb(18 23 30 / 24%);
+  background: #171b20;
+  border-radius: 0;
+}
+.lane-fs-player--desktop .lane-fs-background {
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0;
+}
+.lane-fs-player--desktop .lane-fs-desktop-shade {
+  inset: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, rgb(10 14 20 / 16%) 0%, rgb(10 14 20 / 42%) 48%, rgb(10 14 20 / 80%) 100%);
+}
+.lane-fs-player--desktop .lane-fs-content { padding: 48px 0 24px; }
+.lane-fs-player--desktop .lane-fs-close {
+  top: 0; left: 0; height: 36px; width: 40px;
+  border-radius: 0 0 16px 0; background: var(--lane-fs-glass);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3); backdrop-filter: blur(28px) saturate(1.3);
+  color: rgb(255 255 255 / 65%);
+}
+.lane-fs-player--desktop .lane-fs-close:hover { color: white; }
+.lane-fs-player--desktop .lane-fs-toolbar {
+  height: 36px; min-height: 36px; gap: 3px; padding: 2px 10px 4px;
+  flex-wrap: nowrap; border: 0; border-radius: 0 0 16px 16px;
+  background: var(--lane-fs-glass); box-shadow: none;
+  -webkit-backdrop-filter: blur(28px) saturate(1.3); backdrop-filter: blur(28px) saturate(1.3);
+}
+.lane-fs-player--desktop .lane-fs-toolbar > button {
+  width: 28px; height: 28px; border-radius: 8px; background: transparent;
+}
+.lane-fs-player--desktop .lane-fs-toolbar > button:hover { background: rgb(255 255 255 / 8%); }
+.lane-fs-player--desktop .lane-lyrics-provider > div:first-child {
+  height: 28px; min-height: 28px; max-height: 28px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; box-shadow: none; backdrop-filter: none;
+}
+.lane-fs-player--desktop .lane-fs-toolbar:empty { display: none; }
+[data-desktop-fullscreen="true"] [data-window-controls] {
+  height: 36px; min-height: 36px; max-height: 36px;
+  padding: 0 5px 2px; border: 0; border-radius: 0 0 0 16px;
+  position: relative; gap: 0; background: rgb(18 23 30 / 24%); box-shadow: none;
+  -webkit-backdrop-filter: blur(28px) saturate(1.3); backdrop-filter: blur(28px) saturate(1.3);
+}
+
+/* Floating menus sample the player itself, outside the solid top frame. */
+.lane-fs-popover {
+  position: fixed; z-index: 180; box-sizing: border-box;
+  border: 0; border-radius: 16px; padding: 11px;
+  color: #fff; background: rgb(18 23 30 / 30%);
+  -webkit-backdrop-filter: blur(var(--lane-popover-blur, 32px)) saturate(1.4);
+  backdrop-filter: blur(var(--lane-popover-blur, 32px)) saturate(1.4);
+  box-shadow: 0 14px 38px rgb(0 0 0 / 22%);
+  font-family: var(--font-inter), sans-serif;
+}
+.lane-fs-provider-menu { --lane-popover-blur: 12px; width: 160px; display: flex; flex-direction: column; gap: 4px; padding: 7px; }
+.lane-fs-provider-option, .lane-fs-quality-option {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 0; border-radius: 10px; cursor: pointer;
+  color: rgb(255 255 255 / 78%); background: transparent; text-align: left;
+  transition: background-color 120ms, color 120ms;
+}
+.lane-fs-provider-option { min-height: 36px; font-size: 12px; }
+.lane-fs-provider-option:hover, .lane-fs-quality-option:hover { background: rgb(255 255 255 / 14%); color: #fff; }
+.lane-fs-provider-option.is-selected, .lane-fs-quality-option.is-selected {
+  background: rgb(235 240 235 / 85%); color: #202622;
+}
+.lane-fs-player--desktop .lane-fs-toolbar { gap: 2px; padding-inline: 6px; }
+.lane-fs-player--desktop .lane-fs-toolbar > button { backdrop-filter: none; -webkit-backdrop-filter: none; background: transparent; }
+.lane-fs-quality-trigger {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+  border: 0; color: rgb(255 255 255 / 80%); cursor: pointer;
+}
+.lane-fs-quality-trigger[aria-expanded="true"] { background: rgb(255 255 255 / 10%) !important; color: white; }
+.lane-fs-quality-menu { width: 268px; }
+.lane-fs-quality-option { margin-top: 4px; background: rgb(255 255 255 / 10%); }
+/* Fade the complete lyric viewport so partially visible lines disappear before
+   the scroll boundary. A blur overlay alone leaves a hard rectangular edge. */
+.lane-fs-player--desktop .lane-lyrics-viewport {
+  --lane-lyrics-fade: min(120px, 14%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--lane-lyrics-fade), #000 calc(100% - var(--lane-lyrics-fade)), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--lane-lyrics-fade), #000 calc(100% - var(--lane-lyrics-fade)), transparent);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+.lane-lyrics-blur-edge {
+  position: absolute; left: 0; right: 0; height: min(100px, 18%); z-index: 2;
+  pointer-events: none; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.lane-lyrics-blur-edge--top { top: 0; mask-image: linear-gradient(to bottom, black, transparent); }
+.lane-lyrics-blur-edge--bottom { bottom: 0; mask-image: linear-gradient(to top, black, transparent); }
+.lane-fs-player--desktop[data-visual-quality="lite"] .blyrics-highlight-run { display: none; }
+.lane-fs-player--desktop[data-visual-quality="lite"] .blyrics--active { color: white; }
+.lane-fs-player--desktop[data-visual-quality="lite"] .lane-ch { transform: none; transition: none; }
+
+/* Window buttons share the toolbar glass and cutout geometry. */
+[data-desktop-fullscreen="true"] [data-window-controls] { padding: 0 4px 2px; }
+[data-desktop-fullscreen="true"] [data-window-controls] > button {
+  width: 32px; min-width: 32px; max-width: 32px; height: 28px; min-height: 28px; max-height: 28px;
+}
+
+/* Exactly one blur pass and one translucent fill across all header cutouts. */
+.lane-fs-chrome-glass {
+  position: absolute; top: 0; left: 0; right: 0; height: 36px; z-index: 25;
+  pointer-events: none; background: rgb(18 23 30 / 24%);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3); backdrop-filter: blur(28px) saturate(1.3);
+  mask-repeat: no-repeat; mask-size: 100% 36px;
+  -webkit-mask-repeat: no-repeat; -webkit-mask-size: 100% 36px;
+}
+.lane-fs-player--desktop .lane-fs-close,
+.lane-fs-player--desktop .lane-fs-toolbar,
+[data-desktop-fullscreen="true"] [data-window-controls] {
+  background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none;
+}

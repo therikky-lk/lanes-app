@@ -1,3 +1,4 @@
+import { isPlayerDismissDrag, shouldDismissPlayer } from "@/features/player/ui/playerDismissGesture";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { startConnect, stopConnect } from "@/features/connect/connectService";
 import { onAndroidBack } from "@/shared/platform/androidBack";
@@ -790,45 +791,72 @@ export default function AppFrame({ children }: AppFrameProps) {
 
   const isMobile = useIsMobile();
 
+
   // phones: the fullscreen player follows the finger down and folds away
   // (it shrinks a little and rounds its corners as it goes)
   const sheetY = useMotionValue(0);
   const sheetScale = useTransform(sheetY, [0, 600], [1, 0.9]);
   const sheetRadius = useTransform(sheetY, [0, 160], [0, 28]);
-  const sheetDrag = useRef<{ startY: number; startT: number; active: boolean; pointer: number } | null>(null);
+  const sheetAnimation = useRef<ReturnType<typeof animate> | null>(null);
+  const suppressSheetClick = useRef(false);
+  const sheetDrag = useRef<{ startX: number; startY: number; lastY: number; lastT: number; velocity: number; active: boolean; pointer: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!fullscreenPlayerOpen) return;
+    sheetAnimation.current?.stop();
+    sheetY.set(0);
+    sheetDrag.current = null;
+    suppressSheetClick.current = false;
+    setFullscreenEffectsReady(false);
+  }, [fullscreenPlayerOpen, sheetY]);
+  useEffect(() => () => sheetAnimation.current?.stop(), []);
+  const resetSheetDrag = () => {
+    sheetDrag.current = null;
+    sheetAnimation.current?.stop();
+    sheetAnimation.current = animate(sheetY, 0, { type: "spring", stiffness: 420, damping: 36 });
+  };
   const onSheetPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isMobile) return;
+    if (!isMobile || !e.isPrimary) return;
+    suppressSheetClick.current = false;
     const target = e.target as HTMLElement;
-    // lyrics scroll, sliders and inputs keep their own gestures
     if (target.closest('braccato-lyrics, [role="slider"], input, textarea, [data-no-sheet-drag]')) return;
-    sheetDrag.current = { startY: e.clientY, startT: performance.now(), active: false, pointer: e.pointerId };
+    const cover = e.currentTarget.querySelector<HTMLElement>('[data-player-artwork]');
+    // All of the space above the artwork is a grab area, including the toolbar.
+    // Lyrics, artwork swipes and playback controls keep their own gestures.
+    const coverBox = cover?.getBoundingClientRect();
+    const topLimit = coverBox && coverBox.height > 0 ? coverBox.top : e.currentTarget.getBoundingClientRect().top + 64;
+    if (e.clientY > topLimit) return;
+    sheetAnimation.current?.stop();
+    sheetDrag.current = { startX: e.clientX, startY: e.clientY, lastY: e.clientY, lastT: performance.now(), velocity: 0, active: false, pointer: e.pointerId };
   };
   const onSheetPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = sheetDrag.current;
     if (!d || d.pointer !== e.pointerId) return;
     const dy = e.clientY - d.startY;
     if (!d.active) {
-      if (dy < 10) return;
+      if (!isPlayerDismissDrag(e.clientX - d.startX, dy)) return;
       d.active = true;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      suppressSheetClick.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
     }
+    e.preventDefault(); e.stopPropagation();
+    const now = performance.now();
+    d.velocity = (e.clientY - d.lastY) / Math.max(1, now - d.lastT);
+    d.lastY = e.clientY; d.lastT = now;
     sheetY.set(Math.max(0, dy));
   };
   const onSheetPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = sheetDrag.current;
     sheetDrag.current = null;
-    if (!d?.active) return;
+    if (!d || d.pointer !== e.pointerId || !d.active) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     const dy = e.clientY - d.startY;
-    const speed = dy / Math.max(1, performance.now() - d.startT); // px per ms
-    if (dy > 140 || speed > 0.6) {
-      // let go far / fast enough: fold away the rest of the way
-      void animate(sheetY, window.innerHeight, { duration: 0.22, ease: [0.4, 0, 1, 1] }).then(() => {
-        closeFullscreenPlayer();
-        sheetY.set(0);
-      });
-    } else {
-      void animate(sheetY, 0, { type: "spring", stiffness: 420, damping: 36 });
-    }
+    const speed = performance.now() - d.lastT < 120 ? d.velocity : 0;
+    if (shouldDismissPlayer(dy, speed, window.innerHeight)) {
+      // Keep the dragged position until the single outer exit has finished.
+      // Resetting it here used to flash the player back and play a second exit.
+      closeFullscreenPlayer();
+    } else resetSheetDrag();
   };
   useNativeMediaSync();
   // Lane Connect: join the user's other devices when a pairing code is set
@@ -872,6 +900,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   return (
     <div
       ref={appFrameRef}
+      data-desktop-fullscreen={!isMobile && isFullscreenPlayer ? "true" : undefined}
       data-custom-bg={hasCustomBg ? "true" : undefined}
       className={`relative flex ${isMobile ? "flex-col" : "flex-row"} h-full w-full overflow-hidden ${
         isMobile ? "rounded-none p-0 gap-0" : isEdgeToEdge ? "rounded-none p-0 gap-1.5" : "rounded-5xl p-1.5 gap-1.5"
@@ -1028,7 +1057,7 @@ export default function AppFrame({ children }: AppFrameProps) {
         </>
       )}
 
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} onExitComplete={() => { sheetY.set(0); setFullscreenEffectsReady(false); }}>
         {fullscreenPlayerOpen ? (
           <motion.div
             key="fullscreen-player-overlay"
@@ -1037,16 +1066,19 @@ export default function AppFrame({ children }: AppFrameProps) {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            onAnimationComplete={() => setFullscreenEffectsReady(fullscreenPlayerOpen)}
+            onAnimationComplete={() => setFullscreenEffectsReady(usePlayerStore.getState().fullscreen)}
             className="dark absolute inset-0 z-[70] overflow-hidden will-change-transform"
           >
             <motion.div
               className="absolute inset-0 overflow-hidden bg-black"
               style={isMobile ? { y: sheetY, scale: sheetScale, borderRadius: sheetRadius, transformOrigin: "50% 0%" } : undefined}
-              onPointerDown={onSheetPointerDown}
-              onPointerMove={onSheetPointerMove}
-              onPointerUp={onSheetPointerUp}
-              onPointerCancel={onSheetPointerUp}
+              onPointerDownCapture={onSheetPointerDown}
+              onPointerMoveCapture={onSheetPointerMove}
+              onPointerUpCapture={onSheetPointerUp}
+              onPointerCancel={() => { if (sheetDrag.current) resetSheetDrag(); }}
+              onClickCapture={event => {
+                if (suppressSheetClick.current) { event.preventDefault(); event.stopPropagation(); suppressSheetClick.current = false; }
+              }}
             >
               <FullscreenPlayer
                 onClose={closeFullscreenPlayer}
@@ -1310,8 +1342,8 @@ export default function AppFrame({ children }: AppFrameProps) {
       {!isMobile && <WindowControls
         isFullscreen={isFullscreenPlayer}
         style={{
-          top: isFullscreenPlayer || isEdgeToEdge ? 12 : 18,
-          right: isFullscreenPlayer || isEdgeToEdge ? 12 : 18,
+          top: isFullscreenPlayer ? 0 : isEdgeToEdge ? 12 : 18,
+          right: isFullscreenPlayer ? 0 : isEdgeToEdge ? 12 : 18,
           transition: "all 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
           zIndex: 80,
         }}

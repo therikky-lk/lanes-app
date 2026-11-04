@@ -36,6 +36,7 @@ export default function AppImage({
   placeholder = "empty",
   blurDataURL,
   fallbackSrc,
+  unoptimized: _unoptimized,
   crossOrigin,
   autoCropLetterbox = true,
   className = "",

@@ -1,3 +1,6 @@
+import { needsLyricsRefresh } from "@/features/lyrics/store/lyricsRefresh";
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { EQ_MAX_CUSTOM_PRESETS, EQ_PRESET_NAME_MAX } from "./equalizer";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { diag } from "@/shared/platform/diag";
 import { isNativeApp } from "@/shared/platform/native";
@@ -40,7 +43,6 @@ import { createTranslatorSync, getStoredLocale } from "@/languages";
 import type { Track } from "@/shared/types";
 
 const MAX_CONSECUTIVE_AUTO_SKIPS = 3;
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export { usePlayerStore, type PlayerStatus, type RepeatMode, type PlayerState };
 
@@ -841,6 +843,33 @@ class PlayerEngine {
     usePlayerStore.getState().setReverbLevel(level);
   }
 
+  public setIsEqEnabled(enabled: boolean): void {
+    usePlayerStore.getState().setIsEqEnabled(enabled);
+    pitchShifter.resumeContext();
+  }
+
+  public setEqGains(gains: number[]): void {
+    usePlayerStore.getState().setEqGains(gains);
+    pitchShifter.resumeContext();
+  }
+
+  public saveEqPreset(name: string): void {
+    const label = name.trim().substring(0, EQ_PRESET_NAME_MAX);
+    if (label.length === 0) return;
+    const state = usePlayerStore.getState();
+    const index = state.eqCustomPresets.findIndex(item => item.name.toLocaleLowerCase() === label.toLocaleLowerCase());
+    const entries = [...state.eqCustomPresets];
+    if (index < 0 && entries.length >= EQ_MAX_CUSTOM_PRESETS) return;
+    const entry = { id: index < 0 ? crypto.randomUUID() : entries[index].id, name: label, gains: state.eqGains.slice() };
+    if (index < 0) entries.push(entry); else entries[index] = entry;
+    state.setEqCustomPresets(entries);
+  }
+
+  public deleteEqPreset(id: string): void {
+    const state = usePlayerStore.getState();
+    state.setEqCustomPresets(state.eqCustomPresets.filter(item => item.id !== id));
+  }
+
   public resetSpeedAndPitch(): void {
     usePlayerStore.getState().resetSpeedAndPitch();
   }
@@ -1296,17 +1325,18 @@ class PlayerEngine {
   private async prefetchLyrics(trackId: string, hint?: LyricsHint): Promise<void> {
     if (!trackId) return;
 
-    if (lyricsCache.has(trackId)) return;
+    const memory = lyricsCache.get(trackId);
+    if (memory && !needsLyricsRefresh(memory, getApiBaseUrl())) return;
     if (this.inFlightLyricsPrefetches.has(trackId)) {
       return this.inFlightLyricsPrefetches.get(trackId);
     }
 
     const prefetchPromise = (async () => {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
       try {
         const existing = await linerDb.getLyrics(trackId);
         if (existing) {
-          const lastChecked = existing.lastCheckedAt || 0;
-          if (Date.now() - lastChecked < SEVEN_DAYS_MS) {
+          if (!needsLyricsRefresh(existing, getApiBaseUrl())) {
             return;
           }
         }
@@ -1319,7 +1349,9 @@ class PlayerEngine {
           candidate: LyricsCandidate;
         }[] = [];
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        timeout = setTimeout(() => controller.abort(), 120_000);
+        let complete = false;
+        let fallback = false;
         for await (const event of api.streamLyrics(trackId, controller.signal, hint)) {
           if (event.type === "provider" && event.status === "found") {
             const candidate = event.candidate;
@@ -1336,13 +1368,15 @@ class PlayerEngine {
               bestCandidate = candidate;
             }
           } else if (event.type === "done") {
+            complete = true;
+            fallback = event.source === "fallback";
             break;
           }
         }
         clearTimeout(timeout);
 
         if (bestCandidate && shouldCacheLyricsCandidate(bestCandidate)) {
-          lyricsCache.set(trackId, bestCandidate, providers);
+          lyricsCache.set(trackId, bestCandidate, providers, complete, fallback);
           void linerDb.putLyrics({
             trackId,
             syncLevel: bestCandidate.syncLevel,
@@ -1352,12 +1386,16 @@ class PlayerEngine {
             rawLyrics: bestCandidate.lyrics.content,
             rawFormat: bestCandidate.lyrics.format,
             candidate: bestCandidate,
+            sourceApi: getApiBaseUrl(),
+            complete,
+            fallback,
             lastCheckedAt: Date.now(),
             updatedAt: Date.now(),
           });
         }
       } catch {
       } finally {
+        clearTimeout(timeout);
         this.inFlightLyricsPrefetches.delete(trackId);
       }
     })();
@@ -1459,12 +1497,10 @@ class PlayerEngine {
 
       const lastChecked = (cached as any).lastCheckedAt || (cached as any).timestamp || 0;
       log("cyan", "lyrics", `cache hit for "${track.title}" (age: ${Math.round((Date.now() - lastChecked) / 1000)}s)`);
-      const isStale = Date.now() - lastChecked >= SEVEN_DAYS_MS;
-      if (!isStale || (cached as any).userLocked) {
+      if (!needsLyricsRefresh(cached, getApiBaseUrl())) {
         return;
       }
 
-      void linerDb.updateLyricsChecked(trackId);
     } else {
       lyricsStore.setLyricsState({
         lyricsLoading: true,
@@ -1504,7 +1540,8 @@ class PlayerEngine {
             activeProvider: freshCached.candidate.provider,
             availableProviders: freshCached.availableProviders || [],
           });
-          return;
+          bestCandidate = freshCached.candidate;
+          if (!needsLyricsRefresh(freshCached, getApiBaseUrl())) return;
         }
       } catch {}
     }
@@ -1569,6 +1606,8 @@ class PlayerEngine {
                 rawLyrics: candidate.lyrics.content,
                 rawFormat: candidate.lyrics.format,
                 candidate,
+                sourceApi: getApiBaseUrl(),
+                complete: false,
                 lastCheckedAt: Date.now(),
                 updatedAt: Date.now(),
               });
@@ -1597,7 +1636,7 @@ class PlayerEngine {
         } else if (event.type === "done") {
           if (bestCandidate && shouldCacheLyricsCandidate(bestCandidate)) {
             const currentProviders = useLyricsStore.getState().availableProviders;
-            lyricsCache.set(trackId, bestCandidate, currentProviders);
+            lyricsCache.set(trackId, bestCandidate, currentProviders, true, event.source === "fallback");
             void linerDb.putLyrics({
               trackId,
               syncLevel: bestCandidate.syncLevel,
@@ -1607,6 +1646,9 @@ class PlayerEngine {
               rawLyrics: bestCandidate.lyrics.content,
               rawFormat: bestCandidate.lyrics.format,
               candidate: bestCandidate,
+              sourceApi: getApiBaseUrl(),
+              complete: true,
+              fallback: event.source === "fallback",
               lastCheckedAt: Date.now(),
               updatedAt: Date.now(),
             });
@@ -1628,7 +1670,7 @@ class PlayerEngine {
         "lyrics",
         `stream failed: ${error instanceof Error ? error.message : String(error)}`,
       );
-      if (!cached) {
+      if (!cached && !bestCandidate) {
         useLyricsStore.getState().setLyricsState({
           lyricsError: "Failed to load lyrics.",
         });

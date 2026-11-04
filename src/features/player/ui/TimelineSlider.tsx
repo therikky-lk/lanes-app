@@ -205,11 +205,11 @@ export const TimelineSlider = memo(function TimelineSlider({
           className={`relative w-full rounded-full overflow-hidden origin-center ${baseTrackHeights} ${trackClassName}`}
         >
           <div
-            className={`absolute inset-y-0 left-0 rounded-full transition-[width] ease-out ${
+            className={`absolute inset-0 origin-left rounded-full transition-transform ease-out ${
               isDragging ? "duration-0" : "duration-100"
             } ${fillClassName || "bg-text-primary"}`}
             style={{
-              width: `${percentage}%`,
+              transform: `scaleX(${progress})`,
               ...(fillColor ? { backgroundColor: fillColor } : {}),
             }}
           />

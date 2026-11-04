@@ -23,7 +23,7 @@ export default function PhoneMenu({
   useLayoutEffect(() => {
     if (!open) return;
     const rect = anchorRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 14, right: Math.max(14, window.innerWidth - rect.right + 4) });
+    if (rect) setPos({ top: rect.bottom + 18, right: Math.max(14, window.innerWidth - rect.right + 4) });
   }, [open, anchorRef]);
   if (!open || !pos) return null;
   return createPortal(
@@ -31,15 +31,15 @@ export default function PhoneMenu({
       <div className="fixed inset-0 z-[180]" onClick={onClose} />
       <motion.div
         className="fixed z-[181] w-[248px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[16px] border border-border-primary/40 p-[6px] shadow-[0_18px_48px_rgba(0,0,0,0.42)]"
-        initial={{ opacity: 0, y: -5, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
         style={{
           top: pos.top,
           right: pos.right,
-          background: "color-mix(in srgb, var(--bg-panel, #121214) 68%, transparent)",
-          backdropFilter: "blur(24px) saturate(1.14)",
-          WebkitBackdropFilter: "blur(24px) saturate(1.14)",
+          background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 94%, transparent)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
           fontFamily: "var(--font-inter), sans-serif",
         }}
       >

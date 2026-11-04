@@ -1,3 +1,4 @@
+import { usesLocalAppTransport } from "./localAppTransport";
 import type { AuthTokens, AuthUser } from "../contracts";
 import { syncServerTime } from "./serverTime";
 import { signApiRequest } from "./requestSigner";
@@ -254,7 +255,7 @@ async function refreshHere(current: AuthTokens): Promise<AuthTokens | null> {
 async function postRefresh(refreshToken: string): Promise<Response> {
   const body = JSON.stringify({ refreshToken });
   const signedHeaders = await signApiRequest("POST", "/v1/auth/refresh", body);
-  const response = await fetch(`${getApiBaseUrl()}/v1/auth/refresh`, {
+  const response = await fetch(usesLocalAppTransport() ? "/__lane/auth/refresh" : `${getApiBaseUrl()}/v1/auth/refresh`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
