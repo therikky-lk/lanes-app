@@ -1,7 +1,12 @@
 import { useTranslation } from "@/languages";
 import { useEffect, useRef } from "react";
 import { humanCheckOrigin, humanCheckPageUrl, type HumanCheckAction } from "@/shared/api";
+import { isNativeApp } from "@/shared/platform/native";
+import { nativeHumanCheck, humanCheckUserAgent } from "@/shared/platform/nativeHumanCheck";
+import { diag } from "@/shared/platform/diag";
 import { useHumanCheckStore } from "../store/humanCheckStore";
+
+let nativeAttemptId = 0;
 
 interface CheckMessage {
   source?: string;
@@ -18,18 +23,49 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
   const solve = useHumanCheckStore((state) => state.solve);
 
   useEffect(() => {
+    let active = true;
+    // An iframe's load event also fires for Android's built-in network error
+    // page. Require a token and stop waiting even if the page never responds.
+    const timeout = setTimeout(() => {
+      if (active) setPhase("error");
+    }, 60_000);
+    if (isNativeApp()) {
+      const id = `human-check-${++nativeAttemptId}`;
+      void nativeHumanCheck.verify({ id, url: humanCheckPageUrl(action), action,
+        userAgent: humanCheckUserAgent(), title: t("human_check.title"), cancel: t("human_check.cancel"),
+      }).then(result => {
+        if (!active) return;
+        clearTimeout(timeout);
+        if (result.token) solve(result.token);
+        else useHumanCheckStore.getState().cancel();
+      }).catch(error => {
+        if (!active) return;
+        clearTimeout(timeout);
+        diag(`Human check: ${error instanceof Error ? error.message : String(error)}`);
+        setPhase("error");
+      });
+      return () => {
+        active = false;
+        clearTimeout(timeout);
+        void nativeHumanCheck.close({ id }).catch(() => undefined);
+      };
+    }
     const origin = humanCheckOrigin();
     const onMessage = (event: MessageEvent<CheckMessage>) => {
       if (event.origin !== origin || event.source !== frameRef.current?.contentWindow) return;
       const data = event.data;
       if (data?.source !== "liner-turnstile" || data.action !== action) return;
-      if (data.type === "token" && data.token) solve(data.token);
+      if (data.type === "token" && data.token) { clearTimeout(timeout); solve(data.token); }
       else if (data.type === "expired") setPhase("expired");
       else if (data.type === "error") setPhase("error");
     };
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [action, setPhase, solve]);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+    };
+  }, [action, attempt, setPhase, solve, t]);
 
   const markLoaded = () => {
     if (useHumanCheckStore.getState().phase === "loading") setPhase("ready");
@@ -38,15 +74,16 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
   return (
     <div className="relative mx-auto h-[88px] w-[320px] max-w-full shrink-0">
       <div className={`absolute inset-x-[10px] top-[11px] h-[65px] animate-pulse rounded-[10px] bg-white/10 transition-opacity ${phase === "loading" ? "opacity-100" : "opacity-0"}`} />
-      <iframe
+      {!isNativeApp() && phase !== "error" && phase !== "expired" && <iframe
         key={attempt}
         ref={frameRef}
         src={humanCheckPageUrl(action)}
         title={t("human_check.frame_title")}
         scrolling="no"
         onLoad={markLoaded}
+        onError={() => setPhase("error")}
         className={`absolute inset-0 size-full border-0 bg-transparent transition-opacity duration-300 [color-scheme:dark] ${phase === "loading" ? "opacity-0" : "opacity-100"}`}
-      />
+      />}
     </div>
   );
 }
