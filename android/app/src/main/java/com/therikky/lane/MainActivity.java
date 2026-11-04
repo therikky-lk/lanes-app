@@ -16,6 +16,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
+import com.therikky.lane.auth.LaneHumanCheckPlugin;
 import com.therikky.lane.audio.LaneAudioPlugin;
 import com.therikky.lane.potoken.LanePoTokenPlugin;
 import com.therikky.lane.http.LaneHttpPlugin;
@@ -31,6 +32,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(LaneHumanCheckPlugin.class);
         registerPlugin(LaneAudioPlugin.class);
         registerPlugin(LanePoTokenPlugin.class);
         registerPlugin(LaneHttpPlugin.class);
