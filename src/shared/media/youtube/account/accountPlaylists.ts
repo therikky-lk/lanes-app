@@ -1,3 +1,4 @@
+import youtubeLikedCover from "@/assets/youtube-liked.svg";
 import { isYoutubeSignedIn } from "../auth/youtubeAuthSession";
 import { browseTvTiles } from "./tvBrowse";
 import { lineText, type TvTile } from "./tvTiles";
@@ -24,7 +25,7 @@ function toPlaylist(tile: TvTile): YoutubeAccountPlaylist {
     id: tile.id,
     title: tile.title,
     ...(subtitle ? { subtitle } : {}),
-    ...(tile.cover ? { thumbnailUrl: tile.cover.url } : {}),
+    ...(tile.id.replace(/^VL/, "") === "LM" ? { thumbnailUrl: youtubeLikedCover } : tile.cover ? { thumbnailUrl: tile.cover.url } : {}),
   };
 }
 

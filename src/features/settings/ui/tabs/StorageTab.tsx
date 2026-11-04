@@ -40,7 +40,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
   const [busy, setBusy] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmDownloads, setConfirmDownloads] = useState(false);
-  const refresh = useCallback(async () => { setAnalytics(await refreshStorageAnalytics()); }, []);
+  const refresh = useCallback(async () => { setAnalytics(await refreshStorageAnalytics(true)); }, []);
   useEffect(() => {
     setStorageTabOpen(true);
     let active = true;
@@ -99,11 +99,11 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
         description={likedDescription} icon={<HeartFill />}
         control={<div className="flex items-center gap-3"><button type="button" disabled={busy || downloadedBytes === 0}
           onClick={() => confirmDownloads ? void run(offline.removeDownloads) : setConfirmDownloads(true)}
-          onBlur={() => setConfirmDownloads(false)}
           title={t("settings.storage.remove")}
           className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary disabled:cursor-default">
           {confirmDownloads ? t("settings.storage.remove_size", { size: formatStorageBytes(downloadedBytes) }) : formatStorageBytes(downloadedBytes)}
-        </button><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
+        </button>{confirmDownloads && <button type="button" disabled={busy} onClick={() => setConfirmDownloads(false)}
+          className="border-0 bg-transparent text-[12px] text-text-secondary cursor-pointer">{t("common.cancel")}</button>}<ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
       <SettingRow title={t("settings.storage.categories.local")} titleKey="settings.storage.categories.local" searchQuery={searchQuery}
         description={t("settings.storage.local_desc", { songs: t("common.songs", { count: local.length }) })} icon={<MusicLine />}
         control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary">{formatStorageBytes(localBytes)}</button>} />
@@ -116,10 +116,12 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
         description={`${t("common.songs", { count: offline.cached.length })} · ${t("settings.storage.cache_row_desc")}`}
         control={<button type="button" disabled={busy || !analytics || cacheBytes === 0}
           onClick={() => confirmClear ? void run(() => clearStorageCategories(cacheCategories.map(category => category.id))) : setConfirmClear(true)}
-          onBlur={() => setConfirmClear(false)} title={t("settings.storage.clear")}
+          title={t("settings.storage.clear")}
           className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary disabled:opacity-50">
           {busy ? "…" : confirmClear ? t("settings.storage.clear_size", { size: formatStorageBytes(cacheBytes) }) : formatStorageBytes(cacheBytes)}
         </button>} />
+      {confirmClear && <div className="flex justify-end px-3 pb-2"><button type="button" disabled={busy} onClick={() => setConfirmClear(false)}
+        className="border-0 bg-transparent text-[12px] text-text-secondary cursor-pointer">{t("common.cancel")}</button></div>}
       <SettingRow title={t("settings.storage.cache_limit")} titleKey="settings.storage.cache_limit" searchQuery={searchQuery}
         description={cacheLimit ? t("settings.storage.cache_limit_hint", { count: Math.floor(cacheLimit / average) }) : t("settings.storage.cache_limit_unlimited")}
         control={<LimitPills value={cacheLimit} options={[1, 3, 10, 0]} label={t("settings.storage.cache_limit")} disabled={busy}

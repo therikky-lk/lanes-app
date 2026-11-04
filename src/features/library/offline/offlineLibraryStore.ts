@@ -75,9 +75,12 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>((set, get) => 
     get().setEnabled(false);
     // Let an in-flight write finish before clearing the database.
     await activeSync;
+    await refreshRequest;
     await downloadsDb.clear();
+    audioCache.invalidate();
     set({ downloads: [], pending: 0, phase: "idle" });
     window.dispatchEvent(new Event("lane:storage-changed"));
+    window.dispatchEvent(new Event("lane:audio-cache-changed"));
   },
 }));
 
