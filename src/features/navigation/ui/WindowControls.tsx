@@ -104,7 +104,7 @@ export default function WindowControls({
                     ? "text-white/70 hover:text-white hover:bg-white/10 active:scale-95 cursor-pointer"
                     : "text-text-primary hover:bg-border-alpha-14 active:scale-95 cursor-pointer"
           }`}
-          aria-label="Minimize"
+          aria-label={t("common.minimize")}
         >
           <LuMinus size={13} />
         </button>
@@ -144,7 +144,7 @@ export default function WindowControls({
                   ? "text-white/70 hover:text-white"
                   : "text-text-primary"
           }`}
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           <LuX size={13} />
         </button>

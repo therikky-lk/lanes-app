@@ -1,3 +1,4 @@
+import { useTranslation } from "@/languages";
 import { useState, useRef, useCallback, useEffect, memo } from "react";
 import { motion } from "framer-motion";
 import { VolumeCross, VolumeSmall, VolumeLoud } from "@solar-icons/react";
@@ -46,6 +47,7 @@ export const VolumePicker = memo(function VolumePicker({
   onVolumeChange,
   onDraggingChange,
 }: VolumePickerProps) {
+  const { t } = useTranslation();
   const isVertical = orientation === "vertical";
   const player = usePlayerState();
   const volumeLevel = toVolumeLevel(player.volume);
@@ -207,7 +209,7 @@ export const VolumePicker = memo(function VolumePicker({
 
         <div
           role="slider"
-          aria-label="Volume"
+          aria-label={t("player.volume")}
           aria-orientation="vertical"
           aria-valuemin={0}
           aria-valuemax={100}
@@ -253,7 +255,7 @@ export const VolumePicker = memo(function VolumePicker({
           <button
             type="button"
             onClick={handleToggleMute}
-            aria-label={volumeLevel === 0 ? "Unmute" : "Mute"}
+            aria-label={volumeLevel === 0 ? t("common.unmute") : t("common.mute")}
             className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center border-none bg-transparent p-0 ${
               !iconClassName ? "text-text-tertiary hover:text-text-primary" : ""
             } transition-colors duration-150 ease-out cursor-pointer ${iconClassName}`}
@@ -285,7 +287,7 @@ export const VolumePicker = memo(function VolumePicker({
         <button
           type="button"
           onClick={handleToggleMute}
-          aria-label={volumeLevel === 0 ? "Unmute" : "Mute"}
+          aria-label={volumeLevel === 0 ? t("common.unmute") : t("common.mute")}
           className={`flex h-full w-[24px] shrink-0 items-center justify-center border-none bg-transparent p-0 ${
             !iconClassName ? "text-text-secondary hover:text-text-primary" : ""
           } transition-colors duration-150 ease-out cursor-pointer ${iconClassName}`}
@@ -307,7 +309,7 @@ export const VolumePicker = memo(function VolumePicker({
 
       <div
         role="slider"
-        aria-label="Volume"
+        aria-label={t("player.volume")}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percentage}

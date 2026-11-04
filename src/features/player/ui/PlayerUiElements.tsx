@@ -38,6 +38,7 @@ const iconButtonClass =
   "inline-flex h-[40px] w-[40px] items-center justify-center text-white opacity-70 transition-all duration-150 ease-out hover:opacity-100 active:scale-[0.94] shrink-0 border-none bg-transparent cursor-pointer";
 
 export function PlayPauseIcon({ status }: { status: string }) {
+  const { t } = useTranslation();
   const loading = status === "loading";
   const playing = status === "playing";
   // keep the morph icon mounted through the loading state (spinner overlays
@@ -58,7 +59,7 @@ export function PlayPauseIcon({ status }: { status: string }) {
       {loading && (
         <span
           className="absolute h-[18px] w-[18px] animate-spin rounded-full border-[2px] border-current border-t-transparent"
-          aria-label="Loading playback"
+          aria-label={t("player.loading_playback")}
         />
       )}
     </span>
@@ -352,7 +353,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
         <button
           type="button"
-          aria-label="Previous track"
+          aria-label={t("player.previous")}
           onClick={() => void playerEngine.skipPrevious()}
           className={iconButtonClass}
         >
@@ -361,7 +362,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
         <button
           type="button"
-          aria-label={player.status === "playing" ? "Pause" : "Play"}
+          aria-label={player.status === "playing" ? t("common.pause") : t("common.play")}
           onClick={() => void playerEngine.togglePlayPause()}
           className="inline-flex h-[60px] w-[60px] items-center justify-center rounded-full bg-white text-black transition-all duration-150 ease-out hover:scale-[1.05] active:scale-[0.94] shrink-0 border-none cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
         >
@@ -372,7 +373,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
         <button
           type="button"
-          aria-label="Next track"
+          aria-label={t("player.next")}
           onClick={() => void playerEngine.skipNext()}
           className={iconButtonClass}
         >
@@ -381,7 +382,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
         <button
           type="button"
-          aria-label="Repeat"
+          aria-label={t("player.repeat")}
           onClick={() =>
             playerEngine.setRepeat(
               // radio has no repeat-all: it refills instead of looping

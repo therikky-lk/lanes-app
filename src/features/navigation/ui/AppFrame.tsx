@@ -1171,7 +1171,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                     exit={{ opacity: 0, scale: 0.85 }}
                     transition={{ duration: 0.12 }}
                     type="button"
-                    aria-label="Clear search"
+                    aria-label={t("common.clear_search")}
                     onClick={() => {
                       setSearchQuery("");
                       searchInputRef.current?.focus();

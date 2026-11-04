@@ -1081,7 +1081,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
                   </div>
                   <div className="flex items-center gap-[12px] text-[20px] font-[600]">
                     <FiMusic className="w-[24px] h-[24px]" />
-                    <span>This song is instrumental</span>
+                    <span>{t("player.instrumental_hint")}</span>
                   </div>
                 </div>
               ) : effectivePlainLyrics ||

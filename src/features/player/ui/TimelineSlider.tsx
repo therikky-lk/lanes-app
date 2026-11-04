@@ -1,3 +1,4 @@
+import { useTranslation } from "@/languages";
 import { useState, useRef, useCallback, memo } from "react";
 import { diag } from "@/shared/platform/diag";
 import { motion } from "framer-motion";
@@ -41,6 +42,7 @@ export const TimelineSlider = memo(function TimelineSlider({
   showTime = false,
   onScrub,
 }: TimelineSliderProps) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [scrubPosition, setScrubPosition] = useState<number | null>(null);
@@ -178,7 +180,7 @@ export const TimelineSlider = memo(function TimelineSlider({
 
       <div
         role="slider"
-        aria-label="Seek"
+        aria-label={t("player.seek")}
         aria-valuemin={0}
         aria-valuemax={duration}
         aria-valuenow={currentPosition}

@@ -385,7 +385,7 @@ export function OverlayPlayer() {
                 sendAction({ type: "prev" });
               }}
               className="flex h-[26px] w-[26px] items-center justify-center rounded-lg border-0 bg-transparent text-white/60 hover:text-white active:scale-90 transition-all outline-none cursor-pointer"
-              aria-label="Previous"
+              aria-label={t("player.previous")}
             >
               <SkipPrevious size={16} weight="Bold" />
             </button>
@@ -428,7 +428,7 @@ export function OverlayPlayer() {
                 sendAction({ type: "next" });
               }}
               className="flex h-[26px] w-[26px] items-center justify-center rounded-lg border-0 bg-transparent text-white/60 hover:text-white active:scale-90 transition-all outline-none cursor-pointer"
-              aria-label="Next"
+              aria-label={t("player.next")}
             >
               <SkipNext size={16} weight="Bold" />
             </button>

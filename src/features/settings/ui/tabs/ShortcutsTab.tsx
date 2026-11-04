@@ -592,7 +592,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
         <div
           className="lane-shortcuts-scopes inline-flex items-center gap-[4px] rounded-xl p-[2px] select-none shrink-0"
           role="tablist"
-          aria-label="Shortcut filter scopes"
+          aria-label={t("settings.shortcuts.filter_scopes")}
         >
           {tabs.map((tab) => {
             const isActive = !isSearching && tab.value === activeScope;
@@ -664,7 +664,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
               <button
                 type="button"
                 onClick={() => setLocalSearchQuery("")}
-                aria-label="Clear search"
+                aria-label={t("common.clear_search")}
                 className="text-text-tertiary hover:text-text-primary transition-colors border-0 bg-transparent p-0 cursor-pointer flex items-center justify-center shrink-0"
               >
                 <CloseLine size={14} />

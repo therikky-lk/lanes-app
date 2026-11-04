@@ -709,7 +709,7 @@ function MiniPlayer({
             <div
               role="button"
               tabIndex={0}
-              aria-label="Open player"
+              aria-label={t("player.open_player")}
               className={`relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-[8px] bg-bg-elevated cursor-pointer pointer-events-auto prevent-seek ${
                 coverUrl && !isCoverLoaded ? "animate-pulse" : ""
               }`}
@@ -742,7 +742,7 @@ function MiniPlayer({
                 <span
                   role="button"
                   tabIndex={0}
-                  aria-label="Open player"
+                  aria-label={t("player.open_player")}
                   className="min-w-0 truncate cursor-pointer pointer-events-auto prevent-seek"
                   onClick={onFullscreenOpen}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -776,7 +776,7 @@ function MiniPlayer({
             </div>
             <button
               type="button"
-              aria-label={isLiked ? "Unlike" : "Like"}
+              aria-label={isLiked ? t("common.unlike") : t("common.like")}
               className={`${iconButtonClass} shrink-0 transition-colors duration-150 pointer-events-auto prevent-seek ${
                 isLiked ? "!text-[#ff3b5c] !opacity-100" : "text-text-secondary hover:text-text-primary"
               }`}
@@ -799,7 +799,7 @@ function MiniPlayer({
             >
               <button
                 type="button"
-                aria-label="Shuffle"
+                aria-label={t("common.shuffle")}
                 title={player.shuffle ? t("player.shuffle_on") : t("player.shuffle_off")}
                 className={`${iconButtonClass} ${
                   player.shuffle ? activeToggleClass : ""
@@ -836,7 +836,7 @@ function MiniPlayer({
               <button
                 ref={speedToggleRef}
                 type="button"
-                aria-label="Speed and Pitch"
+                aria-label={t("player.speed_pitch")}
                 title={`${t("player.speed_pitch")}: x${(player.playbackRate ?? 1).toFixed(2)}`}
                 className={`${iconButtonClass} ${
                   speedOpen ||
@@ -932,7 +932,7 @@ function MiniPlayer({
           >
             <button
               type="button"
-              aria-label="Previous track"
+              aria-label={t("player.previous")}
               className={`${iconButtonClass} text-text-secondary hover:text-text-primary`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => {
@@ -944,7 +944,7 @@ function MiniPlayer({
             </button>
             <button
               type="button"
-              aria-label={isPlaying ? "Pause" : "Play"}
+              aria-label={isPlaying ? t("common.pause") : t("common.play")}
               className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full bg-btn-primary-bg text-btn-primary-text transition-all duration-150 ease-out hover:scale-105 active:scale-[0.96] border-none cursor-pointer shadow-sm"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => {
@@ -972,14 +972,14 @@ function MiniPlayer({
                 {isLoading && (
                   <span
                     className="absolute h-[16px] w-[16px] animate-spin rounded-full border-[2px] border-current border-t-transparent"
-                    aria-label="Loading playback"
+                    aria-label={t("player.loading_playback")}
                   />
                 )}
               </span>
             </button>
             <button
               type="button"
-              aria-label="Next track"
+              aria-label={t("player.next")}
               className={`${iconButtonClass} text-text-secondary hover:text-text-primary`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => {
