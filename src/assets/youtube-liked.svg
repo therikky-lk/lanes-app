@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="base" x2="1" y2="1"><stop stop-color="#39232b"/><stop offset=".6" stop-color="#201c29"/><stop offset="1" stop-color="#4b2535"/></linearGradient>
-    <radialGradient id="glow"><stop stop-color="#b65064" stop-opacity=".55"/><stop offset="1" stop-color="#b65064" stop-opacity="0"/></radialGradient>
-    <linearGradient id="silver" x2=".7" y2="1"><stop stop-color="#f0e4e8"/><stop offset="1" stop-color="#c0b6c4"/></linearGradient>
+    <linearGradient id="base" x2="1" y2="1"><stop stop-color="#3c241f"/><stop offset=".65" stop-color="#211a20"/><stop offset="1" stop-color="#291c24"/></linearGradient>
+    <radialGradient id="left"><stop stop-color="#803c2b"/><stop offset="1" stop-color="#803c2b" stop-opacity="0"/></radialGradient>
+    <radialGradient id="right"><stop stop-color="#a75b30"/><stop offset="1" stop-color="#a75b30" stop-opacity="0"/></radialGradient>
   </defs>
   <path fill="url(#base)" d="M0 0h512v512H0z"/>
-  <ellipse cx="110" cy="450" rx="340" ry="300" fill="url(#glow)"/>
-  <path fill="none" stroke="#e0bbc7" stroke-opacity=".07" stroke-width="2" d="M-50 380 380-50M20 530 530 20M130 550 550 130"/>
-  <path fill="url(#silver)" d="M160 232h-31a12 12 0 0 0-12 12v119a12 12 0 0 0 12 12h31V232Zm25 143h134c17 0 27-10 31-25l29-99c5-19-6-34-25-34h-70l16-62c5-22-7-38-25-38-9 0-13 6-17 17l-28 69-45 42v130Z"/>
+  <ellipse cx="62" cy="348" rx="292" ry="260" fill="url(#left)"/>
+  <ellipse cx="435" cy="486" rx="230" ry="244" fill="url(#right)"/>
+  <path fill="#c8cdd0" d="M160 232h-31a12 12 0 0 0-12 12v119a12 12 0 0 0 12 12h31V232Zm25 143h134c17 0 27-10 31-25l29-99c5-19-6-34-25-34h-70l16-62c5-22-7-38-25-38-9 0-13 6-17 17l-28 69-45 42v130Z"/>
 </svg>
