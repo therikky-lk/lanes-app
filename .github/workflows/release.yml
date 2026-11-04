@@ -3,8 +3,8 @@
 # Release with the tag `releases` ("Release Version X.Y.Z").
 #
 # How to use:
-#   * push a tag such as v1.0.1          -> packages are built and the release is replaced;
-#   * or Actions ▸ Release ▸ Run workflow -> same, from the selected branch.
+# * push a tag such as v1.0.1 -> packages are built and the release is replaced;
+# * or Actions ▸ Release ▸ Run workflow -> same, from the selected branch.
 #
 # No workflow artifacts: every build uploads its files straight into a draft
 # release (release assets don't count toward the Actions storage quota). The
@@ -134,6 +134,9 @@ jobs:
       - name: Verify updater metadata and create checksums
         run: |
           test -f release/latest-mac.yml
+          VERSION=$(node -p "require('./package.json').version")
+          cp "release/Lane-$VERSION-arm64.dmg" release/Lane-latest-arm64.dmg
+          cp "release/Lane-$VERSION-x64.dmg" release/Lane-latest-x64.dmg
           cd release
           shasum -a 256 *.dmg *.zip > SHA256SUMS-macos.txt
       - name: Upload to the draft release
@@ -193,6 +196,7 @@ jobs:
           mkdir -p ../release
           cp app/build/outputs/apk/release/app-release.apk "../release/Lane-$VERSION.apk"
           cd ../release
+          cp "Lane-$VERSION.apk" Lane-latest.apk
           sha256sum *.apk > SHA256SUMS-android.txt
       - name: Upload to the draft release
         env:
