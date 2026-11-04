@@ -131,6 +131,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build DMG and ZIP for both architectures
         run: pnpm exec vite build && pnpm exec electron-builder --mac --x64 --arm64 --publish never
+      - name: Verify macOS application signatures
+        run: |
+          for app in release/mac*/Lane.app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            codesign --display --verbose=4 "$app" 2>&1 | grep -q 'Signature=adhoc'
+          done
       - name: Verify updater metadata and create checksums
         run: |
           test -f release/latest-mac.yml

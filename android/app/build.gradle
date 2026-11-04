@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+def lanePackage = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+def laneVersionParts = lanePackage.version.tokenize('.').collect { it as int }
+def laneVersionCode = laneVersionParts[0] * 10000 + laneVersionParts[1] * 100 + laneVersionParts[2]
+
 android {
     namespace = "com.therikky.lane"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,8 +12,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes these from package.json (LANE_VERSION_CODE / LANE_VERSION_NAME)
-        versionCode((System.getenv("LANE_VERSION_CODE") ?: "1") as int)
-        versionName(System.getenv("LANE_VERSION_NAME") ?: "1.0")
+        versionCode((System.getenv("LANE_VERSION_CODE") ?: laneVersionCode.toString()) as int)
+        versionName(System.getenv("LANE_VERSION_NAME") ?: lanePackage.version)
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

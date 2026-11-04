@@ -7,6 +7,7 @@ import {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { splitJoinedArtists } from "@/shared/api/track";
 import type { TrackArtist } from "@/shared/types";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
@@ -52,29 +53,16 @@ export default function ArtistLink({
     return () => window.removeEventListener("resize", measure);
   }, [measure]);
 
-  // every artist of this line, for the phone's artist sheet
-  const sheetArtists: ArtistSheetArtist[] = (() => {
-    if (artistList && artistList.length > 0) {
-      return artistList
-        .map((artist) => ({
-          id:
-            artist.id && artist.id !== "unknown"
-              ? artist.id
-              : artistList.length === 1 && artistId && artistId !== "unknown"
-                ? artistId
-                : artist.name,
-          name: artist.name,
-        }))
-        .filter((a) => a.id && a.id !== "unknown");
-    }
-    const text = name ?? artists ?? "";
-    if (artistId && artistId !== "unknown") return [{ id: artistId, name: text }];
-    return text
-      .split(",")
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .map((part) => ({ id: part, name: part }));
-  })();
+  // Normalize here too: saved tracks may still contain old joined credits.
+  const normalized = splitJoinedArtists(artistList?.length ? artistList : [
+    { id: artistId, name: name ?? artists ?? "" },
+  ]);
+  const sheetArtists: ArtistSheetArtist[] = normalized.map((artist, index) => ({
+    id: artist.id && artist.id !== "unknown"
+      ? artist.id
+      : index === 0 && artistId && artistId !== "unknown" ? artistId : artist.name,
+    name: artist.name,
+  }));
 
   /** desktop: open the artist; phone: slide up the artist sheet first */
   const goArtist = (targetId: string) => {
@@ -89,155 +77,25 @@ export default function ArtistLink({
     navigate(`/artist?id=${encodeURIComponent(targetId)}`);
   };
 
-  let innerContent: React.ReactNode = null;
-
-  if (artistList && artistList.length > 0) {
-    innerContent = artistList.map((artist, index) => {
-      const targetId =
-        artist.id && artist.id !== "unknown"
-          ? artist.id
-          : artistList.length === 1 && artistId && artistId !== "unknown"
-            ? artistId
-            : artist.name;
-      const isClickable = Boolean(targetId && targetId !== "unknown");
-      return (
-        <Fragment key={artist.id || `${artist.name}-${index}`}>
-          {index > 0 && (
-            <span className="select-none whitespace-pre">
-              {separator}
-            </span>
-          )}
-          <span
-            role={isClickable ? "button" : undefined}
-            tabIndex={isClickable ? 0 : undefined}
-            className={
-              isClickable
-                ? "cursor-pointer hover:text-text-primary transition-colors duration-150 prevent-seek"
-                : ""
-            }
-            onPointerDown={
-              isClickable
-                ? (e) => {
-                    e.stopPropagation();
-                  }
-                : undefined
-            }
-            onClick={
-              isClickable
-                ? (e) => {
-                    e.stopPropagation();
-                    goArtist(targetId);
-                  }
-                : undefined
-            }
-            onKeyDown={
-              isClickable
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      goArtist(targetId);
-                    }
-                  }
-                : undefined
-            }
-          >
-            {artist.name}
-          </span>
-        </Fragment>
-      );
-    });
-  } else {
-    const text = name ?? artists;
-    if (!text) return null;
-
-    if (artistId && artistId !== "unknown") {
-      innerContent = (
-        <span
-          role="button"
-          tabIndex={0}
-          className="cursor-pointer hover:text-text-primary transition-colors duration-150 prevent-seek"
-          onPointerDown={(e) => {
+  const innerContent = sheetArtists.map((artist, index) => (
+    <Fragment key={`${artist.id}-${index}`}>
+      {index > 0 && <span className="select-none whitespace-pre">{separator}</span>}
+      <span
+        role="button"
+        tabIndex={0}
+        className="cursor-pointer hover:text-text-primary transition-colors duration-150 prevent-seek"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); goArtist(artist.id); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
             e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            goArtist(artistId);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              goArtist(artistId);
-            }
-          }}
-        >
-          {text}
-        </span>
-      );
-    } else {
-      const parts = text
-        .split(",")
-        .map((p) => p.trim())
-        .filter(Boolean);
-      if (parts.length > 1) {
-        innerContent = parts.map((part, index) => (
-          <Fragment key={`${part}-${index}`}>
-            {index > 0 && (
-              <span className="select-none whitespace-pre">
-                {separator}
-              </span>
-            )}
-            <span
-              role="button"
-              tabIndex={0}
-              className="cursor-pointer hover:text-text-primary transition-colors duration-150 prevent-seek"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                goArtist(part);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  goArtist(part);
-                }
-              }}
-            >
-              {part}
-            </span>
-          </Fragment>
-        ));
-      } else {
-        innerContent = (
-          <span
-            role="button"
-            tabIndex={0}
-            className="cursor-pointer hover:text-text-primary transition-colors duration-150 prevent-seek"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              goArtist(text);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                goArtist(text);
-              }
-            }}
-          >
-            {text}
-          </span>
-        );
-      }
-    }
-  }
+            goArtist(artist.id);
+          }
+        }}
+      >{artist.name}</span>
+    </Fragment>
+  ));
 
   const maskStyle = delta > 0
     ? {

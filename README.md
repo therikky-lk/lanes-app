@@ -36,6 +36,10 @@
 
 ---
 
+## Версия 1.7.8
+
+Исправлены отдельные ссылки и карточки исполнителей в совместных треках на телефоне и ПК. Сокращены фоновые запросы: очередь Android готовит три следующих трека вместо десяти, отсутствующие на сервере треки временно запоминаются, а неудачные офлайн-загрузки повторяются с увеличивающейся паузой.
+
 ## ✨ Возможности
 
 ### 🎧 Мой вайб
@@ -68,9 +72,9 @@
 | Платформа | Установка |
 |---|---|
 | Windows 10/11 | `Lane-Setup-*.exe` — установщик или `Lane-*-portable.exe` — портативная версия |
-| macOS 11+ | `Lane-*-arm64.dmg` для Apple Silicon (M1 и новее) или `Lane-*-x64.dmg` для Intel — открой образ и перетащи Lane в «Программы» |
-| Linux (x86_64) | `Lane-*-x86_64.AppImage` — сделай файл исполняемым и запусти |
-| Android 7+ | `Lane-vx.x.x.apk` — скачай и установи |
+| Linux (x86_64) | `Lane-*-x64.AppImage` — сделай файл исполняемым и запусти |
+| macOS Intel / Apple Silicon | `Lane-*-x64.dmg` / `Lane-*-arm64.dmg` — перенеси Lane в Applications |
+| Android 7+ | `Lane-*.apk` — скачай и разреши установку из этого источника |
 | Ubuntu / Debian / Linux Mint | Установи пакет `lane_*_amd64.deb` |
 | Fedora / openSUSE | Установи пакет `lane-*.x86_64.rpm` |
 
@@ -80,18 +84,22 @@
 
 ### macOS
 
-1. Скачай `Lane-*.dmg` и открой его.
-2. Перетащи Lane в папку «Программы».
-3. Если macOS пишет, что приложение повреждено или от неизвестного разработчика, выполни в терминале:
+Выбери DMG для своего процессора: `arm64` для Apple Silicon, `x64` для Intel. Перенеси Lane в Applications и запускай оттуда.
+
+Сборки 1.7.8 имеют локальную подпись (ad hoc), но не сертификат Developer ID и не нотарификацию Apple. Это исправляет отсутствие подписи пакета, однако Gatekeeper может по-прежнему блокировать скачанное приложение. После попытки запуска разреши открытие Lane в «Системные настройки → Конфиденциальность и безопасность».
+
+Если macOS сообщает «приложение повреждено», сначала скачай пакет заново и сравни SHA-256 с `SHA256SUMS-macos.txt` в релизе. Для проверенной копии из официального релиза можно удалить карантин только у Lane:
 
 ```bash
-xattr -cr /Applications/Lane.app
+xattr -dr com.apple.quarantine /Applications/Lane.app
 ```
+
+Полностью убрать предупреждения Gatekeeper для скачанных сборок можно только с подписью Developer ID и нотарификацией Apple.
 
 ### Android
 
-1. Скачай `Lane-vx.x.x.apk`.
-2. Разреши установку из неизвестных источников, если система попросит.
+1. Скачай `Lane-*.apk`.
+2. Разреши установку из этого источника, если система попросит.
 3. Открой APK и установи приложение.
 
 ### Linux
@@ -120,8 +128,8 @@ sudo dnf install ./lane-*.x86_64.rpm
 ## 🛠 Сборка из исходников
 
 ### Требования
-- Node.js
-- pnpm
+- Node.js 22
+- pnpm 10
 - Git
 
 ### Установка зависимостей
@@ -137,7 +145,7 @@ pnpm install
 Сначала собери приложение:
 
 ```bash
-pnpm exec vite build
+pnpm build
 ```
 
 Для сборки веб-версии без оболочки Electron выполни `pnpm build:web`. Готовые файлы появятся в `dist-web/`.
@@ -154,11 +162,23 @@ pnpm exec electron-builder --linux
 pnpm exec electron-builder --win
 ```
 
-Для macOS (сборка возможна только на Mac):
+Для macOS (на Mac):
 
 ```bash
-pnpm exec electron-builder --mac
+pnpm electron:build:mac
 ```
+
+Для Android нужны JDK 21 и Android SDK. Версия локальной сборки читается из `package.json`; CI может переопределить её через `LANE_VERSION_NAME` и `LANE_VERSION_CODE`.
+
+```bash
+LANE_TARGET=android pnpm exec vite build --outDir dist-android
+pnpm build:potoken
+pnpm exec cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+Релизный APK собирается workflow `.github/workflows/release.yml` с ключом подписи. Секреты подписи и пароли не добавляй в исходники.
 
 Готовые пакеты появятся в каталоге `release/`.
 

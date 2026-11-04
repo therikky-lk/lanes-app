@@ -36,6 +36,7 @@ interface OfflineLibraryState {
 }
 let refreshRequest: Promise<void> | undefined;
 let controller: AbortController | undefined;
+const downloadFailures = new Map<string, { attempts: number; retryAt: number }>();
 let running = false;
 let rerun = false;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -102,9 +103,14 @@ async function syncDownloads() {
   const tracks = likedTracksSnapshot().filter(track => !isLocalTrackId(track.id) && !saved.has(track.id));
   let usage = store.getState().downloads.reduce((sum, entry) => sum + entry.byteSize, 0);
   let failed = 0;
+  let attempted = 0;
   store.setState({ pending: tracks.length });
   for (let i = 0; i < tracks.length; i++) {
     if (!store.getState().enabled) return;
+    if ((downloadFailures.get(tracks[i].id)?.retryAt ?? 0) > Date.now()) { failed += 1; continue; }
+    // Yield between small batches instead of resolving an entire library at once.
+    if (attempted >= 3) { retryLater(15_000); return; }
+    attempted += 1;
     if (!navigator.onLine) { store.setState({ phase: "offline" }); return; }
     const limit = store.getState().limitBytes;
     if (limit > 0 && usage >= limit) { store.setState({ phase: "limit" }); return; }
@@ -132,6 +138,7 @@ async function syncDownloads() {
       const currentLimit = store.getState().limitBytes;
       if (currentLimit > 0 && usage + blob.size > currentLimit) { store.setState({ phase: "limit" }); return; }
       await downloadsDb.put(track, blob);
+      downloadFailures.delete(track.id);
       usage += blob.size;
       await audioCache.deleteAudio(track.id);
       await store.getState().refresh();
@@ -139,14 +146,17 @@ async function syncDownloads() {
     } catch (error) {
       if (!store.getState().enabled) return;
       if (error instanceof DOMException && error.name === "QuotaExceededError") { store.setState({ phase: "error" }); return; }
+      const id = tracks[i].id;
+      const attempts = (downloadFailures.get(id)?.attempts ?? 0) + 1;
+      downloadFailures.set(id, { attempts, retryAt: Date.now() + Math.min(30 * 60_000, 60_000 * 2 ** Math.min(attempts, 5)) });
       failed += 1;
     }
   }
   store.setState({ phase: failed ? "error" : "idle", pending: failed });
   if (failed) retryLater();
 }
-function retryLater() {
-  retryTimer = setTimeout(() => { retryTimer = undefined; scheduleDownloads(); }, 60_000);
+function retryLater(delayMs = 60_000) {
+  retryTimer = setTimeout(() => { retryTimer = undefined; scheduleDownloads(); }, delayMs);
 }
 let started = false;
 export function initOfflineLibrary() {

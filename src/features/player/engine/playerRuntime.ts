@@ -51,9 +51,10 @@ export class PlayerRuntime {
   private preloadingTrackId: string | null = null;
   /** Android: the track handed to the native player to play next */
   private nativeQueued: { afterTrackId: string; ids: string; expiry: Map<string, number | null> } | null = null;
+  private nativeQueuePending: string | null = null;
   private nativeQueueAbort: AbortController | null = null;
   /** stream links resolved for the native look-ahead, by track id */
-  private nativeStreams = new Map<string, { url?: string; blob?: Blob; expiresAtMs?: number | null }>();
+  private nativeStreams = new Map<string, PlaybackStream>();
   private preloadingPromise: Promise<void> | null = null;
   private preloadAbortController: AbortController | null = null;
   private backgroundCacheAbortController: AbortController | null = null;
@@ -636,14 +637,18 @@ export class PlayerRuntime {
     if (tracks.length === 0) {
       this.nativeQueueAbort?.abort();
       this.nativeQueueAbort = null;
+      this.nativeQueuePending = null;
       if (this.nativeQueued) clearNativeNext();
       this.nativeQueued = null;
       return;
     }
+    const pendingKey = `${afterTrackId}:${ids}`;
+    if (this.nativeQueuePending === pendingKey) return;
     if (this.nativeQueued?.afterTrackId === afterTrackId && this.nativeQueued.ids === ids) return;
     this.nativeQueueAbort?.abort();
     const controller = new AbortController();
     this.nativeQueueAbort = controller;
+    this.nativeQueuePending = pendingKey;
     // resolve one by one and hand over what's ready each time, so the very
     // next track is there as soon as possible
     // streams resolved for the previous look-ahead are reused: after a track
@@ -656,6 +661,7 @@ export class PlayerRuntime {
       // how long until each track starts playing: its link must still work then
       let startsInMs = 0;
       for (const track of tracks) {
+        if (controller.signal.aborted) return;
         try {
           const cached = await downloadsDb.get(track.id).catch(() => undefined) ?? await linerDb.getAudio(track.id).catch(() => null);
           let stream: { url?: string; blob?: Blob; expiresAtMs?: number | null };
@@ -675,7 +681,7 @@ export class PlayerRuntime {
               expiresAtMs: resolved.expiresAtMs ?? null,
             };
             // a Blob is kept by the cache above already; links are worth keeping
-            if (!resolved.blob) this.nativeStreams.set(track.id, stream);
+            if (!resolved.blob) this.nativeStreams.set(track.id, resolved);
           }
           startsInMs += track.durationMs > 0 ? track.durationMs : 4 * 60_000;
           if (controller.signal.aborted) return;
@@ -708,7 +714,9 @@ export class PlayerRuntime {
         const clients = new Set(ready.map((r) => (r.source.url ? streamHeadersFor(r.source.url)["User-Agent"] ?? "-" : "file")));
         diag(`queued ahead natively: ${ready.length} track(s), ${clients.size} client UA(s)`);
       }
-    })();
+    })().finally(() => {
+      if (this.nativeQueueAbort === controller) this.nativeQueuePending = null;
+    });
   }
 
   public async preloadTrack(track: Track): Promise<void> {
@@ -908,7 +916,11 @@ export class PlayerRuntime {
         return;
       }
 
-      const stream = await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
+      const prepared = this.nativeStreams.get(track.id);
+      this.nativeStreams.delete(track.id);
+      const stream = prepared && (prepared.expiresAtMs == null || prepared.expiresAtMs > Date.now() + NATIVE_STREAM_MARGIN_MS)
+        ? prepared
+        : await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
       this.ttfbMs = Math.round(performance.now() - this.loadStartTime);
 
       if (epoch !== this.loadEpoch || controller.signal.aborted) {

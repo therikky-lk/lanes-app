@@ -1,3 +1,4 @@
+import { splitJoinedArtists } from "@/shared/api/track";
 import { useState } from "react";
 import type { TrackArtist } from "@/shared/types";
 import { useArtistAvatar } from "../hooks/useArtistAvatar";
@@ -11,7 +12,7 @@ function Avatar({ artist, size }: { artist: TrackArtist; size: number }) {
   </span>;
 }
 export function ArtistAvatars({ artistId, artistList, name, size = 18 }: { artistId?: string; artistList?: TrackArtist[]; name: string; size?: number }) {
-  const artists = artistList?.length ? artistList : name.split(",").map((part, index) => ({ id: index === 0 ? artistId : undefined, name: part.trim() }));
+  const artists = splitJoinedArtists(artistList?.length ? artistList : [{ id: artistId, name }]);
   return <span aria-hidden="true" className="inline-flex shrink-0 items-center -space-x-[6px]">
     {artists.filter(artist => artist.name).slice(0, 3).map((artist, index) => <Avatar key={`${artist.id ?? artist.name}-${index}`} artist={artist} size={size} />)}
   </span>;

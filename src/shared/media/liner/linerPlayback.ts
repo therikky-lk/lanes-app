@@ -17,19 +17,22 @@ const REQUEST_TIMEOUT_MS = 5_000;
 const UNAVAILABLE_BACKOFF_MS = 10 * 60_000;
 
 let pausedUntil = 0;
+let consecutiveMisses = 0;
+const missingTracks = new Map<string, number>();
 
 function pause(ms: number, reason: string): void {
-  pausedUntil = Date.now() + ms;
+  pausedUntil = Math.max(pausedUntil, Date.now() + ms);
   log("yellow", "playback", `liner audio paused for ${Math.round(ms / 1000)}s: ${reason}`);
 }
 
 // presigned r2 url, or null so the caller falls back to youtube
 export async function resolveLinerStream(videoId: string, signal?: AbortSignal): Promise<LinerAudioStream | null> {
-  if (Date.now() < pausedUntil || !getAuthSession()?.accessToken) return null;
+  signal?.throwIfAborted();
+  if (Date.now() < pausedUntil || Date.now() < (missingTracks.get(videoId) ?? 0) || !getAuthSession()?.accessToken) return null;
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   try {
     const token = await getValidAccessToken();
-    if (!token) return null;
+    if (!token || Date.now() < pausedUntil) return null;
     const path = `/v1/tracks/${encodeURIComponent(videoId)}/playback`;
     const signedHeaders = await signApiRequest("POST", path);
     const res = await fetch(`${getApiBaseUrl()}${path}`, {
@@ -43,15 +46,30 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
       pausedUntil = Date.now() + UNAVAILABLE_BACKOFF_MS;
       return null;
     }
-    if (res.ok) return (await res.json()) as LinerAudioStream;
+    if (res.ok) {
+      consecutiveMisses = 0;
+      return (await res.json()) as LinerAudioStream;
+    }
 
     const body = (await res.json().catch(() => ({}))) as { code?: string; retryAfterSeconds?: number };
-    if (res.status === 404 && body.code === "PLAYBACK_NOT_FOUND") return null;
+    if (res.status === 404 && body.code === "PLAYBACK_NOT_FOUND") {
+      missingTracks.delete(videoId);
+      missingTracks.set(videoId, Date.now() + UNAVAILABLE_BACKOFF_MS);
+      if (missingTracks.size > 256) missingTracks.delete(missingTracks.keys().next().value!);
+      // A sparse server catalog should not receive an ingest request for every
+      // track in a background queue. Probe it again after a short cooldown.
+      if (++consecutiveMisses >= 3) {
+        consecutiveMisses = 0;
+        pause(60_000, "tracks absent from server catalog");
+      }
+      return null;
+    }
     if (res.status === 429) pause(Math.max(1, body.retryAfterSeconds ?? 60) * 1000, "rate limited");
     else if (res.status === 404 || res.status === 503) pause(UNAVAILABLE_BACKOFF_MS, `api answered ${res.status}`);
     return null;
   } catch (error) {
     if (isAbortError(error, signal) && signal?.aborted) throw error;
+    pause(30_000, "network failure");
     log("yellow", "playback", `liner audio lookup failed, using youtube: ${String(error)}`);
     return null;
   }
@@ -59,4 +77,6 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
 
 export function resetLinerPlaybackPause(): void {
   pausedUntil = 0;
+  consecutiveMisses = 0;
+  missingTracks.clear();
 }

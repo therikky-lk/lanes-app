@@ -3,13 +3,12 @@ import type { ApiTrack } from "../contracts";
 import type { Track } from "../types";
 import { cleanTrackTitle } from "../utils/trackTitle";
 
-// "Koss & ПЛУТТО", "A feat. B", "A x B": several artists in one name
-const ARTIST_SEPARATOR = /\s*,\s*|\s+(?:&|×|x|feat\.?|ft\.?|featuring)\s+/i;
+// Commas and explicit feature credits separate artists; "&" can be a band name.
+const ARTIST_SEPARATOR = /\s*,\s*|\s+(?:×|x|feat\.?|ft\.?|featuring)\s+/i;
 
 /**
- * One entry per artist. Names that came joined ("Koss & ПЛУТТО") are split,
- * unless the catalog links the whole name to one artist (a band such as
- * "Simon & Garfunkel" has its own page, so its id stays with the full name).
+ * One entry per artist. Commas always separate credits. Names containing
+ * "&" stay intact (for example "Artik & Asti" or "Simon & Garfunkel").
  */
 export function splitJoinedArtists(list: { id?: string; name: string }[]): { id: string; name: string }[] {
   const out: { id: string; name: string }[] = [];
@@ -24,11 +23,14 @@ export function splitJoinedArtists(list: { id?: string; name: string }[]): { id:
     const name = (artist.name ?? "").trim();
     const id = artist.id ?? "";
     const linked = Boolean(id && id !== "unknown");
-    if (linked || !ARTIST_SEPARATOR.test(name)) {
+    if (seen.has(name.toLowerCase())) continue;
+    if ((linked && !name.includes(",")) || !ARTIST_SEPARATOR.test(name)) {
       push(id, name);
       continue;
     }
-    for (const part of name.split(ARTIST_SEPARATOR)) push("", part.trim());
+    // A catalog ID on a comma-joined credit belongs to the first artist only.
+    const parts = name.includes(",") ? name.split(/\s*,\s*/) : name.split(ARTIST_SEPARATOR);
+    parts.forEach((part, index) => push(index === 0 && linked ? id : "", part.trim()));
   }
   return out;
 }

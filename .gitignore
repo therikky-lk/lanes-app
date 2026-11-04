@@ -68,3 +68,5 @@ scratch/
 *.test.tsx
 
 /dist-web
+
+!/build/entitlements.mac.plist
