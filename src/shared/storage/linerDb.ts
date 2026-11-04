@@ -689,18 +689,18 @@ class LinerDb {
   }
 
   async clearStore(storeName: "tracks" | "audio" | "lyrics" | "artists"): Promise<void> {
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(storeName, "readwrite");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("Cache clear failed"));
+      tx.onabort = () => reject(tx.error ?? new Error("Cache clear aborted"));
+      tx.objectStore(storeName).clear();
+    });
     if (storeName === "tracks") this.memTracks.clear();
     if (storeName === "audio") this.memAudio.clear();
     if (storeName === "lyrics") this.memLyrics.clear();
     if (storeName === "artists") this.memArtists.clear();
-
-    await this.runTransaction(storeName, "readwrite", (store) => {
-      return new Promise<void>((resolve) => {
-        const req = store.clear();
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve();
-      });
-    });
   }
 
   async close(): Promise<void> {

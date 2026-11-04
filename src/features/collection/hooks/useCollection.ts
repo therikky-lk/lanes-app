@@ -1,3 +1,4 @@
+import youtubeLikedCover from "@/assets/youtube-liked.svg";
 import { useEffect, useState } from "react";
 import { api, mediaUrl, toClientTrack } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
@@ -71,7 +72,7 @@ export function useCollection(
                 title: youtubeCollection.title,
                 author: youtubeCollection.author,
                 description: youtubeCollection.description,
-                coverUrl: youtubeCollection.cover?.url ? mediaUrl(youtubeCollection.cover.url) : tracks[0]?.coverUrl || "",
+                coverUrl: decodedId.replace(/^VL/, "") === "LM" ? youtubeLikedCover : youtubeCollection.cover?.url ? mediaUrl(youtubeCollection.cover.url) : tracks[0]?.coverUrl || "",
                 tracks,
               } satisfies CollectionPageData;
             }
