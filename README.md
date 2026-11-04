@@ -24,6 +24,8 @@
   <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest-x64.dmg">
     <img src="https://img.shields.io/badge/Download-macOS%20(Intel)-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS (Intel)">
   </a>
+  <p>
+</p>
   <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest.AppImage">
     <img src="https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux">
   </a>
