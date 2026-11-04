@@ -1,3 +1,4 @@
+import OfflineCover from "@/features/library/ui/OfflineCover";
 import { shuffle as shuffleList } from "@/shared/utils/shuffle";
 import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -103,12 +104,8 @@ export default function LocalTracksPage() {
         </button>
 
         <header className="flex flex-wrap items-end gap-[20px] px-[32px] pt-[20px] pb-[18px]" data-no-window-drag>
-          <div
-            className={`flex h-[120px] w-[120px] shrink-0 items-center justify-center rounded-md ${
-              hasCustomBg ? "apple-glass-static" : "bg-bg-panel"
-            }`}
-          >
-            <MusicLine size={46} className={hasCustomBg ? "text-white" : "text-text-tertiary"} />
+          <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-md">
+            <OfflineCover kind="local" />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{t("local.title") || "My tracks"}</h1>

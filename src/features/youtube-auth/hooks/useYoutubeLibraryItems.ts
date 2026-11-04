@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
+import { useEffect, useMemo, useState } from "react";
 import { fetchYoutubeAccountPlaylists, useYoutubePreferences } from "@/shared/media/youtube";
 import { useYoutubeAccount } from "./useYoutubeAccount";
 import type { LibraryItemViewModel } from "@/features/library/types";
@@ -53,6 +54,10 @@ export function useYoutubeLibraryItems() {
     return () => { active = false; };
   }, [session, signedIn, syncLibrary]);
 
-  if (!signedIn || !syncLibrary || !session) return EMPTY;
-  return loaded.session === session ? loaded.items : snapshots.get(session)?.items ?? EMPTY;
+  const items = !signedIn || !syncLibrary || !session ? EMPTY
+    : loaded.session === session ? loaded.items : snapshots.get(session)?.items ?? EMPTY;
+  return useMemo(() => items.map(item => {
+    const imageUrl = youtubePlaylistArtwork(item.id, item.imageUrl);
+    return imageUrl === item.imageUrl ? item : { ...item, imageUrl };
+  }), [items]);
 }
