@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Музыкальный плеер для Windows, Android и Linux.
+  Музыкальный плеер для Windows, macOS, Android и Linux.
   <br>
   Персональное радио, тексты песен и твоя собственная музыкальная библиотека — в одном приложении.
 </p>
@@ -18,8 +18,17 @@
   <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest-setup.exe">
     <img src="https://img.shields.io/badge/Download-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows">
   </a>
+  <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest-arm64.dmg">
+    <img src="https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS (Apple Silicon)">
+  </a>
+  <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest-x64.dmg">
+    <img src="https://img.shields.io/badge/Download-macOS%20(Intel)-555555?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS (Intel)">
+  </a>
   <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest.AppImage">
     <img src="https://img.shields.io/badge/Download-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Download for Linux">
+  </a>
+  <a href="https://github.com/therikky-lk/lanes-app/releases/download/releases/Lane-latest.apk">
+    <img src="https://img.shields.io/badge/Download-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Download for Android">
   </a>
 </p>
 
@@ -57,10 +66,33 @@
 | Платформа | Установка |
 |---|---|
 | Windows 10/11 | `Lane-Setup-*.exe` — установщик или `Lane-*-portable.exe` — портативная версия |
+| macOS 11+ | `Lane-*-arm64.dmg` для Apple Silicon (M1 и новее) или `Lane-*-x64.dmg` для Intel — открой образ и перетащи Lane в «Программы» |
 | Linux (x86_64) | `Lane-*-x86_64.AppImage` — сделай файл исполняемым и запусти |
-| Android 7+ | `Lane-vx.x.x.apk` - просто скачай |
+| Android 7+ | `Lane-vx.x.x.apk` — скачай и установи |
 | Ubuntu / Debian / Linux Mint | Установи пакет `lane_*_amd64.deb` |
 | Fedora / openSUSE | Установи пакет `lane-*.x86_64.rpm` |
+
+### Windows
+
+Запусти установщик `Lane-Setup-*.exe` или portable-версию `Lane-*-portable.exe`.
+
+### macOS
+
+1. Скачай `Lane-*.dmg` и открой его.
+2. Перетащи Lane в папку «Программы».
+3. Если macOS пишет, что приложение повреждено или от неизвестного разработчика, выполни в терминале:
+
+```bash
+xattr -cr /Applications/Lane.app
+```
+
+### Android
+
+1. Скачай `Lane-vx.x.x.apk`.
+2. Разреши установку из неизвестных источников, если система попросит.
+3. Открой APK и установи приложение.
+
+### Linux
 
 Для AppImage:
 
@@ -118,6 +150,12 @@ pnpm exec electron-builder --linux
 
 ```bash
 pnpm exec electron-builder --win
+```
+
+Для macOS (сборка возможна только на Mac):
+
+```bash
+pnpm exec electron-builder --mac
 ```
 
 Готовые пакеты появятся в каталоге `release/`.
