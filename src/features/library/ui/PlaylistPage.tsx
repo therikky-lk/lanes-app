@@ -179,9 +179,7 @@ function LibraryPlaylistContent() {
     error: playlistError,
   } = usePlaylist(isLikesMode ? null : decodedId);
 
-  const { data: likesData, isLoading: likesLoading } = useLikedTracks(
-    isLikesMode ? { limit: 1000, offset: 0 } : undefined,
-  );
+  const { data: likesData, isLoading: likesLoading } = useLikedTracks();
 
   const isLoading = isLikesMode ? likesLoading : playlistLoading;
 

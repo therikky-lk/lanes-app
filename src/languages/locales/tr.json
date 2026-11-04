@@ -895,7 +895,7 @@
       "your_music": "Müziğiniz",
       "cache_title": "Önbellek",
       "free_space": "{size} bedava",
-      "liked_toggle": "Beğenilen şarkıları indir",
+      "liked_toggle": "Dinlenen beğenilen şarkıları sakla",
       "liked_desc": "Bu cihazda: {songs}",
       "local_desc": "{songs} · orijinal dosyalar saklanır",
       "remove": "İndirilenleri kaldır",

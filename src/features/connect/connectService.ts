@@ -742,9 +742,10 @@ export async function startConnect(): Promise<void> {
     keys.topic,
     (text) => void onRelayMessage(text),
     (online) => {
-      if (online !== useConnectStore.getState().online) diag(`connect: relay ${online ? "connected" : "unreachable (all relays)"}`);
+      const wasOnline = useConnectStore.getState().online;
+      if (online !== wasOnline) diag(`connect: relay ${online ? "connected" : "unreachable (all relays)"}`);
       useConnectStore.setState({ online });
-      if (online) void send({ t: "hello", from: me() });
+      if (online && !wasOnline) void send({ t: "hello", from: me() });
     },
   );
   installHooks();

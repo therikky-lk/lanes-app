@@ -81,7 +81,7 @@ function browserSubscribe(
 
   const schedulePoll = () => {
     if (closed || pollTimer || socketOpen() || !networkOnline()) return;
-    pollTimer = setTimeout(() => void poll(), Math.min(POLL_MS * 2 ** Math.min(pollFailures, 4), 15_000));
+    pollTimer = setTimeout(() => void poll(), Math.min(POLL_MS * 2 ** Math.min(pollFailures, 6), 120_000));
   };
 
   const connect = () => {
@@ -133,7 +133,7 @@ function browserSubscribe(
     // fill the gap by polling until the socket is back
     if (failures === 1) void poll();
     else schedulePoll();
-    const delay = Math.min(1000 * 2 ** Math.min(failures - 1, 4), 15_000);
+    const delay = Math.min(1000 * 2 ** Math.min(failures - 1, 7), 120_000);
     retry = setTimeout(connect, delay);
   };
 
@@ -189,6 +189,7 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
   const lastError = new Map<string, string>();
   const seen = new Set<string>();
   let closed = false;
+  const cooldowns = new Map<string, number>();
 
   const deliver = (text: string) => {
     // the same message comes from every relay: handle it once
@@ -224,6 +225,7 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
       if (closed) throw new Error("Relay closed");
       if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error("Network offline");
       const publishOne = async (relay: string) => {
+        if (Date.now() < (cooldowns.get(relay) ?? 0)) throw new Error("HTTP 429 (relay cooldown)");
         let lastError: unknown;
         for (let attempt = 0; attempt < 3; attempt++) {
           if (closed || (typeof navigator !== "undefined" && navigator.onLine === false)) break;
@@ -237,15 +239,21 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
             return;
           } catch (error) {
             lastError = error;
+            if (/\b429\b/.test(String(error))) {
+              cooldowns.set(relay, Date.now() + 5 * 60_000);
+              break;
+            }
             if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
           }
         }
         throw lastError instanceof Error ? lastError : new Error(String(lastError));
       };
-      const reachable = RELAYS.filter(relay => online.get(relay));
+      const available = RELAYS.filter(relay => Date.now() >= (cooldowns.get(relay) ?? 0));
+      const reachable = available.filter(relay => online.get(relay));
+      if (available.length === 0) throw new Error("HTTP 429 (relays cooling down)");
       try {
         // One delivered copy is enough; a failed mirror must not delay controls.
-        await Promise.any((reachable.length ? reachable : RELAYS).map(publishOne));
+        await Promise.any((reachable.length ? reachable : available).map(publishOne));
       } catch (error) {
         const reason = error instanceof AggregateError ? error.errors[0] : error;
         throw reason instanceof Error ? reason : new Error(String(reason));

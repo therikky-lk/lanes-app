@@ -895,7 +895,7 @@
       "your_music": "Twoja muzyka",
       "cache_title": "Pamięć podręczna",
       "free_space": "{size} bezpłatnie",
-      "liked_toggle": "Pobieraj polubione utwory",
+      "liked_toggle": "Zachowuj odsłuchane ulubione",
       "liked_desc": "Na tym urządzeniu: {songs}",
       "local_desc": "{songs} · Zachowane są oryginalne pliki",
       "remove": "Usuń pliki do pobrania",

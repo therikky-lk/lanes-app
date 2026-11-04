@@ -299,3 +299,10 @@ export function streamHeadersFor(url: string): Record<string, string> {
   if (ua) headers["User-Agent"] = ua;
   return headers;
 }
+
+/** Audio CDNs need native networking too: WebView CORS can block cache writes
+ * even while the native player successfully plays the same URL. */
+export function fetchAudioForCache(url: string, signal?: AbortSignal): Promise<Response> {
+  if (!isNativeApp()) return fetch(url, { signal });
+  return nativeHttpFetch(url, "GET", new Headers(streamHeadersFor(url)), undefined, signal);
+}

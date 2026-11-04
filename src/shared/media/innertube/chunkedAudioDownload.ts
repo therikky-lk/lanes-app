@@ -1,3 +1,4 @@
+import { fetchAudioForCache } from "@/shared/platform/native";
 import { runWorkerPool } from "@/shared/utils/workerPool";
 
 export interface AudioDownloadOptions {
@@ -30,7 +31,7 @@ async function fetchChunk(url: string, start: number, end: number, signal?: Abor
   let lastError: unknown = null;
   for (let attempt = 0; attempt < MAX_CHUNK_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(withRange(url, start, end), { signal });
+      const response = await fetchAudioForCache(withRange(url, start, end), signal);
       if (!response.ok) throw new Error(`chunk ${start}-${end} returned HTTP ${response.status}`);
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.byteLength !== expected) throw new Error(`chunk ${start}-${end} returned ${bytes.byteLength} of ${expected} bytes`);
@@ -55,7 +56,7 @@ async function downloadInChunks(url: string, total: number, options: AudioDownlo
 }
 
 async function downloadWhole(url: string, signal?: AbortSignal): Promise<Uint8Array<ArrayBuffer> | null> {
-  const response = await fetch(url, { signal });
+  const response = await fetchAudioForCache(url, signal);
   if (!response.ok && response.status !== 206) return null;
   const totalBytes = Number(/\/(\d+)$/.exec(response.headers.get("content-range") ?? "")?.[1]);
   const bytes = new Uint8Array(await response.arrayBuffer());
