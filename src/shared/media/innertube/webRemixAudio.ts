@@ -82,7 +82,6 @@ async function mintContentPoToken(videoId: string): Promise<string> {
   if (isNativeApp()) {
     try {
       const { token } = await LanePoToken.mint({ identifier: videoId });
-      diag(`PO token ok (${token.length} chars)`);
       return token;
     } catch (error) {
       diag(`PO token failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -102,6 +101,7 @@ export async function resolveWebRemixAudioStream(
   videoId: string,
   options: { signal?: AbortSignal; preferredCodec?: "opus" | "aac"; preferHighest?: boolean } = {},
 ): Promise<ResolvedAudioStream> {
+  throwIfAborted(options.signal);
   installPlayerEvaluator();
   const [poToken, visitorData] = await Promise.all([mintContentPoToken(videoId), getClientVisitorData()]);
   throwIfAborted(options.signal);
