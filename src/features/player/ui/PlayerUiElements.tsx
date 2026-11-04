@@ -1,25 +1,28 @@
+import { useShallow } from "zustand/react/shallow";
+import { usePlayerStore } from "../store/playerStore";
+import { setArtworkInteracting } from "../store/artworkInteractionStore";
+import { coverSwipeIntent, coverSlideScale } from "./coverSwipe";
+import { ArtistAvatars } from "@/features/artist/ui/ArtistAvatars";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, memo } from "react";
 import { useLocation } from "react-router-dom";
 import {
   SkipNext,
   SkipPrevious,
-  MusicNote,
   Repeat,
   RepeatOne,
   Shuffle,
 } from "@solar-icons/react";
-import { HeartFill, HeartLine } from "@mingcute/react";
+import { HeartFill, HeartLine, Music2Fill } from "@mingcute/react";
 import {
   PlayerMorphIcon,
   ICON_PLAY,
   ICON_PAUSE,
 } from "./morphPlayerIcons";
-import { usePlayerState } from "../hooks/usePlayerState";
 import { playerEngine } from "../engine/playerEngine";
 import { isRadioContext, nextRepeatMode } from "../engine/radioMode";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { ArtistLink } from "@/features/artist";
 import { useCoverReady, CoverImage } from "@/features/covers";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
@@ -28,6 +31,8 @@ import { VolumePicker } from "./VolumePicker";
 import { TimelineSlider } from "./TimelineSlider";
 
 import { useTranslation } from "@/languages";
+
+const COVER_GAP = 16;
 
 const iconButtonClass =
   "inline-flex h-[40px] w-[40px] items-center justify-center text-white opacity-70 transition-all duration-150 ease-out hover:opacity-100 active:scale-[0.94] shrink-0 border-none bg-transparent cursor-pointer";
@@ -65,11 +70,17 @@ interface PlayerUiElementsProps {
   onClose?: () => void;
 }
 
-export function PlayerUiElements({
+function PlaybackTimeline({ width }: { width: string }) {
+  const state = usePlayerStore(useShallow(s => ({ positionMs: s.positionMs, durationMs: s.durationMs, fallbackDuration: s.currentTrack?.durationMs ?? 0 })));
+  return <TimelineSlider positionMs={state.positionMs} durationMs={state.durationMs > 0 ? state.durationMs : state.fallbackDuration}
+    onSeek={playerEngine.seek.bind(playerEngine)} showTime size="lg" className="text-[12px]" style={{ width }} />;
+}
+
+export const PlayerUiElements = memo(function PlayerUiElements({
   onDuration: _onDuration,
   onClose,
 }: PlayerUiElementsProps) {
-  const player = usePlayerState();
+  const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, queue: s.queue, currentIndex: s.currentIndex, status: s.status, repeat: s.repeat, shuffle: s.shuffle, playbackContext: s.playbackContext })));
 
   const track = player.currentTrack;
   const coverUrl = track?.coverUrl || "";
@@ -101,9 +112,23 @@ export function PlayerUiElements({
   // double tap likes the track (with a burst)
   const [heartShown, setHeartShown] = useState(false);
   const [burst, setBurst] = useState(0);
-  const [coverSwipeDirection, setCoverSwipeDirection] = useState(1);
+  const coverDragX = useMotionValue(0);
+  const coverStep = useRef(1);
+  const currentCoverScale = useTransform(coverDragX, x => coverSlideScale(x, coverStep.current, 0));
+  const previousCoverScale = useTransform(coverDragX, x => coverSlideScale(x, coverStep.current, -1));
+  const nextCoverScale = useTransform(coverDragX, x => coverSlideScale(x, coverStep.current, 1));
+  const coverAnimation = useRef<ReturnType<typeof animate> | null>(null);
+  const swipePending = useRef(false);
+  useLayoutEffect(() => {
+    coverAnimation.current?.stop();
+    setArtworkInteracting(false);
+    coverDragX.set(0);
+    swipePending.current = false;
+    coverPointerStartRef.current = null;
+  }, [track?.id, isMobile, coverDragX]);
+  useEffect(() => () => { coverAnimation.current?.stop(); setArtworkInteracting(false); }, []);
   const lastTapRef = useRef(0);
-  const coverPointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const coverPointerStartRef = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showHeart = useCallback(() => {
     setHeartShown(true);
@@ -115,7 +140,10 @@ export function PlayerUiElements({
   }, []);
   const onCoverPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isMobile || (e.target as HTMLElement).closest("button")) return;
-    coverPointerStartRef.current = { x: e.clientX, y: e.clientY };
+    if (swipePending.current || !e.isPrimary) return;
+    coverAnimation.current?.stop();
+    coverStep.current = e.currentTarget.getBoundingClientRect().width + COVER_GAP;
+    coverPointerStartRef.current = { x: e.clientX, y: e.clientY, axis: null };
   }, [isMobile]);
 
   const onCoverTap = useCallback(
@@ -123,16 +151,31 @@ export function PlayerUiElements({
       if (!isMobile || (e.target as HTMLElement).closest("button")) return;
       const start = coverPointerStartRef.current;
       coverPointerStartRef.current = null;
+      setArtworkInteracting(false);
       if (start) {
         const deltaX = e.clientX - start.x;
         const deltaY = e.clientY - start.y;
-        if (Math.abs(deltaX) >= 56 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25) {
+        const intent = start.axis === "y" ? null : coverSwipeIntent(deltaX, deltaY);
+        if (intent) {
           lastTapRef.current = 0;
-          setCoverSwipeDirection(deltaX < 0 ? 1 : -1);
-          if (deltaX < 0) void playerEngine.skipNext();
-          else void playerEngine.skipPrevious();
+          e.stopPropagation();
+          swipePending.current = true;
+          const distance = coverStep.current;
+          const before = track?.id;
+          coverAnimation.current = animate(coverDragX, intent === "next" ? -distance : distance, { duration: 0.18, ease: "easeOut" });
+          void coverAnimation.current.then(async () => {
+            try { if (intent === "next") await playerEngine.skipNext(); else await playerEngine.skipPrevious(); }
+            catch { /* The player reports playback failures through its normal state. */ }
+            finally {
+              if (playerEngine.getSnapshot().currentTrack?.id === before) {
+                swipePending.current = false;
+                coverAnimation.current = animate(coverDragX, 0, { type: "spring", stiffness: 350, damping: 32 });
+              }
+            }
+          });
           return;
         }
+        coverAnimation.current = animate(coverDragX, 0, { type: "spring", stiffness: 350, damping: 32 });
         if (Math.abs(deltaX) > 12 || Math.abs(deltaY) > 12) return;
       }
       const now = Date.now();
@@ -150,7 +193,7 @@ export function PlayerUiElements({
       showHeart();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [track, isLiked, likeMutation, showHeart, isMobile],
+    [track, isLiked, likeMutation, showHeart, isMobile, coverDragX],
   );
 
   const { t } = useTranslation();
@@ -162,45 +205,51 @@ export function PlayerUiElements({
       {/* Artwork: grows with the window */}
       <div
         style={{ width: S, height: S, touchAction: "pan-y" }}
-        className={`group/cover relative shrink-0 overflow-hidden rounded-2xl bg-black/20 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${
-          coverUrl && !isCoverLoaded ? "animate-pulse" : ""
+        className={`group/cover relative shrink-0 ${isMobile ? "overflow-visible" : "overflow-hidden rounded-2xl bg-black/20 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"} ${
+          coverUrl && !isCoverLoaded && !isMobile ? "animate-pulse" : ""
         }`}
+        data-player-artwork
+        data-no-sheet-drag
         onPointerDown={onCoverPointerDown}
-        onPointerUp={onCoverTap}
+        onPointerMove={event => {
+          const start = coverPointerStartRef.current;
+          if (!isMobile || !start || swipePending.current) return;
+          const dx = event.clientX - start.x, dy = event.clientY - start.y;
+          if (!start.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 8) {
+            start.axis = Math.abs(dx) > Math.abs(dy) * 1.25 ? "x" : "y";
+            if (start.axis === "x") { setHeartShown(false); setArtworkInteracting(true); }
+          }
+          if (start.axis !== "x") return;
+          if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
+          event.stopPropagation();
+          coverDragX.set(dx);
+        }}
+        onPointerCancel={() => {
+          setArtworkInteracting(false);
+          coverPointerStartRef.current = null;
+          coverAnimation.current = animate(coverDragX, 0, { type: "spring", stiffness: 350, damping: 32 });
+        }}
+        onPointerUp={event => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+          onCoverTap(event);
+        }}
       >
-        <AnimatePresence initial={false} mode="wait" custom={coverSwipeDirection}>
-          <motion.div
-            key={track?.id || coverUrl || "empty"}
-            custom={coverSwipeDirection}
-            variants={{
-              enter: (direction: number) => ({ opacity: 0, x: direction * 48 }),
-              center: { opacity: 1, x: 0 },
-              exit: (direction: number) => ({ opacity: 0, x: direction * -48 }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0"
-          >
-            {coverUrl ? (
-              <CoverImage
-                key={coverUrl}
-                src={coverUrl}
-                alt={trackTitle}
-                fill
-                sizes="460px"
-                priority
-                unoptimized
-                className="rounded-2xl object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-white/5 text-white/40">
-                <MusicNote size={64} />
-              </div>
-            )}
+        <motion.div className="absolute inset-0" style={isMobile ? { x: coverDragX, willChange: "transform" } : undefined}>
+          <motion.div style={isMobile ? { scale: currentCoverScale } : undefined} className={`absolute inset-0 overflow-hidden rounded-2xl bg-black/20 ${isMobile ? "shadow-[0_8px_24px_rgba(0,0,0,0.25)]" : ""}`}>
+            {coverUrl ? <CoverImage src={coverUrl} alt={trackTitle} fill sizes="460px" priority unoptimized className="object-cover" draggable={false} />
+              : <div className="flex h-full w-full items-center justify-center bg-white/5 text-white/40"><Music2Fill size={64} /></div>}
           </motion.div>
-        </AnimatePresence>
+          {isMobile && [-1, 1].map(direction => {
+            const adjacent = player.queue[player.currentIndex + direction];
+            // An absent queue item is not an empty album: do not slide a fake
+            // placeholder over the current artwork while the next track loads.
+            if (!adjacent) return null;
+            return <motion.div key={direction} aria-hidden className="pointer-events-none absolute inset-y-0 w-full overflow-hidden rounded-2xl bg-black/20 shadow-[0_8px_24px_rgba(0,0,0,0.25)]" style={{ left: `calc(${direction * 100}% + ${direction * COVER_GAP}px)`, scale: direction < 0 ? previousCoverScale : nextCoverScale, transformOrigin: `${direction < 0 ? "100%" : "0%"} 50%` }}>
+              {adjacent.coverUrl ? <CoverImage src={adjacent.coverUrl} alt="" fill sizes="460px" className="object-cover" draggable={false} />
+                : <div className="flex h-full w-full items-center justify-center bg-white/5 text-white/40"><Music2Fill size={64} /></div>}
+            </motion.div>;
+          })}
+        </motion.div>
         {/* double-tap burst (phones) */}
         <AnimatePresence>
           {burst > 0 && (
@@ -266,9 +315,7 @@ export function PlayerUiElements({
           </p>
           <p className="m-0 mt-[2px] flex items-center justify-center gap-[5px] text-[15px] text-white/65 leading-snug max-w-full overflow-hidden">
             {track && <SourceBadge trackId={track.id} size={15} />}
-            {track?.explicit && (
-              <ExplicitBadge className="!bg-white/60 !text-black !pb-0 !leading-none shrink-0" />
-            )}
+            <ArtistAvatars name={trackArtists} artistId={track?.artistId} artistList={track?.artistList} />
             <ArtistLink
               name={trackArtists}
               artistId={track?.artistId}
@@ -280,22 +327,15 @@ export function PlayerUiElements({
               }}
               className="text-white/60"
             />
+            {track?.explicit && (
+              <ExplicitBadge className="!bg-white/60 !text-black !pb-0 !leading-none shrink-0" />
+            )}
           </p>
         </div>
       </div>
 
       {/* Timeline (Compact, with smooth spring pill, no thumb) */}
-      <TimelineSlider
-        positionMs={player.positionMs}
-        // the stream's length may not have arrived yet: the track's own length
-        // keeps the bar usable (a 0 length turned every tap into "seek to 0")
-        durationMs={player.durationMs > 0 ? player.durationMs : (player.currentTrack?.durationMs ?? 0)}
-        onSeek={(pos) => playerEngine.seek(pos)}
-        showTime
-        size="lg"
-        className="text-[12px]"
-        style={{ width: `min(calc(${S} + 72px), 92vw)` }}
-      />
+      <PlaybackTimeline width={`min(calc(${S} + 72px), 92vw)`} />
 
       {/* Primary Playback Controls */}
       <div className="flex items-center gap-[26px]">
@@ -364,6 +404,6 @@ export function PlayerUiElements({
       {!isMobile && <VolumePicker className="mt-[2px]" size="md" style={{ width: `calc(${S} * 0.62)` }} />}
     </>
   );
-}
+});
 
 export default PlayerUiElements;

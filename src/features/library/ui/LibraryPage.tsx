@@ -1,3 +1,6 @@
+import OfflineCover from "./OfflineCover";
+import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
+import { TimeLine } from "@mingcute/react";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
@@ -18,7 +21,7 @@ import {
   useExternalItems,
   useLikedTrackCount,
 } from "../hooks";
-import { MusicLine, HeartFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line } from "@mingcute/react";
+import { MusicLine, HeartFill, AddLine, CheckLine, GridLine, MenuLine, More2Fill, Search2Line, Classify2Line, PlaylistLine, AlbumLine, User3Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useModalStore } from "../store/modalStore";
 import { useImportStore } from "../store/importStore";
@@ -28,6 +31,7 @@ import LikedCover from "./LikedCover";
 import { useYoutubeLibraryItems } from "@/features/youtube-auth";
 
 const PAGE_SIZE = 24;
+const libraryTabIcons = { all: Classify2Line, playlists: PlaylistLine, albums: AlbumLine, artists: User3Line };
 
 interface TabState {
   query: string;
@@ -82,6 +86,7 @@ function LikesPlaylistCard({
   if (viewMode === "list") {
     return (
       <div
+        role="button" tabIndex={0} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }}
         onClick={onClick}
         className="w-full flex items-center justify-between rounded-md p-[8px] outline-none transition-colors duration-150 ease-out cursor-pointer hover:bg-border-alpha-14 select-none"
       >
@@ -93,12 +98,7 @@ function LikesPlaylistCard({
           >
             {Icon === HeartFill ? (
               <LikedCover />
-            ) : (
-              <Icon
-                size={26}
-                className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"}
-              />
-            )}
+            ) : <OfflineCover kind={Icon === TimeLine ? "cache" : "local"} />}
           </div>
 
           <div className="min-w-0 flex flex-col gap-[2px]">
@@ -134,6 +134,7 @@ function LikesPlaylistCard({
 
   return (
     <div
+      role="button" tabIndex={0} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }}
       onClick={onClick}
       className="group flex flex-col gap-[8px] cursor-pointer"
       draggable={false}
@@ -145,12 +146,7 @@ function LikesPlaylistCard({
       >
         {Icon === HeartFill ? (
           <LikedCover />
-        ) : (
-          <Icon
-            size={52}
-            className={hasCustomBg ? "text-white" : "text-zinc-400 dark:text-zinc-500"}
-          />
-        )}
+        ) : <OfflineCover kind={Icon === TimeLine ? "cache" : "local"} />}
       </div>
       <div className="flex flex-col gap-[4px]">
         <span className="truncate text-[14px] font-[500] text-text-primary">
@@ -221,6 +217,16 @@ export default function LibraryPage() {
   const { data: externalPlaylistItems = [] } = useExternalItems("playlist");
   const youtubePlaylistItems = useYoutubeLibraryItems();
   const { tracks: localTracks, isLoading: localLoading } = useLocalTracks();
+  const cached = useOfflineLibraryStore(state => state.cached);
+  const cacheVisible = useOfflineLibraryStore(state => state.visibleOnline);
+  const offlineLoaded = useOfflineLibraryStore(state => state.loaded);
+  useEffect(() => { void useOfflineLibraryStore.getState().refresh().catch(() => {}); }, []);
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update); window.addEventListener("offline", update);
+    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
+  }, []);
   const { data: likedCount, isLoading: likedCountLoading } =
     useLikedTrackCount();
   const openCreatePlaylist = useModalStore((state) => state.openCreatePlaylist);
@@ -520,12 +526,16 @@ export default function LibraryPage() {
                               navigate("/library/playlist?id=likes")
                             }
                           />,
+                          ...(cacheVisible || !online ? [<LikesPlaylistCard
+                            key="cached-tracks-card" count={cached.length} isLoading={!offlineLoaded}
+                            viewMode={viewMode} title={t("library.cached_songs")} Icon={TimeLine}
+                            onClick={() => navigate("/library/cached")} />] : []),
                           <LikesPlaylistCard
                             key="local-tracks-card"
                             count={localTracks.length}
                             isLoading={localLoading}
                             viewMode={viewMode}
-                            title={t("local.title") || "My tracks"}
+                            title={t("library.on_device")}
                             Icon={MusicLine}
                             onClick={() => navigate("/local")}
                           />,
@@ -608,17 +618,19 @@ export default function LibraryPage() {
                   <More2Fill size={18} />
                 </button>
                 <PhoneMenu open={mobileMenu} anchorRef={menuButtonRef} onClose={() => setMobileMenu(false)}>
-                  {(["all", "playlists", "albums", "artists"] as const).map((tab) => (
-                    <PhoneMenuItem
+                  {(["all", "playlists", "albums", "artists"] as const).map((tab) => {
+                    const Icon = libraryTabIcons[tab];
+                    return <PhoneMenuItem
                       key={tab}
+                      icon={<Icon size={16} />}
                       label={mobileTabLabels[tab]}
                       checked={activeTab === tab}
                       onClick={() => {
                         setActiveTab(tab);
                         setMobileMenu(false);
                       }}
-                    />
-                  ))}
+                    />;
+                  })}
                   <PhoneMenuDivider />
                   {(["grid", "list"] as const).map((mode) => (
                     <PhoneMenuItem

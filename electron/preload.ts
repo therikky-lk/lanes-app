@@ -9,6 +9,7 @@ export interface DeeplinkTarget {
 }
 
 export interface ElectronCacheStats {
+  freeBytes?: number;
   cacheSize: number;
   httpCacheSize: number;
   codeCacheSize: number;

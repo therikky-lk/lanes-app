@@ -79,7 +79,7 @@ export default function WindowControls({
         data-window-controls
         className={`flex items-center h-[32px] min-h-[32px] max-h-[32px] box-border px-[3px] gap-[2px] rounded-lg pointer-events-auto transition-colors ${
           isFullscreen
-            ? "apple-glass-pill-dark text-white"
+            ? "lane-fs-window-controls text-white"
             : isGlass
               ? "apple-glass-pill text-text-primary"
               : isDarkMode

@@ -190,6 +190,12 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
     cancelAnimationFrame(raf);
     clearInterval(latencyTimer);
     observer.disconnect();
+    // Restore the original words so changing visual quality can attach again.
+    for (const word of host.querySelectorAll<HTMLElement>(`[${SPLIT_ATTR}]`)) {
+      for (const letter of word.querySelectorAll<HTMLElement>(".lane-ch")) letter.replaceWith(document.createTextNode(letter.textContent ?? ""));
+      word.removeAttribute(SPLIT_ATTR);
+      word.normalize();
+    }
     words.clear();
     touched.clear();
     finishing.clear();

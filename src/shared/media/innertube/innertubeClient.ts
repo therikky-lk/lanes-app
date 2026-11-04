@@ -87,9 +87,12 @@ export async function postInnertube(
     linerElectron?: unknown;
     Capacitor?: { isNativePlatform?: () => boolean };
   };
-  const insecureBrowser = Boolean(runtime && runtime.location.protocol === "http:" && !runtime.isSecureContext && !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.());
-  const requestUrl = insecureBrowser && !authorization
-    ? `${getApiBaseUrl()}/v1/public/youtube/innertube/${endpoint}`
+  // Browsers need the public catalog transport even on secure localhost/HTTPS.
+  // Only native clients can send YouTube's required Origin/UA headers directly.
+  const browserTransport = Boolean(runtime && !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.());
+  const previewCatalog = import.meta.env.DEV && (endpoint === "search" || endpoint === "browse");
+  const requestUrl = browserTransport && !authorization
+    ? previewCatalog ? `/__lane/catalog/${endpoint}` : `${getApiBaseUrl()}/v1/public/youtube/innertube/${endpoint}`
     : url;
   const payload = {
     ...body,
@@ -106,7 +109,7 @@ export async function postInnertube(
   try {
     response = await fetch(requestUrl, {
       method: "POST",
-      headers: insecureBrowser && !authorization
+      headers: browserTransport && !authorization
         ? { "content-type": "application/json", accept: "application/json" }
         : buildHeaders(profile, visitorData, authorization),
       body: JSON.stringify(payload),

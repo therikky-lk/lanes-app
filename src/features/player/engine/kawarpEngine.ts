@@ -424,6 +424,7 @@ export class KawarpEngine {
       (bitmap as ImageBitmap).close();
     }
 
+    if (loadId !== this.loadSequenceId) return;
     this.processNewImage();
   }
 
@@ -436,9 +437,18 @@ export class KawarpEngine {
       return;
     }
 
-    const temp = this.currentAlbumFBO;
-    this.currentAlbumFBO = this.nextAlbumFBO;
-    this.nextAlbumFBO = temp;
+    // A rapid skip starts from the currently visible blend, rather than jumping
+    // to the previous transition's destination before fading again.
+    if (this.isTransitioning) this.render(this.accumulatedTime, performance.now());
+    if (this.isTransitioning) {
+      const spare = this.currentAlbumFBO;
+      this.currentAlbumFBO = this.transitionFBO;
+      this.transitionFBO = spare;
+    } else {
+      const temp = this.currentAlbumFBO;
+      this.currentAlbumFBO = this.nextAlbumFBO;
+      this.nextAlbumFBO = temp;
+    }
 
     this.blurSourceInto(this.nextAlbumFBO);
     this.isTransitioning = true;

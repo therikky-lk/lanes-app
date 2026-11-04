@@ -1,3 +1,4 @@
+import { EqualizerPicker } from "@/features/player/ui/EqualizerPicker";
 import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect } from "react";
 import { FolderOpenLine } from "@mingcute/react";
@@ -54,6 +55,8 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
           }
         />
       </SettingSection>
+
+      {!isNativeApp() && <SettingSection><div className="p-4 max-w-[360px] mx-auto w-full"><EqualizerPicker /></div></SettingSection>}
 
       {!isNativeApp() && <SettingSection label={t("settings.connection.title")}>
         <SettingRow

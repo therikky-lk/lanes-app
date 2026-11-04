@@ -1,3 +1,4 @@
+import { downloadsDb } from "./downloadsDb";
 import { linerDb } from "./linerDb";
 
 export const AUDIO_CACHE_LIMIT_STORAGE_KEY = "liner_audio_cache_limit_bytes";
@@ -70,7 +71,8 @@ class AudioCache {
       return this.activeUrls.get(trackId)!;
     }
 
-    const record = await linerDb.getAudio(trackId);
+    const downloaded = await downloadsDb.get(trackId).catch(() => undefined);
+    const record = downloaded ?? await linerDb.getAudio(trackId);
     if (!record) return null;
 
     void linerDb.touchAudio(trackId);
@@ -91,8 +93,10 @@ class AudioCache {
     generation?: number,
   ): Promise<boolean> {
     if (generation !== undefined && generation !== this.generation) return false;
+    if (await downloadsDb.get(trackId).catch(() => undefined)) return true;
     await linerDb.putAudio(trackId, blob, mimeType);
     await this.enforceCacheLimit();
+    window.dispatchEvent(new Event("lane:audio-cache-changed"));
     return true;
   }
 
@@ -111,12 +115,14 @@ class AudioCache {
   }
 
   async hasAudio(trackId: string): Promise<boolean> {
+    if (await downloadsDb.get(trackId).catch(() => undefined)) return true;
     return linerDb.hasAudio(trackId);
   }
 
   async deleteAudio(trackId: string): Promise<void> {
     this.revokeTrackUrl(trackId);
     await linerDb.deleteAudio(trackId);
+    window.dispatchEvent(new Event("lane:audio-cache-changed"));
   }
 
   revokeTrackUrl(trackId: string): void {

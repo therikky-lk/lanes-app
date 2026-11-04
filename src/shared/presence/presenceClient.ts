@@ -69,7 +69,7 @@ export class PresenceClient {
   }
 
   async beat(): Promise<void> {
-    if (!this.isRunning || this.inFlight) return;
+    if (!this.isRunning || this.inFlight || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
     const session = getAuthSession();
     if (!session?.accessToken) return;
 

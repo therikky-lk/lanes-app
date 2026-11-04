@@ -68,6 +68,8 @@ export type LyricsStreamEvent =
   | {
       type: 'done';
       cached: boolean;
+      instrumental?: boolean;
+      source?: "server" | "fallback";
       best?: {
         provider: string;
         quality: number;

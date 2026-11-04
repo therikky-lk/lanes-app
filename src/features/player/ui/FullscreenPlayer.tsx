@@ -1,3 +1,7 @@
+import { useShallow } from "zustand/react/shallow";
+import { fullscreenChromeMask } from "./fullscreenChromeMask";
+import { VisualQualityPicker } from "./VisualQualityPicker";
+import { useVisualQualityStore, visualEffects } from "../store/visualQualityStore";
 import { usePlayerStore } from "../store/playerStore";
 import { HeartFill, HeartLine } from "@mingcute/react";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
@@ -9,13 +13,13 @@ import { AddLine, Edit2Line } from "@mingcute/react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   createElement,
   useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { shouldReleaseTopPin, startsPinnedToTop } from "./lyricsTopPin";
-import { usePlayerState } from "../hooks/usePlayerState";
 import { playerEngine } from "../engine/playerEngine";
 import {
   useLyricsStore,
@@ -25,6 +29,9 @@ import {
 } from "@/features/lyrics";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { PlayerUiElements } from "./PlayerUiElements";
+import { EqualizerPicker } from "./EqualizerPicker";
+import { isEqActive } from "../engine/equalizer";
+import { Settings6Line } from "@mingcute/react";
 import { DownLine } from "@mingcute/react";
 import { preloadCoverArt, useCoverSrc } from "@/features/covers";
 import "@braccato/core/element";
@@ -38,21 +45,22 @@ import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 
 const BRACCATO_TAG = "braccato-lyrics";
-const KAWARP_FADE_IN_MS = 600;
 
 interface BraccatoLyricsViewProps {
   lyrics: any[];
+  animateLetters?: boolean;
+  blurEdges?: boolean;
 }
 
-function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
-  const player = usePlayerState();
+function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }: BraccatoLyricsViewProps) {
+  const player = usePlayerStore(useShallow(s => ({ status: s.status })));
   const elementRef = useRef<any>(null);
   const latestLyricsRef = useRef(lyrics);
   const freeScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWheelTimeRef = useRef(0);
   const isInFreeSearchRef = useRef(false);
   const waitingForAudioAfterClickRef = useRef(false);
-  const pinnedToTopRef = useRef(startsPinnedToTop(player.status, player.positionMs));
+  const pinnedToTopRef = useRef(startsPinnedToTop(player.status, playerEngine.getSnapshot().positionMs));
 
   const scrollToActiveLine = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -227,7 +235,6 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
     };
 
     syncRafId = requestAnimationFrame(checkActiveLine);
-    const detachLetters = attachLetterAnimation(el);
     // keep the lyrics on the sound that is heard, not on the element's clock
     let appliedLatency = -1;
     const syncLatency = () => {
@@ -246,7 +253,6 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
 
     return () => {
       cancelAnimationFrame(syncRafId);
-      detachLetters();
       clearInterval(latencyTimer);
       useLyricsStore.getState().setActiveLineIndex(null);
       el.removeEventListener("braccato:lyrics-loaded", onLyricsLoaded);
@@ -260,6 +266,11 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
       elementRef.current = null;
     };
   }, [scrollToActiveLine]);
+
+  useEffect(() => {
+    if (!animateLetters || !elementRef.current) return;
+    return attachLetterAnimation(elementRef.current);
+  }, [animateLetters, lyrics]);
 
   useEffect(() => {
     latestLyricsRef.current = lyrics;
@@ -327,7 +338,7 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
   }, []);
 
   return (
-    <div className="relative flex flex-col flex-1 w-full h-full min-h-0">
+    <div className="lane-lyrics-viewport relative flex flex-col flex-1 w-full h-full min-h-0">
       {createElement(BRACCATO_TAG, {
         ref: setElement,
         source: "#liner-audio",
@@ -339,6 +350,7 @@ function BraccatoLyricsView({ lyrics }: BraccatoLyricsViewProps) {
           scrollbarWidth: "none",
         },
       })}
+      {blurEdges && <><div aria-hidden className="lane-lyrics-blur-edge lane-lyrics-blur-edge--top" /><div aria-hidden className="lane-lyrics-blur-edge lane-lyrics-blur-edge--bottom" /></>}
     </div>
   );
 }
@@ -353,11 +365,48 @@ export function FullscreenPlayer({
   onClose,
 }: FullscreenPlayerProps) {
   const { t } = useTranslation();
-  const player = usePlayerState();
+  const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, queue: s.queue, currentIndex: s.currentIndex, isEqEnabled: s.isEqEnabled, eqGains: s.eqGains })));
   const [customLyricsOpen, setCustomLyricsOpen] = useState(false);
   const isMobile = useIsMobile();
+  const fullscreenRoot = useRef<HTMLDivElement>(null);
+  const toolbar = useRef<HTMLDivElement>(null);
+  const [chromeMask, setChromeMask] = useState<string>();
+  const [dismissZoneHeight, setDismissZoneHeight] = useState(64);
+  useLayoutEffect(() => {
+    if (isMobile) return;
+    const root = fullscreenRoot.current;
+    const controls = toolbar.current;
+    if (!root || !controls) return;
+    const measure = () => {
+      const box = root.getBoundingClientRect();
+      const bar = controls.getBoundingClientRect();
+      setChromeMask(fullscreenChromeMask(box.width, bar.left - box.left, bar.width));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root); observer.observe(controls);
+    return () => observer.disconnect();
+  }, [isMobile]);
+
+  const quality = useVisualQualityStore(state => state.quality);
+  const effects = visualEffects(quality, isMobile);
   const [mobileLyrics, setMobileLyrics] = useState(false);
+  useLayoutEffect(() => {
+    if (!isMobile) return;
+    const root = fullscreenRoot.current;
+    const artwork = root?.querySelector<HTMLElement>("[data-player-artwork]");
+    if (!root) return;
+    const measure = () => {
+      const box = artwork?.getBoundingClientRect();
+      setDismissZoneHeight(box && box.height > 0 ? Math.max(0, box.top - root.getBoundingClientRect().top) : 64);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(root); if (artwork) observer.observe(artwork);
+    return () => observer.disconnect();
+  }, [isMobile, mobileLyrics]);
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [audioSheet, setAudioSheet] = useState<"speed" | "eq">("speed");
   const speedSheetDragControls = useDragControls();
   const speedChanged = usePlayerStore(
     (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
@@ -388,7 +437,7 @@ export function FullscreenPlayer({
 
   const [kawarpShown, setKawarpShown] = useState(false);
   const onKawarpLoad = useCallback(() => {
-    setTimeout(() => setKawarpShown(true), KAWARP_FADE_IN_MS);
+    setKawarpShown(true);
   }, []);
 
   const nextCoverUrl = player.queue[player.currentIndex + 1]?.coverUrl;
@@ -416,30 +465,39 @@ export function FullscreenPlayer({
 
   return (
     <div
+      ref={fullscreenRoot}
       data-theme="dark"
-      className="lane-fs-player dark relative h-full w-full overflow-hidden bg-black text-white"
+      data-visual-quality={isMobile ? undefined : quality}
+      className={`lane-fs-player ${isMobile ? "" : "lane-fs-player--desktop"} dark relative h-full w-full overflow-hidden bg-black text-white`}
     >
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="lane-fs-background absolute inset-0 overflow-hidden">
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{ backgroundColor: "var(--color-bg-primary)" }}
         />
-        {kawarpSrc && !kawarpShown && (
-          <div
-            className="absolute inset-0 bg-cover bg-center filter blur-xl scale-105 opacity-50 pointer-events-none"
-            style={{ backgroundImage: `url(${kawarpSrc})` }}
-          />
-        )}
-        {effectsReady ? (
+        <AnimatePresence initial={false}>
+          {kawarpSrc && (!kawarpShown || !effects.liveBackground) && (
+            <motion.div key={kawarpSrc}
+              initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.65, ease: "easeInOut" }}
+              className="absolute inset-0 bg-cover bg-center filter blur-xl scale-105 pointer-events-none"
+              style={{ backgroundImage: `url(${kawarpSrc})` }}
+            />
+          )}
+        </AnimatePresence>
+        {effectsReady && effects.liveBackground ? (
           <KawarpWrapper src={kawarpSrc} onLoad={onKawarpLoad} onError={onError} />
         ) : null}
       </div>
 
-      <div className="absolute inset-0 z-[1] bg-black/40" />
+      <div className={`absolute inset-0 z-[1] ${isMobile ? "bg-black/40" : "lane-fs-desktop-shade"}`} />
+      {!isMobile && chromeMask && <div aria-hidden className="lane-fs-chrome-glass" style={{ maskImage: chromeMask, WebkitMaskImage: chromeMask }} />}
+      {isMobile && <div aria-hidden className="absolute inset-x-0 top-0 z-20" style={{ height: dismissZoneHeight, touchAction: "none" }} />}
+
 
       <div
-        className={`absolute inset-0 z-10 flex ${isMobile ? "flex-col" : ""}`}
+        className={`lane-fs-content absolute inset-0 z-10 flex ${isMobile ? "flex-col" : ""}`}
         style={isMobile ? { paddingTop: "calc(var(--lane-safe-top, 0px) + 48px)", paddingBottom: "var(--lane-safe-bottom, 0px)" } : undefined}
       >
         <div className={`flex-1 flex flex-col items-center justify-center gap-5 ${isMobile && mobileLyrics ? "hidden" : ""}`}>
@@ -458,16 +516,16 @@ export function FullscreenPlayer({
             }}
           >
             <AnimatePresence initial={false}>
-              {hasLyrics && (
+              {hasLyrics && (!isMobile || mobileLyrics) && (
                 <motion.div
                   key={`lyrics-${currentTrackId}`}
-                  initial={{ opacity: 0 }}
+                  initial={isMobile ? { opacity: 0 } : false}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, pointerEvents: "none" }}
-                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  transition={{ duration: isMobile ? 0.22 : 0, ease: "easeInOut" }}
                   className="absolute inset-0 flex flex-col"
                 >
-                  <BraccatoLyricsView lyrics={braccatoLyrics} />
+                  <BraccatoLyricsView lyrics={braccatoLyrics} animateLetters={effects.letterAnimation} blurEdges={effects.lyricBlur} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -597,13 +655,13 @@ export function FullscreenPlayer({
             >
               <button
                 type="button"
-                aria-label="Drag down to close speed settings"
+                aria-label={t("common.close")}
                 onPointerDown={(event) => speedSheetDragControls.start(event)}
                 className="mx-auto mb-[12px] flex h-[24px] w-[72px] touch-none cursor-grab items-center justify-center border-0 bg-transparent active:cursor-grabbing"
               >
                 <span className="h-[4px] w-[36px] rounded-full bg-white/30" />
               </button>
-              <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />
+              {audioSheet === "eq" ? <EqualizerPicker /> : <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />}
             </motion.div>
           </motion.div>
         )}
@@ -613,19 +671,21 @@ export function FullscreenPlayer({
         type="button"
         aria-label={t("player.close_fullscreen")}
         onClick={onClose}
-        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)" } : undefined}
+        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", touchAction: "none" } : undefined}
         data-no-window-drag
-        className="absolute top-[12px] left-[12px] z-30 inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto"
+        className="lane-fs-close absolute top-[12px] left-[12px] z-30 inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 backdrop-blur-xl text-white/80 hover:text-white hover:bg-white/10 active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto"
       >
         <DownLine size={18} />
       </button>
       {/* top-right group: phones get like + lyrics + devices together; on the
           desktop the devices button sits right next to the window controls */}
       <div
-        className="absolute z-30 flex max-w-[calc(100vw-64px)] flex-wrap items-center justify-end gap-[8px]"
-        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12 } : { top: 12, right: 108 }}
+        ref={toolbar}
+        className={`absolute z-30 flex max-w-[calc(100vw-64px)] flex-wrap items-center justify-end gap-[8px] ${isMobile ? "" : "lane-fs-toolbar"}`}
+        style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12, touchAction: "none" } : { top: 0, left: "50%", transform: "translateX(-50%)" }}
         data-no-window-drag
       >
+        {!isMobile && <VisualQualityPicker />}
         {showProviderIsland && <LyricsProviderIsland />}
         {hasLyrics && (
           <button
@@ -656,10 +716,15 @@ export function FullscreenPlayer({
             className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer"
           />
         )}
+        {isMobile && <button type="button" aria-label={t("player.equalizer")}
+          onClick={() => { setAudioSheet("eq"); setSpeedOpen(true); }}
+          className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl cursor-pointer ${isEqActive(player.isEqEnabled, player.eqGains) ? "bg-white text-black" : "bg-black/45 text-white/85"}`}>
+          <Settings6Line size={18} />
+        </button>}
         {isMobile && (
           <button
             type="button"
-            onClick={() => setSpeedOpen(true)}
+            onClick={() => { setAudioSheet("speed"); setSpeedOpen(true); }}
             aria-label={t("player.speed")}
             className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl active:scale-[0.92] transition-all cursor-pointer ${
               speedChanged ? "bg-white text-black" : "bg-black/45 text-white/85"
