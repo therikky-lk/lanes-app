@@ -1,5 +1,5 @@
-import youtubeLikedCover from "@/assets/youtube-liked.svg";
-import { useEffect, useState } from "react";
+import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
+import { useEffect, useMemo, useState } from "react";
 import { api, mediaUrl, toClientTrack } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
@@ -72,7 +72,7 @@ export function useCollection(
                 title: youtubeCollection.title,
                 author: youtubeCollection.author,
                 description: youtubeCollection.description,
-                coverUrl: decodedId.replace(/^VL/, "") === "LM" ? youtubeLikedCover : youtubeCollection.cover?.url ? mediaUrl(youtubeCollection.cover.url) : tracks[0]?.coverUrl || "",
+                coverUrl: youtubePlaylistArtwork(decodedId, youtubeCollection.cover?.url ? mediaUrl(youtubeCollection.cover.url) : tracks[0]?.coverUrl || ""),
                 tracks,
               } satisfies CollectionPageData;
             }
@@ -277,5 +277,9 @@ export function useCollection(
     };
   }, [type, id, cacheKey, fallbackTitle, fallbackArtist, isRelease]);
 
-  return { data, loading };
+  // Artwork is a UI choice, so stale catalog/cache covers must not override it.
+  const displayed = useMemo(() => data && type === "playlist" && id
+    ? { ...data, coverUrl: youtubePlaylistArtwork(decodeURIComponent(id), data.coverUrl) }
+    : data, [data, type, id]);
+  return { data: displayed, loading };
 }
