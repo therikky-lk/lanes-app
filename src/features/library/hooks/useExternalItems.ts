@@ -1,3 +1,4 @@
+import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
 import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl } from "@/shared/api";
 import type { LibraryItemViewModel } from "../types";
@@ -40,7 +41,7 @@ export function useExternalItems(type: EntityType) {
                 : type === "playlist"
                   ? (value.author || (value.trackCount ? `${value.trackCount} tracks` : "Playlist"))
                   : [value.year, value.trackCount ? `${value.trackCount} tracks` : undefined].filter(Boolean).join(" • "),
-            imageUrl: cover,
+            imageUrl: type === "playlist" ? youtubePlaylistArtwork(value.id, cover) : cover,
             kind: type,
             href:
               type === "artist"
