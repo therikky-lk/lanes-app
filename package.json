@@ -108,6 +108,7 @@
       "artifactName": "Lane-${version}-${arch}.AppImage"
     },
     "win": {
+      "artifactName": "Lane-${version}-${arch}-win.${ext}",
       "executableName": "Lane",
       "icon": "build/icon.ico",
       "target": [
