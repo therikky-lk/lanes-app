@@ -540,6 +540,11 @@ class PlayerEngine {
     store.setQueue(finalQueue);
 
     const selectedTrack = finalQueue[finalIndex] ?? track;
+    // A fresh play request can select the same track from another source. The
+    // track-ID subscription will not run, so start its new history session here.
+    if (store.currentTrack?.id === selectedTrack.id) {
+      this.telemetry.startTrack(selectedTrack, usePlayerStore.getState().playbackContext);
+    }
     store.setCurrentTrack(selectedTrack, finalIndex);
     store.setPosition(0);
     store.setDuration(selectedTrack.durationMs ?? 0);
@@ -588,6 +593,9 @@ class PlayerEngine {
     this.radioWaveId = newRadioWaveId();
 
     store.setQueue(finalQueue);
+    if (store.currentTrack?.id === seedTrack.id) {
+      this.telemetry.startTrack(seedTrack, usePlayerStore.getState().playbackContext);
+    }
     store.setCurrentTrack(seedTrack, 0);
     store.setPosition(0);
     store.setDuration(seedTrack.durationMs ?? 0);
