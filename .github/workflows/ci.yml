@@ -1,4 +1,4 @@
-# Type-check on every push and pull request (tests are run locally, not kept in the repo).
+# Type-check and verify translations on every push and pull request (tests are run locally, not kept in the repo).
 name: CI
 
 on:
@@ -24,3 +24,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc -b
+      - name: Check translations
+        run: node scripts/check-locales.mjs

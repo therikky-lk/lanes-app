@@ -78,7 +78,7 @@ export default function MobileMiniPlayer() {
       </button>
       <button
         type="button"
-        aria-label="Previous track"
+        aria-label={t("player.previous")}
         onClick={(e) => {
           e.stopPropagation();
           void playerEngine.skipPrevious();
@@ -89,7 +89,7 @@ export default function MobileMiniPlayer() {
       </button>
       <button
         type="button"
-        aria-label={player.status === "playing" ? "Pause" : "Play"}
+        aria-label={player.status === "playing" ? t("common.pause") : t("common.play")}
         onClick={(e) => {
           e.stopPropagation();
           void playerEngine.togglePlayPause();
@@ -100,7 +100,7 @@ export default function MobileMiniPlayer() {
       </button>
       <button
         type="button"
-        aria-label="Next track"
+        aria-label={t("player.next")}
         onClick={(e) => {
           e.stopPropagation();
           void playerEngine.skipNext();

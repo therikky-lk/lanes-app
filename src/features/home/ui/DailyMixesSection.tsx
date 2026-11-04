@@ -209,7 +209,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
           <div className="hidden shrink-0 items-center gap-[4px] md:flex">
             <button
               type="button"
-              aria-label="Previous mixes"
+              aria-label={t("home.previous_mixes")}
               onClick={scroll.scrollPrev}
               disabled={!scroll.canScrollLeft}
               className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-white/80 cursor-pointer disabled:cursor-default ${scroll.canScrollLeft ? "opacity-100" : "invisible"}`}
@@ -218,7 +218,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
             </button>
             <button
               type="button"
-              aria-label="Next mixes"
+              aria-label={t("home.next_mixes")}
               onClick={scroll.scrollNext}
               disabled={!scroll.canScrollRight}
               className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-white/80 cursor-pointer disabled:cursor-default ${scroll.canScrollRight ? "opacity-100" : "invisible"}`}
