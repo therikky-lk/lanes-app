@@ -243,7 +243,7 @@ export default function LoginPage() {
     <main
       className={`relative flex h-full w-full items-center justify-center overflow-hidden ${frameShape} ${
         isEdgeToEdge ? "border-0" : "border border-border-primary"
-      } bg-black/25 backdrop-blur-[18px]`}
+      } bg-[#18181a] backdrop-blur-[18px]`}
     >
       {!isNativeApp() && <WindowControls variant="glass" />}
 
