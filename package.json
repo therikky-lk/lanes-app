@@ -4,6 +4,10 @@
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
+  "author": {
+    "name": "therikky-lk",
+    "email": "191606503+therikky-lk@users.noreply.github.com"
+  },
   "desktopName": "lane",
   "main": "dist-electron/main.js",
   "scripts": {
