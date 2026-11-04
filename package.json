@@ -1,6 +1,6 @@
 {
   "name": "lane",
-  "version": "1.7.7",
+  "version": "1.7.8",
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
@@ -141,6 +141,11 @@
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.music",
+      "identity": "-",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false,
       "target": [
         {
           "target": "dmg",
