@@ -474,7 +474,7 @@ function writePersistedAnalytics(data: StorageAnalytics): void {
 let cachedStorageAnalytics: StorageAnalytics | null = readPersistedAnalytics();
 let isStorageTabOpen = false;
 let backgroundIntervalId: ReturnType<typeof setInterval> | null = null;
-let isBackgroundUpdating = false;
+let analyticsRequest: Promise<StorageAnalytics> | null = null;
 
 // returns cached analytics synchronously if available
 export function getCachedStorageAnalytics(): StorageAnalytics | null {
@@ -487,19 +487,19 @@ export function setStorageTabOpen(isOpen: boolean): void {
 }
 
 // performs background update of storage analytics
-export async function refreshStorageAnalytics(): Promise<StorageAnalytics> {
-  if (isBackgroundUpdating && cachedStorageAnalytics) {
-    return cachedStorageAnalytics;
+export async function refreshStorageAnalytics(force = false): Promise<StorageAnalytics> {
+  if (analyticsRequest) {
+    if (!force) return analyticsRequest;
+    // A scan started before deletion may still contain the deleted files.
+    await analyticsRequest.catch(() => undefined);
+    return refreshStorageAnalytics();
   }
-  isBackgroundUpdating = true;
-  try {
-    const data = await getStorageAnalytics();
+  analyticsRequest = getStorageAnalytics().then(data => {
     cachedStorageAnalytics = data;
     writePersistedAnalytics(data);
     return data;
-  } finally {
-    isBackgroundUpdating = false;
-  }
+  }).finally(() => { analyticsRequest = null; });
+  return analyticsRequest;
 }
 
 // initializes background polling (every 60s when storage tab is closed)
