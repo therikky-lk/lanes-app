@@ -29,7 +29,8 @@
     "all_releases": "All",
     "discography": "Discography",
     "your_tracks": "In your liked songs: {count}",
-    "open": "Open artist"
+    "open": "Open artist",
+    "verified": "Verified"
   },
   "collection": {
     "unknown_album": "Unknown Album",
@@ -204,7 +205,21 @@
     "env_warning": "App should run inside Electron — deeplinks, offline checks and sharing need the desktop bridge.",
     "env_skip": "Skip",
     "grid": "Grid",
-    "list": "List"
+    "list": "List",
+    "clear_search": "Clear search",
+    "songs_one": "{count} song",
+    "songs_few": "{count} songs",
+    "songs_many": "{count} songs",
+    "songs_other": "{count} songs",
+    "tracks_one": "{count} track",
+    "tracks_few": "{count} tracks",
+    "tracks_many": "{count} tracks",
+    "tracks_other": "{count} tracks",
+    "decrease": "Decrease",
+    "increase": "Increase",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "play": "Play"
   },
   "home": {
     "recent": "Recently played",
@@ -248,11 +263,14 @@
       "language_ukrainian": "Ukrainian",
       "language_english": "Foreign",
       "expand": "Expand My Vibe",
-      "collapse": "Collapse"
+      "collapse": "Collapse",
+      "language_foreign": "Foreign"
     },
     "daily_mix": "Daily Mix {n}",
     "mix_label": "Mix",
-    "history": "History"
+    "history": "History",
+    "previous_mixes": "Previous mixes",
+    "next_mixes": "Next mixes"
   },
   "library": {
     "spotify_liked": {
@@ -463,7 +481,8 @@
     "waiting": "Waiting…",
     "retry": "Retry",
     "cancel": "Cancel",
-    "skip": "Skip"
+    "skip": "Skip",
+    "frame_title": "Cloudflare security check"
   },
   "player": {
     "repeat_off": "Repeat: off",
@@ -536,7 +555,7 @@
     "eq_tab_enhance": "Sound",
     "eq_tab_genre": "Genres",
     "eq_tab_accent": "Accents",
-    "eq_tab_custom": "Mine",
+    "eq_tab_custom": "My presets",
     "eq_save_preset": "Save",
     "eq_delete_preset": "Delete preset",
     "eq_preset_name": "Preset name",
@@ -567,7 +586,10 @@
     "visual_quality_balanced": "Balanced",
     "visual_quality_balanced_hint": "Live background, no lyric blur",
     "visual_quality_lite": "Lite",
-    "visual_quality_lite_hint": "Still background, plain lyrics"
+    "visual_quality_lite_hint": "Still background, plain lyrics",
+    "instrumental_hint": "This song is instrumental",
+    "seek": "Seek",
+    "loading_playback": "Loading playback"
   },
   "playlist": {
     "playlist": "Playlist",
@@ -709,7 +731,8 @@
       "scope_global": "Global",
       "scope_main_app": "Main App",
       "scope_overlay": "Overlay",
-      "reset_section": "Reset section"
+      "reset_section": "Reset section",
+      "filter_scopes": "Filter shortcut scopes"
     },
     "overlay": {
       "description": "Desktop overlay behavior, global shortcut and position settings.",
@@ -1132,6 +1155,43 @@
       "signed_out_title": "Not signed in",
       "signed_out_description": "Sign in to keep YouTube playback working",
       "signed_in": "Connected"
+    },
+    "miniplayer": {
+      "description": "Floating miniplayer behavior, timeline and appearance.",
+      "always_on_top": {
+        "title": "Always on top",
+        "description": "Keep the miniplayer above other windows and apps."
+      },
+      "auto_show_on_minimize": {
+        "title": "Open automatically when minimized",
+        "description": "Show the miniplayer automatically when Lane is minimized during playback."
+      },
+      "close_on_restore": {
+        "title": "Hide when the main window is restored",
+        "description": "Hide the miniplayer automatically when the main Lane window is restored."
+      },
+      "custom_background": {
+        "title": "Use your custom wallpaper",
+        "description": "Use your uploaded wallpaper as the miniplayer background.",
+        "no_wallpaper_description": "Upload a wallpaper in Customization to use it in the miniplayer."
+      },
+      "hotkeys": {
+        "title": "Keyboard shortcuts",
+        "description": "When focused: Space (Play/Pause), Left/Right (Seek 5 seconds), Up/Down (Volume 5%), M (Mute), L (Like), S (Shuffle), J/K (Previous/Next)."
+      },
+      "show_timeline": {
+        "title": "Show timeline",
+        "description": "Show the progress bar and waveform in the miniplayer."
+      },
+      "test_toggle": {
+        "title": "Try the miniplayer",
+        "description": "Show or hide the floating miniplayer window now.",
+        "button": "Open miniplayer"
+      }
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "empty": "No errors yet. Play a track, then come back here."
     }
   },
   "toast": {
@@ -1325,7 +1385,8 @@
     "online_title": "Online now",
     "copy": "Copy",
     "copied": "Copied",
-    "sign_in": "Sign in to the same account on your devices to switch playback between them."
+    "sign_in": "Sign in to the same account on your devices to switch playback between them.",
+    "channel": "Channel"
   },
   "history": {
     "today": "Today",
@@ -1348,7 +1409,13 @@
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} tracks",
-    "just_tracks": "Just tracks"
+    "just_tracks": "Just tracks",
+    "tracks_count_few": "{count} tracks",
+    "tracks_count_many": "{count} tracks",
+    "songs_played_two": "{count} songs played",
+    "songs_played_few": "{count} songs played",
+    "songs_played_many": "{count} songs played",
+    "songs_played_zero": "{count} songs played"
   },
   "trends": {
     "title": "Trending",

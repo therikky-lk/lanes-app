@@ -42,6 +42,7 @@ function SliderRow({
   onChange,
   ariaLabel,
 }: SliderRowProps) {
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragValue, setDragValue] = useState<number | null>(null);
@@ -202,11 +203,11 @@ function SliderRow({
       <div className="flex items-center justify-between select-none">
         <motion.button whileTap={{ scale: 0.9 }} type="button" disabled={disabled || clampedValue <= min}
           onClick={(e) => { e.stopPropagation(); onStepDown(); }}
-          className="flex h-[28px] w-[36px] items-center justify-center rounded-lg bg-white/[0.10] hover:bg-white/[0.18] text-white/75 text-[18px] leading-none disabled:opacity-30 cursor-pointer border-0" aria-label="Decrease">−</motion.button>
+          className="flex h-[28px] w-[36px] items-center justify-center rounded-lg bg-white/[0.10] hover:bg-white/[0.18] text-white/75 text-[18px] leading-none disabled:opacity-30 cursor-pointer border-0" aria-label={t("common.decrease")}>−</motion.button>
         <span className="min-w-[64px] rounded-lg bg-white/[0.10] px-3 py-[5px] text-center text-[12px] font-semibold tabular-nums text-white" style={{ fontFamily: "var(--font-inter), sans-serif" }}>{valueText}</span>
         <motion.button whileTap={{ scale: 0.9 }} type="button" disabled={disabled || clampedValue >= max}
           onClick={(e) => { e.stopPropagation(); onStepUp(); }}
-          className="flex h-[28px] w-[36px] items-center justify-center rounded-lg bg-white/[0.10] hover:bg-white/[0.18] text-white/75 text-[18px] leading-none disabled:opacity-30 cursor-pointer border-0" aria-label="Increase">+</motion.button>
+          className="flex h-[28px] w-[36px] items-center justify-center rounded-lg bg-white/[0.10] hover:bg-white/[0.18] text-white/75 text-[18px] leading-none disabled:opacity-30 cursor-pointer border-0" aria-label={t("common.increase")}>+</motion.button>
       </div>
     </div>
   );

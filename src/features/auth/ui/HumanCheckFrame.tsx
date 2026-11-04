@@ -1,3 +1,4 @@
+import { useTranslation } from "@/languages";
 import { useEffect, useRef } from "react";
 import { humanCheckOrigin, humanCheckPageUrl, type HumanCheckAction } from "@/shared/api";
 import { useHumanCheckStore } from "../store/humanCheckStore";
@@ -10,6 +11,7 @@ interface CheckMessage {
 }
 
 export default function HumanCheckFrame({ action, attempt }: { action: HumanCheckAction; attempt: number }) {
+  const { t } = useTranslation();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const phase = useHumanCheckStore((state) => state.phase);
   const setPhase = useHumanCheckStore((state) => state.setPhase);
@@ -40,7 +42,7 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
         key={attempt}
         ref={frameRef}
         src={humanCheckPageUrl(action)}
-        title="Cloudflare human verification"
+        title={t("human_check.frame_title")}
         scrolling="no"
         onLoad={markLoaded}
         className={`absolute inset-0 size-full border-0 bg-transparent transition-opacity duration-300 [color-scheme:dark] ${phase === "loading" ? "opacity-0" : "opacity-100"}`}

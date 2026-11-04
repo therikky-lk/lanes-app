@@ -493,7 +493,7 @@ export function SearchModal({
                 setSearchQuery("");
                 searchInputRef.current?.focus();
               }}
-              aria-label="Clear search"
+              aria-label={t("common.clear_search")}
               className="shrink-0 text-text-tertiary hover:text-text-primary transition-colors border-none bg-transparent p-0 flex items-center justify-center cursor-pointer"
             >
               <CloseCircleFill size={18} />
