@@ -918,22 +918,6 @@ if (!gotTheLock) {
       } catch {}
     };
 
-    // recursively clears all *.indexeddb.blob directories within IndexedDB folder
-    const clearIndexedDbBlobsSafe = async (idbDir: string): Promise<void> => {
-      try {
-        if (!fs.existsSync(idbDir)) return;
-        const entries = await fs.promises.readdir(idbDir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.isDirectory() && entry.name.endsWith(".indexeddb.blob")) {
-            await clearDirectoryContentsSafe(path.join(idbDir, entry.name));
-            try {
-              await fs.promises.rm(path.join(idbDir, entry.name), { recursive: true, force: true });
-            } catch {}
-          }
-        }
-      } catch {}
-    };
-
     ipcMain.handle("storage:get-cache-stats", async () => {
       try {
         const userData = app.getPath("userData");
@@ -949,9 +933,11 @@ if (!gotTheLock) {
           getDirectorySizeSafe(path.join(userData, "blob_storage")),
         ]);
 
+        const disk = await fs.promises.statfs(userData).catch(() => null);
         const httpCacheSize = Math.max(sessionCache, diskHttpCache);
 
         return {
+          freeBytes: disk ? disk.bavail * disk.bsize : undefined,
           cacheSize: httpCacheSize + diskCodeCache,
           httpCacheSize,
           codeCacheSize: diskCodeCache,
@@ -1001,16 +987,10 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("storage:clear-audio-cache", async (_event, clearEntireDb?: boolean) => {
+    ipcMain.handle("storage:clear-audio-cache", async () => {
       try {
-        const userData = app.getPath("userData");
-        if (clearEntireDb) {
-          await session.defaultSession.clearStorageData({
-            storages: ["indexdb"],
-          }).catch(() => {});
-        }
-        await clearIndexedDbBlobsSafe(path.join(userData, "IndexedDB"));
-        await clearDirectoryContentsSafe(path.join(userData, "blob_storage"));
+        // The renderer clears only the temporary object stores. Removing Chromium's
+        // IndexedDB directories also destroys imported files and offline downloads.
         await session.defaultSession.clearCache().catch(() => {});
         return true;
       } catch (err) {

@@ -1,9 +1,9 @@
+import { useArtistAvatar } from "../hooks/useArtistAvatar";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { RightLine, User3Fill } from "@mingcute/react";
-import { api, toMaxQualityAvatarUrl } from "@/shared/api";
 import { useTranslation } from "@/languages";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
@@ -11,41 +11,8 @@ import { useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
 
 const font = { fontFamily: "var(--font-inter), sans-serif" };
 
-// ids from the catalog look like "UC…" / "sc:…"; a bare name has spaces or
-// letters an id never carries, so there's no picture to fetch for it
-const looksLikeId = (id: string) => /^(UC[\w-]{10,}|sc[:_]\S+|audius[:_]\S+|[\w-]{16,})$/.test(id);
-
-const avatarCache = new Map<string, string | null>();
-
-function useArtistAvatar(id: string | undefined): string | null {
-  const [url, setUrl] = useState<string | null>(() => (id ? (avatarCache.get(id) ?? null) : null));
-  useEffect(() => {
-    if (!id || !looksLikeId(id)) {
-      setUrl(null);
-      return;
-    }
-    if (avatarCache.has(id)) {
-      setUrl(avatarCache.get(id) ?? null);
-      return;
-    }
-    let active = true;
-    void api
-      .getArtistImage(id)
-      .then((raw) => {
-        const value = raw ? toMaxQualityAvatarUrl(raw) : null;
-        avatarCache.set(id, value);
-        if (active) setUrl(value);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, [id]);
-  return url;
-}
-
 function Avatar({ artist, size }: { artist: ArtistSheetArtist; size: number }) {
-  const url = useArtistAvatar(artist.id);
+  const url = useArtistAvatar(artist.id, artist.name);
   const [failed, setFailed] = useState(false);
   return (
     <div

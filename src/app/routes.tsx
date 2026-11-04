@@ -1,3 +1,4 @@
+import CachedTracksPage from "@/features/library/offline/CachedTracksPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 import HomePage from "@/features/home/ui/HomePage";
 import LibraryPage from "@/features/library/ui/LibraryPage";
@@ -15,6 +16,7 @@ export function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/library" element={<LibraryPage />} />
       <Route path="/library/playlist" element={<PlaylistPage />} />
+      <Route path="/library/cached" element={<CachedTracksPage />} />
       <Route path="/local" element={<LocalTracksPage />} />
       <Route path="/recent" element={<RecentPage />} />
       <Route path="/artist" element={<ArtistPage />} />

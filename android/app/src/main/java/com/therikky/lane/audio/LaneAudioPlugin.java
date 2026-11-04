@@ -220,8 +220,22 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     public void setVolume(PluginCall call) {
         float volume = call.getFloat("volume", 1f);
         main.post(() -> {
-            PlayerHolder.get(getContext()).player().setVolume(Math.max(0f, Math.min(1f, volume)));
+            PlayerHolder.get(getContext()).setVolume(volume);
             call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void setEqualizer(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        com.getcapacitor.JSArray values = call.getArray("gains");
+        float[] gains = new float[10];
+        for (int i = 0; i < gains.length; i++) gains[i] = values == null ? 0f : (float) values.optDouble(i, 0d);
+        main.post(() -> {
+            try {
+                PlayerHolder.get(getContext()).setEqualizer(enabled, gains);
+                call.resolve();
+            } catch (RuntimeException error) { call.reject("Equalizer unavailable on this device", error); }
         });
     }
 

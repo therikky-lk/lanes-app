@@ -41,6 +41,19 @@ public class LaneHttpPlugin extends Plugin {
 
     private static final int MAX_BODY = 32 * 1024 * 1024;
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
+    // A relay DNS outage must not occupy the workers used for audio/API calls.
+    private final ExecutorService relayPool = Executors.newFixedThreadPool(2);
+
+    private static boolean isRelayUrl(String url) {
+        String host = android.net.Uri.parse(url).getHost();
+        return "ntfy.sh".equals(host) || "ntfy.envs.net".equals(host);
+    }
+
+    private static int requestTimeoutMs(String url) {
+        if (isRelayUrl(url)) return 6000;
+        if ("/v1/presence/heartbeat".equals(android.net.Uri.parse(url).getPath())) return 5000;
+        return 35000;
+    }
 
     @Override
     public void load() {
@@ -68,6 +81,7 @@ public class LaneHttpPlugin extends Plugin {
         byte[] body = b64 != null && !b64.isEmpty() && !"GET".equals(method) && !"HEAD".equals(method)
             ? Base64.decode(b64, Base64.DEFAULT) : null;
         Map<String, String> requestHeaders = new LinkedHashMap<>();
+        String transport = call.getString("transport", "auto");
         boolean withCookies = Boolean.TRUE.equals(call.getBoolean("withCookies", false));
         if (withCookies && !hasCookie(requestHeaders)) {
             String cookies = CookieManager.getInstance().getCookie(url);
@@ -84,15 +98,19 @@ public class LaneHttpPlugin extends Plugin {
                 requestHeaders.put(k, v);
             }
         }
-        pool.execute(() -> {
+        (isRelayUrl(url) ? relayPool : pool).execute(() -> {
             Result result = null;
             String cronetError = null;
             CronetEngine engine = Net.engine();
-            if (engine != null) {
+            if (engine != null && !"java".equals(transport)) {
                 try {
                     result = viaCronet(engine, url, method, requestHeaders, body, withCookies);
                 } catch (Exception e) {
                     cronetError = e.getMessage();
+                    if (isRelayUrl(url)) {
+                        call.reject("relay: " + e.getClass().getSimpleName() + ": " + cronetError);
+                        return;
+                    }
                 }
             }
             if (result == null) {
@@ -197,7 +215,7 @@ public class LaneHttpPlugin extends Plugin {
         }
         UrlRequest request = builder.build();
         request.start();
-        if (!done.await(35, TimeUnit.SECONDS)) {
+        if (!done.await(requestTimeoutMs(url), TimeUnit.MILLISECONDS)) {
             request.cancel();
             throw new IllegalStateException("timed out");
         }
@@ -247,8 +265,8 @@ public class LaneHttpPlugin extends Plugin {
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         try {
             conn.setRequestMethod(method);
-            conn.setConnectTimeout(20_000);
-            conn.setReadTimeout(30_000);
+            conn.setConnectTimeout(Math.min(20_000, requestTimeoutMs(url)));
+            conn.setReadTimeout(Math.min(30_000, requestTimeoutMs(url)));
             // with Spotify cookies attached, redirects are followed by hand so
             // the cookies never go to another site
             boolean cookies = hasCookie(headers);

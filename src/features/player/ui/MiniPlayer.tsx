@@ -1,3 +1,7 @@
+import { ArtistAvatars } from "@/features/artist/ui/ArtistAvatars";
+import { EqualizerPicker } from "./EqualizerPicker";
+import { isEqActive } from "../engine/equalizer";
+import { Settings6Line } from "@mingcute/react";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { memo } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -306,6 +310,8 @@ function MiniPlayer({
     { bottom: 52 },
   );
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [audioPanel, setAudioPanel] = useState<"speed" | "eq">("speed");
+  const eqToggleRef = useRef<HTMLButtonElement>(null);
   const [speedPopupStyle, setSpeedPopupStyle] = useState<React.CSSProperties>(
     {},
   );
@@ -509,16 +515,16 @@ function MiniPlayer({
 
   useEffect(() => {
     if (!speedOpen) return;
-    const toggle = speedToggleRef.current;
+    const toggle = audioPanel === "eq" ? eqToggleRef.current : speedToggleRef.current;
     const root = miniPlayerRootRef.current;
     if (!toggle || !root) return;
     const toggleRect = toggle.getBoundingClientRect();
     const rootRect = root.getBoundingClientRect();
-    const popupW = 270;
+    const popupW = 300;
     const btnW = toggleRect.width;
     const right = rootRect.right - toggleRect.right + (btnW - popupW) / 2;
     setSpeedPopupStyle({ right: Math.max(8, right) });
-  }, [speedOpen]);
+  }, [speedOpen, audioPanel]);
 
   useEffect(() => {
     const onDocumentPointerDown = (event: MouseEvent) => {
@@ -541,7 +547,7 @@ function MiniPlayer({
         const clickedSpeedPopup = speedPopupRef.current?.contains(target);
         const clickedSpeedToggle =
           speedToggleRef.current?.contains(target);
-        if (!clickedSpeedPopup && !clickedSpeedToggle) {
+        if (!clickedSpeedPopup && !clickedSpeedToggle && !eqToggleRef.current?.contains(target)) {
           setSpeedOpen(false);
         }
       }
@@ -592,7 +598,7 @@ function MiniPlayer({
             style={speedPopupStyle}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />
+            {audioPanel === "eq" ? <EqualizerPicker /> : <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />}
           </motion.div>
         )}
       </AnimatePresence>
@@ -758,13 +764,14 @@ function MiniPlayer({
                 }}
               >
                 {player.currentTrack && <SourceBadge trackId={player.currentTrack.id} className="mr-[2px]" />}
-                {player.currentTrack?.explicit && <ExplicitBadge />}
+                <ArtistAvatars name={trackArtists} artistId={player.currentTrack?.artistId} artistList={player.currentTrack?.artistList} />
                 <ArtistLink
                   name={trackArtists}
                   artistId={player.currentTrack?.artistId}
                   artistList={player.currentTrack?.artistList}
                   className="text-text-tertiary pointer-events-auto"
                 />
+                {player.currentTrack?.explicit && <ExplicitBadge />}
               </p>
             </div>
             <button
@@ -819,6 +826,13 @@ function MiniPlayer({
               >
                 {repeatIcon}
               </button>
+              <button ref={eqToggleRef} type="button" aria-label={t("player.equalizer")} title={t("player.equalizer")}
+                aria-expanded={speedOpen && audioPanel === "eq"}
+                className={`${iconButtonClass} ${isEqActive(player.isEqEnabled, player.eqGains) || (speedOpen && audioPanel === "eq") ? activeToggleClass : ""}`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => { setVolumeOpen(false); onQueueOpenChange?.(false); setAudioPanel("eq"); setSpeedOpen(audioPanel !== "eq" || !speedOpen); }}>
+                <Settings6Line size={18} />
+              </button>
               <button
                 ref={speedToggleRef}
                 type="button"
@@ -835,7 +849,8 @@ function MiniPlayer({
                 onClick={() => {
                   setVolumeOpen(false);
                   onQueueOpenChange?.(false);
-                  setSpeedOpen((prev) => !prev);
+                  setAudioPanel("speed");
+                  setSpeedOpen(audioPanel !== "speed" || !speedOpen);
                 }}
                 style={{ cursor: "pointer" }}
               >

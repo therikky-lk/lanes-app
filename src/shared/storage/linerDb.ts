@@ -40,6 +40,9 @@ export interface CachedLyricsRecord {
   lastCheckedAt: number;
   updatedAt: number;
   userLocked?: boolean;
+  sourceApi?: string;
+  complete?: boolean;
+  fallback?: boolean;
 }
 
 export interface CachedArtistRecord {
@@ -390,6 +393,23 @@ class LinerDb {
     const memList = Array.from(this.memAudio.values());
     memList.sort((a, b) => (a.lastPlayedAt ?? a.savedAt) - (b.lastPlayedAt ?? b.savedAt));
     return memList;
+  }
+
+  async listAudioEntries(): Promise<Omit<CachedAudioRecord, "blob">[]> {
+    const result = await this.runTransaction("audio", "readonly", store => new Promise<Omit<CachedAudioRecord, "blob">[]>((resolve, reject) => {
+      const items: Omit<CachedAudioRecord, "blob">[] = [];
+      const request = store.openCursor();
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) { resolve(items); return; }
+        const { blob, ...entry } = cursor.value as CachedAudioRecord;
+        items.push(entry);
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+    }));
+    return (result ?? Array.from(this.memAudio.values()).map(({ blob, ...entry }) => entry))
+      .sort((a, b) => (b.lastPlayedAt ?? b.savedAt) - (a.lastPlayedAt ?? a.savedAt));
   }
 
   async hasAudio(trackId: string): Promise<boolean> {

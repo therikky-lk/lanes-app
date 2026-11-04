@@ -3,7 +3,7 @@ import { useTranslation } from "@/languages";
 import { SkipNext, SkipPrevious } from "@solar-icons/react";
 import { HeartFill, HeartLine } from "@mingcute/react";
 import { useCallback, useRef } from "react";
-import { usePlayerState } from "../hooks/usePlayerState";
+import { useShallow } from "zustand/react/shallow";
 import { usePlayerStore } from "../store/playerStore";
 import { playerEngine } from "../engine/playerEngine";
 import { PlayPauseIcon } from "./PlayerUiElements";
@@ -11,8 +11,13 @@ import CoverImage from "@/features/covers/ui/CoverImage";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 
 /** phone mini player: cover, title, play/pause and next; tap opens the full player */
+function MobileProgress() {
+  const progress = usePlayerStore(state => state.fullscreen || state.durationMs <= 0 ? 0 : Math.min(1, state.positionMs / state.durationMs));
+  return <div className="h-full w-full origin-left rounded-full bg-text-primary" style={{ transform: `scaleX(${progress})` }} />;
+}
+
 export default function MobileMiniPlayer() {
-  const player = usePlayerState();
+  const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, status: s.status })));
   const setFullscreen = usePlayerStore((s) => s.setFullscreen);
   const track = player.currentTrack;
   const { t } = useTranslation();
@@ -36,7 +41,6 @@ export default function MobileMiniPlayer() {
   }, [track, isLiked, likeMutation, unlikeMutation]);
 
   if (!track) return null;
-  const progress = player.durationMs > 0 ? Math.min(1, player.positionMs / player.durationMs) : 0;
 
   return (
     <div
@@ -107,10 +111,7 @@ export default function MobileMiniPlayer() {
       </button>
       <div className="absolute bottom-0 left-[8px] right-[8px] h-[2px] rounded-full bg-border-alpha-14">
         {/* scaleX instead of width: no layout on every position tick */}
-        <div
-          className="h-full w-full origin-left rounded-full bg-text-primary will-change-transform"
-          style={{ transform: `scaleX(${progress})` }}
-        />
+        <MobileProgress />
       </div>
     </div>
   );

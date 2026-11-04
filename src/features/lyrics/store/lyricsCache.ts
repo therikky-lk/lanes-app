@@ -1,3 +1,4 @@
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import type {
   LyricsCandidate,
   LyricsSyncLevel,
@@ -10,6 +11,9 @@ export interface CachedLyricsItem {
   providers?: Record<string, LyricsCandidate>;
   availableProviders?: LyricsProviderOption[];
   timestamp: number;
+  sourceApi?: string;
+  complete?: boolean;
+  fallback?: boolean;
 }
 
 const STORAGE_INDEX_KEY = "liner_lyrics_v2_index";
@@ -28,22 +32,11 @@ export function isWordLevelSync(syncLevel: LyricsSyncLevel): boolean {
   return syncLevel === "word_level" || syncLevel === "syllable_level";
 }
 
-// strict word-level check for ai/timing providers
+// Preserve every usable server candidate, including line-level results.
 export function shouldCacheLyricsCandidate(
   candidate?: LyricsCandidate | null,
 ): boolean {
-  if (!candidate || !candidate.lyrics?.content) return false;
-  const p = (candidate.provider || "")
-    .toLowerCase()
-    .trim()
-    .replace(/[-_]/g, " ");
-
-  // cadence, polaris, polaris mono: only cache if word-level returned
-  if (p === "cadence" || p === "polaris" || p === "polaris mono") {
-    return isWordLevelSync(candidate.syncLevel);
-  }
-
-  return true;
+  return Boolean(candidate?.lyrics?.content?.trim());
 }
 
 // ranks lyrics candidates by priority, sync depth, and quality
@@ -177,6 +170,9 @@ class LyricsCache {
       providers,
       availableProviders,
       timestamp: parsed.timestamp || Date.now(),
+      sourceApi: parsed.sourceApi,
+      complete: parsed.complete,
+      fallback: parsed.fallback,
     };
   }
 
@@ -255,6 +251,8 @@ class LyricsCache {
       providers,
       availableProviders,
       timestamp: Date.now(),
+      sourceApi: getApiBaseUrl(),
+      complete: false,
     };
 
     this.memCache.set(trackId, item);
@@ -266,6 +264,8 @@ class LyricsCache {
     trackId: string,
     candidate: LyricsCandidate,
     availableProviders?: LyricsProviderOption[],
+    complete = false,
+    fallback = false,
   ) {
     const existing = this.get(trackId);
     const providers: Record<string, LyricsCandidate> = {
@@ -310,6 +310,9 @@ class LyricsCache {
       providers,
       availableProviders: validOptions,
       timestamp: Date.now(),
+      sourceApi: getApiBaseUrl(),
+      complete,
+      fallback,
     };
 
     this.memCache.set(trackId, item);

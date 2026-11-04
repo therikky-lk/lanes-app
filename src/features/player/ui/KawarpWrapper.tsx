@@ -1,3 +1,4 @@
+import { useArtworkInteractionStore } from "../store/artworkInteractionStore";
 import { isNativeApp } from "@/shared/platform/native";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
 import { useEffect, useRef, useState } from "react";
@@ -19,6 +20,8 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<KawarpEngine | null>(null);
+  const interacting = useArtworkInteractionStore(state => state.active);
+  const imageLoad = useRef<{ src: string; promise: Promise<void> } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const coverElement = useCoverElement(src);
 
@@ -37,7 +40,7 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
         scale: 1.18,
         dithering: 0.008,
         // a slow-moving background: 30 fps looks the same and halves the GPU work
-        maxFps: isLowEndDevice() ? 30 : 0,
+        maxFps: isNativeApp() ? (isLowEndDevice() ? 24 : 30) : 0,
         // phones redraw every frame, nothing reads the canvas back
         preserveDrawingBuffer: !isNativeApp(),
       });
@@ -51,6 +54,7 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
     return () => {
       engine?.dispose();
       engineRef.current = null;
+      imageLoad.current = null;
     };
   }, [onError]);
 
@@ -108,13 +112,20 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
 
   useEffect(() => {
     const engine = engineRef.current;
+    if (!engine) return;
+    if (interacting) engine.stop();
+    else engine.start();
+  }, [interacting]);
+
+  useEffect(() => {
+    const engine = engineRef.current;
     if (!engine || !src) return;
 
     let isCancelled = false;
     const element = coverElement || getCoverElement(src);
 
-    engine
-      .loadImage(src, element)
+    if (imageLoad.current?.src !== src) imageLoad.current = { src, promise: engine.loadImage(src, element) };
+    imageLoad.current.promise
       .then(() => {
         if (isCancelled) return;
         setLoaded(true);
@@ -122,6 +133,7 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
       })
       .catch((err) => {
         if (isCancelled) return;
+        if (imageLoad.current?.src === src) imageLoad.current = null;
         onError?.(err instanceof Error ? err : new Error(String(err)));
       });
 

@@ -1,3 +1,5 @@
+import { usesLocalAppTransport } from "./localAppTransport";
+import { decodeLyricsStream } from "./lyricsStream";
 import {
   getAccessToken,
   getAuthSession,
@@ -593,7 +595,8 @@ function authInit(proof: AuthProof, body: unknown): RequestInit {
   return {
     method: "POST",
     body: JSON.stringify(body),
-    ...(proof.edge ? { credentials: "include" as const } : {}),
+    // Preserve challenge and edge cookies for every authentication request.
+    credentials: "include",
   };
 }
 
@@ -1047,12 +1050,16 @@ export const api = {
       }
     } catch (err) {
       if (signal?.aborted) throw err;
+      console.warn("[lyrics] Liner stream unavailable", err);
     }
-    if (foundOnServer) {
-      yield serverDone ?? { type: "done", cached: false };
+    if (foundOnServer || (serverDone?.type === "done" && serverDone.instrumental)) {
+      if (!serverDone) throw new Error("Liner lyrics stream ended before completion");
+      yield { ...serverDone, source: "server" };
       return;
     }
-    yield* streamFallbackLyrics(id, hint, signal);
+    for await (const event of streamFallbackLyrics(id, hint, signal)) {
+      yield event.type === "done" ? { ...event, source: "fallback" } : event;
+    }
   },
 
   async *streamServerLyrics(
@@ -1069,8 +1076,8 @@ export const api = {
           }).toString()
         : "";
     const path = `/v1/tracks/${encodeURIComponent(id)}/lyrics${hintParams ? `?${hintParams}` : ""}`;
-    const signedHeaders = await signApiRequest("GET", path);
     const accessToken = await getValidAccessToken();
+    const signedHeaders = await signApiRequest("GET", path);
     const requestId =
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
@@ -1084,23 +1091,26 @@ export const api = {
     };
 
     let res: Response;
+    const connect = new AbortController();
+    const connectTimer = setTimeout(() => connect.abort(), 20_000);
     try {
+      const localPreview = usesLocalAppTransport();
       res = await fetch(
-        `${getApiBaseUrl()}${path}`,
+        localPreview
+          ? `/__lane/lyrics/${encodeURIComponent(id)}${hintParams ? `?${hintParams}` : ""}`
+          : `${getApiBaseUrl()}${path}`,
         {
-          signal,
+          signal: signal ? AbortSignal.any([signal, connect.signal]) : connect.signal,
           headers: {
+            Accept: "application/json, text/event-stream",
             ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             ...correlationHeaders,
             ...signedHeaders,
           },
         },
       );
-    } catch (fetchErr: any) {
-      if (signal?.aborted || fetchErr?.name === "AbortError") {
-        throw fetchErr;
-      }
-      throw fetchErr;
+    } finally {
+      clearTimeout(connectTimer);
     }
 
     const lyricsDateHeader = res.headers?.get?.("date");
@@ -1113,53 +1123,7 @@ export const api = {
       throw new ApiError(res.status, res.statusText, undefined, respReqId);
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    const flushEvent = (): LyricsStreamEvent | null => {
-      const sep = buffer.indexOf("\n\n");
-      if (sep === -1) return null;
-      const rawEvent = buffer.slice(0, sep);
-      buffer = buffer.slice(sep + 2);
-
-      const dataLines: string[] = [];
-      for (const line of rawEvent.split("\n")) {
-        if (line.startsWith("data:")) {
-          dataLines.push(line.slice(5).trim());
-        }
-      }
-
-      if (dataLines.length === 0) return null;
-      try {
-        return JSON.parse(dataLines.join("\n")) as LyricsStreamEvent;
-      } catch {
-        return null;
-      }
-    };
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let event = flushEvent();
-        while (event) {
-          yield event;
-          event = flushEvent();
-        }
-      }
-
-      buffer += decoder.decode();
-      let event = flushEvent();
-      while (event) {
-        yield event;
-        event = flushEvent();
-      }
-    } finally {
-      reader.releaseLock();
-    }
+    yield* decodeLyricsStream(res);
   },
 
 

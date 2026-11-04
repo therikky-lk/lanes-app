@@ -1,3 +1,4 @@
+import { appApiUserAgent } from "@/shared/api/appIdentity";
 import { registerPlugin } from "@capacitor/core";
 import { diag } from "./diag";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
@@ -70,16 +71,6 @@ function hostOf(url: string): string {
   }
 }
 
-function desktopApiUserAgent(): string {
-  const chromiumVersion =
-    typeof navigator !== "undefined"
-      ? navigator.userAgent.match(/(?:Chrome|Chromium)\/([\d.]+)/)?.[1]
-      : undefined;
-  return `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromiumVersion ?? "136.0.0.0"} Safari/537.36`;
-}
-
-let loggedDesktopApiUserAgent = false;
-
 // Android WebView can leave ordinary fetch requests to the Lane services
 // hanging for ~15 seconds even while the device is online. Route the app's
 // own HTTP services through the same native client as YouTube. This keeps
@@ -93,6 +84,9 @@ function isNativeServiceUrl(url: string): boolean {
     "covers.tryliner.fun",
     "link.tryliner.fun",
     "music.yandex.ru",
+    "rss.marketingtools.apple.com",
+    "ntfy.sh",
+    "ntfy.envs.net",
   ]);
   return serviceHosts.has(host);
 }
@@ -114,7 +108,7 @@ interface NativeHttpResponse {
 // never be returned from an async function (await would call "then" natively
 // and hang forever): keep it in a plain module constant
 export const laneHttp = isNativeApp() ? registerPlugin<{
-  request(options: { url: string; method: string; headers: Record<string, string>; body?: string; withCookies?: boolean }): Promise<NativeHttpResponse>;
+  request(options: { url: string; method: string; headers: Record<string, string>; body?: string; withCookies?: boolean; transport?: "auto" | "java" }): Promise<NativeHttpResponse>;
 }>("LaneHttp") : null;
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -137,7 +131,7 @@ async function bodyToBase64(body: BodyInit | null | undefined): Promise<string |
 }
 
 /** YouTube traffic goes through LaneHttp (see LaneHttpPlugin.java) */
-async function nativeHttpFetch(url: string, method: string, headers: Headers, body: string | undefined, signal?: AbortSignal | null, withCookies = false): Promise<Response> {
+async function nativeHttpFetch(url: string, method: string, headers: Headers, body: string | undefined, signal?: AbortSignal | null, withCookies = false, transport: "auto" | "java" = "auto"): Promise<Response> {
   if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
   const plain: Record<string, string> = {};
   headers.forEach((value, key) => {
@@ -149,6 +143,7 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
   let res: NativeHttpResponse;
   try {
     const started = performance.now();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     let abortListener: (() => void) | undefined;
     const aborted = new Promise<never>((_, reject) => {
       if (!signal) return;
@@ -157,16 +152,18 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
     });
     try {
       res = await Promise.race([
-      http.request({ url, method, headers: plain, body, withCookies }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timed out after 40s")), 40_000)),
+      http.request({ url, method, headers: plain, body, withCookies, transport }),
+      new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("timed out after 40s")), 40_000); }),
         aborted,
       ]);
     } finally {
+      if (timeout) clearTimeout(timeout);
       if (signal && abortListener) signal.removeEventListener("abort", abortListener);
     }
     const took = performance.now() - started;
     if (took > 8000) diag(`HTTP ${method} ${short} slow: ${Math.round(took / 1000)}s`);
   } catch (error) {
+    if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
     diag(`HTTP ${method} ${short} failed: ${error instanceof Error ? error.message : String(error)}`);
     throw new TypeError(`Network error (${error instanceof Error ? error.message : String(error)})`);
   }
@@ -202,21 +199,17 @@ export function installNativeFetchHeaders(): void {
 
     const headers = new Headers(input instanceof Request ? input.headers : undefined);
     if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    // Experiment: some Cloudflare rules reject Android's WebView/Cronet UA on
-    // the public API even though the same account works from the desktop app.
-    // Keep this scoped to Android API traffic; media providers retain their
-    // own client identities.
-    const isAndroidApi =
-      isNativeService &&
-      host === hostOf(getApiBaseUrl()) &&
-      nativePlatform() === "android";
-    if (isAndroidApi) {
-      headers.set("User-Agent", desktopApiUserAgent());
-      if (!loggedDesktopApiUserAgent) {
-        diag("Android API requests using Linux desktop Chrome User-Agent");
-        loggedDesktopApiUserAgent = true;
-      }
+    const isApi = host === hostOf(getApiBaseUrl());
+    const isAuth = isApi && new URL(url).origin === new URL(getApiBaseUrl()).origin && new URL(url).pathname.startsWith("/v1/auth/");
+    // The official API rejects a plain WebView identity before login/register.
+    // Apply the same app identity to challenge, auth and subsequent API calls.
+    if (isApi) {
+      const userAgent = headers.get("User-Agent") || navigator.userAgent;
+      headers.set("User-Agent", new URL(url).origin === "https://api.tryliner.fun"
+        ? appApiUserAgent(userAgent)
+        : userAgent);
     }
+    if (isAuth) headers.set("Accept", "application/json");
     const override = headers.get(UA_OVERRIDE);
     if (override) {
       headers.delete(UA_OVERRIDE);
@@ -238,18 +231,21 @@ export function installNativeFetchHeaders(): void {
         const buf = await input.clone().arrayBuffer();
         if (buf.byteLength) body = bytesToBase64(new Uint8Array(buf));
       }
+      const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+      const withCookies = isAuth || (init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin")) === "include";
+      const transport = isAuth ? "java" : "auto";
       const response = await nativeHttpFetch(
         url,
         method,
         headers,
         body,
-        init?.signal ?? (input instanceof Request ? input.signal : undefined),
-        (init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin")) === "include",
+        signal,
+        withCookies,
+        transport,
       );
 
-      // Cloudflare blocks some Cronet requests to the Lane API with an HTML
-      // 403 challenge. Retry only those responses through Capacitor's normal
-      // native fetch adapter, which has a different TLS/client fingerprint.
+      // Retry only a confirmed edge rejection, once, using the other native
+      // transport. Never send credentials through WebView or a third-party proxy.
       const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
       const server = response.headers.get("server")?.toLowerCase() ?? "";
       const isCloudflareChallenge =
@@ -261,7 +257,7 @@ export function installNativeFetchHeaders(): void {
 
       if (isCloudflareChallenge) {
         const rayId = response.headers.get("cf-ray");
-        diag(`API ${method} ${url.replace(/^https?:\/\//, "").slice(0, 70)} blocked by Cloudflare via Cronet; cf-ray=${rayId ?? "unavailable"}; retrying Capacitor HTTP`);
+        diag(`API ${method} ${url.replace(/^https?:\/\//, "").slice(0, 70)} blocked by Cloudflare via native ${transport}; cf-ray=${rayId ?? "unavailable"}; retrying alternate native transport`);
         try {
           const serverDate = response.headers.get("date");
           if (serverDate) syncServerTime(serverDate);
@@ -276,11 +272,13 @@ export function installNativeFetchHeaders(): void {
               if (value) headers.set(name, value);
             }
           }
-          const retryResponse = await original(input, { ...init, method, headers });
-          diag(`Capacitor HTTP retry -> ${retryResponse.status}${retryResponse.headers.get("cf-ray") ? `; cf-ray=${retryResponse.headers.get("cf-ray")}` : ""}`);
+          // Reuse the exact bytes that were signed, including for Request inputs.
+          const retryResponse = await nativeHttpFetch(url, method, headers, body, signal, withCookies, transport === "java" ? "auto" : "java");
+          diag(`Native API retry -> ${retryResponse.status}${retryResponse.headers.get("cf-ray") ? `; cf-ray=${retryResponse.headers.get("cf-ray")}` : ""}`);
           return retryResponse;
         } catch (error) {
-          diag(`Capacitor HTTP retry failed: ${error instanceof Error ? error.message : String(error)}`);
+          if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+          diag(`Native API retry failed: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 

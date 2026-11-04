@@ -1,3 +1,4 @@
+import { EQ_BANDS, normalizeEqGains, eqPreampDb } from "./equalizer";
 /**
  * Real-time Web Audio Effects Engine for independent pitch control and studio reverb.
  *
@@ -207,6 +208,8 @@ interface AudioEffectsGraph {
   shifter: HannPitchShifter;
   masterDryGain: GainNode;
   masterOutputGain: GainNode;
+  eqFilters: BiquadFilterNode[];
+  eqPreamp: GainNode;
   reverbSendGain: GainNode;
   convolver: ConvolverNode;
   reverbHighpass: BiquadFilterNode;
@@ -218,6 +221,8 @@ export interface AudioEffectsParams {
   isPitchLinked?: boolean;
   isReverbEnabled?: boolean;
   reverbLevel?: number;
+  isEqEnabled?: boolean;
+  eqGains?: number[];
 }
 
 export class PitchShifterController {
@@ -286,7 +291,7 @@ export class PitchShifterController {
           g.pitchStageOutput &&
           g.masterOutputGain &&
           g.masterDryGain &&
-          g.shifter
+          g.shifter && g.eqFilters?.length === EQ_BANDS.length
         );
       };
 
@@ -305,6 +310,8 @@ export class PitchShifterController {
             (graph as any).pitchStageOutput?.disconnect();
             (graph as any).masterDryGain?.disconnect();
             (graph as any).masterOutputGain?.disconnect();
+            (graph as any).eqPreamp?.disconnect();
+            for (const filter of (graph as any).eqFilters ?? []) filter.disconnect();
             (graph as any).reverbSendGain?.disconnect();
             (graph as any).convolver?.disconnect();
             (graph as any).reverbHighpass?.disconnect();
@@ -367,7 +374,20 @@ export class PitchShifterController {
         reverbHighpass.connect(reverbWetGain);
         reverbWetGain.connect(masterOutputGain);
 
-        masterOutputGain.connect(ctx.destination);
+        // Place EQ after the effects mix so pitch and reverb share the same curve.
+        const eqPreamp = ctx.createGain();
+        const eqFilters = EQ_BANDS.map(frequency => {
+          const filter = ctx.createBiquadFilter();
+          filter.type = "peaking";
+          filter.frequency.value = frequency;
+          filter.Q.value = 1.4;
+          filter.gain.value = 0;
+          return filter;
+        });
+        masterOutputGain.connect(eqPreamp);
+        let tail: AudioNode = eqPreamp;
+        for (const filter of eqFilters) { tail.connect(filter); tail = filter; }
+        tail.connect(ctx.destination);
 
         graph = {
           ctx,
@@ -378,6 +398,8 @@ export class PitchShifterController {
           shifter,
           masterDryGain,
           masterOutputGain,
+          eqPreamp,
+          eqFilters,
           reverbSendGain,
           convolver,
           reverbHighpass,
@@ -448,6 +470,11 @@ export class PitchShifterController {
 
     const isPitchActive = !isPitchLinked && Math.abs(semitones) >= 0.05;
     const now = this.context.currentTime;
+
+    const eq = typeof arg1 === "object" && arg1.isEqEnabled
+      ? normalizeEqGains(arg1.eqGains) : EQ_BANDS.map(() => 0);
+    this.graph.eqPreamp.gain.setTargetAtTime(Math.pow(10, eqPreampDb(eq) / 20), now, 0.02);
+    this.graph.eqFilters.forEach((filter, index) => filter.gain.setTargetAtTime(eq[index], now, 0.02));
 
     // Pitch shift routing
     if (isPitchActive) {

@@ -1,3 +1,5 @@
+import { downloadsDb } from "@/shared/storage/downloadsDb";
+import { listLocalTracks } from "@/shared/media/local/localTracks";
 import { linerDb } from "@/shared/storage/linerDb";
 import {
   audioCache,
@@ -28,7 +30,7 @@ const PRESERVED_STORAGE_KEYS = new Set([
   "theme",
 ]);
 
-export type StorageCategoryId = "covers" | "audio" | "lyrics" | "metadata";
+export type StorageCategoryId = "covers" | "audio" | "lyrics" | "metadata" | "liked" | "local";
 
 export interface StorageCategoryItem {
   id: StorageCategoryId;
@@ -46,6 +48,7 @@ export interface StorageAnalytics {
   deviceUsageBytes?: number;
   deviceUsagePercent?: number;
   cachePath?: string;
+  freeBytes?: number;
 }
 
 /**
@@ -209,6 +212,7 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     localStorageSize: number;
     blobStorageSize: number;
     cachePath: string;
+    freeBytes?: number;
   } | null = null;
 
   if (typeof window !== "undefined" && window.linerElectron?.getCacheStats) {
@@ -227,19 +231,6 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     audioBytes = audioTrackBytes + audioBlobBytes;
     audioCount = await linerDb.getStoreCount("audio");
   } catch {}
-
-  // take the maximum between indexeddb object store iteration and physical disk size
-  // if indexeddb store is empty, ignore residual leveldb engine overhead under 2MB
-  if (electronStats && electronStats.indexedDbSize > 0) {
-    const totalIdbDisk = electronStats.indexedDbSize + (electronStats.blobStorageSize || 0);
-    if (audioBytes > 0) {
-      audioBytes = Math.max(audioBytes, totalIdbDisk);
-    } else if (totalIdbDisk > 2 * 1024 * 1024) {
-      audioBytes = totalIdbDisk;
-    } else {
-      audioBytes = 0;
-    }
-  }
 
   // 3. serviceworker covers added in cover-sw.js
   try {
@@ -328,7 +319,10 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     } catch {}
   }
 
+  const [downloads, local] = await Promise.all([downloadsDb.list().catch(() => []), listLocalTracks().catch(() => [])]);
   const categories: StorageCategoryItem[] = [
+    { id: "liked", labelKey: "settings.storage.categories.liked", bytes: downloads.reduce((sum, entry) => sum + entry.byteSize, 0), count: downloads.length, color: "#ededed" },
+    { id: "local", labelKey: "settings.storage.categories.local", bytes: local.reduce((sum, entry) => sum + entry.size, 0), count: local.length, color: "#bcbcbc" },
     {
       id: "covers",
       labelKey: "settings.storage.categories.covers",
@@ -364,6 +358,7 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
   return {
     categories,
     totalBytes,
+    freeBytes: electronStats?.freeBytes,
     audioCacheLimitBytes: audioCache.getLimitBytes(),
     deviceQuotaBytes,
     deviceUsageBytes,
@@ -375,18 +370,15 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
 // clears chosen categories cleanly while maintaining user session
 export async function clearStorageCategories(categoryIds: StorageCategoryId[]): Promise<void> {
   const set = new Set(categoryIds);
-  const isAllCategories =
-    set.has("audio") && set.has("covers") && set.has("lyrics") && set.has("metadata");
+  // Downloads and imports are managed explicitly, never by the cache cleaner.
 
   if (set.has("audio")) {
     audioCache.invalidate();
     await linerDb.clearStore("audio");
-    await linerDb.clearStore("tracks");
-    if (isAllCategories) {
-      await linerDb.close();
-    }
+    // Retain library metadata so offline likes remain available.
+
     if (typeof window !== "undefined" && window.linerElectron?.clearAudioCache) {
-      await window.linerElectron.clearAudioCache(isAllCategories);
+      await window.linerElectron.clearAudioCache(false);
     }
   }
 
@@ -438,6 +430,7 @@ export async function clearStorageCategories(categoryIds: StorageCategoryId[]): 
   if (typeof window !== "undefined" && window.linerElectron?.clearHttpCache) {
     await window.linerElectron.clearHttpCache();
   }
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("lane:audio-cache-changed"));
 }
 
 export async function openCacheFolder(): Promise<boolean> {

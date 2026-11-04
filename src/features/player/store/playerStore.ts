@@ -1,3 +1,4 @@
+import { FLAT_EQ, normalizeEqGains, normalizeEqCustomPresets, type EqCustomPreset } from "../engine/equalizer";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
@@ -64,6 +65,9 @@ export interface SessionState {
   keepSpeedAcrossTracks: boolean;
   isReverbEnabled: boolean;
   reverbLevel: number;
+  isEqEnabled: boolean;
+  eqGains: number[];
+  eqCustomPresets: EqCustomPreset[];
 }
 
 export type PlayerState = TransportState &
@@ -118,6 +122,9 @@ export interface PlayerStore extends PlayerState {
   setKeepSpeedAcrossTracks: (keep: boolean) => void;
   setIsReverbEnabled: (enabled: boolean) => void;
   setReverbLevel: (level: number) => void;
+  setIsEqEnabled: (enabled: boolean) => void;
+  setEqGains: (gains: number[]) => void;
+  setEqCustomPresets: (presets: EqCustomPreset[]) => void;
   resetSpeedAndPitch: () => void;
   clearQueue: () => void;
   resetPlayback: () => void;
@@ -162,6 +169,9 @@ export const usePlayerStore = create<PlayerStore>()(
       keepSpeedAcrossTracks: true,
       isReverbEnabled: false,
       reverbLevel: 0.35,
+      isEqEnabled: false,
+      eqGains: FLAT_EQ,
+      eqCustomPresets: [],
 
       dispatch: () => {
         // Implementation injected by PlayerEngine
@@ -213,6 +223,9 @@ export const usePlayerStore = create<PlayerStore>()(
       setIsReverbEnabled: (isReverbEnabled: boolean) => set({ isReverbEnabled }),
       setReverbLevel: (reverbLevel: number) =>
         set({ reverbLevel: Math.max(0, Math.min(1, reverbLevel)) }),
+      setIsEqEnabled: (isEqEnabled) => set({ isEqEnabled }),
+      setEqGains: (gains) => set({ eqGains: normalizeEqGains(gains) }),
+      setEqCustomPresets: (presets) => set({ eqCustomPresets: normalizeEqCustomPresets(presets) }),
       resetSpeedAndPitch: () => set({ playbackRate: 1, pitchSemitones: 0 }),
       resetPlayback: () =>
         set({
@@ -278,6 +291,9 @@ export const usePlayerStore = create<PlayerStore>()(
           state.accentVariant = "default";
         }
         if (state) {
+          state.isEqEnabled = state.isEqEnabled === true;
+          state.eqGains = normalizeEqGains(state.eqGains);
+          state.eqCustomPresets = normalizeEqCustomPresets(state.eqCustomPresets);
           if (typeof state.playbackRate !== "number" || isNaN(state.playbackRate)) {
             state.playbackRate = 1;
           }
@@ -327,6 +343,9 @@ export const usePlayerStore = create<PlayerStore>()(
         keepSpeedAcrossTracks: state.keepSpeedAcrossTracks,
         isReverbEnabled: state.isReverbEnabled,
         reverbLevel: state.reverbLevel,
+        isEqEnabled: state.isEqEnabled,
+        eqGains: state.eqGains,
+        eqCustomPresets: state.eqCustomPresets,
       }),
     },
   ),

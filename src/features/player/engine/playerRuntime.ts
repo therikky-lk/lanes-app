@@ -1,3 +1,5 @@
+import { downloadsDb } from "@/shared/storage/downloadsDb";
+import { FLAT_EQ, isEqActive } from "./equalizer";
 import { usePlayerStore } from "../store/playerStore";
 import { diag } from "@/shared/platform/diag";
 import { ApiError } from "@/shared/api";
@@ -20,6 +22,7 @@ import {
   type NativeNextItem,
   setNativeHeaderProvider,
   setNativeNowPlaying,
+  setNativeEqualizer,
 } from "@/shared/platform/nativeAudio";
 
 
@@ -131,7 +134,8 @@ export class PlayerRuntime {
         state.isPitchLinked !== prevState.isPitchLinked ||
         state.pitchSemitones !== prevState.pitchSemitones ||
         state.isReverbEnabled !== prevState.isReverbEnabled ||
-        state.reverbLevel !== prevState.reverbLevel
+        state.reverbLevel !== prevState.reverbLevel ||
+        state.isEqEnabled !== prevState.isEqEnabled || state.eqGains !== prevState.eqGains
       ) {
         const rate = state.playbackRate ?? 1;
         const preservesPitch = !state.isPitchLinked;
@@ -497,7 +501,13 @@ export class PlayerRuntime {
       const pitchSemitones = store.pitchSemitones ?? 0;
       const isReverbEnabled = store.isReverbEnabled ?? false;
       const reverbLevel = store.reverbLevel ?? 0.35;
-      const needsEffects = isReverbEnabled || (!isPitchLinked && Math.abs(pitchSemitones) >= 0.05);
+      const isEqEnabled = store.isEqEnabled;
+      const eqGains = store.eqGains ?? FLAT_EQ;
+      if (isNativeApp()) {
+        void setNativeEqualizer(isEqEnabled, eqGains).catch(error => diag(`Native equalizer: ${String(error)}`));
+        return;
+      }
+      const needsEffects = isEqActive(isEqEnabled, eqGains) || isReverbEnabled || (!isPitchLinked && Math.abs(pitchSemitones) >= 0.05);
       if (!needsEffects && !pitchShifter.isAttached()) return;
       pitchShifter.attach(this.audio);
       pitchShifter.update({
@@ -505,6 +515,8 @@ export class PlayerRuntime {
         isPitchLinked,
         isReverbEnabled,
         reverbLevel,
+        isEqEnabled,
+        eqGains,
       });
     } catch (err) {
       console.error("[PlayerRuntime] applyPlaybackRateAndPitch error:", err);
@@ -645,7 +657,7 @@ export class PlayerRuntime {
       let startsInMs = 0;
       for (const track of tracks) {
         try {
-          const cached = await linerDb.getAudio(track.id).catch(() => null);
+          const cached = await downloadsDb.get(track.id).catch(() => undefined) ?? await linerDb.getAudio(track.id).catch(() => null);
           let stream: { url?: string; blob?: Blob; expiresAtMs?: number | null };
           const reusable = this.nativeStreams.get(track.id);
           if (cached?.blob?.size) {
@@ -705,8 +717,7 @@ export class PlayerRuntime {
     if (this.currentTrackId === track.id) return;
     if (this.preloadingTrackId === track.id) return;
 
-    const cached = await linerDb.getAudio(track.id);
-    if (cached) return;
+    if (await audioCache.hasAudio(track.id)) return;
 
     this.preloadAbortController?.abort();
     const controller = new AbortController();
@@ -723,6 +734,7 @@ export class PlayerRuntime {
         if (!blob || controller.signal.aborted) return;
         if (!(await audioCache.saveAudioBlob(track.id, blob, blob.type, generation))) return;
         await linerDb.putTrack(track);
+        window.dispatchEvent(new Event("lane:audio-cache-changed"));
         log(
           "green",
           "preload",
@@ -824,7 +836,8 @@ export class PlayerRuntime {
     this.pauseForTransition();
 
     try {
-      const cachedAudio = bypassCache ? null : await linerDb.getAudio(track.id);
+      const downloaded = await downloadsDb.get(track.id).catch(() => undefined);
+      const cachedAudio = downloaded ?? (bypassCache ? null : await linerDb.getAudio(track.id));
       if (epoch !== this.loadEpoch || controller.signal.aborted) {
         return;
       }
@@ -1169,6 +1182,7 @@ export class PlayerRuntime {
         if (!blob || signal.aborted) return;
         if (!(await audioCache.saveAudioBlob(track.id, blob, blob.type, generation))) return;
         await linerDb.putTrack(track);
+        window.dispatchEvent(new Event("lane:audio-cache-changed"));
         log("green", "playback", `background cached: ${track.title} (${Math.round(blob.size / 1024)} KB)`);
       } catch {}
     })();

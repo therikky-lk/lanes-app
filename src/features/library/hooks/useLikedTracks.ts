@@ -264,3 +264,8 @@ if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
   void refreshLocal();
   onLocalTracksChange(() => void refreshLocal());
 }
+
+// Shared with the background download worker; views and downloads use the same likes snapshot.
+export const likedTracksSnapshot = () => view.data.tracks;
+export const subscribeLikedTracks = subscribe;
+export const loadLikedTracks = load;
