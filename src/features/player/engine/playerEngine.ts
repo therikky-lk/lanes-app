@@ -1265,7 +1265,10 @@ class PlayerEngine {
     }
 
     const currentId = state.currentTrack?.id || "none";
-    const preloadKey = `${currentId}->${nextTrack.id}:${state.repeat}`;
+    const nativeNext = state.repeat === "one" ? [] : this.upcoming(state, NATIVE_QUEUE_AHEAD);
+    // A radio refill can extend the look-ahead without changing its first
+    // track. Include the whole list so the native queue receives the refill.
+    const preloadKey = `${currentId}->${nativeNext.map((track) => track.id).join(",")}:${state.repeat}`;
     if (this.lastPreloadKey === preloadKey) {
       return;
     }
@@ -1287,7 +1290,7 @@ class PlayerEngine {
       if (state.currentTrack) {
         playerRuntime.queueNextNatively(
           state.currentTrack.id,
-          state.repeat === "one" ? [] : this.upcoming(state, NATIVE_QUEUE_AHEAD),
+          nativeNext,
         );
       }
     }
@@ -1308,23 +1311,26 @@ class PlayerEngine {
   }
 
   /** Android: the native player already started the queued next track */
-  public handleNativeAdvance(trackId: string): void {
+  public handleNativeAdvance(trackId: string, positionMs = 0, durationMs?: number, status: PlayerStatus = "playing"): void {
     const store = usePlayerStore.getState();
     if (store.currentTrack?.id === trackId) return;
     const expected = this.computeNextIndex(true);
-    const index =
+    let index =
       expected !== null && store.queue[expected]?.id === trackId
         ? expected
         : store.queue.findIndex((t, i) => i > store.currentIndex && t.id === trackId);
+    // Foregrounding can jump over several native transitions, including a
+    // repeat-all wrap. Match the actual item without replaying those skips.
+    if (index < 0) index = store.queue.findIndex((track) => track.id === trackId);
     if (index < 0) return;
     const track = store.queue[index];
     this.telemetry.onTrackCompleted(false);
     this.sessionId += 1;
     const mySession = this.sessionId;
     store.setCurrentTrack(track, index);
-    store.setPosition(0);
-    store.setDuration(track.durationMs ?? 0);
-    store.setStatus("playing", null);
+    store.setPosition(positionMs);
+    store.setDuration(durationMs && durationMs > 0 ? durationMs : track.durationMs ?? 0);
+    store.setStatus(status, null);
     playerRuntime?.updateMediaSessionMetadata(track);
     this.maybeExtendQueue(mySession, track.id, index, store.queue.length);
   }

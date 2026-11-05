@@ -1,5 +1,5 @@
 import type { AlbumDetails, CatalogPlaylistDetails, Track, TrackArtist } from "@/shared/contracts";
-import { findFirst, type JsonRecord, walkRecords } from "@/shared/utils/json";
+import { findFirst, stringValue, type JsonRecord, walkRecords } from "@/shared/utils/json";
 import { getRuns, getText, runPageType, runsToArtists, yearFromRuns } from "./innertubeJson";
 import { coverFromThumbnail } from "./innertubeThumbnail";
 import { isMusicVideo, mapInnertubeTrack, musicVideoType } from "./innertubeTrackMapper";
@@ -101,8 +101,9 @@ function playlistMetadata(header: JsonRecord | undefined): { author?: string; de
 }
 
 export function mapInnertubePlaylistDetails(id: string, body: unknown): CatalogPlaylistDetails | null {
-  const header = findFirst(body, "musicResponsiveHeaderRenderer");
-  const title = getText(header?.title);
+  const header = findFirst(body, "musicResponsiveHeaderRenderer") ??
+    findFirst(body, "musicDetailHeaderRenderer") ?? findFirst(body, "playlistHeaderRenderer");
+  const title = getText(header?.title) ?? stringValue(findFirst(body, "microformatDataRenderer")?.title);
   if (!title) return null;
   const cover = coverFromThumbnail(header?.thumbnail) ?? microformatCover(body);
   const year = yearFromRuns(header?.subtitle);

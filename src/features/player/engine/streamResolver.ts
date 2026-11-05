@@ -16,6 +16,7 @@ import { findSoundCloudStandIn } from "./soundcloudStandIn";
 import { getLocalTrack, isLocalTrackId } from "@/shared/media/local/localTracks";
 import { audiusStreamUrl, isAudiusId } from "@/shared/media/audius";
 import type { AudioQuality } from "../store/playerStore";
+import { resolvePlaybackSources } from "./resolvePlaybackSources";
 
 export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlaybackStream } from "./playbackStream";
 
@@ -73,23 +74,22 @@ async function withSoundCloudFallback(
 }
 
 async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
-  const liner = await resolveLinerStream(videoId, signal);
-  if (liner) {
-    log("cyan", "playback", `playing liner audio (r2) for "${track.title}"`);
+  return resolvePlaybackSources(async (primarySignal) => {
+    const liner = await resolveLinerStream(videoId, primarySignal);
+    if (!liner) return null;
     return fromLinerStream(liner, track);
-  }
-  return withSoundCloudFallback(track, async () => {
+  }, (fallbackSignal) => withSoundCloudFallback(track, async () => {
     if (isYoutubeSignedIn() && prefersAccountPlayback()) {
       const profiles: readonly InnertubeProfile[] = [TV_ACCOUNT_PROFILE, ...PLAYBACK_PROFILES];
       try {
-        return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal, profiles, ...audioOptions(quality) }));
+        return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: fallbackSignal, profiles, ...audioOptions(quality) }));
       } catch (error) {
-        if (isAbortError(error, signal)) throw error;
+        if (isAbortError(error, fallbackSignal)) throw error;
         log("yellow", "playback", `YouTube account playback failed, using public playback: ${String(error)}`);
       }
     }
-    return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal, ...audioOptions(quality) }));
-  }, signal);
+    return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: fallbackSignal, ...audioOptions(quality) }));
+  }, fallbackSignal), signal);
 }
 
 export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {

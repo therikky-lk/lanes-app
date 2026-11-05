@@ -186,7 +186,6 @@ function browserSubscribe(
 export function openRelay(topic: string, onMessage: (text: string) => void, onStatus: (online: boolean) => void): Relay {
   const electron = typeof window !== "undefined" ? window.linerElectron : undefined;
   const online = new Map<string, boolean>();
-  const lastError = new Map<string, string>();
   const seen = new Set<string>();
   let closed = false;
   const cooldowns = new Map<string, number>();
@@ -202,8 +201,6 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
     const was = online.get(relay);
     online.set(relay, isOnline);
     if (was !== isOnline) diag(`connect: ${relay.replace("https://", "")} ${isOnline ? "connected" : `unreachable${error ? ` (${error})` : ""}`}`);
-    else if (!isOnline && error && lastError.get(relay) !== error) diag(`connect: ${relay.replace("https://", "")} unreachable (${error})`);
-    if (error) lastError.set(relay, error);
     onStatus([...online.values()].some(Boolean));
   };
 

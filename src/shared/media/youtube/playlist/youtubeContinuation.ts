@@ -33,3 +33,25 @@ export async function fetchInnertubeContinuation(
     return undefined;
   }
 }
+
+/** Shared by playlist import and catalog browsing: never stop at page one. */
+export async function visitYoutubePlaylistPages(
+  firstPage: unknown,
+  visit: (page: unknown) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const seenTokens = new Set<string>();
+  let page = firstPage;
+  for (let count = 0; count < 500; count++) {
+    signal?.throwIfAborted();
+    const shelf = findFirst(page, "musicPlaylistShelfRenderer") ??
+      findFirst(page, "musicPlaylistShelfContinuation") ?? page;
+    visit(shelf);
+    const token = extractInnertubeContinuationToken(shelf);
+    if (!token || seenTokens.has(token)) return;
+    seenTokens.add(token);
+    // Let failures reach the caller instead of caching a truncated playlist.
+    page = await postInnertube("browse", { continuation: token }, { signal });
+  }
+  throw new Error("YouTube playlist pagination exceeded 500 pages.");
+}

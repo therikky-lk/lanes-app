@@ -1,5 +1,6 @@
 import { runWorkerPool } from "@/shared/utils/workerPool";
 import { SoundCloudUnavailableError } from "./soundcloudTranscodings";
+import { fetchAudioForCache } from "@/shared/platform/native";
 
 export interface HlsMediaPlaylist {
   initSegment?: string;
@@ -49,7 +50,7 @@ async function fetchBytes(url: string, signal?: AbortSignal): Promise<Uint8Array
   let lastError: unknown = null;
   for (let attempt = 0; attempt < MAX_SEGMENT_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(url, { signal });
+      const response = await fetchAudioForCache(url, signal);
       if (!response.ok) throw new Error(`HLS request returned HTTP ${response.status}`);
       return new Uint8Array(await response.arrayBuffer());
     } catch (error) {

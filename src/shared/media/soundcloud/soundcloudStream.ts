@@ -3,6 +3,7 @@ import { downloadHlsAudio } from "./soundcloudHls";
 import { parseSoundCloudTrack, toSoundCloudTrackId, type SoundCloudTrackInfo, type SoundCloudTranscoding } from "./soundcloudTrack";
 import { playableTranscodings, SoundCloudUnavailableError, transcodingFormat, type SoundCloudCodec } from "./soundcloudTranscodings";
 import { signedUrlExpiry } from "./signedUrlExpiry";
+import { isNativeApp } from "@/shared/platform/native";
 
 interface SoundCloudStreamFormat {
   mimeType: string;
@@ -11,6 +12,7 @@ interface SoundCloudStreamFormat {
 }
 
 export interface SoundCloudUrlStream extends SoundCloudStreamFormat {
+  hls?: boolean;
   url: string;
   expiresAt: string | null;
   contentLength?: number;
@@ -68,6 +70,9 @@ async function openTranscoding(
   if (transcoding.protocol === "progressive") {
     return { ...format, url: mediaUrl, expiresAt: urlExpiry(mediaUrl) };
   }
+  // ExoPlayer can play HLS segments as they arrive. Buffering the entire song
+  // here delayed the first sound by the duration of a full download.
+  if (isNativeApp()) return { ...format, url: mediaUrl, hls: true, expiresAt: urlExpiry(mediaUrl) };
   const bytes = await downloadHlsAudio(mediaUrl, { signal: options.signal });
   return { ...format, blob: new Blob([bytes], { type: format.mimeType }), expiresAt: null, contentLength: bytes.byteLength };
 }

@@ -1,12 +1,17 @@
 import { diag } from "./diag";
+import { NativePlaybackSync } from "./nativePlaybackSync";
 // Android: playback runs in a native ExoPlayer (background audio, media
 // notification, lock screen). The player engine and the lyrics view keep talking
 // to an <audio id="liner-audio"> element; on Android that element is a real
 // HTMLAudioElement whose media properties and events are forwarded to the native
 // player, so nothing above this file has to know the difference.
 import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import { App } from "@capacitor/app";
 
-interface NativeState {
+export interface NativeState {
+  trackId?: string;
+  sourceUrl?: string;
+  sequence?: number;
   playing: boolean;
   playWhenReady?: boolean;
   seekable?: boolean;
@@ -18,6 +23,7 @@ interface NativeState {
 }
 
 interface LaneAudioPlugin {
+  getState(): Promise<NativeState>;
   load(options: {
     url: string;
     headers?: Record<string, string>;
@@ -97,8 +103,9 @@ export function onNativeRepeat(handler: (() => void) | null): void {
 }
 
 // the native player switched to the queued next track by itself
-let advancedHandler: ((trackId: string) => void) | null = null;
-export function onNativeAdvanced(handler: ((trackId: string) => void) | null): void {
+type AdvancedHandler = (trackId: string, state?: NativeState, isCurrent?: () => boolean) => void | Promise<void>;
+let advancedHandler: AdvancedHandler | null = null;
+export function onNativeAdvanced(handler: AdvancedHandler | null): void {
   advancedHandler = handler;
 }
 
@@ -218,7 +225,29 @@ export function createNativeAudioElement(): HTMLAudioElement {
   let playWhenReady = false;
   let seekable = true;
   let seekCheck: { target: number; at: number } | null = null;
-  void LaneAudio.addListener("state", (s) => {
+  let nativeTrackId = "";
+  let loadingTrackId: string | null = null;
+  const sync = new NativePlaybackSync<NativeState>(
+    () => LaneAudio.getState(),
+    async (s, isCurrent) => {
+      if (loadingTrackId && s.trackId && s.trackId !== loadingTrackId) return;
+      if (s.trackId && s.trackId !== nativeTrackId) {
+        await advancedHandler?.(s.trackId, s, isCurrent);
+        if (!isCurrent()) return;
+        nativeTrackId = s.trackId;
+        diag(`native: now playing (${s.trackId})`);
+        durationMs = NaN;
+        readyState = 0;
+        ended = false;
+        error = null;
+        if (s.sourceUrl) src = s.sourceUrl;
+        fire("emptied");
+      }
+      applyState(s);
+    },
+    (error) => diag(`native state sync failed: ${String(error).slice(0, 120)}`),
+  );
+  const applyState = (s: NativeState) => {
     // what the player reports right after a seek, for the log
     if (seekCheck && performance.now() - seekCheck.at > 600) {
       diag(`native after seek: at ${Math.round(s.positionMs / 1000)}s (wanted ${Math.round(seekCheck.target / 1000)}s)`);
@@ -278,19 +307,19 @@ export function createNativeAudioElement(): HTMLAudioElement {
       error = new NativeMediaError(2, s.error);
       fire("error");
     }
+  };
+  void LaneAudio.addListener("state", (s) => {
+    if (loadingTrackId && s.trackId && s.trackId !== loadingTrackId) return;
+    if (s.trackId === loadingTrackId) loadingTrackId = null;
+    sync.push(s);
   });
-  void LaneAudio.addListener("advanced", (a) => {
-    diag(`native: moved on to the next track by itself (${a.trackId})`);
-    // a new track is already playing natively: start the clock over
-    positionMs = 0;
-    positionAt = performance.now();
-    durationMs = NaN;
-    ended = false;
-    error = null;
-    readyState = 0;
-    advancedHandler?.(a.trackId);
-    fire("emptied");
-  });
+  // Historical "advanced" events are intentionally not replayed. Every state
+  // carries the track ID, and a foreground snapshot jumps straight to now.
+  const onVisibility = () => sync.setVisible(!document.hidden);
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("pageshow", onVisibility);
+  void App.addListener("appStateChange", ({ isActive }) => sync.setVisible(isActive && !document.hidden));
+  sync.setVisible(!document.hidden);
   void LaneAudio.addListener("remote", (r) => {
     if (r.action === "seeked") {
       diag(`native: seek landed at ${Math.round(r.positionMs / 1000)}s`);
@@ -304,6 +333,9 @@ export function createNativeAudioElement(): HTMLAudioElement {
 
   const startLoad = async () => {
     const token = ++loadToken;
+    sync.invalidate();
+    nativeTrackId = nowPlaying.trackId ?? "";
+    loadingTrackId = nativeTrackId || null;
     positionMs = 0;
     positionAt = performance.now();
     durationMs = NaN;
@@ -354,7 +386,13 @@ export function createNativeAudioElement(): HTMLAudioElement {
 
   define("src", () => src, (v: string) => {
     src = v ?? "";
-    void startLoad();
+    // Match the element's automatic loading, but let an explicit load() in
+    // the same turn replace it. Loading twice consumed laneStartAt on the
+    // first call and restarted recovery at zero on the second one.
+    const token = ++loadToken;
+    queueMicrotask(() => {
+      if (token === loadToken) void startLoad();
+    });
   });
   define("currentSrc", () => src);
   define("laneStartAt", () => startAtMs, (v: number) => {

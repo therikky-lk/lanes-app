@@ -4,7 +4,8 @@ import { TimeLine } from "@mingcute/react";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
-import { FaSpotify } from "react-icons/fa";
+import ImportServiceIcon from "./ImportServiceIcon";
+import { detectImportSource } from "../services/import/detectImportSource";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -416,12 +417,13 @@ export default function LibraryPage() {
   });
 
   const isMobile = useIsMobile();
-  const openSpotifyImport = async () => {
-    // prefill a Spotify link from the clipboard; a lone space opens the import tab empty
+  const openPlaylistImport = async () => {
+    // Prefill a supported service link; a lone space opens the import tab empty.
     let link = " ";
     try {
       const text = (await navigator.clipboard.readText()).trim();
-      if (/^https?:\/\/(open\.spotify\.com|spotify\.link)\//i.test(text)) link = text;
+      detectImportSource(text);
+      link = text;
     } catch {}
     openCreatePlaylist(link);
   };
@@ -591,11 +593,10 @@ export default function LibraryPage() {
                   }}
                 />
                 <PhoneMenuItem
-                  icon={<FaSpotify size={16} />}
-                  label={t("library.import_spotify") || "Import from Spotify"}
+                  label={<span className="inline-flex items-center gap-2">{t("library.import_from")}<ImportServiceIcon /><span className="sr-only">Spotify, YouTube, SoundCloud, Deezer, Apple Music</span></span>}
                   onClick={() => {
                     setMobileAdd(false);
-                    void openSpotifyImport();
+                    void openPlaylistImport();
                   }}
                 />
               </PhoneMenu>

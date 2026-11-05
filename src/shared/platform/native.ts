@@ -1,6 +1,6 @@
 import { appApiUserAgent } from "@/shared/api/appIdentity";
 import { registerPlugin } from "@capacitor/core";
-import { diag } from "./diag";
+import { diag, diagThrottled } from "./diag";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { signApiRequest } from "@/shared/api/requestSigner";
 import { syncServerTime } from "@/shared/api/serverTime";
@@ -140,6 +140,10 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
   const http = laneHttp;
   if (!http) throw new TypeError("LaneHttp is available only in the native app");
   const short = url.replace(/^https:\/\//, "").slice(0, 70);
+  // Connect reports relay health itself, once per outage. Logging every
+  // underlying poll/send here duplicated the same outage across layers.
+  const host = hostOf(url);
+  const isRelay = host === "ntfy.sh" || host === "ntfy.envs.net";
   let res: NativeHttpResponse;
   try {
     const started = performance.now();
@@ -161,18 +165,25 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
       if (signal && abortListener) signal.removeEventListener("abort", abortListener);
     }
     const took = performance.now() - started;
-    if (took > 8000) diag(`HTTP ${method} ${short} slow: ${Math.round(took / 1000)}s`);
+    if (took > 8000 && !isRelay) diagThrottled(`http-slow:${host}`, `HTTP ${method} ${short} slow: ${Math.round(took / 1000)}s`);
   } catch (error) {
     if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
-    diag(`HTTP ${method} ${short} failed: ${error instanceof Error ? error.message : String(error)}`);
+    if (!isRelay) diagThrottled(`http-network:${host}`, `HTTP ${method} ${short} failed: ${error instanceof Error ? error.message : String(error)}`);
     throw new TypeError(`Network error (${error instanceof Error ? error.message : String(error)})`);
   }
-  if (res.status >= 400) {
+  if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
+  if (res.status >= 400 && !isRelay) {
     let snippet = "";
+    let expectedMiss = false;
     try {
-      snippet = new TextDecoder().decode(base64ToBytes(res.body).subarray(0, 600)).replace(/\s+/g, " ").slice(0, 160);
+      const body = new TextDecoder().decode(base64ToBytes(res.body));
+      snippet = body.replace(/\s+/g, " ").slice(0, 160);
+      expectedMiss = res.status === 404 && method === "POST" &&
+        new URL(url).origin === new URL(getApiBaseUrl()).origin &&
+        /^\/v1\/tracks\/[^/]+\/playback$/.test(new URL(url).pathname) &&
+        JSON.parse(body).code === "PLAYBACK_NOT_FOUND";
     } catch {}
-    diag(`HTTP ${method} ${short} -> ${res.status} [${res.via ?? "?"}] ${snippet}`);
+    if (!expectedMiss) diagThrottled(`http-status:${host}:${new URL(url).pathname}:${res.status}`, `HTTP ${method} ${short} -> ${res.status} [${res.via ?? "?"}] ${snippet}`);
   }
   if (signal?.aborted) throw signal.reason ?? new DOMException("Aborted", "AbortError");
   const nullBody = res.status === 204 || res.status === 304 || method === "HEAD";

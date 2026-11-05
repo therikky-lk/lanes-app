@@ -271,8 +271,9 @@ async function send(message: Message): Promise<void> {
   } catch (error) {
     const text = error instanceof Error ? error.message : String(error);
     if (/\b429\b/.test(text)) rateLimitedUntil = Date.now() + RATE_LIMIT_PAUSE_MS;
-    // the same failure over and over says nothing new: log it once
-    if (text !== lastSendError) diag(`connect: send failed (${text})`);
+    // Log once until delivery recovers; changing transport errors are still
+    // the same outage, already reported by the relay health check.
+    if (!lastSendError && useConnectStore.getState().online) diag(`connect: send failed (${text})`);
     lastSendError = text;
   }
 }
