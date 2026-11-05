@@ -1,5 +1,5 @@
 import { asRecord, findFirst, trimmedString } from "@/shared/utils/json";
-import { postInnertube } from "@/shared/media/innertube/innertubeClient";
+import { postInnertube, type InnertubeProfile } from "@/shared/media/innertube/innertubeClient";
 import { rethrowIfAborted } from "@/shared/utils/abort";
 
 function commandToken(endpoint: unknown): string | undefined {
@@ -39,19 +39,22 @@ export async function visitYoutubePlaylistPages(
   firstPage: unknown,
   visit: (page: unknown) => void,
   signal?: AbortSignal,
+  profile?: InnertubeProfile,
 ): Promise<void> {
   const seenTokens = new Set<string>();
   let page = firstPage;
   for (let count = 0; count < 500; count++) {
     signal?.throwIfAborted();
-    const shelf = findFirst(page, "musicPlaylistShelfRenderer") ??
+    const shelf = findFirst(page, "playlistVideoListRenderer") ??
+      findFirst(page, "playlistVideoListContinuation") ??
+      findFirst(page, "musicPlaylistShelfRenderer") ??
       findFirst(page, "musicPlaylistShelfContinuation") ?? page;
     visit(shelf);
     const token = extractInnertubeContinuationToken(shelf);
     if (!token || seenTokens.has(token)) return;
     seenTokens.add(token);
     // Let failures reach the caller instead of caching a truncated playlist.
-    page = await postInnertube("browse", { continuation: token }, { signal });
+    page = await postInnertube("browse", { continuation: token }, { signal, profile });
   }
   throw new Error("YouTube playlist pagination exceeded 500 pages.");
 }

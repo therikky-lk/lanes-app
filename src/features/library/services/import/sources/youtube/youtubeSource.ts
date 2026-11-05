@@ -1,9 +1,6 @@
-import { postInnertube } from "@/shared/media/innertube/innertubeClient";
 import type { ClientImportedPlaylist, ClientImportedTrack } from "../../importTypes";
-import { visitYoutubePlaylistPages } from "@/shared/media/youtube/playlist/youtubeContinuation";
-import { parseYoutubePlaylistHeader } from "./youtubeHeader";
+import { fetchYoutubePlaylist } from "@/shared/media/youtube/playlist/youtubePlaylist";
 import { importYoutubeSingleVideo } from "./youtubeSingleVideo";
-import { parseInnertubeTracks } from "./youtubeTracks";
 import { playlistIdFromYoutube, videoIdFromYoutube } from "./youtubeUrl";
 
 export async function importYoutube(rawUrl: string, signal?: AbortSignal): Promise<ClientImportedPlaylist> {
@@ -14,11 +11,17 @@ export async function importYoutube(rawUrl: string, signal?: AbortSignal): Promi
     throw new Error("YouTube URL must contain a valid playlist or video identifier.");
   }
 
-  const body = await postInnertube("browse", { browseId: playlistId }, { signal });
-  const header = parseYoutubePlaylistHeader(body);
-  const tracks: ClientImportedTrack[] = [];
-  const seenIds = new Set<string>();
-  await visitYoutubePlaylistPages(body, (page) => parseInnertubeTracks(page, seenIds, tracks), signal);
+  const playlist = await fetchYoutubePlaylist(playlistId, signal);
+  const tracks: ClientImportedTrack[] = playlist.tracks.map((track) => ({
+    sourceId: track.id,
+    title: track.title,
+    artists: track.artists.map((artist) => artist.name),
+    artistIds: track.artists.map((artist) => artist.id !== "unknown" ? artist.id : undefined),
+    album: track.album?.title,
+    albumId: track.album?.id,
+    durationMs: track.durationMs,
+    coverUrl: track.cover?.url ?? "",
+  }));
 
   if (tracks.length === 0) {
     throw new Error("No tracks could be extracted from this YouTube playlist. Check if the playlist is public.");
@@ -27,7 +30,8 @@ export async function importYoutube(rawUrl: string, signal?: AbortSignal): Promi
   return {
     source: "youtube",
     sourceUrl: rawUrl,
-    ...header,
+    title: playlist.title,
+    ...(playlist.description ? { description: playlist.description } : {}),
     tracks,
     canonicalTrackIds: tracks.map((track) => track.sourceId),
   };
