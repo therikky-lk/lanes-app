@@ -29,6 +29,7 @@ import {
 import { getQueueItems, getTrackItem, mapInnertubeRadioTrack, mapInnertubeTrackDetails } from "./innertubeQueueMapper";
 import { searchArtistOfficialVideos, searchCatalog } from "./innertubeSearch";
 import { soundcloudCatalog } from "@/shared/media/soundcloud";
+import { visitYoutubePlaylistPages } from "@/shared/media/youtube/playlist/youtubeContinuation";
 
 export interface RadioOptions {
   k?: number;
@@ -91,9 +92,16 @@ async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDet
 
 async function getPlaylist(playlistId: string, signal?: AbortSignal): Promise<CatalogPlaylistDetails> {
   const browseId = /^(VL|MPRE|UC|FE)/.test(playlistId) ? playlistId : `VL${playlistId}`;
-  const playlist = mapInnertubePlaylistDetails(playlistId, await browse(browseId, undefined, signal));
+  const body = await browse(browseId, undefined, signal);
+  const playlist = mapInnertubePlaylistDetails(playlistId, body);
   if (!playlist) throw notFound("Playlist");
-  return playlist;
+  const tracks = new Map<string, Track>();
+  await visitYoutubePlaylistPages(body, (page) => {
+    for (const track of mapInnertubeBrowseTracks(page)) {
+      if (!tracks.has(track.id)) tracks.set(track.id, track);
+    }
+  }, signal);
+  return { ...playlist, tracks: [...tracks.values()], trackCount: tracks.size };
 }
 
 const MAX_RELEASE_PAGES = 8;

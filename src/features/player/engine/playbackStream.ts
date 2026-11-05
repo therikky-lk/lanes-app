@@ -11,6 +11,7 @@ interface PlaybackStreamFormat {
 }
 
 export interface UrlPlaybackStream extends PlaybackStreamFormat {
+  hls?: boolean;
   url: string;
   expiresAtMs: number | null;
   blob?: undefined;
@@ -51,6 +52,7 @@ export function fromSoundCloudStream(stream: ResolvedSoundCloudStream): Playback
   return {
     ...format,
     url: stream.url,
+    ...(stream.hls ? { hls: true } : {}),
     expiresAtMs: toTimestamp(stream.expiresAt),
     ...(stream.contentLength ? { contentLength: stream.contentLength } : {}),
   };
