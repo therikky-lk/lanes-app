@@ -204,13 +204,12 @@ export default function HomePage() {
                         return (
                           <span
                             key={`${item.key}-thumb-${index}`}
-                            className="relative shrink-0 overflow-hidden rounded-md border-2 border-[#1a1a1a] shadow-[0_2px_8px_rgba(0,0,0,0.2)] md:border-2"
+                            className="relative shrink-0 overflow-hidden rounded-md border border-[#1a1a1a]"
                             style={{
                               width: `${size}px`,
                               height: `${size}px`,
                               marginLeft: index === 0 ? 0 : -30,
                               zIndex: item.thumbs.length - index,
-                              opacity: Math.max(0.52, 1 - index * 0.2),
                             }}
                           >
                             <CoverImage src={thumb} alt="" fill sizes="44px" className="object-cover" />
