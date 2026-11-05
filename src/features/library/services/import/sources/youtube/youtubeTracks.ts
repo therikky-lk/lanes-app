@@ -1,27 +1,14 @@
-import { isMusicVideo, mapInnertubeTrack } from "@/shared/media/innertube/innertubeTrackMapper";
+import { mapYoutubePlaylistTracks } from "@/shared/media/youtube/playlist/youtubePlaylistTracks";
 import type { ClientImportedTrack } from "../../importTypes";
-import { collectByKey } from "@/shared/utils/json";
-
-function mapRendererTrack(rawRenderer: unknown, seenIds: Set<string>): ClientImportedTrack | undefined {
-  if (isMusicVideo({ musicResponsiveListItemRenderer: rawRenderer })) return undefined;
-  const mapped = mapInnertubeTrack({ musicResponsiveListItemRenderer: rawRenderer });
-  if (!mapped || seenIds.has(mapped.id)) return undefined;
-  seenIds.add(mapped.id);
-  return {
-    sourceId: mapped.id,
-    title: mapped.title,
-    artists: mapped.artists.map((artist) => artist.name),
-    artistIds: mapped.artists.map((artist) => (artist.id !== "unknown" ? artist.id : undefined)),
-    album: mapped.album?.title,
-    albumId: mapped.album?.id,
-    durationMs: mapped.durationMs,
-    coverUrl: mapped.cover?.url ?? "",
-  };
-}
 
 export function parseInnertubeTracks(body: unknown, seenIds: Set<string>, tracks: ClientImportedTrack[]): void {
-  for (const rawRenderer of collectByKey(body, "musicResponsiveListItemRenderer")) {
-    const track = mapRendererTrack(rawRenderer, seenIds);
-    if (track) tracks.push(track);
+  for (const track of mapYoutubePlaylistTracks(body)) {
+    if (seenIds.has(track.id)) continue;
+    seenIds.add(track.id);
+    tracks.push({
+      sourceId: track.id, title: track.title, artists: track.artists.map((artist) => artist.name),
+      artistIds: track.artists.map((artist) => artist.id !== "unknown" ? artist.id : undefined),
+      album: track.album?.title, albumId: track.album?.id, durationMs: track.durationMs, coverUrl: track.cover?.url ?? "",
+    });
   }
 }
