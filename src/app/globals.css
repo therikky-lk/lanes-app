@@ -966,3 +966,16 @@ html[data-hover-reset] [data-window-controls] button:hover {
 [data-desktop-fullscreen="true"] [data-window-controls] {
   background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none;
 }
+
+/* Storage controls share a trailing row on narrow settings panels. */
+.lane-settings-mobile .lane-storage-settings .lane-setting-control {
+  display: flex;
+  flex: 0 0 100%;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.lane-settings-mobile .lane-storage-settings .lane-setting-control > div {
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
