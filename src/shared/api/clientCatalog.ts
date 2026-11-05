@@ -155,9 +155,14 @@ export const clientCatalog = {
 
   getPlaylist(id: string, server: () => Promise<CatalogPlaylistDetails>): Promise<CatalogPlaylistDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getPlaylist(id);
-    // A Music-only server fallback can silently return two songs from a full
-    // YouTube playlist. Explicit YouTube IDs must use the complete source.
-    if (/^(?:VL|PL|OLAK5uy_)/.test(id)) return innertubeCatalog.getPlaylist(id);
-    return preferClient("playlist", () => innertubeCatalog.getPlaylist(id), server);
+    return preferClient("playlist", async () => {
+      const playlist = await innertubeCatalog.getPlaylist(id);
+      if (!playlist.tracks.length) throw new Error("YouTube returned playlist metadata without tracks");
+      return playlist;
+    }, async () => {
+      const playlist = await server();
+      if (/^(?:VL|PL|OLAK5uy_)/.test(id) && !playlist.tracks.length) throw new Error("YouTube playlist tracks could not be loaded");
+      return playlist;
+    });
   },
 };
