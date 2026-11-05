@@ -30,7 +30,7 @@ export function useCollection(
 ) {
   // Do not reuse old Music-only subsets for full YouTube playlists. Daily-mix
   // prewarming keeps its existing cache keys.
-  const cacheId = type === "playlist" && /^(?:VL|PL|OLAK5uy_)/.test(id ?? "") ? `youtube-full:${id}` : id;
+  const cacheId = type === "playlist" && /^(?:VL|PL|OLAK5uy_)/.test(id ?? "") ? `youtube-full-v2:${id}` : id;
   const cacheKey = type && cacheId ? `collection:${type}:${cacheId}` : null;
   const cached = cacheKey ? queryCache.get<CollectionPageData>(cacheKey) : undefined;
   const [data, setData] = useState<CollectionPageData | null>(cached ?? null);
@@ -68,7 +68,7 @@ export function useCollection(
           const decodedId = id ? decodeURIComponent(id) : "";
           if (type === "playlist" && isAccountPlaylistId(decodedId)) {
             const youtubeCollection = await fetchYoutubeAccountPlaylist(decodedId);
-            if (youtubeCollection) {
+            if (youtubeCollection?.tracks.length) {
               const tracks = youtubeCollection.tracks.map(toClientTrack);
               return {
                 type: "playlist",
@@ -249,6 +249,9 @@ export function useCollection(
           // Uploads have their own artwork. Optional cover searches must not
           // delay the entire playlist or replace those original thumbnails.
           const tracks = collection.type === "playlist" ? sourceTracks : await replaceTrackCoversWithYandex(sourceTracks);
+          if (cacheId?.startsWith("youtube-full-v2:") && !tracks.length) {
+            throw new Error("YouTube returned playlist metadata without tracks");
+          }
 
           const formatted: CollectionPageData = {
             type: collection.type,

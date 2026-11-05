@@ -1,9 +1,10 @@
 import type { AlbumDetails, CatalogPlaylistDetails, Track, TrackArtist } from "@/shared/contracts";
-import { findFirst, stringValue, type JsonRecord, walkRecords } from "@/shared/utils/json";
+import { asRecord, findFirst, stringValue, type JsonRecord, walkRecords } from "@/shared/utils/json";
 import { getRuns, getText, runPageType, runsToArtists, yearFromRuns } from "./innertubeJson";
 import { coverFromThumbnail } from "./innertubeThumbnail";
 import { isMusicVideo, mapInnertubeTrack, musicVideoType } from "./innertubeTrackMapper";
 import { mapYoutubePlaylistTracks } from "@/shared/media/youtube/playlist/youtubePlaylistTracks";
+import { parsePlaylistAuthor } from "@/shared/media/youtube/account/playlistAuthor";
 
 export function mapInnertubeBrowseTracks(
   body: unknown,
@@ -107,13 +108,15 @@ export function mapInnertubePlaylistDetails(id: string, body: unknown): CatalogP
     findFirst(body, "musicHeaderRenderer");
   const sidebar = findFirst(body, "playlistSidebarPrimaryInfoRenderer");
   const microformat = findFirst(body, "microformatDataRenderer");
+  const entity = findFirst(body, "entityMetadataRenderer");
   const title = getText(header?.title) ?? stringValue(header?.title) ??
     stringValue(findFirst(body, "playlistMetadataRenderer")?.title) ??
-    getText(sidebar?.title) ?? stringValue(findFirst(body, "pageHeaderRenderer")?.pageTitle) ?? stringValue(microformat?.title);
+    getText(sidebar?.title) ?? stringValue(findFirst(body, "pageHeaderRenderer")?.pageTitle) ?? stringValue(microformat?.title) ??
+    getText(entity?.title) ?? stringValue(asRecord(entity?.title)?.content);
   if (!title) return null;
   const cover = coverFromThumbnail(header?.thumbnail) ?? microformatCover(body) ??
     coverFromThumbnail(findFirst(body, "playlistVideoThumbnailRenderer")?.thumbnail);
-  const owner = getText(header?.ownerText) ?? getText(findFirst(body, "videoOwnerRenderer")?.title);
+  const owner = getText(header?.ownerText) ?? getText(findFirst(body, "videoOwnerRenderer")?.title) ?? parsePlaylistAuthor(entity);
   const description = getText(header?.descriptionText) ?? stringValue(microformat?.description);
   const year = yearFromRuns(header?.subtitle);
   const trackCount = trackCountFrom(header?.secondSubtitle);
