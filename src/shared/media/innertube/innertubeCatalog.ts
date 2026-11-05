@@ -24,12 +24,11 @@ import type { ArtistAlbum, ArtistRelease } from "@/shared/contracts";
 import {
   mapInnertubeAlbumDetails,
   mapInnertubeBrowseTracks,
-  mapInnertubePlaylistDetails,
 } from "./innertubeCollectionMapper";
 import { getQueueItems, getTrackItem, mapInnertubeRadioTrack, mapInnertubeTrackDetails } from "./innertubeQueueMapper";
 import { searchArtistOfficialVideos, searchCatalog } from "./innertubeSearch";
 import { soundcloudCatalog } from "@/shared/media/soundcloud";
-import { visitYoutubePlaylistPages } from "@/shared/media/youtube/playlist/youtubeContinuation";
+import { fetchYoutubePlaylist } from "@/shared/media/youtube/playlist/youtubePlaylist";
 
 export interface RadioOptions {
   k?: number;
@@ -91,17 +90,7 @@ async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDet
 }
 
 async function getPlaylist(playlistId: string, signal?: AbortSignal): Promise<CatalogPlaylistDetails> {
-  const browseId = /^(VL|MPRE|UC|FE)/.test(playlistId) ? playlistId : `VL${playlistId}`;
-  const body = await browse(browseId, undefined, signal);
-  const playlist = mapInnertubePlaylistDetails(playlistId, body);
-  if (!playlist) throw notFound("Playlist");
-  const tracks = new Map<string, Track>();
-  await visitYoutubePlaylistPages(body, (page) => {
-    for (const track of mapInnertubeBrowseTracks(page)) {
-      if (!tracks.has(track.id)) tracks.set(track.id, track);
-    }
-  }, signal);
-  return { ...playlist, tracks: [...tracks.values()], trackCount: tracks.size };
+  return fetchYoutubePlaylist(playlistId, signal);
 }
 
 const MAX_RELEASE_PAGES = 8;

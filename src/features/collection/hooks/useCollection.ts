@@ -28,7 +28,10 @@ export function useCollection(
   fallbackArtist?: string | null,
   isRelease = false,
 ) {
-  const cacheKey = type && id ? `collection:${type}:${id}` : null;
+  // Do not reuse old Music-only subsets for full YouTube playlists. Daily-mix
+  // prewarming keeps its existing cache keys.
+  const cacheId = type === "playlist" && /^(?:VL|PL|OLAK5uy_)/.test(id ?? "") ? `youtube-full:${id}` : id;
+  const cacheKey = type && cacheId ? `collection:${type}:${cacheId}` : null;
   const cached = cacheKey ? queryCache.get<CollectionPageData>(cacheKey) : undefined;
   const [data, setData] = useState<CollectionPageData | null>(cached ?? null);
   const [loading, setLoading] = useState<boolean>(!cached && Boolean(type && id));
@@ -66,7 +69,7 @@ export function useCollection(
           if (type === "playlist" && isAccountPlaylistId(decodedId)) {
             const youtubeCollection = await fetchYoutubeAccountPlaylist(decodedId);
             if (youtubeCollection) {
-              const tracks = await replaceTrackCoversWithYandex(youtubeCollection.tracks.map(toClientTrack));
+              const tracks = youtubeCollection.tracks.map(toClientTrack);
               return {
                 type: "playlist",
                 title: youtubeCollection.title,
@@ -225,7 +228,7 @@ export function useCollection(
           }
 
           const collectionCoverUrl = collection.cover ? mediaUrl(collection.cover.url) : "";
-          const tracks = await replaceTrackCoversWithYandex((collection.tracks || []).map((t: any) => {
+          const sourceTracks: Track[] = (collection.tracks || []).map((t: any) => {
             const clientTrack = toClientTrack(t);
             let updated = clientTrack;
             if (collection.type === "album") {
@@ -242,7 +245,10 @@ export function useCollection(
               }
             }
             return updated;
-          }));
+          });
+          // Uploads have their own artwork. Optional cover searches must not
+          // delay the entire playlist or replace those original thumbnails.
+          const tracks = collection.type === "playlist" ? sourceTracks : await replaceTrackCoversWithYandex(sourceTracks);
 
           const formatted: CollectionPageData = {
             type: collection.type,
