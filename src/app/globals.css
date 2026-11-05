@@ -603,7 +603,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   background-color: transparent !important;
   border-radius: 0;
 }
-.lane-settings-shell .lane-setting-control [aria-pressed] {
+.lane-settings-shell .lane-setting-control [aria-pressed]:not(.lane-toggle-switch) {
   border-radius: 9px;
 }
 .lane-glass-dialog {
@@ -658,6 +658,8 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-mobile .rounded-xl.bg-bg-primary { border-radius: 0 !important; }
 /* phone settings: a row's control drops under its title when space runs out */
 .lane-settings-mobile .lane-setting-row { flex-wrap: wrap; row-gap: 10px; }
+.lane-settings-mobile .lane-setting-label { flex-basis: 140px; }
+.lane-settings-mobile .lane-setting-control { max-width: 100%; }
 .lane-settings-mobile .lane-setting-control:has(.lane-select-trigger) { flex: 0 0 100%; width: 100%; }
 .lane-settings-mobile .lane-customization-targets {
   align-items: stretch;

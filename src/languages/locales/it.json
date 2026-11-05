@@ -49,6 +49,12 @@
     "sec": "s"
   },
   "common": {
+    "cache_track": "Salva nella cache",
+    "cache_playlist": "Salva tutta la playlist nella cache",
+    "cache_saving": "Salvataggio nella cache…",
+    "cache_saved": "Salvato nella cache",
+    "cache_failed": "Impossibile salvare l’audio nella cache",
+    "cache_playlist_result": "{saved} brani su {total} nella cache. Controlla il limite della cache se mancano brani.",
     "pause": "Pausa",
     "source": "Fonte",
     "app": {

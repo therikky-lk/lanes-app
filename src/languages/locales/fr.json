@@ -49,6 +49,12 @@
     "sec": "s"
   },
   "common": {
+    "cache_track": "Enregistrer en cache",
+    "cache_playlist": "Mettre toute la playlist en cache",
+    "cache_saving": "Enregistrement en cache…",
+    "cache_saved": "Enregistré en cache",
+    "cache_failed": "Impossible de mettre cet audio en cache",
+    "cache_playlist_result": "{saved} titres sur {total} en cache. Vérifiez la limite du cache si des titres manquent.",
     "pause": "Pause",
     "source": "Source",
     "app": {

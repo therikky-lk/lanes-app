@@ -1,3 +1,4 @@
+import { useCacheTrackMenuItem, useCachePlaylistMenuItem } from "@/features/library/offline/cacheMenu";
 import { useCallback } from "react";
 import {
   LuRadio,
@@ -59,6 +60,10 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
   const unlikeMutation = useUnlikeTrack();
 
   const liked = useIsTrackLiked(id);
+  const isTrack = searchType === "track" || !searchType;
+  const cacheTrack = useCacheTrackMenuItem(isTrack && id ? { id, title, artists, coverUrl, durationMs: durationMs ?? 0, playCount: 0 } : undefined);
+  const cachePlaylist = useCachePlaylistMenuItem(searchType === "playlist" ? id : undefined);
+
 
   const handleLike = useCallback(async () => {
     if (!id) return;
@@ -78,6 +83,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     if (isTrack) {
       if (playlistId) {
         return [
+          ...(cacheTrack ? [cacheTrack] : []),
           {
             id: "start-radio",
             label: t("common.start_radio"),
@@ -173,6 +179,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
       }
 
       return [
+        ...(cacheTrack ? [cacheTrack] : []),
         {
           id: "start-radio",
           label: t("common.start_radio"),
@@ -266,6 +273,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     }
 
     return [
+      ...(cachePlaylist ? [cachePlaylist] : []),
       {
         id: "add-to-library",
         label: t("common.add_to_library"),
@@ -298,6 +306,8 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     addedDateLabel,
     liked,
     handleLike,
+    cacheTrack,
+    cachePlaylist,
     playlistsData,
     t,
   ]);

@@ -1,3 +1,4 @@
+import { useCachePlaylistMenuItem } from "../offline/cacheMenu";
 import { useMemo, useState, useCallback } from "react";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { PinLine } from "@mingcute/react";
@@ -70,6 +71,7 @@ function tr(t: (key: string) => string, key: string, fallback: string): string {
 function useItemMenuItems(item: LibraryItemViewModel): DropdownMenuItem[] {
   const { t } = useTranslation();
   const pinsVersion = usePinsStore((s) => s.pins);
+  const cachePlaylistItem = useCachePlaylistMenuItem(item.kind === "playlist" ? item.id : undefined, undefined, item.isOwned ?? item.href.startsWith("/library/playlist"));
   return useMemo(() => {
     const entityType =
       item.kind === "artist"
@@ -80,6 +82,7 @@ function useItemMenuItems(item: LibraryItemViewModel): DropdownMenuItem[] {
     const pinKind: PinKind = entityType;
     const pinned = usePinsStore.getState().isPinned(pinKind, item.id);
     return [
+      ...(cachePlaylistItem ? [cachePlaylistItem] : []),
       {
         id: "pin",
         label: pinned ? tr(t, "common.sidebar.unpin", "Unpin from menu") : tr(t, "common.sidebar.pin", "Pin to menu"),
@@ -110,7 +113,7 @@ function useItemMenuItems(item: LibraryItemViewModel): DropdownMenuItem[] {
         },
       },
     ];
-  }, [item.id, item.title, item.imageUrl, item.coverUrls, item.subtitle, item.kind, item.isOwned, item.href, t, pinsVersion]);
+  }, [item.id, item.title, item.imageUrl, item.coverUrls, item.subtitle, item.kind, item.isOwned, item.href, t, pinsVersion, cachePlaylistItem]);
 }
 
 function LibraryItemCard({ item }: { item: LibraryItemViewModel }) {

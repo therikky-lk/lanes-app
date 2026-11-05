@@ -1,3 +1,4 @@
+import { downloadPlaybackAudio } from "./downloadPlaybackAudio";
 import { downloadsDb } from "@/shared/storage/downloadsDb";
 import { FLAT_EQ, isEqActive } from "./equalizer";
 import { usePlayerStore } from "../store/playerStore";
@@ -6,12 +7,9 @@ import { ApiError } from "@/shared/api";
 import { log } from "@/shared/utils/logger";
 import { telemetry } from "@/shared/telemetry";
 import { linerDb, audioCache } from "@/shared/storage";
-import { isStandaloneAudioFile } from "@/shared/storage/audioFormat";
 import type { Track } from "@/shared/types";
 import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
-import { downloadAudioBytes } from "@/shared/media/innertube";
-import { downloadHlsAudio } from "@/shared/media/soundcloud/soundcloudHls";
 import { isNativeApp, streamHeadersFor } from "@/shared/platform/native";
 import { isBotCheckError, isYoutubeSignedIn, isYoutubeSignInDeclined, prefersSignInPrompt, requestYoutubeSignIn } from "@/shared/media/youtube";
 import {
@@ -122,6 +120,10 @@ export class PlayerRuntime {
     }
     this.audio = audio;
     this.setupAudioListeners(this.audio);
+    if (typeof window !== "undefined") window.addEventListener("lane:audio-cache-clearing", () => {
+      this.backgroundCacheAbortController?.abort();
+      this.nativeQueueAbort?.abort();
+    });
 
     const initialVolume = usePlayerStore.getState().volume;
     this.audio.volume = initialVolume;
@@ -1141,29 +1143,7 @@ export class PlayerRuntime {
   }
 
   private async downloadAudioBlob(stream: PlaybackStream, signal: AbortSignal): Promise<Blob | null> {
-    if (stream.blob) return stream.blob;
-    const startedAt = performance.now();
-    const options = {
-      contentLength: stream.contentLength,
-      signal,
-      ...(isNativeApp() ? { concurrency: 1 } : {}),
-    };
-    const bytes = stream.hls
-      ? await downloadHlsAudio(stream.url, options)
-      : await downloadAudioBytes(stream.url, options);
-    if (!bytes || signal.aborted) return null;
-    const mimeType = stream.mimeType || "audio/webm";
-    if (!mimeType.startsWith("audio/") && !mimeType.startsWith("video/")) return null;
-    if (!isStandaloneAudioFile(bytes.subarray(0, 16))) {
-      log("yellow", "download", `not caching: stream is not a standalone audio file`);
-      return null;
-    }
-    log(
-      "cyan",
-      "download",
-      `${Math.round(bytes.byteLength / 1024)} KB in ${Math.round(performance.now() - startedAt)}ms (${stream.contentLength ? "chunked" : "single request"})`,
-    );
-    return new Blob([bytes], { type: mimeType });
+    return downloadPlaybackAudio(stream, signal);
   }
 
   private async cacheAudioInBackground(track: Track, stream: PlaybackStream, signal: AbortSignal): Promise<void> {

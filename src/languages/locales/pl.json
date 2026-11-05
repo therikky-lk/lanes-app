@@ -49,6 +49,12 @@
     "sec": "s"
   },
   "common": {
+    "cache_track": "Zapisz w pamięci podręcznej",
+    "cache_playlist": "Zapisz całą playlistę w pamięci podręcznej",
+    "cache_saving": "Zapisywanie w pamięci podręcznej…",
+    "cache_saved": "Zapisano w pamięci podręcznej",
+    "cache_failed": "Nie udało się zapisać dźwięku w pamięci podręcznej",
+    "cache_playlist_result": "Zapisano {saved} z {total} utworów. Jeśli brakuje utworów, sprawdź limit pamięci podręcznej.",
     "pause": "Pauza",
     "source": "Źródło",
     "app": {

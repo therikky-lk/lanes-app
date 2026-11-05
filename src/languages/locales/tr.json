@@ -49,6 +49,12 @@
     "sec": "sn"
   },
   "common": {
+    "cache_track": "Önbelleğe kaydet",
+    "cache_playlist": "Tüm çalma listesini önbelleğe kaydet",
+    "cache_saving": "Önbelleğe kaydediliyor…",
+    "cache_saved": "Önbelleğe kaydedildi",
+    "cache_failed": "Ses önbelleğe kaydedilemedi",
+    "cache_playlist_result": "{total} parçadan {saved} tanesi önbellekte. Eksik parçalar varsa önbellek sınırını kontrol edin.",
     "pause": "Duraklat",
     "source": "Kaynak",
     "app": {

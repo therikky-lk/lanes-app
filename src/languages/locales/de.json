@@ -49,6 +49,12 @@
     "sec": "Sek."
   },
   "common": {
+    "cache_track": "Im Cache speichern",
+    "cache_playlist": "Gesamte Playlist zwischenspeichern",
+    "cache_saving": "Wird zwischengespeichert…",
+    "cache_saved": "Im Cache gespeichert",
+    "cache_failed": "Audio konnte nicht zwischengespeichert werden",
+    "cache_playlist_result": "{saved} von {total} Titeln im Cache. Prüfe bei fehlenden Titeln das Cache-Limit.",
     "pause": "Pause",
     "source": "Quelle",
     "app": {
