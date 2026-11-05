@@ -33,6 +33,9 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private ListenableFuture<MediaController> controller;
+    private long stateSequence;
+    private JSObject latestState = new JSObject();
+    private boolean foreground = true;
 
     @Override
     public void load() {
@@ -53,9 +56,26 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     }
 
     @Override
+    protected void handleOnPause() {
+        foreground = false;
+        super.handleOnPause();
+    }
+
+    @Override
+    protected void handleOnResume() {
+        super.handleOnResume();
+        foreground = true;
+        main.post(() -> PlayerHolder.get(getContext()).emit());
+    }
+
+    @Override
     public void onState(boolean playing, boolean playWhenReady, boolean buffering, boolean ended, boolean seekable,
                         long positionMs, long durationMs, String error) {
         JSObject data = new JSObject();
+        androidx.media3.common.MediaItem item = PlayerHolder.get(getContext()).player().getCurrentMediaItem();
+        data.put("trackId", item == null ? "" : item.mediaId);
+        data.put("sourceUrl", item == null || item.localConfiguration == null ? "" : item.localConfiguration.uri.toString());
+        data.put("sequence", ++stateSequence);
         data.put("playing", playing);
         data.put("playWhenReady", playWhenReady);
         data.put("seekable", seekable);
@@ -64,7 +84,19 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         data.put("positionMs", positionMs);
         data.put("durationMs", durationMs);
         if (error != null) data.put("error", error);
-        notifyListeners("state", data);
+        latestState = data;
+        if (foreground) notifyListeners("state", data);
+    }
+
+    /** Return one current snapshot instead of replaying queued background events. */
+    @PluginMethod
+    public void getState(PluginCall call) {
+        main.post(() -> {
+            PlayerHolder holder = PlayerHolder.get(getContext());
+            holder.setEvents(this);
+            holder.emit();
+            call.resolve(latestState);
+        });
     }
 
     @Override
