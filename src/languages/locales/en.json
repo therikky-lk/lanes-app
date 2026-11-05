@@ -49,6 +49,12 @@
     "sec": "sec"
   },
   "common": {
+    "cache_track": "Save to cache",
+    "cache_playlist": "Cache entire playlist",
+    "cache_saving": "Saving to cache…",
+    "cache_saved": "Saved in cache",
+    "cache_failed": "Could not save audio to cache",
+    "cache_playlist_result": "Cached {saved} of {total} tracks. Check the cache limit if tracks are missing.",
     "pause": "Pause",
     "source": "Source",
     "app": {

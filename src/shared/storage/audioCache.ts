@@ -8,6 +8,21 @@ export const MIN_AUDIO_CACHE_LIMIT_BYTES = 250 * 1024 * 1024;
 class AudioCache {
   private activeUrls = new Map<string, string>();
   private generation = 0;
+  private writes: Promise<void> = Promise.resolve();
+
+  private serialize<T>(work: () => Promise<T>): Promise<T> {
+    const next = this.writes.then(work);
+    this.writes = next.then(() => undefined, () => undefined);
+    return next;
+  }
+
+  async clear(): Promise<void> {
+    this.invalidate();
+    window.dispatchEvent(new Event("lane:audio-cache-clearing"));
+    await this.serialize(() => linerDb.clearStore("audio"));
+    window.dispatchEvent(new Event("lane:audio-cache-changed"));
+    window.dispatchEvent(new Event("lane:storage-changed"));
+  }
 
   // bumped by a clear: downloads started before it must not write back
   currentGeneration(): number {
@@ -92,12 +107,20 @@ class AudioCache {
     mimeType: string = "audio/ogg",
     generation?: number,
   ): Promise<boolean> {
-    if (generation !== undefined && generation !== this.generation) return false;
-    if (await downloadsDb.get(trackId).catch(() => undefined)) return true;
-    await linerDb.putAudio(trackId, blob, mimeType);
-    await this.enforceCacheLimit();
-    window.dispatchEvent(new Event("lane:audio-cache-changed"));
-    return true;
+    const expectedGeneration = generation ?? this.generation;
+    return this.serialize(async () => {
+      if (expectedGeneration !== this.generation || !blob.size) return false;
+      if (await downloadsDb.get(trackId).catch(() => undefined)) return true;
+      if (expectedGeneration !== this.generation) return false;
+      await linerDb.putAudio(trackId, blob, mimeType);
+      if (expectedGeneration !== this.generation) return false;
+      await this.enforceCacheLimit();
+      if (expectedGeneration !== this.generation) return false;
+      const retained = await this.hasAudio(trackId);
+      window.dispatchEvent(new Event("lane:audio-cache-changed"));
+      window.dispatchEvent(new Event("lane:storage-changed"));
+      return retained;
+    });
   }
 
   async saveAudioFromUrl(
@@ -106,11 +129,12 @@ class AudioCache {
     mimeType?: string,
   ): Promise<void> {
     try {
+      const generation = this.generation;
       const response = await fetch(url);
       if (!response.ok) return;
       const blob = await response.blob();
       const resolvedMime = mimeType || blob.type || "audio/ogg";
-      await this.saveAudioBlob(trackId, blob, resolvedMime);
+      await this.saveAudioBlob(trackId, blob, resolvedMime, generation);
     } catch {}
   }
 

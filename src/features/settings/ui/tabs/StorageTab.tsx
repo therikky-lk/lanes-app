@@ -52,9 +52,10 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
   const [analytics, setAnalytics] = useState<StorageAnalytics | null>(() => getCachedStorageAnalytics());
   const [cacheLimit, setCacheLimit] = useState(getAudioCacheLimitBytes);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [cleaning, setCleaning] = useState(false);
   const [freedBytes, setFreedBytes] = useState<number | null>(null);
-  const refresh = useCallback(async () => { setAnalytics(await refreshStorageAnalytics(true)); }, []);
+  const refresh = useCallback(async () => { const data = await refreshStorageAnalytics(true); setAnalytics(data); return data; }, []);
   useEffect(() => {
     setStorageTabOpen(true);
     let active = true;
@@ -75,21 +76,26 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
   const total = musicBytes + cacheBytes;
   const average = offline.downloads.length ? Math.max(2 * 1024 ** 2, downloadedBytes / offline.downloads.length) : 4 * 1024 ** 2;
   const run = async (work: () => Promise<unknown>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try { await work(); await offline.refresh(); await refresh(); }
     catch { toast(t("settings.cache.local_cache.error"), "error"); }
-    finally { setBusy(false); }
+    finally { busyRef.current = false; setBusy(false); }
   };
-  const remove = async (bytes: number, work: () => Promise<unknown>) => {
+  const remove = async (work: () => Promise<unknown>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setCleaning(true);
     try {
+      const before = await refreshStorageAnalytics(true);
       await Promise.all([work(), new Promise(resolve => setTimeout(resolve, 900))]);
       await offline.refresh();
-      await refresh();
-      setFreedBytes(bytes);
+      const after = await refresh();
+      setFreedBytes(Math.max(0, before.totalBytes - after.totalBytes));
     } catch { toast(t("settings.cache.local_cache.error"), "error"); }
-    finally { setCleaning(false); setBusy(false); }
+    finally { busyRef.current = false; setCleaning(false); setBusy(false); }
   };
   const likedDescription = !offline.enabled ? t("settings.storage.liked_status.disabled")
     : offline.phase === "saving" ? t("settings.storage.liked_status.saving", { count: offline.pending })
@@ -131,9 +137,9 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
     <SettingSection label={t("settings.storage.downloads_title")}>
       <SettingRow title={t("settings.storage.categories.liked")} titleKey="settings.storage.categories.liked" searchQuery={searchQuery}
         description={likedDescription} icon={<HeartFill />}
-        control={<div className="flex items-center gap-3"><StorageAction label={formatStorageBytes(downloadedBytes)}
+        control={<div className="flex max-w-full flex-wrap items-center gap-3"><StorageAction label={formatStorageBytes(downloadedBytes)}
           action={t("settings.storage.remove")} confirmation={t("settings.storage.remove_size", { size: formatStorageBytes(downloadedBytes) })}
-          disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(downloadedBytes, offline.removeDownloads)} /><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
+          disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(offline.removeDownloads)} /><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
       <SettingRow title={t("settings.storage.categories.local")} titleKey="settings.storage.categories.local" searchQuery={searchQuery}
         description={t("settings.storage.local_desc", { songs: t("common.songs", { count: local.length }) })} icon={<MusicLine />}
         control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary">{formatStorageBytes(localBytes)}</button>} />
@@ -147,7 +153,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
         control={<StorageAction label={formatStorageBytes(cacheBytes)} action={t("settings.storage.clear")}
           confirmation={t("settings.storage.clear_size", { size: formatStorageBytes(cacheBytes) })}
           disabled={busy || !analytics || cacheBytes === 0}
-          onConfirm={() => void remove(cacheBytes, () => clearStorageCategories(cacheCategories.map(category => category.id)))} />} />
+          onConfirm={() => void remove(() => clearStorageCategories(cacheCategories.map(category => category.id)))} />} />
       <SettingRow title={t("settings.storage.cache_limit")} titleKey="settings.storage.cache_limit" searchQuery={searchQuery}
         description={cacheLimit ? t("settings.storage.cache_limit_hint", { count: Math.floor(cacheLimit / average) }) : t("settings.storage.cache_limit_unlimited")}
         control={<LimitPills value={cacheLimit} options={[1, 3, 10, 0]} label={t("settings.storage.cache_limit")} disabled={busy}
