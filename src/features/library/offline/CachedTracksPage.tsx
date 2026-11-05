@@ -36,8 +36,8 @@ export default function CachedTracksPage() {
         <Button variant="primary" disabled={!tracks.length} onClick={() => playerEngine.playTrack(tracks[0], tracks, "cache:tracks")}><PlayFill size={16} />{t("common.play_all")}</Button>
       </div>
     </header>
-    <input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t("common.search")} placeholder={t("common.search")}
-      className="mb-4 w-full rounded-xl border-0 bg-black/5 dark:bg-white/5 p-3 text-[13px] text-text-primary" />
+    {cached.length > 0 && <input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t("common.search")} placeholder={t("common.search")}
+      className="mb-4 block h-[34px] w-full max-w-[280px] rounded-lg border-0 bg-black/5 dark:bg-white/5 px-3 text-[13px] text-text-primary" />}
     {!loaded ? <p className="text-text-tertiary">…</p> : cached.length === 0 ? <p className="py-12 text-center text-text-tertiary">{t("library.cached_empty")}</p> : tracks.map(track => <SongCard key={track.id}
       id={track.id} title={track.title} artists={track.artists} artistId={track.artistId} artistList={track.artistList}
       coverUrl={track.coverUrl} albumTitle={track.album?.title} highlight={query} isCurrent={current === track.id}

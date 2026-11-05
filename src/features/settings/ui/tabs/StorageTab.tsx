@@ -116,7 +116,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
       <p className="text-[13px] text-text-tertiary">{cleaning ? t("settings.storage.clearing_subtitle") : formatStorageBytes(freedBytes ?? 0)}</p>
       {cleaning ? <div className="w-[200px] h-1 rounded-full overflow-hidden bg-black/10 dark:bg-white/10"><motion.div className="h-full bg-text-primary" initial={{ width: "10%" }} animate={{ width: "90%" }} transition={{ duration: 8, ease: "easeOut" }} /></div>
         : <button type="button" className="rounded-full border-0 px-5 py-2 bg-black/10 dark:bg-white/10 text-text-primary" onClick={() => setFreedBytes(null)}>{t("settings.storage.done_button")}</button>}
-    </motion.div> : <motion.div key="storage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-[24px] py-2">
+    </motion.div> : <motion.div key="storage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="lane-storage-settings flex flex-col gap-[24px] py-2">
     {!searchQuery?.trim() && <div className="pt-1 pb-0.5" aria-busy={!analytics}>
       <div className="flex items-baseline justify-between gap-4 mb-3">
         <span className="text-[30px] font-semibold tracking-tight text-text-primary tabular-nums">
@@ -139,10 +139,10 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
         description={likedDescription} icon={<HeartFill />}
         control={<div className="flex max-w-full flex-wrap items-center gap-3"><StorageAction label={formatStorageBytes(downloadedBytes)}
           action={t("settings.storage.remove")} confirmation={t("settings.storage.remove_size", { size: formatStorageBytes(downloadedBytes) })}
-          disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(offline.removeDownloads)} /><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
+          disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(offline.removeDownloads)} /><ToggleSwitch size="medium" checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
       <SettingRow title={t("settings.storage.categories.local")} titleKey="settings.storage.categories.local" searchQuery={searchQuery}
         description={t("settings.storage.local_desc", { songs: t("common.songs", { count: local.length }) })} icon={<MusicLine />}
-        control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary">{formatStorageBytes(localBytes)}</button>} />
+        control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="inline-flex h-[30px] w-[100px] items-center justify-center rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 text-[12px] text-text-secondary cursor-pointer">{formatStorageBytes(localBytes)}</button>} />
       <SettingRow title={t("settings.storage.downloads_limit")} titleKey="settings.storage.downloads_limit" searchQuery={searchQuery}
         description={offline.limitBytes ? t("settings.storage.downloads_limit_hint", { count: Math.floor(offline.limitBytes / average) }) : t("settings.storage.downloads_limit_unlimited")}
         control={<LimitPills value={offline.limitBytes} options={[2, 5, 20, 0]} onChange={offline.setLimitBytes} disabled={busy} label={t("settings.storage.downloads_limit")} />} />
@@ -160,7 +160,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
           onChange={value => { void run(async () => { await setAudioCacheLimitBytes(value); setCacheLimit(value); }); }} />} />
       <SettingRow title={t("settings.storage.cached_in_library")} titleKey="settings.storage.cached_in_library" searchQuery={searchQuery}
         description={t("settings.storage.cached_in_library_desc")}
-        control={<ToggleSwitch checked={offline.visibleOnline} onChange={offline.setVisibleOnline} ariaLabel={t("settings.storage.cached_in_library")} />} />
+        control={<ToggleSwitch size="medium" checked={offline.visibleOnline} onChange={offline.setVisibleOnline} ariaLabel={t("settings.storage.cached_in_library")} />} />
     </SettingSection>
   </motion.div>}
   </AnimatePresence>;
