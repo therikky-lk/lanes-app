@@ -17,9 +17,6 @@
   <a href="https://github.com/therikky-lk/lanes-app/releases">
     <img src="https://img.shields.io/badge/Скачать-последняя_версия-7257ff?style=for-the-badge" alt="Скачать Lane">
   </a>
-  <a href="https://github.com/therikky-lk/lanes-app/releases">
-    <img src="https://img.shields.io/github/v/release/therikky-lk/lanes-app?display_name=tag&style=for-the-badge&color=252525" alt="Последний релиз">
-  </a>
 </p>
 
 <p align="center">
