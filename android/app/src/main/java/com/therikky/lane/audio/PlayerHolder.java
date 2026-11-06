@@ -511,8 +511,12 @@ public final class PlayerHolder {
     }
 
     public void setRepeatMode(int mode) {
-        if (repeatMode == mode) return;
-        repeatMode = mode;
+        int nextMode = Math.max(0, Math.min(2, mode));
+        if (repeatMode == nextMode) return;
+        repeatMode = nextMode;
+        // The app owns repeat-all queue order. ExoPlayer only handles repeat-one
+        // so a single track can loop without waiting for the page to wake up.
+        player.setRepeatMode(nextMode == 2 ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
         if (repeatListener != null) repeatListener.run();
     }
 
