@@ -3,7 +3,7 @@ import SettingsPageFrame from "./SettingsPageFrame";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill } from "@mingcute/react";
+import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill, RightLine } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
@@ -376,13 +376,13 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
                       setMobilePage(true);
                     }}
                     className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] border-0 cursor-pointer text-left transition-colors ${
-                      isActive
+                      isActive && !isMobile
                         ? "relative text-text-primary"
                         : "bg-transparent text-text-secondary"
                     }`}
-                    style={{ ...font, fontSize: "14.5px", fontWeight: isActive ? 500 : 400 }}
+                    style={{ ...font, fontSize: "14.5px", fontWeight: isActive && !isMobile ? 500 : 400 }}
                   >
-                    {isActive && (
+                    {isActive && !isMobile && (
                       <motion.span
                         layoutId="settings-nav-active"
                         transition={{ type: "spring", stiffness: 520, damping: 40 }}
@@ -396,6 +396,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
                       className={`relative shrink-0 ${isActive ? "text-text-primary" : "text-text-tertiary"}`}
                     />
                     <span className="relative truncate leading-none">{tabLabels[id]}</span>
+                    {isMobile && <RightLine size={16} className="ml-auto shrink-0 text-text-tertiary" />}
                   </button>
                 );
               })}
