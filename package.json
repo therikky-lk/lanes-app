@@ -45,8 +45,9 @@
     },
     "protocols": [
       {
-        "name": "Liner",
+        "name": "Lane",
         "schemes": [
+          "lane",
           "liner"
         ]
       }
