@@ -1,5 +1,6 @@
 import { queryCache } from "@/shared/cache/queryCache";
 import ShareButton from "@/shared/ui/ShareButton";
+import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
@@ -107,6 +108,7 @@ const TrackItem = memo(function TrackItem({
 }: TrackItemProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const handlePlay = useCallback(() => {
     if (typeof window !== "undefined" && window.__linerWasDragging) return;
     if (track.onlyOnDevice) {
@@ -121,9 +123,16 @@ const TrackItem = memo(function TrackItem({
     );
   }, [track, allTracks, playbackContext, playlistCoverUrl, toast, t]);
 
-  return (
-    <div style={style} data-reorder-item>
-      <SongCardWithMenu
+  const addToQueue = useCallback(() => {
+    if (track.onlyOnDevice) return;
+    playerEngine.addToQueue(track);
+    toast(t("common.added_to_queue"), "checkmark", {
+      description: track.artists ? `${track.title} — ${track.artists}` : track.title,
+    });
+  }, [track, toast, t]);
+
+  const card = (
+<SongCardWithMenu
         id={track.id}
         title={track.title}
         artists={track.artists}
@@ -155,10 +164,18 @@ const TrackItem = memo(function TrackItem({
           track.onlyOnDevice ? t("local.only_on_device", { device: track.onlyOnDevice }) : undefined
         }
       />
+  );
+
+  return (
+    <div style={style} data-reorder-item>
+      {isMobile && !track.onlyOnDevice ? (
+        <SwipeToQueue label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
+          {card}
+        </SwipeToQueue>
+      ) : card}
     </div>
   );
 });
-
 function LibraryPlaylistContent() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");
