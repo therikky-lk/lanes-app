@@ -2,7 +2,7 @@ export interface IncomingLink { type: "artist" | "album" | "playlist" | "track" 
 const patterns: Record<IncomingLink["type"], RegExp> = {
   artist: /^UC[A-Za-z0-9_-]{22}$/, album: /^MPRE[A-Za-z0-9_-]{4,64}$/,
   playlist: /^[A-Za-z0-9_-]{8,180}$/, track: /^[A-Za-z0-9_-]{11}$/,
-  share: /^[A-Za-z0-9_-]{22}$/, shortcut: /^(wave|likes|settings)$/,
+  share: /^[A-Za-z0-9_-]{22}$/, shortcut: /^(wave|likes|settings|search)$/,
 };
 export function parseIncomingLink(raw: string): IncomingLink | null {
   try {
