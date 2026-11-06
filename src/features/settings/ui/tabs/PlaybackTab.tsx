@@ -84,7 +84,8 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
   }, []);
 
   return (
-    <SettingSection>
+    <div className="lane-playback-settings">
+      <SettingSection>
 
       <SettingRow
         title={t("settings.autoplay_similar.title")}
@@ -173,6 +174,7 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
       />}
 
       {isNativeApp() && <BackgroundWorkRow searchQuery={searchQuery} />}
-    </SettingSection>
+      </SettingSection>
+    </div>
   );
 }
