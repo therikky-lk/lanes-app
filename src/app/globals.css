@@ -658,6 +658,29 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-mobile .rounded-xl.bg-bg-primary { border-radius: 0 !important; }
 /* phone settings: a row's control drops under its title when space runs out */
 .lane-settings-mobile .lane-setting-row { flex-wrap: wrap; row-gap: 10px; }
+.lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) {
+  align-items: stretch;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) .lane-setting-text {
+  flex: 0 0 100%;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) .lane-setting-control {
+  display: flex;
+  width: 100%;
+  justify-content: stretch;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-control [role="group"] {
+  width: 100%;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-control [role="group"] > button {
+  flex: 1 1 0%;
+  min-width: 0;
+  justify-content: center;
+  padding-inline: 8px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
 .lane-settings-mobile .lane-setting-control:has(.lane-select-trigger) { flex: 0 0 100%; width: 100%; }
 .lane-settings-mobile .lane-customization-targets {
   align-items: stretch;
