@@ -13,7 +13,7 @@ export function parseIncomingLink(raw: string): IncomingLink | null {
       const match = url.pathname.match(/^\/s\/([A-Za-z0-9_-]{22})$/);
       if (match && !url.search) return { type: "share", id: match[1] };
       type = url.pathname.slice(1);
-    } else if (url.protocol === "liner:") {
+    } else if (url.protocol === "lane:" || url.protocol === "liner:") {
       if (url.pathname && url.pathname !== "/") return null;
       type = url.hostname;
     } else return null;
