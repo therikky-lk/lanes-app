@@ -198,7 +198,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
               aria-label={t("home.previous_mixes")}
               onClick={scroll.scrollPrev}
               disabled={!scroll.canScrollLeft}
-              className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-white/80 cursor-pointer disabled:cursor-default ${scroll.canScrollLeft ? "opacity-100" : "invisible"}`}
+              className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-text-secondary cursor-pointer disabled:cursor-default ${scroll.canScrollLeft ? "opacity-100" : "invisible"}`}
             >
               <ArrowLeftLine size={16} />
             </button>
@@ -207,7 +207,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
               aria-label={t("home.next_mixes")}
               onClick={scroll.scrollNext}
               disabled={!scroll.canScrollRight}
-              className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-white/80 cursor-pointer disabled:cursor-default ${scroll.canScrollRight ? "opacity-100" : "invisible"}`}
+              className={`inline-flex h-[24px] w-[24px] items-center justify-center border-0 bg-transparent text-text-secondary cursor-pointer disabled:cursor-default ${scroll.canScrollRight ? "opacity-100" : "invisible"}`}
             >
               <ArrowRightLine size={16} />
             </button>
