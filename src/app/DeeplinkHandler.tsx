@@ -38,6 +38,7 @@ export default function DeeplinkHandler() {
           case "shortcut":
             if (entity.id === "settings") navigate("/settings");
             else if (entity.id === "likes") navigate("/library/playlist?id=likes");
+            else if (entity.id === "search") navigate("/search?focus=1");
             else { navigate("/"); await startVibe(storedSettings()); }
             break;
         }

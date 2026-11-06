@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { CloseLine, SearchLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
@@ -30,9 +30,15 @@ function displayItem(item: any) {
 export default function SearchPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { query, filter, setQuery, setFilter } = useSearchPageStore();
   const historyCount = useSearchHistoryStore((state) => state.items.length);
   const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (searchParams.get("focus") !== "1") return;
+    const frame = requestAnimationFrame(() => input.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [searchParams]);
   const addHistory = useSearchHistoryStore((state) => state.addItem);
   const deferredQuery = useDeferredValue(query);
   const search = usePageSearch(query, filter);

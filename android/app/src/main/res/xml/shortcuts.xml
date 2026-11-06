@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="search" android:enabled="true" android:icon="@drawable/shortcut_search" android:shortcutShortLabel="@string/shortcut_search">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.therikky.lane" android:targetClass="com.therikky.lane.MainActivity" android:data="liner://shortcut?id=search" />
+    </shortcut>
     <shortcut android:shortcutId="wave" android:enabled="true" android:icon="@drawable/shortcut_wave" android:shortcutShortLabel="@string/shortcut_wave">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="com.therikky.lane" android:targetClass="com.therikky.lane.MainActivity" android:data="liner://shortcut?id=wave" />
     </shortcut>
