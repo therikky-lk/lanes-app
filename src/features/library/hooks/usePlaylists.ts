@@ -60,6 +60,8 @@ const EMPTY: PlaylistList = { playlists: [], total: 0 };
 let cache = EMPTY;
 let loaded = false;
 let request: Promise<void> | null = null;
+let listConsumers = 0;
+let listRefreshTimer: number | null = null;
 const listeners = new Set<() => void>();
 let view = { data: cache, error: undefined as unknown, isLoading: true };
 
