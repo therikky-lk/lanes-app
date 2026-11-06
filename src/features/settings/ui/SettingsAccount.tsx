@@ -61,9 +61,12 @@ export default function SettingsAccount({ onSignOut }: { onSignOut: () => void }
     } catch { setError(t("settings.profile.save_failed")); }
   };
   return <>
-    <button type="button" aria-label={t("settings.profile.title")} aria-haspopup="dialog" onClick={() => setOpen(true)} className="flex h-[40px] w-[40px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/50">
-      <UserAvatar key={user?.avatarUrl} user={user} size={40} className="!rounded-full" />
-    </button>
+    <div className="flex min-w-0 max-w-full items-center gap-[8px]">
+      {user && <span className="max-w-[140px] truncate text-[13px] font-[550] text-text-primary">{displayName}</span>}
+      <button type="button" aria-label={t("settings.profile.title")} aria-haspopup="dialog" onClick={() => setOpen(true)} className="flex h-[40px] w-[40px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/50">
+        <UserAvatar key={user?.avatarUrl} user={user} size={40} className="!rounded-full" />
+      </button>
+    </div>
     <Dialog open={open} onOpenChange={setOpen} maxWidth={360} zIndex={250} className="p-[24px]">
       <div className="flex w-full min-w-0 flex-col gap-[16px]">
         <div className="flex items-center justify-between">
