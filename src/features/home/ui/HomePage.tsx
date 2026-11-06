@@ -133,7 +133,7 @@ export default function HomePage() {
                     key: "history",
                     onClick: () => navigate("/recent"),
                     tile: (
-                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] text-text-primary md:h-[52px] md:w-[52px]">
+                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] text-white md:h-[52px] md:w-[52px]">
                         <HistoryLine size={22} />
                       </span>
                     ),
