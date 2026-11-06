@@ -1,4 +1,3 @@
-import { detectImportSource } from "../services/import";
 import OfflineCover from "./OfflineCover";
 import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
 import { TimeLine } from "@mingcute/react";
@@ -417,13 +416,12 @@ export default function LibraryPage() {
   });
 
   const isMobile = useIsMobile();
-  const openPlaylistImport = async () => {
-    // Prefill a supported service link; a lone space opens the import tab empty.
+  const openSpotifyImport = async () => {
+    // prefill a Spotify link from the clipboard; a lone space opens the import tab empty
     let link = " ";
     try {
       const text = (await navigator.clipboard.readText()).trim();
-      detectImportSource(text);
-      link = text;
+      if (/^https?:\/\/(open\.spotify\.com|spotify\.link)\//i.test(text)) link = text;
     } catch {}
     openCreatePlaylist(link);
   };

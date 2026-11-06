@@ -49,12 +49,7 @@
     "sec": "s"
   },
   "common": {
-    "cache_track": "Zapisz w pamięci podręcznej",
-    "cache_playlist": "Zapisz całą playlistę w pamięci podręcznej",
-    "cache_saving": "Zapisywanie w pamięci podręcznej…",
-    "cache_saved": "Zapisano w pamięci podręcznej",
-    "cache_failed": "Nie udało się zapisać dźwięku w pamięci podręcznej",
-    "cache_playlist_result": "Zapisano {saved} z {total} utworów. Jeśli brakuje utworów, sprawdź limit pamięci podręcznej.",
+    "show_more": "Pokaż więcej",
     "pause": "Pauza",
     "source": "Źródło",
     "app": {
@@ -112,7 +107,7 @@
     "create_empty_playlist": "Utwórz nową, pustą playlistę",
     "playlist_name": "Nazwa playlisty",
     "import_playlist": "Importuj playlistę",
-    "import_playlist_description": "Zaimportuj playlistę z innego serwisu muzycznego",
+    "import_playlist_description": "Zaimportuj istniejącą playlistę ze Spotify lub YouTube",
     "paste_link_placeholder": "Wklej link…",
     "magic_link": "Magiczny link",
     "magic_link_description": "Wklej dowolny link do streamingu (utwór, album, playlistę lub wykonawcę), a my automatycznie go otworzymy lub dodamy.",
@@ -225,8 +220,7 @@
     "increase": "Zwiększ",
     "mute": "Wycisz",
     "unmute": "Włącz dźwięk",
-    "play": "Odtwórz",
-    "show_more": "Pokaż więcej"
+    "play": "Odtwórz"
   },
   "home": {
     "recent": "Ostatnio",
@@ -280,6 +274,7 @@
     "next_mixes": "Następne miksy"
   },
   "library": {
+    "import_from_service": "Importuj z {service}",
     "title": "Biblioteka",
     "liked_songs": "Polubione utwory",
     "song": "utwór",
@@ -308,7 +303,6 @@
     "no_artists_desc": "Zapisuj wykonawców, aby mieć szybki dostęp do ich dyskografii",
     "search_music": "Szukaj muzyki",
     "import_spotify": "Importuj z Spotify",
-    "import_from": "Importuj z",
     "cached_songs": "Utwory zapisane w pamięci podręcznej",
     "cached_empty": "Utwory pojawiają się tutaj po zapisaniu w pamięci podręcznej podczas słuchania.",
     "on_device": "Na tym urządzeniu",
@@ -365,8 +359,7 @@
       "not_found_title": "Nie znaleziono w YouTube Music"
     },
     "history": "Historia słuchania",
-    "history_subtitle": "Wszystko, w co grałeś",
-    "import_from_service": "Importuj z {service}"
+    "history_subtitle": "Wszystko, w co grałeś"
   },
   "login": {
     "welcome_back": "Witaj ponownie",
@@ -1469,5 +1462,12 @@
     "copy": "Kopia",
     "sign_in": "Zaloguj się na to samo konto na swoich urządzeniach, aby przełączać odtwarzanie między nimi.",
     "channel": "Kanał"
-  }
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
+}
 }

@@ -93,8 +93,6 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
         String trackId = PlayerHolder.get(getContext()).currentTrackId();
         long now = System.currentTimeMillis();
         data.put("trackId", trackId);
-        androidx.media3.common.MediaItem item = PlayerHolder.get(getContext()).player().getCurrentMediaItem();
-        data.put("sourceUrl", item == null || item.localConfiguration == null ? "" : item.localConfiguration.uri.toString());
         data.put("emittedAt", now);
         data.put("sequence", ++stateSequence);
         if (error != null) data.put("error", error);

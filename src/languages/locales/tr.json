@@ -49,12 +49,7 @@
     "sec": "sn"
   },
   "common": {
-    "cache_track": "Önbelleğe kaydet",
-    "cache_playlist": "Tüm çalma listesini önbelleğe kaydet",
-    "cache_saving": "Önbelleğe kaydediliyor…",
-    "cache_saved": "Önbelleğe kaydedildi",
-    "cache_failed": "Ses önbelleğe kaydedilemedi",
-    "cache_playlist_result": "{total} parçadan {saved} tanesi önbellekte. Eksik parçalar varsa önbellek sınırını kontrol edin.",
+    "show_more": "Daha fazla göster",
     "pause": "Duraklat",
     "source": "Kaynak",
     "app": {
@@ -112,7 +107,7 @@
     "create_empty_playlist": "Yepyeni, boş bir çalma listesi oluştur",
     "playlist_name": "Çalma listesi adı",
     "import_playlist": "Çalma listesi içe aktar",
-    "import_playlist_description": "Başka bir müzik servisinden çalma listesi içe aktar",
+    "import_playlist_description": "Spotify veya YouTube'daki mevcut bir çalma listesini içe aktar",
     "paste_link_placeholder": "Bağlantı yapıştır…",
     "magic_link": "Sihirli bağlantı",
     "magic_link_description": "Herhangi bir yayın bağlantısını (parça, albüm, çalma listesi veya sanatçı) yapıştır, biz otomatik olarak açalım ya da ekleyelim.",
@@ -225,8 +220,7 @@
     "increase": "Artır",
     "mute": "Sesi kapat",
     "unmute": "Sesi aç",
-    "play": "Çal",
-    "show_more": "Daha fazla göster"
+    "play": "Çal"
   },
   "home": {
     "recent": "Son çalınanlar",
@@ -280,6 +274,7 @@
     "next_mixes": "Sonraki miksler"
   },
   "library": {
+    "import_from_service": "{service} üzerinden içe aktar",
     "title": "Kitaplık",
     "liked_songs": "Beğenilen Şarkılar",
     "song": "şarkı",
@@ -308,7 +303,6 @@
     "no_artists_desc": "Diskografilerine hızlıca ulaşmak için sanatçıları kaydet",
     "search_music": "Müzik ara",
     "import_spotify": "Spotify'dan içe aktar",
-    "import_from": "İçe aktar",
     "cached_songs": "Önbelleğe alınmış şarkılar",
     "cached_empty": "Siz dinlerken şarkılar önbelleğe alındıktan sonra burada görünür.",
     "on_device": "Bu cihazda",
@@ -365,8 +359,7 @@
       "failed_title": "Eklenemedi"
     },
     "history": "Dinleme geçmişi",
-    "history_subtitle": "Oynadığınız her şey",
-    "import_from_service": "{service} üzerinden içe aktar"
+    "history_subtitle": "Oynadığınız her şey"
   },
   "login": {
     "welcome_back": "Tekrar hoş geldin",
@@ -1469,5 +1462,12 @@
     "name_title": "Cihaz adı",
     "name_desc": "Bu cihazın diğer cihazlarınızda nasıl göründüğü.",
     "channel": "Kanal"
-  }
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
+}
 }

@@ -1,3 +1,4 @@
+import ShareButton from "@/shared/ui/ShareButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState, Suspense, useRef } from "react";
 import {
@@ -290,6 +291,7 @@ function ArtistContent() {
                   <YourArtistTracks id={id} name={data.title} />
 
                   <div className="mt-[16px] flex items-center gap-[8px]">
+                    {id && <ShareButton type="artist" entityId={decodedId} snapshot={{ title: data.title, coverUrl: artistImage ?? undefined }} />}
                     <Button
                       variant={hasCustomBg ? "glass-primary" : "primary"}
                       onClick={handlePlayAll}

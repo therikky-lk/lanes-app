@@ -1,4 +1,5 @@
-import { useCacheTrackMenuItem, useCachePlaylistMenuItem } from "@/features/library/offline/cacheMenu";
+import { shareEntity } from "@/shared/utils/share";
+import { LuShare2 } from "react-icons/lu";
 import { useCallback } from "react";
 import {
   LuRadio,
@@ -60,10 +61,6 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
   const unlikeMutation = useUnlikeTrack();
 
   const liked = useIsTrackLiked(id);
-  const isTrack = searchType === "track" || !searchType;
-  const cacheTrack = useCacheTrackMenuItem(isTrack && id ? { id, title, artists, coverUrl, durationMs: durationMs ?? 0, playCount: 0 } : undefined);
-  const cachePlaylist = useCachePlaylistMenuItem(searchType === "playlist" ? id : undefined);
-
 
   const handleLike = useCallback(async () => {
     if (!id) return;
@@ -83,7 +80,6 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     if (isTrack) {
       if (playlistId) {
         return [
-          ...(cacheTrack ? [cacheTrack] : []),
           {
             id: "start-radio",
             label: t("common.start_radio"),
@@ -179,7 +175,6 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
       }
 
       return [
-        ...(cacheTrack ? [cacheTrack] : []),
         {
           id: "start-radio",
           label: t("common.start_radio"),
@@ -273,7 +268,6 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     }
 
     return [
-      ...(cachePlaylist ? [cachePlaylist] : []),
       {
         id: "add-to-library",
         label: t("common.add_to_library"),
@@ -306,11 +300,20 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     addedDateLabel,
     liked,
     handleLike,
-    cacheTrack,
-    cachePlaylist,
     playlistsData,
     t,
   ]);
 
-  return buildMenu();
+  const items = buildMenu();
+  // Local files and personal mixes cannot be opened on another device.
+  if (id && !/^(local:|daily-mix|mix-|yt-account:)/.test(id)) items.push({
+    id: "share", label: t("common.share"), icon: <LuShare2 size={15} />,
+    onClick: async () => {
+      try {
+        const result = await shareEntity(searchType || "track", id, { title, subtitle: artists, coverUrl });
+        if (result === "copied") showToast(t("sharing.copied"), "checkmark");
+      } catch { showToast(t("sharing.failed"), "error"); }
+    },
+  });
+  return items;
 }

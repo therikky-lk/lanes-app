@@ -1265,10 +1265,7 @@ class PlayerEngine {
     }
 
     const currentId = state.currentTrack?.id || "none";
-    const nativeNext = state.repeat === "one" ? [] : this.upcoming(state, NATIVE_QUEUE_AHEAD);
-    // A radio refill can extend the look-ahead without changing its first
-    // track. Include the whole list so the native queue receives the refill.
-    const preloadKey = `${currentId}->${nativeNext.map((track) => track.id).join(",")}:${state.repeat}`;
+    const preloadKey = `${currentId}->${nextTrack.id}:${state.repeat}`;
     if (this.lastPreloadKey === preloadKey) {
       return;
     }
@@ -1290,7 +1287,7 @@ class PlayerEngine {
       if (state.currentTrack) {
         playerRuntime.queueNextNatively(
           state.currentTrack.id,
-          nativeNext,
+          state.repeat === "one" ? [] : this.upcoming(state, NATIVE_QUEUE_AHEAD),
         );
       }
     }

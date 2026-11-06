@@ -1,3 +1,4 @@
+import { readCoverMarker, stripCoverMarker } from "@/features/library/services/playlistCoverMarker";
 import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
 import { useEffect, useMemo, useState } from "react";
 import { api, mediaUrl, toClientTrack } from "@/shared/api";
@@ -28,10 +29,7 @@ export function useCollection(
   fallbackArtist?: string | null,
   isRelease = false,
 ) {
-  // Do not reuse old Music-only subsets for full YouTube playlists. Daily-mix
-  // prewarming keeps its existing cache keys.
-  const cacheId = type === "playlist" && /^(?:VL|PL|OLAK5uy_)/.test(id ?? "") ? `youtube-full-v2:${id}` : id;
-  const cacheKey = type && cacheId ? `collection:${type}:${cacheId}` : null;
+  const cacheKey = type && id ? `collection:${type}:${id}` : null;
   const cached = cacheKey ? queryCache.get<CollectionPageData>(cacheKey) : undefined;
   const [data, setData] = useState<CollectionPageData | null>(cached ?? null);
   const [loading, setLoading] = useState<boolean>(!cached && Boolean(type && id));
@@ -68,8 +66,8 @@ export function useCollection(
           const decodedId = id ? decodeURIComponent(id) : "";
           if (type === "playlist" && isAccountPlaylistId(decodedId)) {
             const youtubeCollection = await fetchYoutubeAccountPlaylist(decodedId);
-            if (youtubeCollection?.tracks.length) {
-              const tracks = youtubeCollection.tracks.map(toClientTrack);
+            if (youtubeCollection) {
+              const tracks = await replaceTrackCoversWithYandex(youtubeCollection.tracks.map(toClientTrack));
               return {
                 type: "playlist",
                 title: youtubeCollection.title,
@@ -108,6 +106,13 @@ export function useCollection(
             }
           }
 
+          if (type === "playlist" && (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(decodedId) || decodedId.startsWith("pl-"))) {
+            const detail = await api.getPublicPlaylist(decodedId);
+            return { type: "playlist", title: detail.playlist.title,
+              description: stripCoverMarker(detail.playlist.description), coverUrl: readCoverMarker(detail.playlist.description) || ( detail.items[0]?.track.cover?.url ? mediaUrl(detail.items[0].track.cover.url) : ""),
+              tracks: detail.items.map(item => toClientTrack(item.track)),
+            } satisfies CollectionPageData;
+          }
           let collection = type === "playlist"
             ? await api.getPlaylist(id)
             : await api.getAlbum(id).catch(() => null);
@@ -228,7 +233,7 @@ export function useCollection(
           }
 
           const collectionCoverUrl = collection.cover ? mediaUrl(collection.cover.url) : "";
-          const sourceTracks: Track[] = (collection.tracks || []).map((t: any) => {
+          const tracks = await replaceTrackCoversWithYandex((collection.tracks || []).map((t: any) => {
             const clientTrack = toClientTrack(t);
             let updated = clientTrack;
             if (collection.type === "album") {
@@ -245,13 +250,7 @@ export function useCollection(
               }
             }
             return updated;
-          });
-          // Uploads have their own artwork. Optional cover searches must not
-          // delay the entire playlist or replace those original thumbnails.
-          const tracks = collection.type === "playlist" ? sourceTracks : await replaceTrackCoversWithYandex(sourceTracks);
-          if (cacheId?.startsWith("youtube-full-v2:") && !tracks.length) {
-            throw new Error("YouTube returned playlist metadata without tracks");
-          }
+          }));
 
           const formatted: CollectionPageData = {
             type: collection.type,

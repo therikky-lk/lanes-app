@@ -49,12 +49,7 @@
     "sec": "s"
   },
   "common": {
-    "cache_track": "Enregistrer en cache",
-    "cache_playlist": "Mettre toute la playlist en cache",
-    "cache_saving": "Enregistrement en cache…",
-    "cache_saved": "Enregistré en cache",
-    "cache_failed": "Impossible de mettre cet audio en cache",
-    "cache_playlist_result": "{saved} titres sur {total} en cache. Vérifiez la limite du cache si des titres manquent.",
+    "show_more": "Afficher plus",
     "pause": "Pause",
     "source": "Source",
     "app": {
@@ -112,7 +107,7 @@
     "create_empty_playlist": "Créer une nouvelle playlist vide",
     "playlist_name": "Nom de la playlist",
     "import_playlist": "Importer une playlist",
-    "import_playlist_description": "Importez une playlist depuis un autre service de musique",
+    "import_playlist_description": "Importez une playlist existante depuis Spotify ou YouTube",
     "paste_link_placeholder": "Collez un lien…",
     "magic_link": "Lien magique",
     "magic_link_description": "Collez n'importe quel lien de streaming (titre, album, playlist ou artiste) et nous l'ouvrirons ou l'ajouterons automatiquement.",
@@ -225,8 +220,7 @@
     "increase": "Augmenter",
     "mute": "Couper le son",
     "unmute": "Rétablir le son",
-    "play": "Lecture",
-    "show_more": "Afficher plus"
+    "play": "Lecture"
   },
   "home": {
     "recent": "Récents",
@@ -280,6 +274,7 @@
     "next_mixes": "Mix suivants"
   },
   "library": {
+    "import_from_service": "Importer depuis {service}",
     "title": "Bibliothèque",
     "liked_songs": "Titres aimés",
     "song": "titre",
@@ -308,7 +303,6 @@
     "no_artists_desc": "Enregistrez des artistes pour accéder rapidement à leur discographie",
     "search_music": "Rechercher de la musique",
     "import_spotify": "Importer depuis Spotify",
-    "import_from": "Importer depuis",
     "cached_songs": "Chansons mises en cache",
     "cached_empty": "Les chansons apparaissent ici après avoir été mises en cache pendant que vous les écoutez.",
     "on_device": "Sur cet appareil",
@@ -365,8 +359,7 @@
       "wait_rate_min": "Demandé d'attendre, reprise dans {min} min"
     },
     "history": "Historique d'écoute",
-    "history_subtitle": "Tout ce que vous avez joué",
-    "import_from_service": "Importer depuis {service}"
+    "history_subtitle": "Tout ce que vous avez joué"
   },
   "login": {
     "welcome_back": "Bon retour",
@@ -1469,5 +1462,12 @@
     "no_devices": "Aucun autre appareil en ligne. Ouvrez Lane sur un autre appareil connecté à ce compte.",
     "offline": "Connexion…",
     "channel": "Canal"
-  }
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
+}
 }

@@ -1,4 +1,5 @@
-import { useCachePlaylistMenuItem } from "../offline/cacheMenu";
+import { queryCache } from "@/shared/cache/queryCache";
+import ShareButton from "@/shared/ui/ShareButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
@@ -281,8 +282,6 @@ function LibraryPlaylistContent() {
   // liked songs: tags (fast, rap, pop…) narrow the list down
   const [activeTag, setActiveTag] = useState<TrackTag | null>(null);
   useEffect(() => setActiveTag(null), [decodedId]);
-  const cachePlaylistItem = useCachePlaylistMenuItem(decodedId || (isLikesMode ? "liked" : undefined), allTracks, true);
-
   const trackTags = useTrackTags(allTracks, isLikesMode);
   const currentTracks = useMemo(
     () => {
@@ -932,19 +931,31 @@ function LibraryPlaylistContent() {
                           />
                         )}
 
-                        <DropdownMenu
-                          trigger={
-                            <Button
-                              variant={hasCustomBg ? "glass-action" : "outline"}
-                              className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
-                              title={t("common.more")}
-                            >
-                              <More2Line size={18} />
-                            </Button>
-                          }
-                          items={[
-                            ...(cachePlaylistItem ? [cachePlaylistItem] : []),
-                            ...(isLikesMode ? [] : [
+                        {!isLikesMode && decodedId && playlistDetail?.isPublic && <ShareButton type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} />}
+                        {!isLikesMode && (
+                          <DropdownMenu
+                            trigger={
+                              <Button
+                                variant={hasCustomBg ? "glass-action" : "outline"}
+                                className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
+                                title={t("common.more")}
+                              >
+                                <More2Line size={18} />
+                              </Button>
+                            }
+                            items={[
+                              {
+                                id: "visibility",
+                                label: t(playlistDetail?.isPublic ? "sharing.make_private" : "sharing.make_public"),
+                                onClick: async () => {
+                                  if (!decodedId) return;
+                                  try {
+                                    await api.updatePlaylist(decodedId, { isPublic: !playlistDetail?.isPublic });
+                                    queryCache.delete(`playlist:detail:${decodedId}`);
+                                    window.dispatchEvent(new Event("library:changed"));
+                                  } catch { toast(t("sharing.failed"), "error"); }
+                                },
+                              },
                               {
                                 id: "rename",
                                 icon: <LuPencil size={15} />,
@@ -1004,9 +1015,9 @@ function LibraryPlaylistContent() {
                                   });
                                 },
                               },
-                            ]),
-                          ]}
-                        />
+                            ]}
+                          />
+                        )}
                       </div>
                     </div>
                   }

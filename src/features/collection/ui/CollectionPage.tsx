@@ -1,4 +1,4 @@
-import { useCachePlaylistMenuItem } from "@/features/library/offline/cacheMenu";
+import ShareButton from "@/shared/ui/ShareButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
@@ -64,7 +64,6 @@ function CollectionContent() {
   const { data, loading } = useCollection(type, id, releaseTitle, releaseArtist, isRelease);
   const entityType = type === "playlist" ? "playlist" : "album";
   const decodedId = id ? decodeURIComponent(id) : "";
-  const cachePlaylistItem = useCachePlaylistMenuItem(entityType === "playlist" ? decodedId : undefined, data?.tracks);
   const isDailyMix = Boolean(
     data?.isDailyMix ||
     (type === "playlist" && (
@@ -536,6 +535,8 @@ function CollectionContent() {
                         </Button>
 
                         {!isDailyMix && (
+                          <>
+                          <ShareButton type={type} entityId={decodedId} snapshot={{ title: data.title, subtitle: data.author, coverUrl: data.coverUrl }} />
                           <DropdownMenu
                             trigger={
                               <Button
@@ -547,7 +548,6 @@ function CollectionContent() {
                               </Button>
                             }
                             items={[
-                              ...(cachePlaylistItem ? [cachePlaylistItem] : []),
                               {
                                 id: "library",
                                 icon: inLibrary ? (
@@ -562,6 +562,7 @@ function CollectionContent() {
                               },
                             ]}
                           />
+                          </>
                         )}
                       </div>
                     </div>

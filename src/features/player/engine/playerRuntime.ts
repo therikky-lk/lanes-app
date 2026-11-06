@@ -1,4 +1,3 @@
-import { downloadPlaybackAudio } from "./downloadPlaybackAudio";
 import { prefetchInOrder } from "@/shared/utils/prefetchInOrder";
 import { downloadsDb } from "@/shared/storage/downloadsDb";
 import { FLAT_EQ, isEqActive } from "./equalizer";
@@ -8,9 +7,11 @@ import { ApiError } from "@/shared/api";
 import { log } from "@/shared/utils/logger";
 import { telemetry } from "@/shared/telemetry";
 import { linerDb, audioCache } from "@/shared/storage";
+import { isStandaloneAudioFile } from "@/shared/storage/audioFormat";
 import type { Track } from "@/shared/types";
 import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
+import { downloadAudioBytes } from "@/shared/media/innertube";
 import { isNativeApp, streamHeadersFor } from "@/shared/platform/native";
 import { isBotCheckError, isYoutubeSignedIn, isYoutubeSignInDeclined, prefersSignInPrompt, requestYoutubeSignIn } from "@/shared/media/youtube";
 import {
@@ -120,10 +121,6 @@ export class PlayerRuntime {
     }
     this.audio = audio;
     this.setupAudioListeners(this.audio);
-    if (typeof window !== "undefined") window.addEventListener("lane:audio-cache-clearing", () => {
-      this.backgroundCacheAbortController?.abort();
-      this.nativeQueueAbort?.abort();
-    });
 
     const initialVolume = usePlayerStore.getState().volume;
     this.audio.volume = initialVolume;
@@ -452,8 +449,6 @@ export class PlayerRuntime {
         this.recoveryAttempts < 1
       ) {
         this.recoveryAttempts++;
-        // A rejected queued URL must not be selected again during recovery.
-        this.nativeStreams.delete(this.currentTrackId);
         this.recoveryHoldUntilMs = posMs + RECOVERY_HOLD_MS;
         log("yellow", "playback", `audio error encountered — recovering via cache/stream at ${posMs}ms`);
         void this.loadAndPlay(currentTrack, posMs, true);
@@ -724,32 +719,12 @@ export class PlayerRuntime {
         }
       }
       if (!controller.signal.aborted) {
-        this.nativeQueued = { afterTrackId, ids: ready.map((r) => r.trackId).join(","), expiry };
+        this.nativeQueued = { afterTrackId, ids, expiry };
         // which YouTube clients the links came from: each is sent with its own User-Agent
         const clients = new Set(ready.map((r) => (r.source.url ? streamHeadersFor(r.source.url)["User-Agent"] ?? "-" : "file")));
         diag(`queued ahead natively: ${ready.length} track(s), ${clients.size} client UA(s)`);
-        // Resolve the whole look-ahead first, then cache one file at a time.
-        // A ready next track must never wait for ten full audio downloads.
-        for (const item of ready) {
-          if (controller.signal.aborted || this.currentTrackId !== afterTrackId) return;
-          const track = tracks.find((t) => t.id === item.trackId);
-          const stream = this.nativeStreams.get(item.trackId);
-          if (!track || !stream || item.source.blob) continue;
-          await this.cacheAudioInBackground(track, stream, controller.signal);
-          if (controller.signal.aborted || this.currentTrackId !== afterTrackId) return;
-          const cached = await linerDb.getAudio(item.trackId).catch(() => null);
-          if (!cached?.blob?.size) continue;
-          if (controller.signal.aborted || this.currentTrackId !== afterTrackId) return;
-          // Replace the queued URL with a local file as soon as it is saved,
-          // so an offline transition can play it without waking the page.
-          item.source = { blob: cached.blob };
-          expiry.set(item.trackId, null);
-          await queueNativeNext(afterTrackId, ready);
-        }
       }
-    })().catch((error) => {
-      if (!controller.signal.aborted) diag(`queue ahead: ${String(error).slice(0, 120)}`);
-    }).finally(() => {
+    })().finally(() => {
       if (this.nativeQueueAbort === controller) this.nativeQueuePending = null;
     });
   }
@@ -847,9 +822,6 @@ export class PlayerRuntime {
         this.currentSessionExpiresAt = null;
         void linerDb.putTrack(track);
         const blobUrl = URL.createObjectURL(cachedAudio.blob);
-        if (isNativeApp()) {
-          (this.audio as unknown as { laneStartAt: number }).laneStartAt = this.pendingStartPositionMs || startPositionMs;
-        }
         this.attachSource(blobUrl, true, track.id);
         this.audio.volume = 0;
         this.audio.load();
@@ -904,7 +876,7 @@ export class PlayerRuntime {
 
       const prepared = this.nativeStreams.get(track.id);
       this.nativeStreams.delete(track.id);
-      const stream = !bypassCache && prepared && (prepared.expiresAtMs == null || prepared.expiresAtMs > Date.now() + NATIVE_STREAM_MARGIN_MS)
+      const stream = prepared && (prepared.expiresAtMs == null || prepared.expiresAtMs > Date.now() + NATIVE_STREAM_MARGIN_MS)
         ? prepared
         : await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
       this.ttfbMs = Math.round(performance.now() - this.loadStartTime);
@@ -1149,23 +1121,44 @@ export class PlayerRuntime {
   }
 
   private async downloadAudioBlob(stream: PlaybackStream, signal: AbortSignal): Promise<Blob | null> {
-    return downloadPlaybackAudio(stream, signal);
+    if (stream.blob) return stream.blob;
+    const startedAt = performance.now();
+    const bytes = await downloadAudioBytes(stream.url, {
+      contentLength: stream.contentLength,
+      signal,
+      ...(isNativeApp() ? { concurrency: 1 } : {}),
+    });
+    if (!bytes || signal.aborted) return null;
+    const mimeType = stream.mimeType || "audio/webm";
+    if (!mimeType.startsWith("audio/") && !mimeType.startsWith("video/")) return null;
+    if (!isStandaloneAudioFile(bytes.subarray(0, 16))) {
+      log("yellow", "download", `not caching: stream is not a standalone audio file`);
+      return null;
+    }
+    log(
+      "cyan",
+      "download",
+      `${Math.round(bytes.byteLength / 1024)} KB in ${Math.round(performance.now() - startedAt)}ms (${stream.contentLength ? "chunked" : "single request"})`,
+    );
+    return new Blob([bytes], { type: mimeType });
   }
 
-  private async cacheAudioInBackground(track: Track, stream: PlaybackStream, signal: AbortSignal): Promise<void> {
+  private cacheAudioInBackground(track: Track, stream: PlaybackStream, signal: AbortSignal) {
     const generation = audioCache.currentGeneration();
-    try {
-      if (await audioCache.hasAudio(track.id) || signal.aborted) return;
-      if (isNativeApp()) void navigator.storage?.persist?.().catch(() => false);
-      const blob = await this.downloadAudioBlob(stream, signal);
-      if (!blob || signal.aborted) return;
-      if (!(await audioCache.saveAudioBlob(track.id, blob, blob.type, generation))) return;
-      await linerDb.putTrack(track);
-      window.dispatchEvent(new Event("lane:audio-cache-changed"));
-      log("green", "playback", `background cached: ${track.title} (${Math.round(blob.size / 1024)} KB)`);
-    } catch (error) {
-      if (!signal.aborted) log("yellow", "cache", `could not save ${track.title}: ${String(error)}`);
-    }
+    void (async () => {
+      try {
+        if (await audioCache.hasAudio(track.id) || signal.aborted) return;
+        if (isNativeApp()) void navigator.storage?.persist?.().catch(() => false);
+        const blob = await this.downloadAudioBlob(stream, signal);
+        if (!blob || signal.aborted) return;
+        if (!(await audioCache.saveAudioBlob(track.id, blob, blob.type, generation))) return;
+        await linerDb.putTrack(track);
+        window.dispatchEvent(new Event("lane:audio-cache-changed"));
+        log("green", "playback", `background cached: ${track.title} (${Math.round(blob.size / 1024)} KB)`);
+      } catch (error) {
+        if (!signal.aborted) log("yellow", "cache", `could not save ${track.title}: ${String(error)}`);
+      }
+    })();
   }
 }
 

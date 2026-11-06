@@ -49,12 +49,7 @@
     "sec": "s"
   },
   "common": {
-    "cache_track": "Salva nella cache",
-    "cache_playlist": "Salva tutta la playlist nella cache",
-    "cache_saving": "Salvataggio nella cache…",
-    "cache_saved": "Salvato nella cache",
-    "cache_failed": "Impossibile salvare l’audio nella cache",
-    "cache_playlist_result": "{saved} brani su {total} nella cache. Controlla il limite della cache se mancano brani.",
+    "show_more": "Mostra altro",
     "pause": "Pausa",
     "source": "Fonte",
     "app": {
@@ -112,7 +107,7 @@
     "create_empty_playlist": "Crea una nuova playlist vuota",
     "playlist_name": "Nome della playlist",
     "import_playlist": "Importa una playlist",
-    "import_playlist_description": "Importa una playlist da un altro servizio musicale",
+    "import_playlist_description": "Importa una playlist esistente da Spotify o YouTube",
     "paste_link_placeholder": "Incolla un link…",
     "magic_link": "Link magico",
     "magic_link_description": "Incolla qualsiasi link di streaming — brano, album, playlist o artista — e lo apriremo o aggiungeremo automaticamente.",
@@ -225,8 +220,7 @@
     "increase": "Aumenta",
     "mute": "Disattiva audio",
     "unmute": "Attiva audio",
-    "play": "Riproduci",
-    "show_more": "Mostra altro"
+    "play": "Riproduci"
   },
   "home": {
     "recent": "Recenti",
@@ -280,6 +274,7 @@
     "next_mixes": "Mix successivi"
   },
   "library": {
+    "import_from_service": "Importa da {service}",
     "title": "Libreria",
     "liked_songs": "Brani che ti piacciono",
     "song": "brano",
@@ -308,7 +303,6 @@
     "no_artists_desc": "Salva gli artisti per accedere velocemente alla loro discografia",
     "search_music": "Cerca musica",
     "import_spotify": "Importa da Spotify",
-    "import_from": "Importa da",
     "cached_songs": "Canzoni memorizzate nella cache",
     "cached_empty": "I brani vengono visualizzati qui dopo essere stati memorizzati nella cache durante l'ascolto.",
     "on_device": "Su questo dispositivo",
@@ -365,8 +359,7 @@
       "wait_rate_min": "Viene chiesto di attendere, ripresa tra {min} min"
     },
     "history": "Cronologia di ascolto",
-    "history_subtitle": "Tutto quello che hai giocato",
-    "import_from_service": "Importa da {service}"
+    "history_subtitle": "Tutto quello che hai giocato"
   },
   "login": {
     "welcome_back": "Bentornato",
@@ -1469,5 +1462,12 @@
     "copy": "Copia",
     "sign_in": "Accedi allo stesso account sui tuoi dispositivi per alternare la riproduzione tra di loro.",
     "channel": "Canale"
-  }
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
+}
 }

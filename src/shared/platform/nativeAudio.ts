@@ -8,7 +8,6 @@ import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 
 export interface NativeState {
   trackId?: string;
-  sourceUrl?: string;
   sequence?: number;
   emittedAt?: number;
   playing: boolean;
@@ -238,7 +237,6 @@ export function createNativeAudioElement(): HTMLAudioElement {
     expectedTrackId = undefined;
     if (s.trackId && s.trackId !== activeTrackId) {
       activeTrackId = s.trackId;
-      if (s.sourceUrl) src = s.sourceUrl;
       durationMs = NaN;
       ended = false;
       error = null;

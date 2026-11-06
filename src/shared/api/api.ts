@@ -1,3 +1,4 @@
+import type { ShareEntityType, ShareSnapshot, SharedEntity } from "@/shared/contracts/sharing";
 import { usesLocalAppTransport } from "./localAppTransport";
 import { decodeLyricsStream } from "./lyricsStream";
 import {
@@ -669,6 +670,15 @@ async function withAuthProof<T>(
 }
 
 export const api = {
+  createShare(input: { type: ShareEntityType; entityId: string; snapshot: ShareSnapshot }): Promise<{ id: string; url: string }> {
+    return request("/v1/shares", { method: "POST", body: JSON.stringify(input) });
+  },
+  getShare(id: string): Promise<SharedEntity> {
+    return request(`/v1/public/shares/${encodeURIComponent(id)}`);
+  },
+  getPublicPlaylist(id: string): Promise<{ playlist: ApiUserPlaylist; items: ApiUserPlaylistItem[] }> {
+    return request(`/v1/public/playlists/${encodeURIComponent(id)}`);
+  },
   async login(email: string, password: string): Promise<AuthTokens> {
     const result = await withAuthProof("login", email, (proof) =>
       request<AuthTokens>(

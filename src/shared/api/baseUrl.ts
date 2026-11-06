@@ -1,4 +1,4 @@
-export const DEFAULT_PRIMARY_API = "https://api.tryliner.fun";
+export const DEFAULT_PRIMARY_API = "https://lane-app.site";
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const HTTP_API_HOST = "lucid-1.ru-west.hyprr.space";

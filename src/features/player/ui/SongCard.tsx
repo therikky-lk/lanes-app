@@ -1,4 +1,3 @@
-import { CachedTrackIndicator } from "@/features/library/offline/CachedTrackIndicator";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { memo, useEffect, useRef, useState } from "react";
 import { HeartFill, HeartLine, More2Fill, RepeatFill } from "@mingcute/react";
@@ -61,7 +60,6 @@ export interface SongCardProps {
 }
 
 function SongCard({
-  id,
   title,
   artists,
   artistId,
@@ -279,7 +277,6 @@ function SongCard({
               fontWeight: 350,
             }}
           >
-            <CachedTrackIndicator id={trackId ?? id} />
             {trackId && <SourceBadge trackId={trackId} className="mr-[5px]" />}
             {explicit && <ExplicitBadge size="md" className="mr-[6px] shrink-0" />}
             {artistsClickable ? (
