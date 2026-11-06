@@ -1,10 +1,6 @@
 import { memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
-import SwipeToDelete from "@/shared/ui/SwipeToDelete";
-import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { playerEngine } from "@/features/player";
-import { useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
 
 export interface SearchResultsListProps {
@@ -33,8 +29,6 @@ export const SearchResultsList = memo(function SearchResultsList({
   scrollRef,
 }: SearchResultsListProps) {
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
-  const { toast } = useToast();
   const internalRef = useRef<HTMLDivElement>(null);
   const containerRef = scrollRef ?? internalRef;
 
@@ -118,43 +112,6 @@ export const SearchResultsList = memo(function SearchResultsList({
                 .padStart(2, "0")}`
             : "";
 
-          const card = (
-            <SongCardWithMenu
-              id={it.id}
-              title={it.title || it.name || ""}
-              artistId={it.artistId ?? it.artist_id}
-              artistList={it.artistList}
-              artists={subtitle}
-              coverUrl={it.coverUrl || it.imageUrl || ""}
-              explicit={it.explicit}
-              imageShape={isArtist ? "circle" : "square"}
-              duration={durationStr}
-              durationMs={durationMs}
-              searchType={it._type}
-              totalTracks={it.totalTracks ?? it.total_tracks}
-              onPlay={it._type === "track" ? () => onPlayFromSearch(it) : () => onNavigateItem(it)}
-              onNavigate={() => onNavigateItem(it)}
-              onOpenArtist={onOpenArtist}
-              showLikeButton={it._type === "track"}
-            />
-          );
-          const addToQueue = () => {
-            playerEngine.addToQueue({
-              id: String(it.id),
-              title: String(it.title || it.name || ""),
-              artists: String(subtitle || ""),
-              artistId: it.artistId ?? it.artist_id,
-              artistList: it.artistList,
-              coverUrl: String(it.coverUrl || it.imageUrl || ""),
-              durationMs: Number(durationMs) || 0,
-              playCount: Number(it.playCount ?? it.play_count) || 0,
-              explicit: Boolean(it.explicit),
-            });
-            toast(t("common.added_to_queue"), "checkmark", {
-              description: `${String(it.title || it.name || "")}${subtitle ? ` — ${subtitle}` : ""}`,
-            });
-          };
-
           return (
             <div
               key={virtualRow.key}
@@ -168,11 +125,28 @@ export const SearchResultsList = memo(function SearchResultsList({
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              {isMobile && it._type === "track" ? (
-                <SwipeToDelete label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
-                  {card}
-                </SwipeToDelete>
-              ) : card}
+              <SongCardWithMenu
+                id={it.id}
+                title={it.title || it.name || ""}
+                artistId={it.artistId ?? it.artist_id}
+                artistList={it.artistList}
+                artists={subtitle}
+                coverUrl={it.coverUrl || it.imageUrl || ""}
+                explicit={it.explicit}
+                imageShape={isArtist ? "circle" : "square"}
+                duration={durationStr}
+                durationMs={durationMs}
+                searchType={it._type}
+                totalTracks={it.totalTracks ?? it.total_tracks}
+                onPlay={
+                  it._type === "track"
+                    ? () => onPlayFromSearch(it)
+                    : () => onNavigateItem(it)
+                }
+                onNavigate={() => onNavigateItem(it)}
+                onOpenArtist={onOpenArtist}
+                showLikeButton={it._type === "track"}
+              />
             </div>
           );
         })}

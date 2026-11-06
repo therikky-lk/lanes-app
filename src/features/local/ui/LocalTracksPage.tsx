@@ -12,6 +12,7 @@ import { usePlaylistsList } from "@/features/library/hooks/usePlaylists";
 import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
+import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import SongCard from "@/features/player/ui/SongCard";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -132,7 +133,8 @@ export default function LocalTracksPage() {
               </span>
             </button>
           ) : (
-            visibleTracks.map((track) => (
+            visibleTracks.map((track) => {
+              const card = (
               <SongCard
                 key={track.id}
                 className="lane-row"
@@ -196,7 +198,15 @@ export default function LocalTracksPage() {
                   },
                 ]}
               />
-            ))
+              );
+              const addToQueue = () => {
+                playerEngine.addToQueue(track);
+                toast(t("common.added_to_queue"), "checkmark", { description: track.title });
+              };
+              return isMobile
+                ? <SwipeToQueue key={track.id} label={t("common.add_to_queue")} onAddToQueue={addToQueue}>{card}</SwipeToQueue>
+                : <div key={track.id}>{card}</div>;
+            })
           )}
         </div>
       </div>

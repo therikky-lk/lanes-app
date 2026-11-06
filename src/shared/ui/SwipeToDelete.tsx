@@ -28,7 +28,7 @@ export default function SwipeToDelete({ children, label, onDelete, onAddToQueue 
       }
       setDeparting(true);
       setOffset(-start.width);
-      removal.current = setTimeout(() => onDelete?.(), 320);
+      removal.current = setTimeout(onDelete, 320);
       return;
     }
     setOffset(!cancelled && start.offset < -ACTION_WIDTH / 2 ? -ACTION_WIDTH : 0);
@@ -93,4 +93,8 @@ export default function SwipeToDelete({ children, label, onDelete, onAddToQueue 
       </div>
     </div>
   );
+}
+
+export function SwipeToQueue({ children, label, onAddToQueue }: { children: ReactNode; label: string; onAddToQueue: () => void }) {
+  return <SwipeToDelete label={label} onAddToQueue={onAddToQueue}>{children}</SwipeToDelete>;
 }
