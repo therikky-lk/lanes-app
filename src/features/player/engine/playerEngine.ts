@@ -231,6 +231,12 @@ class PlaybackTelemetryTracker {
     this.lastActivityTime = Date.now();
   }
 
+  public onTrackLooped() {
+    if (!this.activeTrackId) return;
+    this.loopCount += 1;
+    this.lastActivityTime = Date.now();
+  }
+
   public onTrackCompleted(isRepeatOne: boolean = false) {
     if (!this.activeTrackId) return;
     this.onPausedOrStopped();
@@ -333,6 +339,8 @@ class PlayerEngine {
         const isRepeatOne = usePlayerStore.getState().repeat === "one";
         this.telemetry.onTrackCompleted(isRepeatOne);
       };
+      playerRuntime.onLoop = () => this.telemetry.onTrackLooped();
+      playerRuntime.setRepeatOne(usePlayerStore.getState().repeat === "one");
       playerRuntime.onError = (info) => this.handlePlaybackError(info);
     }
 
@@ -355,6 +363,7 @@ class PlayerEngine {
       const unsub = usePlayerStore.subscribe((state) => {
         // what plays next changed (repeat mode, the queue): hand it over again
         if (state.repeat !== prevRepeat || state.queue !== prevQueue) {
+          if (state.repeat !== prevRepeat) playerRuntime?.setRepeatOne(state.repeat === "one");
           prevRepeat = state.repeat;
           prevQueue = state.queue;
           this.lastPreloadKey = null;
@@ -1310,7 +1319,10 @@ class PlayerEngine {
   /** Android: the native player already started the queued next track */
   public handleNativeAdvance(trackId: string, snapshot?: { positionMs: number; durationMs: number; playing: boolean; buffering: boolean; playWhenReady?: boolean }): void {
     const store = usePlayerStore.getState();
-    if (store.currentTrack?.id === trackId) return;
+    if (store.currentTrack?.id === trackId) {
+      if (store.repeat === "one") this.telemetry.onTrackLooped();
+      return;
+    }
     const expected = this.computeNextIndex(true);
     let index =
       expected !== null && store.queue[expected]?.id === trackId
