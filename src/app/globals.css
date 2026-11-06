@@ -667,7 +667,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) .lane-setting-control {
   display: flex;
   width: 100%;
-  justify-content: stretch;
+  justify-content: flex-start;
 }
 .lane-settings-mobile .lane-playback-settings .lane-setting-control [role="group"] {
   width: 100%;
