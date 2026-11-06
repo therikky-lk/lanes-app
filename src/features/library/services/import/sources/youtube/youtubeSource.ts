@@ -1,7 +1,31 @@
+import { postInnertube } from "@/shared/media/innertube/innertubeClient";
 import type { ClientImportedPlaylist, ClientImportedTrack } from "../../importTypes";
-import { fetchYoutubePlaylist } from "@/shared/media/youtube/playlist/youtubePlaylist";
+import { extractInnertubeContinuationToken, fetchInnertubeContinuation } from "./youtubeContinuation";
+import { parseYoutubePlaylistHeader } from "./youtubeHeader";
 import { importYoutubeSingleVideo } from "./youtubeSingleVideo";
+import { parseInnertubeTracks } from "./youtubeTracks";
 import { playlistIdFromYoutube, videoIdFromYoutube } from "./youtubeUrl";
+
+const MAX_CONTINUATION_PAGES = 50;
+
+async function collectContinuations(
+  initialBody: unknown,
+  seenIds: Set<string>,
+  tracks: ClientImportedTrack[],
+  signal?: AbortSignal,
+): Promise<void> {
+  let token = extractInnertubeContinuationToken(initialBody);
+  const seenTokens = new Set<string>();
+  let pageCount = 0;
+  while (token && !seenTokens.has(token) && pageCount < MAX_CONTINUATION_PAGES) {
+    seenTokens.add(token);
+    pageCount += 1;
+    const body = await fetchInnertubeContinuation(token, signal);
+    if (!body) break;
+    parseInnertubeTracks(body, seenIds, tracks);
+    token = extractInnertubeContinuationToken(body);
+  }
+}
 
 export async function importYoutube(rawUrl: string, signal?: AbortSignal): Promise<ClientImportedPlaylist> {
   const playlistId = playlistIdFromYoutube(rawUrl);
@@ -11,17 +35,12 @@ export async function importYoutube(rawUrl: string, signal?: AbortSignal): Promi
     throw new Error("YouTube URL must contain a valid playlist or video identifier.");
   }
 
-  const playlist = await fetchYoutubePlaylist(playlistId, signal);
-  const tracks: ClientImportedTrack[] = playlist.tracks.map((track) => ({
-    sourceId: track.id,
-    title: track.title,
-    artists: track.artists.map((artist) => artist.name),
-    artistIds: track.artists.map((artist) => artist.id !== "unknown" ? artist.id : undefined),
-    album: track.album?.title,
-    albumId: track.album?.id,
-    durationMs: track.durationMs,
-    coverUrl: track.cover?.url ?? "",
-  }));
+  const body = await postInnertube("browse", { browseId: playlistId }, { signal });
+  const header = parseYoutubePlaylistHeader(body);
+  const tracks: ClientImportedTrack[] = [];
+  const seenIds = new Set<string>();
+  parseInnertubeTracks(body, seenIds, tracks);
+  await collectContinuations(body, seenIds, tracks, signal);
 
   if (tracks.length === 0) {
     throw new Error("No tracks could be extracted from this YouTube playlist. Check if the playlist is public.");
@@ -30,8 +49,7 @@ export async function importYoutube(rawUrl: string, signal?: AbortSignal): Promi
   return {
     source: "youtube",
     sourceUrl: rawUrl,
-    title: playlist.title,
-    ...(playlist.description ? { description: playlist.description } : {}),
+    ...header,
     tracks,
     canonicalTrackIds: tracks.map((track) => track.sourceId),
   };

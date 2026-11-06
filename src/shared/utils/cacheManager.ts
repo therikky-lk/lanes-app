@@ -228,10 +228,9 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
 
   // 2. indexeddb audio tracks & metadata added in linerDb
   try {
+    const audioTrackBytes = await linerDb.getTotalTrackBytes();
     const audioBlobBytes = await linerDb.getTotalAudioBytes();
-    // Offline library metadata is retained by cleanup, so it must not appear
-    // as removable audio bytes that never disappear after pressing Clear.
-    audioBytes = audioBlobBytes;
+    audioBytes = audioTrackBytes + audioBlobBytes;
     audioCount = await linerDb.getStoreCount("audio");
   } catch {}
 
@@ -266,7 +265,7 @@ export async function getStorageAnalytics(): Promise<StorageAnalytics> {
     const qStats = queryCache.getStats();
     const aBytes = await linerDb.getTotalArtistBytes();
     metadataBytes += qStats.bytes + aBytes;
-    metadataCount = qStats.count + (await linerDb.getStoreCount("artists"));
+    metadataCount = qStats.count + (await linerDb.getStoreCount("artists")) + (await linerDb.getStoreCount("tracks"));
   } catch {}
 
   // 6. localstorage inspection for covers, search and metadata
@@ -376,7 +375,8 @@ export async function clearStorageCategories(categoryIds: StorageCategoryId[]): 
   // Downloads and imports are managed explicitly, never by the cache cleaner.
 
   if (set.has("audio")) {
-    await audioCache.clear();
+    audioCache.invalidate();
+    await linerDb.clearStore("audio");
     // Retain library metadata so offline likes remain available.
 
     if (typeof window !== "undefined" && window.linerElectron?.clearAudioCache) {
@@ -433,7 +433,6 @@ export async function clearStorageCategories(categoryIds: StorageCategoryId[]): 
     await window.linerElectron.clearHttpCache();
   }
   if (typeof window !== "undefined") window.dispatchEvent(new Event("lane:audio-cache-changed"));
-  if (typeof window !== "undefined") window.dispatchEvent(new Event("lane:storage-changed"));
 }
 
 export async function openCacheFolder(): Promise<boolean> {

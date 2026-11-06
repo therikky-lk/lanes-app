@@ -22,6 +22,7 @@ export interface LibraryPlaylistSummary {
 }
 
 export interface LibraryPlaylistDetail {
+  isPublic: boolean;
   id: string;
   title: string;
   description?: string;
@@ -310,6 +311,7 @@ export function usePlaylist(id: string | null) {
           id: response.playlist.id,
           title: response.playlist.title,
           description: response.playlist.description,
+          isPublic: response.playlist.isPublic,
           trackCount: response.items.length + localTracks.length,
           coverUrl: playlistCover ?? covers[0] ?? "",
           coverUrls: playlistCover ? [playlistCover] : covers,

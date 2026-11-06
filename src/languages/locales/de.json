@@ -49,12 +49,7 @@
     "sec": "Sek."
   },
   "common": {
-    "cache_track": "Im Cache speichern",
-    "cache_playlist": "Gesamte Playlist zwischenspeichern",
-    "cache_saving": "Wird zwischengespeichert…",
-    "cache_saved": "Im Cache gespeichert",
-    "cache_failed": "Audio konnte nicht zwischengespeichert werden",
-    "cache_playlist_result": "{saved} von {total} Titeln im Cache. Prüfe bei fehlenden Titeln das Cache-Limit.",
+    "show_more": "Mehr anzeigen",
     "pause": "Pause",
     "source": "Quelle",
     "app": {
@@ -116,7 +111,7 @@
     "create_empty_playlist": "Eine neue, leere Playlist erstellen.",
     "playlist_name": "Name der Playlist",
     "import_playlist": "Playlist importieren",
-    "import_playlist_description": "Importiere eine Playlist von einem anderen Musikdienst.",
+    "import_playlist_description": "Importiere eine bereits bestehende Playlist von Spotify oder YouTube.",
     "paste_link_placeholder": "Link einfügen…",
     "magic_link": "Direktlink",
     "magic_link_description": "Füge einen beliebigen Musiklink ein – zu einem Titel, Album, einer Playlist oder einem Künstler. Lane öffnet den Inhalt automatisch oder fügt ihn für dich hinzu.",
@@ -225,8 +220,7 @@
     "increase": "Erhöhen",
     "mute": "Stummschalten",
     "unmute": "Ton einschalten",
-    "play": "Abspielen",
-    "show_more": "Mehr anzeigen"
+    "play": "Abspielen"
   },
   "home": {
     "recent": "Zuletzt gehört",
@@ -280,6 +274,7 @@
     "next_mixes": "Nächste Mixe"
   },
   "library": {
+    "import_from_service": "Aus {service} importieren",
     "title": "Mediathek",
     "liked_songs": "Lieblingstitel",
     "song": "Titel",
@@ -308,7 +303,6 @@
     "no_artists_desc": "Speichere Künstler, um schnell auf ihre Diskografie zuzugreifen",
     "search_music": "Musik suchen",
     "import_spotify": "Von Spotify importieren",
-    "import_from": "Importieren aus",
     "cached_songs": "Im Cache gespeicherte Songs",
     "cached_empty": "Songs werden hier angezeigt, nachdem sie beim Anhören zwischengespeichert wurden.",
     "on_device": "Auf diesem Gerät",
@@ -365,8 +359,7 @@
       "wait_rate_min": "Bitte warten, Fortsetzung in {min} Min"
     },
     "history": "Hörgeschichte",
-    "history_subtitle": "Alles, was Sie gespielt haben",
-    "import_from_service": "Aus {service} importieren"
+    "history_subtitle": "Alles, was Sie gespielt haben"
   },
   "login": {
     "welcome_back": "Willkommen zurück!",
@@ -1471,5 +1464,12 @@
     "copy": "Kopieren",
     "sign_in": "Melden Sie sich auf Ihren Geräten bei demselben Konto an, um die Wiedergabe zwischen ihnen umzuschalten.",
     "channel": "Kanal"
-  }
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
+}
 }
