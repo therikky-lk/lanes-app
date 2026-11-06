@@ -170,7 +170,8 @@ function LibraryPlaylistContent() {
   const hasCustomBg = useIsContentTransparent();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);\n  const [isVisibilityUpdating, setIsVisibilityUpdating] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isVisibilityUpdating, setIsVisibilityUpdating] = useState(false);
   const reorderTracks = useReorderPlaylistTracks();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
