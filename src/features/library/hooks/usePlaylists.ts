@@ -242,11 +242,20 @@ function toTrack(item: ApiUserPlaylistItem): Track {
 export function usePlaylistsList() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
   useEffect(() => {
-    void load(true);
-    const refreshTimer = window.setInterval(() => {
-      void load(true);
-    }, 30_000);
-    return () => window.clearInterval(refreshTimer);
+    void load();
+    listConsumers += 1;
+    if (listRefreshTimer === null) {
+      listRefreshTimer = window.setInterval(() => {
+        void load(true);
+      }, 60_000);
+    }
+    return () => {
+      listConsumers = Math.max(0, listConsumers - 1);
+      if (listConsumers === 0 && listRefreshTimer !== null) {
+        window.clearInterval(listRefreshTimer);
+        listRefreshTimer = null;
+      }
+    };
   }, []);
   return state;
 }
