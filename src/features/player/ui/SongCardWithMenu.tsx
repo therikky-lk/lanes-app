@@ -104,6 +104,8 @@ function SongCardWithMenu({
     id,
     title,
     artists,
+    artistId,
+    artistName: artistList?.find((artist) => artist.name)?.name ?? artists.split(",")[0]?.trim(),
     coverUrl,
     duration,
     durationMs: resolvedDurationMs,
