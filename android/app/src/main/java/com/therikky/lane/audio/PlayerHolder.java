@@ -307,6 +307,11 @@ public final class PlayerHolder {
         if (events != null) events.onRemote(action, player.getCurrentPosition());
     }
 
+    String currentTrackId() {
+        MediaItem item = player.getCurrentMediaItem();
+        return item == null ? "" : item.mediaId;
+    }
+
     void emit() {
         if (events == null) return;
         long duration = player.getDuration();

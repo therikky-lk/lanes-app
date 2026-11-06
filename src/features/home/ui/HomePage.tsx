@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import PopularTracksSection from "./PopularTracksSection";
 import DailyMixesSection from "./DailyMixesSection";
 import TrendsSection from "./TrendsSection";
-import HomePageSkeleton from "./HomePageSkeleton";
 import MyVibeHero from "./MyVibeHero";
 import type { Track } from "@/shared/types/track";
 import {
@@ -42,43 +41,24 @@ export default function HomePage() {
   const { data: likedData } = useLikedTracks();
 
   const { data: popularItems } = usePopular(100);
-  const { data: popularTracksOnly, isLoading: tracksLoading } =
+  const { data: popularTracksOnly } =
     usePopularTracksOnly(20);
-  const { data: popularTracksAllTime, isLoading: allTimeLoading } =
+  const { data: popularTracksAllTime } =
     usePopularTracksAllTime(20);
-  const { data: recentlyPlayed, isLoading: recentLoading } =
+  const { data: recentlyPlayed } =
     useRecentlyPlayed(20);
   const { data: dailyMixes } = useDailyMixes();
-
-  // Do not hold the entire home screen behind the slowest optional request.
-  // Sections appear as soon as any core source responds; covers and likes
-  // continue enriching in the background.
-  const isDataLoading = tracksLoading && allTimeLoading && recentLoading;
 
   const popularAlbums =
     popularItems?.filter((it) => it.type === "album") ?? [];
   const popularPlaylists =
     popularItems?.filter((it) => it.type === "playlist") ?? [];
 
-  // Ambient time-of-day colored glow
-  const glowClass = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      return "from-amber-500/20 via-orange-500/10 to-transparent";
-    } else if (hour >= 12 && hour < 17) {
-      return "from-amber-400/20 via-sky-500/10 to-transparent";
-    } else if (hour >= 17 && hour < 22) {
-      return "from-rose-500/20 via-purple-500/10 to-transparent";
-    }
-    return "from-indigo-600/25 via-violet-600/15 to-transparent";
-  }, []);
-
   // Quick mix items: up to 5 recently played items (tracks or albums)
   const quickRecentItems = useMemo(() => {
     return (recentlyPlayed || []).slice(0, 5);
   }, [recentlyPlayed]);
 
-  const hasEnoughQuickData = quickRecentItems.length >= 5;
 
   // seeds for "My Vibe"
   const vibeRecent = useMemo(
@@ -93,25 +73,11 @@ export default function HomePage() {
     [popularTracksOnly, popularTracksAllTime],
   );
 
-  const isReady = !isDataLoading;
-  const [skeletonExited, setSkeletonExited] = useState(() => !isDataLoading);
-
-  useEffect(() => {
-    if (isReady && !skeletonExited) {
-      const timer = setTimeout(() => {
-        setSkeletonExited(true);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isReady, skeletonExited]);
-
-  const quickCardClass = hasCustomBg
-    ? "apple-glass-action"
-    : "bg-bg-elevated hover:bg-[#dedee3] dark:hover:bg-border-alpha-14 transition-colors duration-150 ease-out";
-
   // liked songs get their tags (genre, pace) in the background from the start
   useEffect(() => {
-    if (likedData?.tracks?.length) warmTrackTags(likedData.tracks);
+    if (!likedData?.tracks?.length) return;
+    const timer = setTimeout(() => warmTrackTags(likedData.tracks), 1800);
+    return () => clearTimeout(timer);
   }, [likedData?.tracks]);
 
   // desktop: "My Vibe" can fill the whole page (arrow next to its settings)
@@ -142,7 +108,6 @@ export default function HomePage() {
 
       <div className="relative z-1 grid min-w-0 grid-cols-1 items-start w-full">
         {/* Real Content Layer */}
-        {isReady && (
           <div className="col-start-1 row-start-1 w-full pb-[16px]">
             {/* two shortcuts: liked songs and history. A tile, the name with a
                 chevron, one line under it, and the latest track's cover */}
@@ -187,11 +152,11 @@ export default function HomePage() {
                   key={item.key}
                   type="button"
                   onClick={item.onClick}
-                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-xl border-0 bg-white/[0.05] px-[8px] text-left cursor-pointer transition-colors hover:bg-white/[0.05] active:bg-white/[0.08] md:h-[72px] md:gap-[14px] md:px-[10px]"
+                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-[18px] border-0 bg-[#161616] px-[8px] text-left text-white cursor-pointer transition-colors hover:bg-[#1c1c1c] active:bg-[#222222] md:h-[72px] md:gap-[14px] md:px-[10px]"
                 >
                   {item.tile}
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-[2px] text-[15px] font-[650] text-text-primary">
+                    <span className="flex items-center gap-[2px] text-[15px] font-[650] text-white">
                       <span className="truncate">{item.title}</span>
                       <RightLine size={16} className="shrink-0 text-text-tertiary" />
                     </span>
@@ -204,7 +169,7 @@ export default function HomePage() {
                         return (
                           <span
                             key={`${item.key}-thumb-${index}`}
-                            className="relative shrink-0 overflow-hidden rounded-md border border-[#1a1a1a]"
+                            className="relative shrink-0 overflow-hidden rounded-[12px] border-2 border-[#161616] bg-[#161616]"
                             style={{
                               width: `${size}px`,
                               height: `${size}px`,
@@ -283,19 +248,9 @@ export default function HomePage() {
             />
           )}
         </div>
-      )}
 
-      {/* Direct Crossfade Skeleton Layer */}
-      {!vibeExpanded && !skeletonExited && (
-        <div
-          className={`col-start-1 row-start-1 w-full z-10 transition-opacity duration-300 ease-out ${
-            isReady ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
-          }`}
-          onTransitionEnd={() => setSkeletonExited(true)}
-        >
-          <HomePageSkeleton glowClass={glowClass} showQuickGrid={hasEnoughQuickData} />
-        </div>
-      )}
+
+
       </div>
       )}
     </div>

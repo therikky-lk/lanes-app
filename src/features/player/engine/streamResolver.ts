@@ -16,7 +16,6 @@ import { findSoundCloudStandIn } from "./soundcloudStandIn";
 import { getLocalTrack, isLocalTrackId } from "@/shared/media/local/localTracks";
 import { audiusStreamUrl, isAudiusId } from "@/shared/media/audius";
 import type { AudioQuality } from "../store/playerStore";
-import { resolvePlaybackSources } from "./resolvePlaybackSources";
 
 export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlaybackStream } from "./playbackStream";
 
@@ -74,22 +73,40 @@ async function withSoundCloudFallback(
 }
 
 async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
-  return resolvePlaybackSources(async (primarySignal) => {
-    const liner = await resolveLinerStream(videoId, primarySignal);
-    if (!liner) return null;
+  signal?.throwIfAborted();
+  const serverController = new AbortController();
+  const directController = new AbortController();
+  const serverSignal = signal ? AbortSignal.any([signal, serverController.signal]) : serverController.signal;
+  const directSignal = signal ? AbortSignal.any([signal, directController.signal]) : directController.signal;
+  let directError: unknown;
+  // Neither a slow catalog probe nor a missing server copy should delay YouTube.
+  const server = resolveLinerStream(videoId, serverSignal).then(liner => {
+    if (!liner) throw new Error("No server audio");
     return fromLinerStream(liner, track);
-  }, (fallbackSignal) => withSoundCloudFallback(track, async () => {
+  });
+  const direct = withSoundCloudFallback(track, async () => {
     if (isYoutubeSignedIn() && prefersAccountPlayback()) {
       const profiles: readonly InnertubeProfile[] = [TV_ACCOUNT_PROFILE, ...PLAYBACK_PROFILES];
       try {
-        return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: fallbackSignal, profiles, ...audioOptions(quality) }));
+        return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: directSignal, profiles, ...audioOptions(quality) }));
       } catch (error) {
-        if (isAbortError(error, fallbackSignal)) throw error;
+        if (isAbortError(error, directSignal)) throw error;
         log("yellow", "playback", `YouTube account playback failed, using public playback: ${String(error)}`);
       }
     }
-    return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: fallbackSignal, ...audioOptions(quality) }));
-  }, fallbackSignal), signal);
+    return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: directSignal, ...audioOptions(quality) }));
+  }, directSignal).catch(error => { directError = error; throw error; });
+  try {
+    const stream = await Promise.any([server, direct]);
+    signal?.throwIfAborted();
+    return stream;
+  } catch (error) {
+    signal?.throwIfAborted();
+    throw directError ?? error;
+  } finally {
+    serverController.abort();
+    directController.abort();
+  }
 }
 
 export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {

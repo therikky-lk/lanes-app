@@ -1,3 +1,5 @@
+import SettingsModal from "@/features/settings/ui/SettingsModal";
+import SearchPage from "@/features/search/ui/SearchPage";
 import CachedTracksPage from "@/features/library/offline/CachedTracksPage";
 import { Routes, Route, Navigate } from "react-router-dom";
 import HomePage from "@/features/home/ui/HomePage";
@@ -14,6 +16,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/search" element={<SearchPage />} />
       <Route path="/library" element={<LibraryPage />} />
       <Route path="/library/playlist" element={<PlaylistPage />} />
       <Route path="/library/cached" element={<CachedTracksPage />} />
@@ -22,7 +25,7 @@ export function AppRoutes() {
       <Route path="/artist" element={<ArtistPage />} />
       <Route path="/collection" element={<CollectionPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/settings" element={<Navigate to="/" replace />} />
+      <Route path="/settings/:tab?" element={<SettingsModal page />} />
       <Route path="/player" element={<PlayerPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

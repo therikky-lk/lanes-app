@@ -1,7 +1,9 @@
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import SettingsPageFrame from "./SettingsPageFrame";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, ExitLine, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill } from "@mingcute/react";
+import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
@@ -16,10 +18,9 @@ import Dialog from "@/shared/ui/Dialog";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { isNativeApp } from "@/shared/platform/native";
 import { ArrowLeftLine } from "@mingcute/react";
-import { UserAvatar } from "@/shared/ui";
+import SettingsAccount from "./SettingsAccount";
 import { useTranslation, getTranslationsForAllLocales } from "@/languages";
 import { useModalStore } from "@/features/library";
-import { useAuthStore } from "@/features/auth";
 import {
   PlaybackTab,
   ShortcutsTab,
@@ -134,17 +135,30 @@ const SETTING_ITEMS = ALL_SETTING_ITEMS.filter((item) => !isNativeApp() || !DESK
 
 const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
 
-export default function SettingsModal() {
+export default function SettingsModal({ page = false }: { page?: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { tab } = useParams();
+  const routeTab = tab && tab in TAB_ICONS ? tab as TabId : undefined;
   const { t } = useTranslation();
-  const open = useModalStore((state) => state.settingsOpen);
+  const modalOpen = useModalStore((state) => state.settingsOpen);
+  const open = page || modalOpen;
   const close = useModalStore((state) => state.closeSettings);
 
-  const [activeTab, setActiveTab] = useState<TabId>("Playback");
+  const [selectedTab, setSelectedTab] = useState<TabId>("Playback");
+  const activeTab = page ? routeTab ?? selectedTab : selectedTab;
+  const setActiveTab = (id: TabId) => {
+    setSelectedTab(id);
+    if (page) navigate(`/settings/${id}`, { state: { settingsParent: true } });
+  };
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleClose = () => {
     setSearchQuery("");
-    close();
+    if (page) {
+      if (window.history.length > 1) navigate(-1);
+      else navigate("/");
+    } else close();
   };
 
   const tabLabels: Record<TabId, string> = {
@@ -253,7 +267,16 @@ export default function SettingsModal() {
 
   // phone: the tab list and a tab's page are two screens
   const isMobile = useIsMobile();
-  const [mobilePage, setMobilePage] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState(false);
+  const mobilePage = page ? !!routeTab : mobilePanel;
+  const setMobilePage = (next: boolean) => {
+    if (!page) setMobilePanel(next);
+    else if (!next) {
+      if (location.state?.settingsParent) navigate(-1);
+      else navigate("/settings", { replace: true, state: { settingsDirection: -1 } });
+    }
+  };
+  const Container = page ? SettingsPageFrame : Dialog;
   useEffect(() => {
     if (!open) setMobilePage(false);
   }, [open]);
@@ -266,17 +289,9 @@ export default function SettingsModal() {
     });
   }, [open, mobilePage]);
 
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const displayName =
-    user?.displayName ||
-    user?.username ||
-    user?.email?.split("@")[0] ||
-    "Lane";
-  const handle = user?.username ? `@${user.username}` : (user?.email ?? t("settings.manage_account"));
 
   return (
-    <Dialog
+    <Container
       open={open}
       onOpenChange={(next) => (!next ? handleClose() : undefined)}
       maxWidth={900}
@@ -298,8 +313,10 @@ export default function SettingsModal() {
             <h2 className="m-0 text-[20px] font-[600] tracking-[-0.01em] text-text-primary" style={font}>
               {t("common.sidebar.settings") || "Settings"}
             </h2>
+            <div className="ml-auto"><SettingsAccount onSignOut={handleClose} /></div>
           </div>
         )}
+        {!isMobile && <div className="flex justify-end px-[12px] pt-[12px]"><SettingsAccount onSignOut={handleClose} /></div>}
         <div className="px-[12px] pt-[14px] pb-[8px]">
           <div className="relative flex items-center">
             <Search2Line
@@ -388,43 +405,11 @@ export default function SettingsModal() {
 
         </nav>
 
-        <div className="shrink-0 p-[12px] pt-[8px]">
-          <div className="flex items-center gap-[10px] px-[6px] py-[4px] min-w-0">
-            <span className="relative shrink-0">
-              <UserAvatar user={user ?? null} size={32} />
-              <span className="absolute right-[-1px] bottom-[-1px] w-[10px] h-[10px] rounded-full bg-[#12B76A] border-2 border-bg-primary" aria-hidden />
-            </span>
-            <span className="flex-1 min-w-0 flex flex-col leading-tight">
-              <span
-                className="text-text-primary text-[13px] font-[500] truncate"
-                style={font}
-              >
-                {displayName}
-              </span>
-              <span
-                className="text-text-tertiary text-[12px] truncate"
-                style={font}
-              >
-                {handle}
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={async () => {
-                handleClose();
-                await logout();
-              }}
-              aria-label={t("settings.profile.sign_out") || "Log out"}
-              className="p-1.5 rounded-md text-text-tertiary hover:text-[#E81123] transition-colors border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0"
-            >
-              <ExitLine size={18} className="shrink-0" />
-            </button>
-          </div>
-        </div>
+
       </aside>
 
-      {/* ── Right secondary frame: same roundness, inset with padding, darker ── */}
-      <div className={`flex-1 min-w-0 min-h-0 p-[2px] ${isMobile && !mobilePage ? "hidden" : "flex"}`}>
+      {/* Mount only the active phone screen. */}
+      {(!isMobile || mobilePage) && <div className={`flex-1 min-w-0 min-h-0 p-[2px] ${isMobile && !mobilePage ? "hidden" : "flex"}`}>
         <div className="lane-settings-content flex-1 min-w-0 min-h-0 flex flex-col rounded-[20px] overflow-hidden">
         <div className="flex items-start justify-between gap-[16px] px-[24px] pt-[24px] pb-[14px] shrink-0">
           {isMobile && (
@@ -490,7 +475,7 @@ export default function SettingsModal() {
           </motion.div>
         </div>
         </div>
-      </div>
-    </Dialog>
+      </div>}
+    </Container>
   );
 }
