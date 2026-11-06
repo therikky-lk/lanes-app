@@ -11,7 +11,6 @@ import { playerEngine } from "@/features/player/engine/playerEngine";
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import { audioCache } from "@/shared/storage/audioCache";
 import { useOfflineLibraryStore } from "./offlineLibraryStore";
-import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { TrackSearchField, useTrackSearch } from "../ui/TrackSearch";
 
 export default function CachedTracksPage() {
@@ -21,7 +20,6 @@ export default function CachedTracksPage() {
   const { cached, loaded, refresh } = useOfflineLibraryStore();
   const current = usePlayerStore(state => state.currentTrack?.id);
   const search = useTrackSearch(cached, "cache:tracks");
-  const isMobile = useIsMobile();
   useEffect(() => { void refresh().catch(() => toast(t("settings.cache.local_cache.error"), "error")); }, [refresh, t, toast]);
   const tracks = search.matches?.map((match) => match.track) ?? cached;
   return <div className="h-full overflow-y-auto px-4 sm:px-8 pt-5 pb-24" data-page-scroller
