@@ -133,7 +133,7 @@ export default function HomePage() {
                     key: "history",
                     onClick: () => navigate("/recent"),
                     tile: (
-                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] text-white md:h-[52px] md:w-[52px]">
+                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-black/[0.06] text-text-primary dark:bg-white/[0.08] md:h-[52px] md:w-[52px]">
                         <HistoryLine size={22} />
                       </span>
                     ),
@@ -152,11 +152,11 @@ export default function HomePage() {
                   key={item.key}
                   type="button"
                   onClick={item.onClick}
-                  className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-[18px] border-0 bg-[#161616] px-[8px] text-left text-white cursor-pointer transition-colors hover:bg-[#1c1c1c] active:bg-[#222222] md:h-[72px] md:gap-[14px] md:px-[10px]"
+                    className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-[18px] border-0 bg-[#e6e6eb] px-[8px] text-left text-text-primary cursor-pointer transition-colors hover:bg-[#dedee3] active:bg-[#d4d4d8] dark:bg-[#161616] dark:text-white dark:hover:bg-[#1c1c1c] dark:active:bg-[#222222] md:h-[72px] md:gap-[14px] md:px-[10px]"
                 >
                   {item.tile}
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-[2px] text-[15px] font-[650] text-white">
+                    <span className="flex items-center gap-[2px] text-[15px] font-[650] text-text-primary">
                       <span className="truncate">{item.title}</span>
                       <RightLine size={16} className="shrink-0 text-text-tertiary" />
                     </span>
@@ -169,7 +169,7 @@ export default function HomePage() {
                         return (
                           <span
                             key={`${item.key}-thumb-${index}`}
-                            className="relative shrink-0 overflow-hidden rounded-[12px] border-2 border-[#161616] bg-[#161616]"
+                            className="relative shrink-0 overflow-hidden rounded-[12px] border-2 border-[#e6e6eb] bg-[#e6e6eb] dark:border-[#161616] dark:bg-[#161616]"
                             style={{
                               width: `${size}px`,
                               height: `${size}px`,
