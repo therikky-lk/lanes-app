@@ -28,6 +28,8 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
     id: track.id,
     title: track.title,
     artists: track.artists,
+    artistId: track.artistId,
+    artistName: track.artistList?.find((artist) => artist.name)?.name ?? track.artists.split(",")[0]?.trim(),
     coverUrl,
     durationMs: track.durationMs,
     searchType: "track",

@@ -1,5 +1,5 @@
 export type ShareEntityType = "artist" | "album" | "playlist" | "track";
-export interface ShareSnapshot { title: string; subtitle?: string; coverUrl?: string }
+export interface ShareSnapshot { title: string; subtitle?: string; coverUrl?: string; artistAvatarUrl?: string }
 export interface SharedEntity {
   id: string;
   type: ShareEntityType;
