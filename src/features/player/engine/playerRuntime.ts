@@ -67,7 +67,9 @@ export class PlayerRuntime {
   // the status for that re-animated the play / pause button on every seek
   private waitingTimer: ReturnType<typeof setTimeout> | null = null;
   public onEnded?: () => void;
+  public onLoop?: () => void;
   public onError?: (info: { trackId: string; message: string }) => void;
+  private lastObservedAudioTime = 0;
 
   constructor() {
     const win = typeof window !== "undefined" ? (window as any) : null;
@@ -308,6 +310,12 @@ export class PlayerRuntime {
       if (!this.currentTrackId) return;
       if (usePlayerStore.getState().status === "loading") return;
       if (Number.isNaN(audioEl.currentTime)) return;
+      const duration = audioEl.duration;
+      if (audioEl.loop && Number.isFinite(duration) && duration > 0 &&
+          this.lastObservedAudioTime >= duration * 0.9 && audioEl.currentTime <= Math.min(1.5, duration * 0.2)) {
+        this.onLoop?.();
+      }
+      this.lastObservedAudioTime = audioEl.currentTime;
 
       const posMs = Math.round(audioEl.currentTime * 1000);
       usePlayerStore.getState().setPosition(posMs);
@@ -763,6 +771,12 @@ export class PlayerRuntime {
     }
   }
 
+  public setRepeatOne(enabled: boolean): void {
+    if (isNativeApp()) return;
+    this.audio.loop = enabled;
+    this.lastObservedAudioTime = 0;
+  }
+
   public async loadAndPlay(
     track: Track,
     startPositionMs: number = 0,
@@ -771,6 +785,7 @@ export class PlayerRuntime {
     this.cancelFade();
     this.pendingStartPositionMs = startPositionMs;
     const epoch = ++this.loadEpoch;
+    this.lastObservedAudioTime = 0;
 
     if (this.currentTrackId !== track.id) {
       this.recoveryAttempts = 0;

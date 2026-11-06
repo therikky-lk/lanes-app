@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { DeleteLine } from "@mingcute/react";
+import { AddLine, DeleteLine } from "@mingcute/react";
 
 const ACTION_WIDTH = 76;
 
-/** Phone history action: follow the finger, reveal Delete, or commit a long swipe. */
-export default function SwipeToDelete({ children, label, onDelete }: { children: ReactNode; label: string; onDelete: () => void }) {
+/** Phone swipe action: reveal an action or commit a long swipe. */
+export default function SwipeToDelete({ children, label, onDelete, onAddToQueue }: { children: ReactNode; label: string; onDelete?: () => void; onAddToQueue?: () => void }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -21,9 +21,14 @@ export default function SwipeToDelete({ children, label, onDelete }: { children:
     if (!start?.horizontal) return;
     const threshold = Math.max(ACTION_WIDTH + 24, Math.min(160, start.width * 0.45));
     if (!cancelled && -start.offset >= threshold) {
+      if (onAddToQueue) {
+        setOffset(0);
+        onAddToQueue();
+        return;
+      }
       setDeparting(true);
       setOffset(-start.width);
-      removal.current = setTimeout(onDelete, 320);
+      removal.current = setTimeout(() => onDelete?.(), 320);
       return;
     }
     setOffset(!cancelled && start.offset < -ACTION_WIDTH / 2 ? -ACTION_WIDTH : 0);
@@ -35,7 +40,7 @@ export default function SwipeToDelete({ children, label, onDelete }: { children:
       style={{ touchAction: "pan-y" }}
       onPointerDownCapture={(event) => {
         suppressClick.current = false;
-        if (departing || !event.isPrimary || event.button !== 0 || (event.target as HTMLElement).closest("[data-swipe-delete]")) return;
+        if (departing || !event.isPrimary || event.button !== 0 || (event.target as HTMLElement).closest("[data-swipe-action]")) return;
         gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, base: offset, width: event.currentTarget.getBoundingClientRect().width, offset, horizontal: false };
       }}
       onPointerMoveCapture={(event) => {
@@ -65,22 +70,22 @@ export default function SwipeToDelete({ children, label, onDelete }: { children:
         if (event.target === event.currentTarget && gesture.current?.id === event.pointerId) finish(true);
       }}
       onClickCapture={(event) => {
-        if ((event.target as HTMLElement).closest("[data-swipe-delete]")) { suppressClick.current = false; return; }
+        if ((event.target as HTMLElement).closest("[data-swipe-action]")) { suppressClick.current = false; return; }
         if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; }
       }}
     >
       <button
         type="button"
-        data-swipe-delete
+        data-swipe-action
         disabled={departing}
         aria-label={label}
         aria-hidden={offset === 0}
         tabIndex={offset === 0 ? -1 : 0}
-        onClick={(event) => { event.stopPropagation(); onDelete(); }}
+        onClick={(event) => { event.stopPropagation(); if (onAddToQueue) { setOffset(0); onAddToQueue(); } else onDelete?.(); }}
         className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-[3px] border-0 px-[12px] text-white"
-        style={{ width: Math.max(ACTION_WIDTH, -offset), backgroundColor: armed ? "#dc2626" : "#ef4444", visibility: offset === 0 ? "hidden" : "visible" }}
+        style={{ width: Math.max(ACTION_WIDTH, -offset), backgroundColor: onAddToQueue ? (armed ? "#15803d" : "#22c55e") : (armed ? "#dc2626" : "#ef4444"), visibility: offset === 0 ? "hidden" : "visible" }}
       >
-        <DeleteLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} />
+        {onAddToQueue ? <AddLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} /> : <DeleteLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} />}
         <span className="text-[11px] font-medium">{label}</span>
       </button>
       <div style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 320ms cubic-bezier(.22,1,.36,1)", background: offset === 0 ? undefined : "var(--bg-primary)" }}>
