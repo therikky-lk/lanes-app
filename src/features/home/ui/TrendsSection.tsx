@@ -1,3 +1,4 @@
+import Button from "@/shared/ui/Button";
 import { useEffect, useRef, useState } from "react";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import { FireFill, HeartFill, HeartLine } from "@mingcute/react";
@@ -240,14 +241,9 @@ export default function TrendsSection() {
           <h2 className="text-text-primary text-[21px] font-semibold m-0 leading-tight tracking-tight">{t("trends.title")}</h2>
         </div>
         {/* the same switch as in the library */}
-        <SegmentedTabs
-          value={region}
-          onChange={pick}
-          options={[
-            { id: "russia" as const, label: t("trends.russia") },
-            { id: "world" as const, label: t("trends.world") },
-          ]}
-        />
+        <div className="flex gap-[6px]">
+          {(["russia", "world"] as const).map(value => <Button key={value} size="sm" variant={region === value ? "primary" : "secondary"} aria-pressed={region === value} onClick={() => pick(value)}>{t(value === "russia" ? "trends.russia" : "trends.world")}</Button>)}
+        </div>
       </div>
 
       {entries?.some((entry) => entry.song.stale) && <p className="px-8 text-xs text-text-secondary">Сохранённый чарт: источник временно недоступен.</p>}
@@ -268,13 +264,13 @@ export default function TrendsSection() {
 
       {entries && entries.length > PREVIEW && (
         <div className="mt-[6px] px-8">
-          <button
+          <Button variant="secondary"
             type="button"
             onClick={() => setAll((v) => !v)}
-            className="h-[34px] rounded-full border border-white/10 bg-white/[0.04] px-[16px] text-[13px] font-[550] text-text-primary hover:bg-white/[0.08] cursor-pointer"
+            className="!h-[34px]"
           >
             {all ? t("trends.less") : t("trends.all", { n: entries.length })}
-          </button>
+          </Button>
         </div>
       )}
     </div>

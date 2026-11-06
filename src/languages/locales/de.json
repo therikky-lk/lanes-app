@@ -225,7 +225,8 @@
     "increase": "Erhöhen",
     "mute": "Stummschalten",
     "unmute": "Ton einschalten",
-    "play": "Abspielen"
+    "play": "Abspielen",
+    "show_more": "Mehr anzeigen"
   },
   "home": {
     "recent": "Zuletzt gehört",
@@ -364,7 +365,8 @@
       "wait_rate_min": "Bitte warten, Fortsetzung in {min} Min"
     },
     "history": "Hörgeschichte",
-    "history_subtitle": "Alles, was Sie gespielt haben"
+    "history_subtitle": "Alles, was Sie gespielt haben",
+    "import_from_service": "Aus {service} importieren"
   },
   "login": {
     "welcome_back": "Willkommen zurück!",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Cover öffnen",
     "repeat_off": "Wiederholung: aus",
     "repeat_all": "Wiederholung: alle",
     "repeat_one": "Wiederholung: Titel",
@@ -617,6 +620,7 @@
     "likes_empty": "Noch keine Lieblingslieder"
   },
   "search": {
+    "recommended_artists": "Empfohlene Künstler",
     "placeholder": "Titel, Künstler oder Alben suchen",
     "all": "Alle",
     "songs": "Titel",
@@ -848,7 +852,7 @@
       "local_desc": "{songs} · Originaldateien bleiben erhalten",
       "remove": "Downloads entfernen",
       "remove_size": "{size} entfernen?",
-      "clear": "Cache leeren",
+      "clear": "Leeren",
       "clear_size": "{size} löschen?",
       "downloads_limit": "Platz für Downloads",
       "downloads_limit_hint": "Ungefähr {count} Lieder. Downloads werden angehalten, wenn sie voll sind.",
@@ -911,6 +915,10 @@
       "lossless": "Verlustfrei (FLAC/ALAC) – derzeit nicht verfügbar"
     },
     "profile": {
+      "remove_avatar": "Profilbild entfernen",
+      "avatar_local": "Nur auf diesem Gerät gespeichert",
+      "change_avatar": "Profilbild ändern",
+      "avatar_invalid": "Wähle ein Bild bis zu 20 MB.",
       "title": "Profil",
       "signed_in_as": "Angemeldet als",
       "not_signed_in": "Du bist derzeit nicht angemeldet.",

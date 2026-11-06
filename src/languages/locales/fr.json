@@ -225,7 +225,8 @@
     "increase": "Augmenter",
     "mute": "Couper le son",
     "unmute": "Rétablir le son",
-    "play": "Lecture"
+    "play": "Lecture",
+    "show_more": "Afficher plus"
   },
   "home": {
     "recent": "Récents",
@@ -364,7 +365,8 @@
       "wait_rate_min": "Demandé d'attendre, reprise dans {min} min"
     },
     "history": "Historique d'écoute",
-    "history_subtitle": "Tout ce que vous avez joué"
+    "history_subtitle": "Tout ce que vous avez joué",
+    "import_from_service": "Importer depuis {service}"
   },
   "login": {
     "welcome_back": "Bon retour",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Ouvrir la pochette",
     "repeat_off": "Répéter : désactivé",
     "repeat_all": "Répéter : tout",
     "repeat_one": "Répéter : titre",
@@ -617,6 +620,7 @@
     "likes_empty": "Aucune chanson aimée pour l'instant"
   },
   "search": {
+    "recommended_artists": "Artistes recommandés",
     "placeholder": "Rechercher des titres, artistes, albums...",
     "all": "Tout",
     "songs": "Titres",
@@ -907,7 +911,7 @@
       "local_desc": "{songs} · les fichiers originaux sont conservés",
       "remove": "Supprimer les téléchargements",
       "remove_size": "Supprimer {size}?",
-      "clear": "Vider le cache",
+      "clear": "Vider",
       "clear_size": "Effacer {size} ?",
       "downloads_limit": "Espace pour les téléchargements",
       "downloads_limit_hint": "Environ {count} chansons. Les téléchargements s'interrompent lorsqu'ils sont pleins.",
@@ -970,6 +974,10 @@
       "lossless": "Sans perte (FLAC/ALAC) - Indisponible"
     },
     "profile": {
+      "remove_avatar": "Supprimer l’avatar",
+      "avatar_local": "Enregistré uniquement sur cet appareil",
+      "change_avatar": "Changer d’avatar",
+      "avatar_invalid": "Choisissez une image de 20 Mo maximum.",
       "title": "Profil",
       "signed_in_as": "Connecté en tant que",
       "not_signed_in": "Aucune session reconnue n'est actuellement connectée.",

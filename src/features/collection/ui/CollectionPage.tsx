@@ -338,26 +338,6 @@ function CollectionContent() {
         />
         <span className="relative -left-[1.5px] top-[1px]">{t("common.back")}</span>
       </button>
-      {/* track search sits centred in the page header */}
-      {data && isReady && (
-        <div
-          className={
-            isMobile
-              ? // phones: under the Back button, full width, so it never covers it
-                "absolute top-[52px] left-[12px] right-[12px] z-20 flex justify-center pointer-events-none"
-              : "absolute top-[12px] left-0 right-0 z-20 flex justify-center pointer-events-none"
-          }
-        >
-          <TrackSearchField
-            className={isMobile ? "!w-full !h-[38px]" : ""}
-            search={search}
-            totalCount={data.tracks.length}
-            placeholder={t(isAlbum ? "track_search.placeholder_album" : "track_search.placeholder_playlist")}
-            glass={hasCustomBg}
-            onSubmit={handleSearchSubmit}
-          />
-        </div>
-      )}
       <div className="relative z-1 grid grid-cols-1 w-full h-full min-h-0 overflow-hidden">
         {data && (
           <div
@@ -397,6 +377,7 @@ function CollectionContent() {
                       className="object-cover"
                       draggable={false}
                     />
+
                   ) : (
                     <PlaylistFill size={48} className={hasCustomBg ? "text-white" : "text-border-alpha-33"} />
                   )
@@ -588,6 +569,10 @@ function CollectionContent() {
                 />
               </div>
 
+                <TrackSearchField search={search} totalCount={data.tracks.length}
+                  placeholder={t(isAlbum ? "track_search.placeholder_album" : "track_search.placeholder_playlist")}
+                  glass={hasCustomBg} closeOnBlur={false} onSubmit={handleSearchSubmit}
+                  className="!h-[44px] !w-full !rounded-[12px] my-[8px] [&_input]:text-[16px]" />
               <div
                 ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag

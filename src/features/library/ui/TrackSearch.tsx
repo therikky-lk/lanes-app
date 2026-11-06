@@ -8,8 +8,7 @@ import {
   useState,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CloseLine } from "@mingcute/react";
-import { CloseCircleFill, Search2Line } from "@mingcute/react";
+import { Search2Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { isMacPlatform } from "@/features/shortcuts";
 import { isBlockingOverlayOpen } from "@/features/navigation/utils/shortcutGuards";
@@ -101,6 +100,7 @@ interface TrackSearchFieldProps {
   /** Expand horizontally from the trigger when shown in a compact action row. */
   expandOnOpen?: boolean;
   expandWidth?: number;
+  closeOnBlur?: boolean;
 }
 
 export const TrackSearchField = memo(function TrackSearchField({
@@ -112,6 +112,7 @@ export const TrackSearchField = memo(function TrackSearchField({
   className = "",
   expandOnOpen = false,
   expandWidth = 220,
+  closeOnBlur = true,
 }: TrackSearchFieldProps) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -172,7 +173,7 @@ export const TrackSearchField = memo(function TrackSearchField({
               }
             }}
             onBlur={() => {
-              if (!query.trim()) close();
+              if (closeOnBlur && !query.trim()) close();
             }}
             className={`min-w-0 flex-1 border-none bg-transparent p-0 text-[13px] font-[400] outline-none ${
               glass
@@ -190,42 +191,8 @@ export const TrackSearchField = memo(function TrackSearchField({
               {t("track_search.count", { count: matches.length, total: totalCount })}
             </span>
           )}
-          {expandOnOpen && (
-            <button
-              type="button"
-              aria-label={t("common.close") || "Close search"}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={close}
-              className={`inline-flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[7px] border-0 bg-transparent p-0 transition-colors hover:text-text-primary ${glass ? "text-white/60" : "text-text-tertiary"}`}
-            >
-              <CloseLine size={15} />
-            </button>
-          )}
-          <AnimatePresence>
-            {hasQuery && (
-              <motion.button
-                key="clear"
-                type="button"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ duration: 0.1 }}
-                aria-label={t("track_search.clear")}
-                data-no-tooltip="true"
-                // keep focus in the field while clearing
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setQuery("");
-                  inputRef.current?.focus();
-                }}
-                className={`-mr-[2px] flex shrink-0 items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors ${
-                  glass ? "text-white/60 hover:text-white" : "text-text-tertiary hover:text-text-primary"
-                }`}
-              >
-                <CloseCircleFill size={15} />
-              </motion.button>
-            )}
-          </AnimatePresence>
+
+
         </motion.div>
       )}
     </AnimatePresence>

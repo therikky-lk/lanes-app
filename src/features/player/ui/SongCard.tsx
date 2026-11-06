@@ -46,6 +46,7 @@ export interface SongCardProps {
   menuPosition?: { x: number; y: number } | null;
   onContextMenu?: (e: React.MouseEvent) => void;
   onNavigate?: () => void;
+  onOpenArtist?: (artist: { id: string; name: string }) => void;
   compact?: boolean;
   icon?: React.ReactNode;
   showReorderHandle?: boolean;
@@ -87,6 +88,7 @@ function SongCard({
   menuPosition,
   onContextMenu,
   onNavigate,
+  onOpenArtist,
   compact = false,
   icon,
   showReorderHandle,
@@ -224,8 +226,8 @@ function SongCard({
           </div>
         ) : (
           <div
-            className={`relative ${imageSizeClass} shrink-0 overflow-hidden bg-bg-panel flex items-center justify-center ${
-              imageShape === "circle" ? "rounded-full" : "rounded-md"
+            className={`relative ${imageSizeClass} shrink-0 overflow-hidden bg-[#161616] flex items-center justify-center ${
+              imageShape === "circle" ? "rounded-full" : "rounded-[12px]"
             }`}
           >
             {icon ? (
@@ -285,7 +287,8 @@ function SongCard({
                 name={artists}
                 artistId={artistId}
                 artistList={artistList}
-                onNavigate={onNavigate}
+                onNavigate={onOpenArtist ? undefined : onNavigate}
+                onOpenArtist={onOpenArtist}
                 className="text-text-secondary"
               />
             ) : (

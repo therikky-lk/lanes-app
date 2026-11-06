@@ -5,10 +5,9 @@ import { useArtistAvatar } from "../hooks/useArtistAvatar";
 function Avatar({ artist, size }: { artist: TrackArtist; size: number }) {
   const url = useArtistAvatar(artist.id, artist.name);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  if (!url || url === failedUrl) return null;
   return <span data-artist-avatar={artist.name} className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-[8px] font-medium text-current"
     style={{ width: size, height: size }}>
-    <img src={url} alt="" className="h-full w-full object-cover" draggable={false} onError={() => setFailedUrl(url)} />
+    {url && url !== failedUrl ? <img src={url} alt="" className="h-full w-full object-cover" draggable={false} onError={() => setFailedUrl(url)} /> : <span>{artist.name.trim().charAt(0).toUpperCase()}</span>}
   </span>;
 }
 export function ArtistAvatars({ artistId, artistList, name, size = 18 }: { artistId?: string; artistList?: TrackArtist[]; name: string; size?: number }) {

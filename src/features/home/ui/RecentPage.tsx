@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import Button from "@/shared/ui/Button";
+import HistoryTrackList from "./HistoryTrackList";
 import LikedCover from "@/features/library/ui/LikedCover";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -80,7 +82,7 @@ function useHistoryPlays() {
 export default function RecentPage() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
-  const { plays, loading, hasMore, more } = useHistoryPlays();
+  const { plays, loading, hasMore, filling, more } = useHistoryPlays();
   const { data: playlists } = usePlaylistsList();
   const days = useMemo(() => groupHistory(plays), [plays]);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
@@ -156,14 +158,16 @@ export default function RecentPage() {
   return (
     <div data-page-scroller className="h-full w-full overflow-y-auto pb-[32px]" style={{ fontFamily: "var(--font-inter), sans-serif" }}>
       <div className="px-[32px] pt-[52px]">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           type="button"
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
-          className="mb-[14px] inline-flex h-[32px] items-center gap-[6px] rounded-md border-0 bg-bg-panel/85 px-[10px] text-[13px] font-[500] text-text-primary cursor-pointer"
+          className="mb-[14px]"
         >
           <ArrowLeftLine size={16} />
           {t("common.back")}
-        </button>
+        </Button>
         <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{t("home.history")}</h1>
       </div>
 
@@ -239,24 +243,12 @@ export default function RecentPage() {
                       {expandable && isOpen && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
+                          animate={{ height: Math.min(480, g.tracks.length * 64) + 6, opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                           className="overflow-hidden pl-[20px] pb-[6px]"
                         >
-                          {g.tracks.map((track, index) => (
-                            <SongCardWithMenu
-                              key={`${track.id}-${index}`}
-                              id={track.id}
-                              title={track.title}
-                              artists={track.artists}
-                              coverUrl={track.coverUrl ?? ""}
-                              durationMs={track.durationMs}
-                              explicit={track.explicit}
-                              onPlay={() => void playerEngine.playTrack(track, g.tracks, "recent", null, index)}
-                              searchType="track"
-                            />
-                          ))}
+                          <HistoryTrackList tracks={g.tracks} />
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -272,14 +264,15 @@ export default function RecentPage() {
         )}
         {hasMore && (
           <div className="mt-[18px] flex justify-center">
-            <button
+            <Button
+              variant="secondary"
               type="button"
               onClick={more}
-              disabled={loading}
-              className="h-[38px] rounded-full border border-white/10 bg-white/[0.05] px-[18px] text-[13.5px] font-[550] text-text-primary hover:bg-white/[0.09] disabled:opacity-50 cursor-pointer"
+              disabled={loading || filling}
+              aria-busy={loading || filling}
             >
-              {loading ? "…" : t("history.more")}
-            </button>
+              {loading || filling ? "…" : t("history.more")}
+            </Button>
           </div>
         )}
       </div>

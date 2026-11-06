@@ -225,7 +225,8 @@
     "increase": "Zwiększ",
     "mute": "Wycisz",
     "unmute": "Włącz dźwięk",
-    "play": "Odtwórz"
+    "play": "Odtwórz",
+    "show_more": "Pokaż więcej"
   },
   "home": {
     "recent": "Ostatnio",
@@ -364,7 +365,8 @@
       "not_found_title": "Nie znaleziono w YouTube Music"
     },
     "history": "Historia słuchania",
-    "history_subtitle": "Wszystko, w co grałeś"
+    "history_subtitle": "Wszystko, w co grałeś",
+    "import_from_service": "Importuj z {service}"
   },
   "login": {
     "welcome_back": "Witaj ponownie",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Otwórz okładkę",
     "repeat_off": "Powtarzanie: wył.",
     "repeat_all": "Powtarzanie: wszystko",
     "repeat_one": "Powtarzanie: utwór",
@@ -617,6 +620,7 @@
     "likes_empty": "Nie ma jeszcze lubianych piosenek"
   },
   "search": {
+    "recommended_artists": "Polecani wykonawcy",
     "placeholder": "Szukaj utworów, wykonawców, albumów...",
     "all": "Wszystko",
     "songs": "Utwory",
@@ -907,7 +911,7 @@
       "local_desc": "{songs} · Zachowane są oryginalne pliki",
       "remove": "Usuń pliki do pobrania",
       "remove_size": "Usunąć {size}?",
-      "clear": "Wyczyść pamięć podręczną",
+      "clear": "Wyczyść",
       "clear_size": "Wyczyść {size}?",
       "downloads_limit": "Miejsce na pliki do pobrania",
       "downloads_limit_hint": "Około {count} utworów. Pobieranie zostaje wstrzymane, gdy jest pełne.",
@@ -970,6 +974,10 @@
       "lossless": "Bezstratna (FLAC/ALAC) - Niedostępna"
     },
     "profile": {
+      "remove_avatar": "Usuń awatar",
+      "avatar_local": "Zapisany tylko na tym urządzeniu",
+      "change_avatar": "Zmień awatar",
+      "avatar_invalid": "Wybierz obraz o rozmiarze do 20 MB.",
       "title": "Profil",
       "signed_in_as": "Zalogowano jako",
       "not_signed_in": "Nie jesteś zalogowany w rozpoznanej sesji.",

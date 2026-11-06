@@ -757,13 +757,13 @@ class PlayerEngine {
     }
   }
 
-  public async skipPrevious(): Promise<void> {
+  public async skipPrevious(forceTrackChange = false): Promise<void> {
     if (forwarded({ type: "prev" })) return;
     const store = usePlayerStore.getState();
     if (store.queue.length === 0) return;
 
     // If playback is > 3 seconds, standard player behavior restarts the track
-    if (store.positionMs > 3000) {
+    if (!forceTrackChange && store.positionMs > 3000) {
       this.seek(0);
       return;
     }
@@ -1311,7 +1311,7 @@ class PlayerEngine {
   }
 
   /** Android: the native player already started the queued next track */
-  public handleNativeAdvance(trackId: string, positionMs = 0, durationMs?: number, status: PlayerStatus = "playing"): void {
+  public handleNativeAdvance(trackId: string, snapshot?: { positionMs: number; durationMs: number; playing: boolean; buffering: boolean; playWhenReady?: boolean }): void {
     const store = usePlayerStore.getState();
     if (store.currentTrack?.id === trackId) return;
     const expected = this.computeNextIndex(true);
@@ -1319,18 +1319,17 @@ class PlayerEngine {
       expected !== null && store.queue[expected]?.id === trackId
         ? expected
         : store.queue.findIndex((t, i) => i > store.currentIndex && t.id === trackId);
-    // Foregrounding can jump over several native transitions, including a
-    // repeat-all wrap. Match the actual item without replaying those skips.
-    if (index < 0) index = store.queue.findIndex((track) => track.id === trackId);
+    // A background session can cross the queue boundary more than once.
+    if (index < 0) index = store.queue.findIndex(t => t.id === trackId);
     if (index < 0) return;
     const track = store.queue[index];
     this.telemetry.onTrackCompleted(false);
     this.sessionId += 1;
     const mySession = this.sessionId;
     store.setCurrentTrack(track, index);
-    store.setPosition(positionMs);
-    store.setDuration(durationMs && durationMs > 0 ? durationMs : track.durationMs ?? 0);
-    store.setStatus(status, null);
+    store.setPosition(snapshot?.positionMs ?? 0);
+    store.setDuration(snapshot && snapshot.durationMs > 0 ? snapshot.durationMs : track.durationMs ?? 0);
+    store.setStatus(snapshot ? (snapshot.buffering ? "loading" : (snapshot.playWhenReady ?? snapshot.playing) ? "playing" : "paused") : "playing", null);
     playerRuntime?.updateMediaSessionMetadata(track);
     this.maybeExtendQueue(mySession, track.id, index, store.queue.length);
   }

@@ -225,7 +225,8 @@
     "increase": "Aumentar",
     "mute": "Silenciar",
     "unmute": "Activar sonido",
-    "play": "Reproducir"
+    "play": "Reproducir",
+    "show_more": "Mostrar más"
   },
   "home": {
     "recent": "Recientes",
@@ -364,7 +365,8 @@
       "wait_rate_min": "Se le pidió que esperara y se reanudaría en {min} min."
     },
     "history": "Historial de escucha",
-    "history_subtitle": "Todo lo que jugaste"
+    "history_subtitle": "Todo lo que jugaste",
+    "import_from_service": "Importar de {service}"
   },
   "login": {
     "welcome_back": "Te damos la bienvenida",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Abrir portada",
     "repeat_off": "Repetir: desactivado",
     "repeat_all": "Repetir: todo",
     "repeat_one": "Repetir: canción",
@@ -617,6 +620,7 @@
     "cover_failed": "No se pudo utilizar esta imagen"
   },
   "search": {
+    "recommended_artists": "Artistas recomendados",
     "placeholder": "Buscar canciones, artistas, álbumes...",
     "all": "Todo",
     "songs": "Canciones",
@@ -897,7 +901,7 @@
       "local_desc": "{songs} · se conservan los archivos originales",
       "remove": "Eliminar descargas",
       "remove_size": "¿Quitar {size}?",
-      "clear": "Borrar caché",
+      "clear": "Borrar",
       "clear_size": "¿Borrar {size}?",
       "downloads_limit": "Espacio para descargas",
       "downloads_limit_hint": "Alrededor de {count} canciones. Las descargas se detienen cuando están llenas.",
@@ -960,6 +964,10 @@
       "lossless": "Sin pérdida (FLAC/ALAC) - No disponible"
     },
     "profile": {
+      "remove_avatar": "Eliminar avatar",
+      "avatar_local": "Guardado solo en este dispositivo",
+      "change_avatar": "Cambiar avatar",
+      "avatar_invalid": "Elige una imagen de hasta 20 MB.",
       "title": "Perfil",
       "signed_in_as": "Sesión iniciada como",
       "not_signed_in": "No hay una sesión activa reconocida.",

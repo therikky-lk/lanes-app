@@ -225,7 +225,8 @@
     "increase": "Aumenta",
     "mute": "Disattiva audio",
     "unmute": "Attiva audio",
-    "play": "Riproduci"
+    "play": "Riproduci",
+    "show_more": "Mostra altro"
   },
   "home": {
     "recent": "Recenti",
@@ -364,7 +365,8 @@
       "wait_rate_min": "Viene chiesto di attendere, ripresa tra {min} min"
     },
     "history": "Cronologia di ascolto",
-    "history_subtitle": "Tutto quello che hai giocato"
+    "history_subtitle": "Tutto quello che hai giocato",
+    "import_from_service": "Importa da {service}"
   },
   "login": {
     "welcome_back": "Bentornato",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Apri copertina",
     "repeat_off": "Ripeti: disattivato",
     "repeat_all": "Ripeti: tutto",
     "repeat_one": "Ripeti: brano",
@@ -617,6 +620,7 @@
     "likes_empty": "Ancora nessuna canzone piaciuta"
   },
   "search": {
+    "recommended_artists": "Artisti consigliati",
     "placeholder": "Cerca brani, artisti, album...",
     "all": "Tutto",
     "songs": "Brani",
@@ -907,7 +911,7 @@
       "local_desc": "{songs} · vengono conservati i file originali",
       "remove": "Rimuovi i download",
       "remove_size": "Rimuovere {size}?",
-      "clear": "Cancella cache",
+      "clear": "Cancella",
       "clear_size": "Cancella {size}?",
       "downloads_limit": "Spazio per i download",
       "downloads_limit_hint": "Circa {count} brani. I download vengono messi in pausa quando sono pieni.",
@@ -970,6 +974,10 @@
       "lossless": "Senza perdita (FLAC/ALAC) - Non disponibile"
     },
     "profile": {
+      "remove_avatar": "Rimuovi avatar",
+      "avatar_local": "Salvato solo su questo dispositivo",
+      "change_avatar": "Cambia avatar",
+      "avatar_invalid": "Scegli un’immagine fino a 20 MB.",
       "title": "Profilo",
       "signed_in_as": "Accesso effettuato come",
       "not_signed_in": "Non hai effettuato l'accesso a una sessione riconosciuta.",

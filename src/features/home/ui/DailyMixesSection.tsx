@@ -12,24 +12,11 @@ import type { DailyMix } from "../hooks/useDailyMixes";
 import { SparklesFill, PlayFill, AddFill } from "@mingcute/react";
 import { ArrowLeftLine, ArrowRightLine } from "@mingcute/react";
 import useHorizontalScroll from "@/shared/hooks/useHorizontalScroll";
-import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { isMobileLayout, useIsMobile } from "@/shared/hooks/useIsMobile";
 
 interface DailyMixCardProps {
   mix: DailyMix;
 }
-
-const MIX_COLORS: Array<[string, string]> = [
-  ["#7c3aed", "#ec4899"],
-  ["#0891b2", "#2563eb"],
-  ["#dc2626", "#f97316"],
-  ["#475569", "#14b8a6"],
-  ["#db2777", "#f59e0b"],
-  ["#334155", "#a855f7"],
-  ["#059669", "#eab308"],
-  ["#2563eb", "#06b6d4"],
-  ["#c026d3", "#fb7185"],
-  ["#ea580c", "#facc15"],
-];
 
 function DailyMixCard({ mix }: DailyMixCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -104,6 +91,7 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
   }, [trackDoubleClickBehavior, handleAddQueue, handlePlay]);
 
   const handleClick = (e: React.MouseEvent) => {
+    if (isMobileLayout()) { navigate(`/collection?type=playlist&id=${encodeURIComponent(mix.id)}`); return; }
     const detail = (e as React.MouseEvent<HTMLDivElement>).detail;
     if (detail >= 2) {
       if (clickTimerRef.current) {
@@ -120,19 +108,16 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
   };
 
   const mixLabel = t("home.mix_label") || "Mix";
-  const [gradientFrom, gradientTo] = MIX_COLORS[((mix.mixIndex ?? 1) - 1) % MIX_COLORS.length];
 
   return (
     <div
-      className="group flex-shrink-0 w-[175px] cursor-pointer select-none"
+      className="group flex-shrink-0 w-full min-w-0 md:w-[175px] cursor-pointer select-none"
       onClick={handleClick}
       onContextMenu={handleContextMenu}
     >
       <div
-        className="relative aspect-square w-full overflow-hidden rounded-[12px] border border-white/10 bg-border-alpha-14"
-        style={{
-          boxShadow: "0 6px 16px rgba(0,0,0,0.16)",
-        }}
+        className="relative aspect-square w-full overflow-hidden rounded-[12px] bg-border-alpha-14"
+
       >
         {mix.mixIndex ? (
           <MixCover index={mix.mixIndex} covers={mix.mosaic ?? []} label={mixLabel} showBadge={false} />
@@ -148,21 +133,11 @@ function DailyMixCard({ mix }: DailyMixCardProps) {
             onLoad={() => setImageLoaded(true)}
           />
         )}
-        <div
-          className="pointer-events-none absolute inset-0 z-[5]"
-          style={{
-            background: `linear-gradient(180deg, rgba(0,0,0,0.04) 20%, transparent 43%, rgba(0,0,0,0.18) 62%, ${gradientFrom}c7 100%)`,
-          }}
-        />
-        <div className="pointer-events-none absolute inset-x-[10px] bottom-[9px] z-10 flex items-end justify-between gap-2">
-          <div className="min-w-0 truncate text-[13px] font-semibold leading-tight text-white [text-shadow:0_1px_5px_rgba(0,0,0,0.65)]">
-            {mix.title}
-          </div>
-          <div className="flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full bg-white/90 text-black shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
-            <PlayFill size={13} />
-          </div>
-        </div>
+
       </div>
+
+      <p className="m-0 mt-[8px] truncate text-[14px] text-text-primary">{mix.title}</p>
+      <p className="m-0 truncate text-[12px] text-text-tertiary">{mix.clusterArtists.join(", ")}</p>
 
       {menuItems.length > 0 && (
         <DropdownMenu
@@ -189,11 +164,12 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
   const { t } = useTranslation();
   const scroll = useHorizontalScroll();
   const isMobile = useIsMobile();
+  const [showAll, setShowAll] = useState(false);
   if (mixes.length === 0) return null;
 
   return (
     <div className="home-scroll-section flex min-w-0 flex-col overflow-hidden">
-      <div className={`${headingMarginTop} flex min-w-0 items-center justify-between gap-[12px] px-[32px]`}>
+      <div className={`${headingMarginTop} flex min-w-0 items-center justify-between gap-[12px] px-[16px] md:px-[32px]`}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center shrink-0">
             <SparklesFill className="w-5 h-5 text-text-primary" />
@@ -205,6 +181,16 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
             {t("home.dailyMixes") || "Daily Mixes"}
           </h2>
         </div>
+        {isMobile && mixes.length > 2 && (
+          <button
+            type="button"
+            aria-expanded={showAll}
+            onClick={() => setShowAll(value => !value)}
+            className="min-h-[44px] shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/40"
+          >
+            {t(showAll ? "artist.show_less" : "common.show_more")}
+          </button>
+        )}
         {!isMobile && (
           <div className="hidden shrink-0 items-center gap-[4px] md:flex">
             <button
@@ -229,14 +215,17 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
         )}
       </div>
 
-      <ScrollableRow
+      {isMobile ? <div className="mt-[12px] grid grid-cols-2 gap-x-[12px] gap-y-[20px] px-[16px]">
+        {(showAll ? mixes : mixes.slice(0, 2)).map(mix => <DailyMixCard key={mix.id} mix={mix} />)}
+      </div> : (      <ScrollableRow
         controller={scroll}
         className="min-w-0 flex flex-nowrap gap-[28px] overflow-x-auto pl-8 pr-8 pb-[2px] pt-0 mt-[3px]"
       >
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
-      </ScrollableRow>
+      </ScrollableRow>)}
+
     </div>
   );
 }

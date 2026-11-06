@@ -3,7 +3,7 @@ import lottie from "lottie-web";
 import cleanDuck from "@/assets/animations/clean_duck.json";
 import { StorageAction } from "./StorageAction";
 import { useModalStore } from "@/features/library/store/modalStore";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { FolderOpenLine, HeartFill, MusicLine } from "@mingcute/react";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
@@ -32,12 +32,14 @@ function LimitPills({ value, options, onChange, label, disabled }: {
   value: number; options: number[]; onChange: (bytes: number) => void; label: string; disabled?: boolean;
 }) {
   const { t } = useTranslation();
+  const selectedId = useId();
   // Keep older, custom cache limits visible after upgrading.
   const values = options.includes(value / GB) ? options : [value / GB, ...options];
-  return <div role="group" aria-label={label} className="flex flex-wrap gap-1">
+  return <div role="group" aria-label={label} className="lane-storage-limit-pills flex flex-nowrap gap-1 overflow-x-auto [scrollbar-width:none]">
     {values.map(size => <button key={size} type="button" disabled={disabled} aria-pressed={value === size * GB}
       onClick={() => onChange(size * GB)}
-      className={`h-[30px] rounded-[9px] border-0 px-[11px] text-[12px] font-medium transition-colors disabled:opacity-50 ${value === size * GB ? "bg-text-primary text-bg-primary" : "bg-black/[0.06] dark:bg-white/[0.07] text-text-secondary hover:bg-black/10 dark:hover:bg-white/10"}`}>
+      className={`relative isolate h-[30px] shrink-0 overflow-hidden whitespace-nowrap rounded-[9px] border-0 px-[11px] text-[12px] font-medium transition-colors duration-200 disabled:opacity-50 ${value === size * GB ? "bg-transparent text-bg-primary" : "bg-black/[0.06] dark:bg-white/[0.07] text-text-secondary hover:bg-black/10 dark:hover:bg-white/10"}`}>
+      {value === size * GB && <motion.span layoutId={selectedId} className="absolute inset-0 -z-10 rounded-[9px] bg-text-primary" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
       {size === 0 ? t("settings.storage.no_limit") : `${Number(size.toFixed(2))} GB`}
     </button>)}
   </div>;

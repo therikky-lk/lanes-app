@@ -912,48 +912,12 @@ function LibraryPlaylistContent() {
                           <LuShuffle size={16} />
                         </Button>
 
-                        <AnimatePresence mode="popLayout" initial={false}>
-                          {search.isOpen ? (
-                            <motion.div
-                              key="playlist-search-field"
-                              layout
-                              initial={{ opacity: 0, width: 0, scale: 0.96 }}
-                              animate={{ opacity: 1, width: 180, scale: 1 }}
-                              exit={{ opacity: 0, width: 0, scale: 0.96 }}
-                              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                              className={isMobile ? "min-w-0 flex-1 overflow-hidden" : "shrink-0 overflow-hidden"}
-                            >
-                              <TrackSearchField
-                                search={search}
-                                totalCount={currentTracks.length}
-                                placeholder={t("track_search.placeholder_playlist")}
-                                glass={hasCustomBg}
-                                onSubmit={handleSearchSubmit}
-                                className="!h-[36px] !w-full !rounded-[10px]"
-                              />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key="playlist-search-trigger"
-                              layout
-                              initial={{ opacity: 0, width: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, width: 36, scale: 1 }}
-                              exit={{ opacity: 0, width: 0, scale: 0.9 }}
-                              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                              className="shrink-0 overflow-hidden"
-                            >
-                              <Button
-                                variant={hasCustomBg ? "glass-action" : "outline"}
-                                onClick={search.open}
-                                disabled={currentTracks.length === 0}
-                                className="!h-[36px] !w-[36px] !p-0 flex items-center justify-center text-text-primary"
-                                title={searchButtonLabel}
-                              >
-                                <Search2Line size={16} />
-                              </Button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        <Button variant={hasCustomBg ? "glass-action" : "outline"}
+                          onPointerDown={event => event.preventDefault()} onClick={search.toggle}
+                          aria-label={searchButtonLabel} aria-expanded={search.isOpen}
+                          disabled={currentTracks.length === 0} className="!h-[36px] !w-[36px] shrink-0 !p-0">
+                          <Search2Line size={16} />
+                        </Button>
 
                         {!isMobile && currentTracks.length > 0 && (
                           <SegmentedTabs
@@ -1049,6 +1013,13 @@ function LibraryPlaylistContent() {
                 />
               </div>
 
+              <div className={search.isOpen ? "w-full shrink-0 py-[8px]" : "shrink-0"}>
+                <TrackSearchField search={search} totalCount={currentTracks.length}
+                  placeholder={t("track_search.placeholder_playlist")} glass={hasCustomBg}
+                  closeOnBlur={false} onSubmit={handleSearchSubmit}
+                  className="!h-[44px] !w-full !rounded-[12px] [&_input]:text-[16px]" />
+              </div>
+
               <div
                 ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag
@@ -1066,7 +1037,7 @@ function LibraryPlaylistContent() {
                   willChange: "scroll-position",
                   marginTop: isMobile ? undefined : 8,
                   paddingBottom:
-                    isMobile && isLikesMode
+                    isMobile
                       ? "calc(var(--lane-dock-h, 120px) + 48px)"
                       : 24,
                 }}

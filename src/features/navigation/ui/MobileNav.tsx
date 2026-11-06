@@ -22,6 +22,7 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
     }`;
   const label = "text-[10.5px] font-[500] leading-none";
   const section = navSectionOf(pathname, search);
+  const onSearch = pathname === "/search" && !settingsOpen;
   const onSection = (id: "home" | "library") => !searchOpen && !settingsOpen && section === id;
 
   return (
@@ -37,18 +38,18 @@ export default function MobileNav({ searchOpen, onSearchToggle }: MobileNavProps
         <Home7Fill size={23} />
         <span className={label}>{t("common.sidebar.home") || "Home"}</span>
       </Link>
-      <button type="button" onClick={onSearchToggle} className={item(searchOpen)}>
+      <Link to="/search" onClick={() => { if (settingsOpen) toggleSettings(); if (searchOpen) onSearchToggle(); }} className={item(onSearch)}>
         <SearchLine size={23} />
         <span className={label}>{t("common.sidebar.search") || "Search"}</span>
-      </button>
+      </Link>
       <Link to="/library" className={item(onSection("library") || (!searchOpen && !settingsOpen && section === "liked"))}>
         <BookmarksFill size={23} />
         <span className={label}>{t("common.sidebar.library") || "Library"}</span>
       </Link>
-      <button type="button" onClick={toggleSettings} className={item(settingsOpen)}>
+      <Link to="/settings" className={item(pathname.startsWith("/settings"))}>
         <Settings4Fill size={23} />
         <span className={label}>{t("common.sidebar.settings") || "Settings"}</span>
-      </button>
+      </Link>
     </nav>
   );
 }

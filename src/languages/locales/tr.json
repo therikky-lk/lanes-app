@@ -225,7 +225,8 @@
     "increase": "Artır",
     "mute": "Sesi kapat",
     "unmute": "Sesi aç",
-    "play": "Çal"
+    "play": "Çal",
+    "show_more": "Daha fazla göster"
   },
   "home": {
     "recent": "Son çalınanlar",
@@ -364,7 +365,8 @@
       "failed_title": "Eklenemedi"
     },
     "history": "Dinleme geçmişi",
-    "history_subtitle": "Oynadığınız her şey"
+    "history_subtitle": "Oynadığınız her şey",
+    "import_from_service": "{service} üzerinden içe aktar"
   },
   "login": {
     "welcome_back": "Tekrar hoş geldin",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Kapağı aç",
     "repeat_off": "Tekrar: kapalı",
     "repeat_all": "Tekrar: tümü",
     "repeat_one": "Tekrar: parça",
@@ -617,6 +620,7 @@
     "likes_empty": "Henüz beğenilen şarkı yok"
   },
   "search": {
+    "recommended_artists": "Önerilen sanatçılar",
     "placeholder": "Parça, sanatçı, albüm ara...",
     "all": "Tümü",
     "songs": "Şarkılar",
@@ -907,7 +911,7 @@
       "local_desc": "{songs} · orijinal dosyalar saklanır",
       "remove": "İndirilenleri kaldır",
       "remove_size": "{size} kaldırılsın mı?",
-      "clear": "Önbelleği temizle",
+      "clear": "Temizle",
       "clear_size": "{size} silinsin mi?",
       "downloads_limit": "İndirme alanı",
       "downloads_limit_hint": "Yaklaşık {count} şarkı. İndirmeler dolduğunda duraklatılır.",
@@ -970,6 +974,10 @@
       "lossless": "Kayıpsız (FLAC/ALAC) - Kullanılamıyor"
     },
     "profile": {
+      "remove_avatar": "Avatarı kaldır",
+      "avatar_local": "Yalnızca bu cihazda kaydedilir",
+      "change_avatar": "Avatarı değiştir",
+      "avatar_invalid": "En fazla 20 MB boyutunda bir resim seçin.",
       "title": "Profil",
       "signed_in_as": "Giriş yapılan hesap",
       "not_signed_in": "Şu anda tanınan bir oturumda giriş yapılmamış.",

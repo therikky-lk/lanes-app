@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 /** Two presses confirm deletion; hover leaves the size and layout unchanged. */
@@ -18,7 +19,16 @@ export function StorageAction({ label, action, confirmation, disabled, onConfirm
     aria-label={armed ? confirmation : `${action} (${label})`}
     onKeyDown={event => { if (event.key === "Escape") setArmed(false); }}
     onClick={() => { if (armed) { setArmed(false); onConfirm(); } else setArmed(true); }}
-    className={`inline-flex h-[30px] w-[100px] shrink-0 items-center justify-center overflow-hidden whitespace-nowrap rounded-full border-0 px-3 text-[12px] cursor-pointer disabled:cursor-default disabled:opacity-50 ${armed && !disabled ? "bg-red-500 text-white" : "bg-black/[0.06] dark:bg-white/[0.06] text-text-secondary"}`}>
-    <span className="truncate" aria-live="polite">{armed && !disabled ? action : label}</span>
+    className={`lane-storage-action relative inline-flex h-[30px] w-[100px] shrink-0 items-center justify-center overflow-hidden whitespace-nowrap rounded-full border-0 px-3 text-[12px] transition-colors duration-200 ease-out cursor-pointer disabled:cursor-default disabled:opacity-50 ${armed && !disabled ? "bg-red-500 text-white" : "bg-black/[0.06] dark:bg-white/[0.06] text-text-secondary"}`}>
+    <span className="grid w-full min-w-0 place-items-center" aria-live="polite">
+      <AnimatePresence initial={false} mode="wait">
+        <motion.span key={armed && !disabled ? "action" : "size"}
+          className="col-start-1 row-start-1 max-w-full truncate"
+          initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.12, ease: "easeOut" }}>
+          {armed && !disabled ? action : label}
+        </motion.span>
+      </AnimatePresence>
+    </span>
   </button>;
 }
