@@ -624,12 +624,13 @@ export function FullscreenPlayer({
           <motion.div
             key="speed-sheet"
             data-no-sheet-drag
-            className="absolute inset-0 z-40 flex items-end bg-black/40"
-            initial={{ opacity: 0 }}
+            className="absolute inset-0 z-40 flex items-end"
+            initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 1 }}
             onClick={() => setSpeedOpen(false)}
           >
+            <div className="lane-sheet-dimmer absolute inset-0" />
             <motion.div
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
@@ -645,7 +646,7 @@ export function FullscreenPlayer({
               }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               data-no-sheet-drag
-              className="w-full max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/[0.08] bg-black/20 p-[18px] backdrop-blur-xl"
+              className="lane-frost-sheet relative w-full max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/[0.08] bg-black/20 p-[18px] backdrop-blur-xl"
               style={{
                 maxHeight: "min(88dvh, calc(100dvh - var(--lane-safe-top, 0px) - 16px))",
                 paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 16px)",

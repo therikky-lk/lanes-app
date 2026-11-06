@@ -30,7 +30,7 @@ export default function PhoneMenu({
     <>
       <div className="fixed inset-0 z-[180]" onClick={onClose} />
       <motion.div
-        className="fixed z-[181] w-[248px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[16px] border border-border-primary/40 p-[6px] shadow-[0_18px_48px_rgba(0,0,0,0.42)]"
+        className="fixed z-[181] w-[248px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[16px] border border-border-primary/40 p-[6px] shadow-none"
         initial={{ opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}

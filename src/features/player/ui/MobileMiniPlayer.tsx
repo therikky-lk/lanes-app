@@ -6,6 +6,7 @@ import { useCallback, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { usePlayerStore } from "../store/playerStore";
 import { playerEngine } from "../engine/playerEngine";
+import MiniPlayerTrackInfo from "./MiniPlayerTrackInfo";
 import { PlayPauseIcon } from "./PlayerUiElements";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
@@ -17,7 +18,7 @@ function MobileProgress() {
 }
 
 export default function MobileMiniPlayer() {
-  const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, status: s.status })));
+  const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, status: s.status, queue: s.queue, currentIndex: s.currentIndex, repeat: s.repeat })));
   const setFullscreen = usePlayerStore((s) => s.setFullscreen);
   const track = player.currentTrack;
   const { t } = useTranslation();
@@ -41,6 +42,16 @@ export default function MobileMiniPlayer() {
   }, [track, isLiked, likeMutation, unlikeMutation]);
 
   if (!track) return null;
+  const queue = player.queue ?? [];
+  const index = player.currentIndex ?? -1;
+  const neighbor = (step: number) => {
+    const at = index + step;
+    return queue[at] ?? (player.repeat === "all" && queue.length > 1 ? queue[(at + queue.length) % queue.length] : undefined);
+  };
+  const info = (item: typeof track | undefined) => item ? <>
+    <p className="m-0 truncate text-[14px] font-[500] text-text-primary">{item.title}</p>
+    <p className="m-0 truncate text-[12px] text-text-tertiary">{item.artists}</p>
+  </> : null;
 
   return (
     <div
@@ -52,7 +63,10 @@ export default function MobileMiniPlayer() {
       <div className="relative h-[40px] w-[40px] shrink-0 overflow-hidden rounded-md bg-bg-panel">
         {track.coverUrl && <CoverImage src={track.coverUrl} alt={track.title} fill sizes="40px" className="object-cover" draggable={false} />}
       </div>
-      <div className="min-w-0 flex-1">
+      <MiniPlayerTrackInfo trackId={track.id} previous={info(neighbor(-1))} next={info(neighbor(1))} onSwipe={(direction) => {
+        if (direction === "next") void playerEngine.skipNext();
+        else void playerEngine.skipPrevious(true);
+      }}>
         <p className="m-0 truncate text-[14px] font-[500] text-text-primary">{track.title}</p>
         {remoteName ? (
           <p className="m-0 truncate text-[12px] text-accent-primary">
@@ -61,7 +75,7 @@ export default function MobileMiniPlayer() {
         ) : (
           <p className="m-0 truncate text-[12px] text-text-tertiary">{track.artists}</p>
         )}
-      </div>
+      </MiniPlayerTrackInfo>
       <button
         type="button"
         aria-label={isLiked ? t("common.unlike") : t("common.like")}

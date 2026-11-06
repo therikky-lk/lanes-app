@@ -1,4 +1,5 @@
 import { downloadPlaybackAudio } from "./downloadPlaybackAudio";
+import { prefetchInOrder } from "@/shared/utils/prefetchInOrder";
 import { downloadsDb } from "@/shared/storage/downloadsDb";
 import { FLAT_EQ, isEqActive } from "./equalizer";
 import { usePlayerStore } from "../store/playerStore";
@@ -82,9 +83,7 @@ export class PlayerRuntime {
         });
       });
       // the native player already moved on to the queued track: catch up
-      onNativeAdvanced(async (trackId, snapshot, isCurrent) => {
-        const { playerEngine } = await import("./playerEngine");
-        if (isCurrent && !isCurrent()) return;
+      onNativeAdvanced((trackId, snapshot) => {
         const queued = this.nativeQueued;
         const prepared = this.nativeStreams.get(trackId);
         this.backgroundCacheAbortController?.abort();
@@ -96,11 +95,12 @@ export class PlayerRuntime {
         this.currentSessionExpiresAt = queued?.expiry.get(trackId) ?? null;
         this.recoveryAttempts = 0;
         this.recoveryHoldUntilMs = null;
-        const status = snapshot?.buffering ? "loading" :
-          snapshot && !(snapshot.playWhenReady ?? snapshot.playing) ? "paused" : "playing";
-        playerEngine.handleNativeAdvance(trackId, snapshot?.positionMs ?? 0, snapshot?.durationMs, status);
-        const track = usePlayerStore.getState().currentTrack;
-        if (track?.id === trackId && prepared) this.cacheAudioInBackground(track, prepared, cacheController.signal);
+        return import("./playerEngine").then(({ playerEngine }) => {
+          if (this.currentTrackId !== trackId) return;
+          playerEngine.handleNativeAdvance(trackId, snapshot);
+          const track = usePlayerStore.getState().currentTrack;
+          if (track?.id === trackId && prepared) this.cacheAudioInBackground(track, prepared, cacheController.signal);
+        });
       });
       if (typeof document !== "undefined") document.body.appendChild(audio);
     }
@@ -661,8 +661,7 @@ export class PlayerRuntime {
     const controller = new AbortController();
     this.nativeQueueAbort = controller;
     this.nativeQueuePending = pendingKey;
-    // resolve one by one and hand over what's ready each time, so the very
-    // next track is there as soon as possible
+    // Resolve a small window concurrently; hand it over in playback order.
     // streams resolved for the previous look-ahead are reused: after a track
     // change the list only moves on by one, so only the new last one is fetched
     const wanted = new Set(tracks.map((t) => t.id));
@@ -670,32 +669,36 @@ export class PlayerRuntime {
     void (async () => {
       const ready: NativeNextItem[] = [];
       const expiry = new Map<string, number | null>();
-      // how long until each track starts playing: its link must still work then
-      let startsInMs = Math.max(0, (this.audio.duration - this.audio.currentTime) * 1000) || 0;
-      for (const track of tracks) {
-        if (controller.signal.aborted) return;
+      // Compute start times in queue order, independently of request completion.
+      let startsInMs = 0;
+      const startTimes = tracks.map((track) => {
+        const start = startsInMs;
+        startsInMs += track.durationMs > 0 ? track.durationMs : 4 * 60_000;
+        return start;
+      });
+      const quality = usePlayerStore.getState().audioQuality;
+      const resolveAhead = async (track: Track, index: number) => {
+        controller.signal.throwIfAborted();
+        const [downloaded, cachedAudio] = await Promise.all([
+          downloadsDb.get(track.id).catch(() => undefined),
+          linerDb.getAudio(track.id).catch(() => null),
+        ]);
+        controller.signal.throwIfAborted();
+        const cached = downloaded?.blob?.size ? downloaded : cachedAudio;
+        const reusable = this.nativeStreams.get(track.id);
+        if (cached?.blob?.size) return { blob: cached.blob, expiresAtMs: null };
+        if (reusable && (reusable.expiresAtMs == null || reusable.expiresAtMs > Date.now() + startTimes[index] + NATIVE_STREAM_MARGIN_MS)) {
+          return reusable;
+        }
+        const resolved = await resolvePlaybackStream(track, controller.signal, quality);
+        controller.signal.throwIfAborted();
+        if (!resolved.blob) this.nativeStreams.set(track.id, resolved);
+        return resolved;
+      };
+      for await (const { item: track, result } of prefetchInOrder(tracks, 3, resolveAhead, controller.signal)) {
         try {
-          const cached = await downloadsDb.get(track.id).catch(() => undefined) ?? await linerDb.getAudio(track.id).catch(() => null);
-          let stream: { url?: string; blob?: Blob; expiresAtMs?: number | null };
-          const reusable = this.nativeStreams.get(track.id);
-          if (cached?.blob?.size) {
-            stream = { blob: cached.blob, expiresAtMs: null };
-          } else if (
-            reusable &&
-            (reusable.expiresAtMs == null || reusable.expiresAtMs > Date.now() + startsInMs + NATIVE_STREAM_MARGIN_MS)
-          ) {
-            stream = reusable;
-          } else {
-            const resolved = await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
-            stream = {
-              url: "url" in resolved ? resolved.url : undefined,
-              blob: resolved.blob,
-              expiresAtMs: resolved.expiresAtMs ?? null,
-            };
-            // a Blob is kept by the cache above already; links are worth keeping
-            if (!resolved.blob) this.nativeStreams.set(track.id, resolved);
-          }
-          startsInMs += track.durationMs > 0 ? track.durationMs : 4 * 60_000;
+          if (result.status === "rejected") throw result.reason;
+          const stream = result.value;
           if (controller.signal.aborted) return;
           expiry.set(track.id, stream.expiresAtMs ?? null);
           ready.push({
@@ -717,7 +720,7 @@ export class PlayerRuntime {
           // a track YouTube won't play at all is skipped when its turn comes
           // anyway: leave it out and keep the rest of the look-ahead
           if (/unavailable|not available|private video|removed/i.test(String(error))) continue;
-          break; // otherwise the order matters: don't skip over a track that may still play
+          return; // Keep the prepared prefix, and allow the remaining queue to retry.
         }
       }
       if (!controller.signal.aborted) {
@@ -821,8 +824,11 @@ export class PlayerRuntime {
     this.pauseForTransition();
 
     try {
-      const downloaded = await downloadsDb.get(track.id).catch(() => undefined);
-      const cachedAudio = downloaded ?? (bypassCache ? null : await linerDb.getAudio(track.id));
+      const [downloaded, temporaryAudio] = await Promise.all([
+        downloadsDb.get(track.id).catch(() => undefined),
+        bypassCache ? Promise.resolve(null) : linerDb.getAudio(track.id).catch(() => null),
+      ]);
+      const cachedAudio = downloaded?.blob?.size ? downloaded : temporaryAudio;
       if (epoch !== this.loadEpoch || controller.signal.aborted) {
         return;
       }
@@ -860,7 +866,7 @@ export class PlayerRuntime {
           `audio cache hit for "${track.title}" (${Math.round(cachedAudio.byteSize / 1024)} KB)`,
         );
 
-        if (this.audio.readyState < 3) {
+        if (!isNativeApp() && this.audio.readyState < 3) {
           await new Promise<void>((resolve) => {
             const timeout = setTimeout(resolve, 3000);
             const onCanPlay = () => {

@@ -225,7 +225,8 @@
     "increase": "Aumentar",
     "mute": "Silenciar",
     "unmute": "Ativar som",
-    "play": "Reproduzir"
+    "play": "Reproduzir",
+    "show_more": "Mostrar mais"
   },
   "home": {
     "recent": "Recentes",
@@ -364,7 +365,8 @@
       "wait_rate_min": "Solicitado para esperar, retomando em {min} min"
     },
     "history": "Histórico de escuta",
-    "history_subtitle": "Tudo que você tocou"
+    "history_subtitle": "Tudo que você tocou",
+    "import_from_service": "Importar de {service}"
   },
   "login": {
     "welcome_back": "Bem-vindo de volta",
@@ -481,6 +483,7 @@
     }
   },
   "player": {
+    "open_cover": "Abrir capa",
     "repeat_off": "Repetir: desativado",
     "repeat_all": "Repetir: tudo",
     "repeat_one": "Repetir: faixa",
@@ -617,6 +620,7 @@
     "cover_failed": "Não foi possível usar esta imagem"
   },
   "search": {
+    "recommended_artists": "Artistas recomendados",
     "placeholder": "Pesquise faixas, artistas, álbuns...",
     "all": "Tudo",
     "songs": "Músicas",
@@ -956,7 +960,7 @@
       "local_desc": "{songs} · arquivos originais são mantidos",
       "remove": "Remover downloads",
       "remove_size": "Remover {size}?",
-      "clear": "Limpar cache",
+      "clear": "Limpar",
       "clear_size": "Limpar {size}?",
       "downloads_limit": "Espaço para downloads",
       "downloads_limit_hint": "Cerca de {count} músicas. Os downloads são pausados ​​quando estão cheios.",
@@ -1019,6 +1023,10 @@
       "lossless": "Sem perdas (FLAC/ALAC) - Indisponível"
     },
     "profile": {
+      "remove_avatar": "Remover avatar",
+      "avatar_local": "Salvo apenas neste dispositivo",
+      "change_avatar": "Alterar avatar",
+      "avatar_invalid": "Escolha uma imagem de até 20 MB.",
       "title": "Perfil",
       "signed_in_as": "Conectado como",
       "not_signed_in": "No momento não conectado a uma sessão reconhecida.",

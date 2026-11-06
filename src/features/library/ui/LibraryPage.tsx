@@ -1,11 +1,11 @@
+import { detectImportSource } from "../services/import";
 import OfflineCover from "./OfflineCover";
 import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
 import { TimeLine } from "@mingcute/react";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
-import ImportServiceIcon from "./ImportServiceIcon";
-import { detectImportSource } from "../services/import/detectImportSource";
+import ImportMenuItem from "./ImportMenuItem";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -566,7 +566,7 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            className="absolute inset-x-0 top-0 z-20 bg-transparent"
+            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary/70 backdrop-blur-xl"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
@@ -592,13 +592,7 @@ export default function LibraryPage() {
                     openCreatePlaylist();
                   }}
                 />
-                <PhoneMenuItem
-                  label={<span className="inline-flex items-center gap-2">{t("library.import_from")}<ImportServiceIcon /><span className="sr-only">Spotify, YouTube, SoundCloud, Deezer, Apple Music</span></span>}
-                  onClick={() => {
-                    setMobileAdd(false);
-                    void openPlaylistImport();
-                  }}
-                />
+                <ImportMenuItem onClick={() => { setMobileAdd(false); openCreatePlaylist(" "); }} />
               </PhoneMenu>
               <button
                 type="button"
