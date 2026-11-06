@@ -27,9 +27,8 @@ import androidx.media3.datasource.cronet.CronetDataSource;
 import com.therikky.lane.net.Net;
 import org.chromium.net.CronetEngine;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.source.MediaSource;
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -119,11 +118,6 @@ public final class PlayerHolder {
     private PlayerHolder(Context context) {
         this.context = context;
         player = new ExoPlayer.Builder(context)
-            // Start from the first half-second of audio, then continue filling
-            // the buffer while playing. Rebuffering gets a larger safety margin.
-            .setLoadControl(new DefaultLoadControl.Builder()
-                .setBufferDurationsMs(15_000, 30_000, 500, 1_000)
-                .build())
             .setAudioAttributes(
                 new AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -376,7 +370,7 @@ public final class PlayerHolder {
         if (url.contains(".googlevideo.com/")) {
             upstream = new ResolvingDataSource.Factory(http, PlayerHolder::withRangeParam);
         }
-        return new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, upstream))
+        return new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, upstream))
             .createMediaSource(item);
     }
 
@@ -419,18 +413,11 @@ public final class PlayerHolder {
     private void appendQueue(java.util.List<NextSpec> queue) {
         int index = player.getCurrentMediaItemIndex();
         int count = player.getMediaItemCount();
-        // Keep unchanged items and their buffers. Promoting one URL to a local
-        // file must not reload every later track or refetch all their artwork.
+        // keep what's already queued in the same order (its buffer too);
+        // replace only from the first difference on
         int keep = 0;
         while (keep < queue.size() && index + 1 + keep < count
             && queue.get(keep).trackId.equals(player.getMediaItemAt(index + 1 + keep).mediaId)) {
-            int at = index + 1 + keep;
-            MediaItem existing = player.getMediaItemAt(at);
-            NextSpec next = queue.get(keep);
-            if (existing.localConfiguration == null || !Uri.parse(next.url).equals(existing.localConfiguration.uri)) {
-                player.removeMediaItem(at);
-                player.addMediaSource(at, buildSource(next.trackId, next.url, next.headers, existing.mediaMetadata));
-            }
             keep++;
         }
         int from = index + 1 + keep;

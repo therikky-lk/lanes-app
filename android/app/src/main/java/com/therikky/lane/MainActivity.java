@@ -15,6 +15,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
+import com.therikky.lane.sharing.LaneSharePlugin;
 import com.getcapacitor.WebViewListener;
 import com.therikky.lane.auth.LaneHumanCheckPlugin;
 import com.therikky.lane.audio.LaneAudioPlugin;
@@ -38,6 +39,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LaneHttpPlugin.class);
         registerPlugin(LaneSpotifyPlugin.class);
         registerPlugin(LaneKeepAwakePlugin.class);
+        registerPlugin(LaneSharePlugin.class);
         super.onCreate(savedInstanceState);
         com.therikky.lane.net.Net.init(this);
         drawEdgeToEdge();
