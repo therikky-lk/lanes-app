@@ -1,8 +1,9 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { api } from "@/shared/api";
+import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
 import type { ShareEntityType, ShareSnapshot } from "@/shared/contracts/sharing";
 export type { ShareEntityType } from "@/shared/contracts/sharing";
-export const SHARE_BASE_URL = "https://lane-app.site";
+export const SHARE_BASE_URL = LANE_LINK_ORIGIN;
 
 const nativeShare = registerPlugin<{ share(input: { title: string; url: string }): Promise<void> }>("LaneShare");
 
