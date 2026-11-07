@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LuMoreHorizontal, LuShare2, LuSend } from "react-icons/lu";
+import { LuEllipsis, LuShare2, LuSend } from "react-icons/lu";
 import Button from "./Button";
 import { showToast } from "./Toast";
 import { useTranslation } from "@/languages";
@@ -41,7 +41,7 @@ export default function ShareButton({ type, entityId, snapshot, menu = false }: 
     return <DropdownMenu
       trigger={<Button variant="outline" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
         className="!h-[38px] !w-[38px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm">
-        <LuMoreHorizontal size={19} />
+        <LuEllipsis size={19} />
       </Button>}
       items={items}
     />;

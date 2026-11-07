@@ -317,13 +317,6 @@ export class PlayerRuntime {
       }
       this.lastObservedAudioTime = audioEl.currentTime;
 
-      const duration = audioEl.duration;
-      if (audioEl.loop && Number.isFinite(duration) && duration > 0 &&
-          this.lastObservedAudioTime >= duration * 0.9 && audioEl.currentTime <= Math.min(1.5, duration * 0.2)) {
-        this.onLoop?.();
-      }
-      this.lastObservedAudioTime = audioEl.currentTime;
-
       const posMs = Math.round(audioEl.currentTime * 1000);
       usePlayerStore.getState().setPosition(posMs);
       if (this.recoveryHoldUntilMs !== null && posMs >= this.recoveryHoldUntilMs) {

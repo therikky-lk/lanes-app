@@ -246,12 +246,6 @@ class PlaybackTelemetryTracker {
     }
   }
 
-  public onTrackLooped() {
-    if (!this.activeTrackId) return;
-    this.loopCount += 1;
-    this.lastActivityTime = Date.now();
-  }
-
   public flushCurrentTrack(): Promise<void> {
     if (!this.activeTrackId) return Promise.resolve();
     this.onPausedOrStopped();
