@@ -1,6 +1,6 @@
 import { queryCache } from "@/shared/cache/queryCache";
 import ShareButton from "@/shared/ui/ShareButton";
-import SwipeToDelete from "@/shared/ui/SwipeToDelete";
+import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
@@ -132,51 +132,50 @@ const TrackItem = memo(function TrackItem({
   }, [track, toast, t]);
 
   const card = (
-    <SongCardWithMenu
-      id={track.id}
-      title={track.title}
-      artists={track.artists}
-      artistId={track.artistId}
-      artistList={track.artistList}
-      coverUrl={track.coverUrl || playlistCoverUrl}
-      playlistId={playlistId}
-      playlistItemId={track.playlistItemId}
-      playlistTitle={playlistTitle}
-      showLikeButton={Boolean(playlistId)}
-      showReorderHandle={showReorderHandle}
-      onGrabStart={onGrabStart}
-      highlight={highlight}
-      isCurrent={isCurrent}
-      albumTitle={albumTitleOf(track)}
-      addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
-      addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
-      duration={
-        track.durationMs
-          ? `${Math.floor(track.durationMs / 60000)}:${String(
-              Math.floor((track.durationMs % 60000) / 1000),
-            ).padStart(2, "0")}`
-          : undefined
-      }
-      durationMs={track.durationMs}
-      explicit={track.explicit}
-      onPlay={handlePlay}
-      unavailableNote={
-        track.onlyOnDevice ? t("local.only_on_device", { device: track.onlyOnDevice }) : undefined
-      }
-    />
+<SongCardWithMenu
+        id={track.id}
+        title={track.title}
+        artists={track.artists}
+        artistId={track.artistId}
+        artistList={track.artistList}
+        coverUrl={track.coverUrl || playlistCoverUrl}
+        playlistId={playlistId}
+        playlistItemId={track.playlistItemId}
+        playlistTitle={playlistTitle}
+        showLikeButton={Boolean(playlistId)}
+        showReorderHandle={showReorderHandle}
+        onGrabStart={onGrabStart}
+        highlight={highlight}
+        isCurrent={isCurrent}
+        albumTitle={albumTitleOf(track)}
+        addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
+        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
+        duration={
+          track.durationMs
+            ? `${Math.floor(track.durationMs / 60000)}:${String(
+                Math.floor((track.durationMs % 60000) / 1000),
+              ).padStart(2, "0")}`
+            : undefined
+        }
+        durationMs={track.durationMs}
+        explicit={track.explicit}
+        onPlay={handlePlay}
+        unavailableNote={
+          track.onlyOnDevice ? t("local.only_on_device", { device: track.onlyOnDevice }) : undefined
+        }
+      />
   );
 
   return (
     <div style={style} data-reorder-item>
       {isMobile && !track.onlyOnDevice ? (
-        <SwipeToDelete label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
+        <SwipeToQueue label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
           {card}
-        </SwipeToDelete>
+        </SwipeToQueue>
       ) : card}
     </div>
   );
 });
-
 function LibraryPlaylistContent() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get("id");

@@ -20,6 +20,7 @@ type Phase = "idle" | "saving" | "offline" | "limit" | "error";
 interface OfflineLibraryState {
   downloads: DownloadEntry[];
   cached: Track[];
+  cachedTrackIds: Set<string>;
   loaded: boolean;
   enabled: boolean;
   limitBytes: number;
@@ -33,6 +34,7 @@ interface OfflineLibraryState {
   removeDownloads: () => Promise<void>;
 }
 let refreshRequest: Promise<void> | undefined;
+let refreshAgain = false;
 let controller: AbortController | undefined;
 const downloadFailures = new Map<string, { attempts: number; retryAt: number }>();
 let running = false;
@@ -40,22 +42,26 @@ let rerun = false;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
 export const useOfflineLibraryStore = create<OfflineLibraryState>((set, get) => ({
-  downloads: [], cached: [], loaded: false,
+  downloads: [], cached: [], cachedTrackIds: new Set(), loaded: false,
   enabled: read(ENABLED) === "1",
   limitBytes: read(LIMIT) !== null && Number.isFinite(storedLimit) && storedLimit >= 0 ? storedLimit : 5 * GB,
   visibleOnline: read(VISIBLE) !== "0",
   phase: "idle", pending: 0,
   refresh: () => {
-    if (refreshRequest) return refreshRequest;
+    if (refreshRequest) { refreshAgain = true; return refreshRequest; }
     refreshRequest = (async () => {
-      const [downloads, entries] = await Promise.all([downloadsDb.list(), linerDb.listAudioEntries()]);
-      const cached = (await Promise.all(entries.map(async entry => {
-        const record = await linerDb.getTrack(entry.trackId);
-        if (!record) return null;
-        return { ...record, coverUrl: record.coverUrl ?? "", playCount: 0,
-          album: record.albumTitle ? { id: record.albumId ?? "", title: record.albumTitle } : undefined } as Track;
-      }))).filter((track): track is Track => track !== null);
-      set({ downloads, cached, loaded: true });
+      do {
+        refreshAgain = false;
+        const [downloads, entries] = await Promise.all([downloadsDb.list(), linerDb.listAudioEntries()]);
+        const cached = (await Promise.all(entries.filter(entry => entry.byteSize > 0).map(async entry => {
+          const record = await linerDb.getTrack(entry.trackId);
+          if (!record) return null;
+          return { ...record, coverUrl: record.coverUrl ?? "", playCount: 0,
+            album: record.albumTitle ? { id: record.albumId ?? "", title: record.albumTitle } : undefined } as Track;
+        }))).filter((track): track is Track => track !== null);
+        const cachedTrackIds = new Set([...downloads.filter(entry => entry.byteSize > 0).map(entry => entry.track.id), ...entries.filter(entry => entry.byteSize > 0).map(entry => entry.trackId)]);
+        set({ downloads, cached, cachedTrackIds, loaded: true });
+      } while (refreshAgain);
     })().finally(() => { refreshRequest = undefined; });
     return refreshRequest;
   },
@@ -76,7 +82,7 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>((set, get) => 
     await refreshRequest;
     await downloadsDb.clear();
     audioCache.invalidate();
-    set({ downloads: [], pending: 0, phase: "idle" });
+    set({ downloads: [], cachedTrackIds: new Set(get().cached.map(track => track.id)), pending: 0, phase: "idle" });
     window.dispatchEvent(new Event("lane:storage-changed"));
     window.dispatchEvent(new Event("lane:audio-cache-changed"));
   },

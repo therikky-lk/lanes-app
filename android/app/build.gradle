@@ -57,6 +57,7 @@ dependencies {
     implementation project(':capacitor-android')
     // native playback: background audio, media notification, lock screen controls
     implementation "androidx.media3:media3-exoplayer:1.8.0"
+    implementation "androidx.media3:media3-exoplayer-hls:1.8.0"
     implementation "androidx.media3:media3-session:1.8.0"
     // Chromium network stack (from Google Play services): same TLS as Chrome,
     // HTTP/2 + QUIC, for YouTube and the audio streams

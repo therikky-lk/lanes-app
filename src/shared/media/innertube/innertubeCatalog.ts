@@ -24,11 +24,11 @@ import type { ArtistAlbum, ArtistRelease } from "@/shared/contracts";
 import {
   mapInnertubeAlbumDetails,
   mapInnertubeBrowseTracks,
-  mapInnertubePlaylistDetails,
 } from "./innertubeCollectionMapper";
 import { getQueueItems, getTrackItem, mapInnertubeRadioTrack, mapInnertubeTrackDetails } from "./innertubeQueueMapper";
 import { searchArtistOfficialVideos, searchCatalog } from "./innertubeSearch";
 import { soundcloudCatalog } from "@/shared/media/soundcloud";
+import { fetchYoutubePlaylist } from "@/shared/media/youtube/playlist/youtubePlaylist";
 
 export interface RadioOptions {
   k?: number;
@@ -90,10 +90,7 @@ async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDet
 }
 
 async function getPlaylist(playlistId: string, signal?: AbortSignal): Promise<CatalogPlaylistDetails> {
-  const browseId = /^(VL|MPRE|UC|FE)/.test(playlistId) ? playlistId : `VL${playlistId}`;
-  const playlist = mapInnertubePlaylistDetails(playlistId, await browse(browseId, undefined, signal));
-  if (!playlist) throw notFound("Playlist");
-  return playlist;
+  return fetchYoutubePlaylist(playlistId, signal);
 }
 
 const MAX_RELEASE_PAGES = 8;

@@ -32,7 +32,7 @@ export function toSquareArtworkUrl(url: string, size = 512): string {
 function readEntries(thumbnail: unknown): ThumbnailEntry[] {
   const record = asRecord(thumbnail);
   const inner = asRecord(asRecord(record?.musicThumbnailRenderer)?.thumbnail) ?? record;
-  return asArray(inner?.thumbnails)
+  return asArray(inner?.thumbnails ?? inner?.sources)
     .map(asRecord)
     .flatMap((entry) =>
       entry && typeof entry.url === "string"

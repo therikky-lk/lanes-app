@@ -310,6 +310,12 @@ export class PlayerRuntime {
       if (!this.currentTrackId) return;
       if (usePlayerStore.getState().status === "loading") return;
       if (Number.isNaN(audioEl.currentTime)) return;
+      const duration = audioEl.duration;
+      if (audioEl.loop && Number.isFinite(duration) && duration > 0 &&
+          this.lastObservedAudioTime >= duration * 0.9 && audioEl.currentTime <= Math.min(1.5, duration * 0.2)) {
+        this.onLoop?.();
+      }
+      this.lastObservedAudioTime = audioEl.currentTime;
 
       const duration = audioEl.duration;
       if (audioEl.loop && Number.isFinite(duration) && duration > 0 &&
@@ -770,6 +776,12 @@ export class PlayerRuntime {
         }
       } catch {}
     }
+  }
+
+  public setRepeatOne(enabled: boolean): void {
+    if (isNativeApp()) return;
+    this.audio.loop = enabled;
+    this.lastObservedAudioTime = 0;
   }
 
   public async loadAndPlay(
