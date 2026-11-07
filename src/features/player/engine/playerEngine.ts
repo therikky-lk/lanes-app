@@ -231,6 +231,12 @@ class PlaybackTelemetryTracker {
     this.lastActivityTime = Date.now();
   }
 
+  public onTrackLooped() {
+    if (!this.activeTrackId) return;
+    this.loopCount += 1;
+    this.lastActivityTime = Date.now();
+  }
+
   public onTrackCompleted(isRepeatOne: boolean = false) {
     if (!this.activeTrackId) return;
     this.onPausedOrStopped();
