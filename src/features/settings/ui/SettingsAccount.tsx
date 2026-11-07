@@ -25,7 +25,7 @@ async function readAvatar(file: File): Promise<string> {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export default function SettingsAccount({ onSignOut }: { onSignOut: () => void }) {
+export default function SettingsAccount({ onSignOut, compact = false }: { onSignOut: () => void; compact?: boolean }) {
   const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const avatarUrl = useLocalAvatar(user?.id, user?.avatarUrl);
@@ -61,11 +61,11 @@ export default function SettingsAccount({ onSignOut }: { onSignOut: () => void }
     } catch { setError(t("settings.profile.save_failed")); }
   };
   return <>
-    <div className="flex min-w-0 max-w-full items-center gap-[8px]">
-      {user && <span className="max-w-[180px] truncate text-[16px] font-[600] text-text-primary">{displayName}</span>}
+    <div className="flex min-w-0 max-w-full items-center gap-[10px]">
       <button type="button" aria-label={t("settings.profile.title")} aria-haspopup="dialog" onClick={() => setOpen(true)} className="flex h-[40px] w-[40px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/50">
         <UserAvatar key={user?.avatarUrl} user={user} size={40} className="!rounded-full" />
       </button>
+      {user && !compact && <span className="max-w-[160px] truncate text-[18px] font-[650] text-text-primary">{displayName}</span>}
     </div>
     <Dialog open={open} onOpenChange={setOpen} maxWidth={360} zIndex={250} className="p-[24px]">
       <div className="flex w-full min-w-0 flex-col gap-[16px]">
