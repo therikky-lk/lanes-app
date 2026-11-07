@@ -4,7 +4,7 @@ import { TimeLine } from "@mingcute/react";
 import PhoneMenu, { PhoneMenuDivider, PhoneMenuItem } from "@/shared/ui/PhoneMenu";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
-import { FaSpotify } from "react-icons/fa";
+import ImportMenuItem from "./ImportMenuItem";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -564,7 +564,7 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary/95 backdrop-blur-xl"
+            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary/70 backdrop-blur-xl"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
@@ -577,7 +577,7 @@ export default function LibraryPage() {
                 type="button"
                 aria-label={t("library.create_playlist")}
                 onClick={() => setMobileAdd((v) => !v)}
-                className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 ${hasCustomBg ? "apple-glass-pill text-white" : "bg-bg-elevated text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"}`}
+                className={`inline-flex h-[34px] w-[34px] shrink-0 p-0 items-center justify-center bg-transparent border-0 cursor-pointer transition-colors duration-150 ${hasCustomBg ? "text-white" : "text-text-secondary hover:text-text-primary"}`}
               >
                 <AddLine size={18} />
               </button>
@@ -590,20 +590,14 @@ export default function LibraryPage() {
                     openCreatePlaylist();
                   }}
                 />
-                <PhoneMenuItem
-                  icon={<FaSpotify size={16} />}
-                  label={t("library.import_spotify") || "Import from Spotify"}
-                  onClick={() => {
-                    setMobileAdd(false);
-                    void openSpotifyImport();
-                  }}
-                />
+                <ImportMenuItem onClick={() => { setMobileAdd(false); openCreatePlaylist(" "); }} />
               </PhoneMenu>
               <button
                 type="button"
                 aria-label={t("common.search") || "Search"}
                 onClick={() => setMobileSearch((v) => !v)}
-                className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 ${mobileSearch ? (hasCustomBg ? "apple-glass-prominent text-white" : "bg-bg-panel text-text-primary") : hasCustomBg ? "apple-glass-pill text-white/80 hover:text-white" : "bg-bg-elevated text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"}`}
+                aria-pressed={mobileSearch}
+                className={`inline-flex h-[34px] w-[34px] shrink-0 p-0 items-center justify-center bg-transparent border-0 cursor-pointer transition-colors duration-150 ${mobileSearch ? (hasCustomBg ? "text-white" : "text-text-primary") : hasCustomBg ? "text-white/80 hover:text-white" : "text-text-secondary hover:text-text-primary"}`}
               >
                 <Search2Line size={18} />
               </button>
@@ -613,7 +607,7 @@ export default function LibraryPage() {
                   ref={menuButtonRef}
                   aria-label={t("common.more") || "More"}
                   onClick={() => setMobileMenu((v) => !v)}
-                  className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 ${hasCustomBg ? "apple-glass-pill text-white/80 hover:text-white" : "bg-bg-elevated text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary"}`}
+                  className={`inline-flex h-[34px] w-[34px] shrink-0 p-0 items-center justify-center bg-transparent border-0 cursor-pointer transition-colors duration-150 ${hasCustomBg ? "text-white/80 hover:text-white" : "text-text-secondary hover:text-text-primary"}`}
                 >
                   <More2Fill size={18} />
                 </button>

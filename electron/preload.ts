@@ -4,9 +4,17 @@ import { startPoTokenWorker } from "./potoken-preload";
 import type { MainNetResult } from "./netdiag";
 
 export interface DeeplinkTarget {
-  type: "artist" | "album" | "playlist" | "track";
+  type: "artist" | "album" | "playlist" | "track" | "share" | "shortcut";
   id: string;
 }
+
+// Capture startup links before React has mounted its listener.
+const deeplinkListeners = new Set<(target: DeeplinkTarget) => void>();
+let bufferedDeeplink: DeeplinkTarget | null = null;
+ipcRenderer.on("deeplink:open", (_event, target: DeeplinkTarget) => {
+  if (!deeplinkListeners.size) bufferedDeeplink = target;
+  else for (const listener of deeplinkListeners) listener(target);
+});
 
 export interface ElectronCacheStats {
   freeBytes?: number;
@@ -304,11 +312,17 @@ const api: LinerElectronApi = {
     };
   },
   onDeeplink: (cb) => {
-    const listener = (_event: unknown, target: DeeplinkTarget) => cb(target);
-    ipcRenderer.on("deeplink:open", listener);
-    return () => {
-      ipcRenderer.removeListener("deeplink:open", listener);
-    };
+    deeplinkListeners.add(cb);
+    if (bufferedDeeplink) {
+      const target = bufferedDeeplink;
+      queueMicrotask(() => {
+        if (deeplinkListeners.has(cb) && bufferedDeeplink === target) {
+          bufferedDeeplink = null;
+          cb(target);
+        }
+      });
+    }
+    return () => { deeplinkListeners.delete(cb); };
   },
   touchbarUpdateState: (state) => {
     ipcRenderer.send("touchbar:update-state", state);

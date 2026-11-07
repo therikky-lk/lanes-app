@@ -49,6 +49,7 @@
     "sec": "sec"
   },
   "common": {
+    "show_more": "Show more",
     "pause": "Pause",
     "source": "Source",
     "app": {
@@ -219,7 +220,13 @@
     "increase": "Increase",
     "mute": "Mute",
     "unmute": "Unmute",
-    "play": "Play"
+    "play": "Play",
+    "cache_track": "Save track to cache",
+    "cache_playlist": "Save playlist to cache",
+    "cache_saved": "Saved to cache",
+    "cache_saving": "Saving to cache…",
+    "cache_failed": "Could not save to cache",
+    "cache_playlist_result": "Saved {saved} of {total} tracks to cache"
   },
   "home": {
     "recent": "Recently played",
@@ -273,6 +280,7 @@
     "next_mixes": "Next mixes"
   },
   "library": {
+    "import_from_service": "Import from {service}",
     "spotify_liked": {
       "title": "Transfer Liked Songs from Spotify",
       "signin_desc": "Sign in to your Spotify account to see your Liked Songs.",
@@ -485,6 +493,7 @@
     "frame_title": "Cloudflare security check"
   },
   "player": {
+    "open_cover": "Open cover",
     "repeat_off": "Repeat: off",
     "repeat_all": "Repeat: all",
     "repeat_one": "Repeat: track",
@@ -621,6 +630,7 @@
     "cover_failed": "Could not use this image"
   },
   "search": {
+    "recommended_artists": "Recommended artists",
     "placeholder": "Search tracks, artists, albums...",
     "all": "All",
     "songs": "Songs",
@@ -962,7 +972,7 @@
       "local_desc": "{songs} · original files are kept",
       "remove": "Remove downloads",
       "remove_size": "Remove {size}?",
-      "clear": "Clear cache",
+      "clear": "Clear",
       "clear_size": "Clear {size}?",
       "downloads_limit": "Space for downloads",
       "downloads_limit_hint": "About {count} songs. Downloads pause when full.",
@@ -1023,6 +1033,10 @@
       "lossless": "Lossless (FLAC/ALAC) - Unavailable"
     },
     "profile": {
+      "remove_avatar": "Remove avatar",
+      "avatar_local": "Saved only on this device",
+      "change_avatar": "Change avatar",
+      "avatar_invalid": "Choose an image up to 20 MB.",
       "title": "Profile",
       "signed_in_as": "Signed in as",
       "not_signed_in": "Not currently signed in to a recognized session.",
@@ -1454,5 +1468,12 @@
     "qr_label": "Sign-in QR code",
     "activate_at": "Open the activation page and enter this code",
     "open_activation": "Open activation page"
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
   }
 }

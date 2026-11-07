@@ -1,0 +1,15 @@
+{
+  "name": "lane-share-domain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "node --test worker.test.mjs",
+    "check": "node --check worker.mjs",
+    "sync:signer": "node sync-signer.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  }
+}

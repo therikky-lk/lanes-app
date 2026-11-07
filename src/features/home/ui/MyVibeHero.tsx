@@ -20,11 +20,11 @@ import {
   type VibeMood,
   type VibeSettings,
 } from "../vibe/vibeTaste";
-import { lerpPalette, loadVibePalette, rgba, type VibePalette } from "../vibe/vibePalette";
+import { ambientVibePalette, lerpPalette, loadVibePalette, rgba, type VibePalette } from "../vibe/vibePalette";
 import { useCoverSrc } from "@/features/covers";
 
 // My Vibe: a dark stage with a smoky ring of light that breathes with the
-// music, in the picked mood's colour (violet with no mood); a like on the
+// music, with mood, cover or idle spectrum colours; a like on the
 // playing track sends a pulse through it. The title is the play / pause control.
 
 const HERO_HEIGHT = 400;
@@ -141,18 +141,19 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   const sameAsPlaying = !!playingSettings && sameSettings(playingSettings, settings);
   const vibePlaying = vibeActive && isPlaying && sameAsPlaying;
 
-  const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0, covered: false });
+  const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0, covered: false, ambient: false });
   live.current.playing = status === "playing" && vibeActive;
+  live.current.ambient = !mood && (!currentTrack || !isPlaying);
   // the full screen player covers the home page: no point drawing under it
   const fullscreenOpen = usePlayerStore((s) => s.fullscreen);
-  live.current.covered = !!fullscreenOpen;
+  live.current.covered = !!fullscreenOpen || settingsOpen;
   const resumeRef = useRef<() => void>(() => {});
+  useEffect(() => { resumeRef.current(); }, [status, vibeActive]);
   useEffect(() => {
-    if (!fullscreenOpen) resumeRef.current();
-  }, [fullscreenOpen]);
+    if (!fullscreenOpen && !settingsOpen) resumeRef.current();
+  }, [fullscreenOpen, settingsOpen]);
 
-  // colours: the mood's own; with no mood, the playing track's cover (violet
-  // when nothing plays)
+  // Colours follow the mood or cover; an empty player cycles through the spectrum.
   const cover = useCoverSrc(currentTrack?.coverUrl);
   useEffect(() => {
     if (mood) {
@@ -196,12 +197,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     const bc: CanvasRenderingContext2D = bloom;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    // phones: fewer pixels and ~30 fps; both layers are blurred by CSS anyway
+    // phones: fewer pixels and ~20 fps; keep ambient motion even before playback
     const lite = isNativeApp() || window.innerWidth < 700;
     // weak phones (Helio G99…): the same picture drawn at ~24 fps, with
     // fewer curve points / gradient stops (the layers are blurred anyway)
     const weak = isLowEndDevice();
-    const frameMs = weak ? 50 : lite ? 33 : 0;
+    const frameMs = weak ? 66 : lite ? 50 : 0;
     const curvePoints = weak ? 32 : lite ? 40 : 72;
     const gradientStops = weak ? 10 : lite ? 14 : 36;
     const tracker = new BeatTracker();
@@ -308,7 +309,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       const { bass, level } = tracker.next(dt, live.current.playing);
       const motion = reduced ? 0.3 : 1;
       time += dt * (0.8 + level * 1.4) * motion;
-      palette = lerpPalette(palette, live.current.target, Math.min(1, dt * 2.5));
+      const target = live.current.ambient ? ambientVibePalette(now / 1000) : live.current.target;
+      palette = lerpPalette(palette, target, Math.min(1, dt * 2.5));
       live.current.pulse *= Math.exp(-dt * 2.6);
       const pulse = live.current.pulse;
       const [hi, main, deep] = palette;
@@ -617,25 +619,25 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             <motion.div
               key="vibe-settings"
               className="fixed inset-0 z-[200]"
-              initial={{ opacity: 0 }}
+              initial={{ opacity: 1 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="absolute inset-0 bg-black/45" onClick={() => setSettingsOpen(false)} />
+              <div className="lane-sheet-dimmer absolute inset-0" onClick={() => setSettingsOpen(false)} />
               <motion.div
                 role="dialog"
                 aria-label={t("home.vibe.settings")}
                 className={
                   isMobile
-                    ? "absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1d] px-[16px] pt-[10px]"
+                    ? "lane-frost-sheet absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1d] px-[16px] pt-[10px]"
                     : "absolute right-[12px] top-[12px] bottom-[12px] w-[440px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-white/[0.06] bg-[#1a1a1d] px-[18px] pt-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                 }
                 style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 20px)", fontFamily: "var(--font-inter), sans-serif" }}
                 initial={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
                 animate={isMobile ? { y: 0 } : { x: 0 }}
                 exit={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
-                transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.8 }}
+                transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
                 // phones: pull the sheet down to close it
                 drag={isMobile ? "y" : false}
                 dragConstraints={{ top: 0, bottom: 0 }}

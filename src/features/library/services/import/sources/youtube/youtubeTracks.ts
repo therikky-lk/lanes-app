@@ -1,9 +1,10 @@
-import { isMusicVideo, mapInnertubeTrack } from "@/shared/media/innertube/innertubeTrackMapper";
+import { mapInnertubeTrack } from "@/shared/media/innertube/innertubeTrackMapper";
 import type { ClientImportedTrack } from "../../importTypes";
 import { collectByKey } from "@/shared/utils/json";
 
 function mapRendererTrack(rawRenderer: unknown, seenIds: Set<string>): ClientImportedTrack | undefined {
-  if (isMusicVideo({ musicResponsiveListItemRenderer: rawRenderer })) return undefined;
+  // An explicitly imported playlist can contain user uploads and music videos.
+  // Keep those entries instead of applying the music catalog's audio-only filter.
   const mapped = mapInnertubeTrack({ musicResponsiveListItemRenderer: rawRenderer });
   if (!mapped || seenIds.has(mapped.id)) return undefined;
   seenIds.add(mapped.id);

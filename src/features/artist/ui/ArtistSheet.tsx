@@ -13,19 +13,19 @@ const font = { fontFamily: "var(--font-inter), sans-serif" };
 
 function Avatar({ artist, size }: { artist: ArtistSheetArtist; size: number }) {
   const url = useArtistAvatar(artist.id, artist.name);
-  const [failed, setFailed] = useState(false);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return (
     <div
       className="relative shrink-0 overflow-hidden rounded-full bg-bg-panel flex items-center justify-center"
       style={{ width: size, height: size }}
     >
-      {url && !failed ? (
+      {url && url !== failedUrl ? (
         <img
           src={url}
           alt={artist.name}
           className="h-full w-full object-cover"
           draggable={false}
-          onError={() => setFailed(true)}
+          onError={() => setFailedUrl(url)}
         />
       ) : artist.name ? (
         <span className="text-text-secondary font-[600]" style={{ fontSize: size * 0.4 }}>
@@ -86,8 +86,8 @@ export default function ArtistSheet() {
           <motion.button
             type="button"
             aria-label={t("common.close") || "Close"}
-            className="absolute inset-0 border-0 bg-black/45 p-0 cursor-default"
-            initial={{ opacity: 0 }}
+            className="lane-sheet-dimmer absolute inset-0 border-0 p-0 cursor-default"
+            initial={{ opacity: 1 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
@@ -95,12 +95,12 @@ export default function ArtistSheet() {
           />
           <motion.div
             role="dialog"
-            className="relative w-full rounded-t-[22px] bg-bg-primary px-[18px] pt-[10px] shadow-[0_-10px_40px_rgba(0,0,0,0.35)]"
+            className="lane-frost-sheet relative w-full rounded-t-[22px] bg-bg-primary px-[18px] pt-[10px] shadow-[0_-10px_40px_rgba(0,0,0,0.35)]"
             style={{ paddingBottom: "calc(18px + var(--lane-safe-bottom, 0px))" }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 420, damping: 38 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.6 }}

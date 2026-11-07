@@ -49,6 +49,7 @@
     "sec": "sn"
   },
   "common": {
+    "show_more": "Daha fazla göster",
     "pause": "Duraklat",
     "source": "Kaynak",
     "app": {
@@ -219,7 +220,13 @@
     "increase": "Artır",
     "mute": "Sesi kapat",
     "unmute": "Sesi aç",
-    "play": "Çal"
+    "play": "Çal",
+    "cache_track": "Parçayı önbelleğe kaydet",
+    "cache_playlist": "Çalma listesini önbelleğe kaydet",
+    "cache_saved": "Önbelleğe kaydedildi",
+    "cache_saving": "Önbelleğe kaydediliyor…",
+    "cache_failed": "Önbelleğe kaydedilemedi",
+    "cache_playlist_result": "{total} parçanın {saved} tanesi önbelleğe kaydedildi"
   },
   "home": {
     "recent": "Son çalınanlar",
@@ -273,6 +280,7 @@
     "next_mixes": "Sonraki miksler"
   },
   "library": {
+    "import_from_service": "{service} üzerinden içe aktar",
     "title": "Kitaplık",
     "liked_songs": "Beğenilen Şarkılar",
     "song": "şarkı",
@@ -474,6 +482,7 @@
     }
   },
   "player": {
+    "open_cover": "Kapağı aç",
     "repeat_off": "Tekrar: kapalı",
     "repeat_all": "Tekrar: tümü",
     "repeat_one": "Tekrar: parça",
@@ -610,6 +619,7 @@
     "likes_empty": "Henüz beğenilen şarkı yok"
   },
   "search": {
+    "recommended_artists": "Önerilen sanatçılar",
     "placeholder": "Parça, sanatçı, albüm ara...",
     "all": "Tümü",
     "songs": "Şarkılar",
@@ -900,7 +910,7 @@
       "local_desc": "{songs} · orijinal dosyalar saklanır",
       "remove": "İndirilenleri kaldır",
       "remove_size": "{size} kaldırılsın mı?",
-      "clear": "Önbelleği temizle",
+      "clear": "Temizle",
       "clear_size": "{size} silinsin mi?",
       "downloads_limit": "İndirme alanı",
       "downloads_limit_hint": "Yaklaşık {count} şarkı. İndirmeler dolduğunda duraklatılır.",
@@ -963,6 +973,10 @@
       "lossless": "Kayıpsız (FLAC/ALAC) - Kullanılamıyor"
     },
     "profile": {
+      "remove_avatar": "Avatarı kaldır",
+      "avatar_local": "Yalnızca bu cihazda kaydedilir",
+      "change_avatar": "Avatarı değiştir",
+      "avatar_invalid": "En fazla 20 MB boyutunda bir resim seçin.",
       "title": "Profil",
       "signed_in_as": "Giriş yapılan hesap",
       "not_signed_in": "Şu anda tanınan bir oturumda giriş yapılmamış.",
@@ -1454,5 +1468,12 @@
     "name_title": "Cihaz adı",
     "name_desc": "Bu cihazın diğer cihazlarınızda nasıl göründüğü.",
     "channel": "Kanal"
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
   }
 }

@@ -92,12 +92,15 @@ export default function AppFrame({ children }: AppFrameProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { isEdgeToEdge } = useWindowState();
+  const isMobile = useIsMobile();
 
   const searchOpen = useModalStore((state) => state.searchOpen);
   const openSearch = useModalStore((state) => state.openSearch);
   const closeSearch = useModalStore((state) => state.closeSearch);
   const toggleSearch = useModalStore((state) => state.toggleSearch);
   const openSettings = useModalStore((state) => state.openSettings);
+  const settingsOpen = useModalStore(state => state.settingsOpen);
+  const closeSettings = useModalStore(state => state.closeSettings);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [queuePopupOpen, setQueuePopupOpen] = useState(false);
@@ -111,17 +114,24 @@ export default function AppFrame({ children }: AppFrameProps) {
   const [fullscreenEffectsReady, setFullscreenEffectsReady] = useState(false);
 
   useEffect(() => {
-    if (pathname === "/settings") {
+    if (pathname === "/settings" && !isMobile) {
       openSettings();
       navigate("/", { replace: true });
     }
-  }, [pathname, openSettings, navigate]);
+  }, [pathname, openSettings, navigate, isMobile]);
 
   useEffect(() => {
     for (const key of LEGACY_LAYOUT_STORAGE_KEYS) {
       localStorage.removeItem(key);
     }
   }, []);
+
+  useEffect(() => {
+    if (isMobile && settingsOpen) {
+      closeSettings();
+      navigate("/settings");
+    }
+  }, [isMobile, settingsOpen, closeSettings, navigate]);
 
   const handleQueuePopupToggle = useCallback((open: boolean) => {
     setQueuePopupOpen(open);
@@ -139,6 +149,8 @@ export default function AppFrame({ children }: AppFrameProps) {
     },
     () => false,
   );
+
+  const showMobileMiniPlayer = shouldShowMiniPlayer && !location.pathname.startsWith("/settings");
 
   const hasCurrentTrack = useSyncExternalStore(
     playerEngine.subscribe,
@@ -639,8 +651,17 @@ export default function AppFrame({ children }: AppFrameProps) {
   }, [searchOpen, queuePopupOpen, handleQueuePopupToggle]);
 
   const handleSearchToggle = useCallback(() => {
+    if (isMobile) { navigate("/search"); return; }
     toggleSearch();
-  }, [toggleSearch]);
+  }, [toggleSearch, isMobile, navigate]);
+
+  // Library shortcuts and keyboard shortcuts also use the dedicated phone page.
+  useEffect(() => {
+    if (isMobile && searchOpen) {
+      closeSearch();
+      navigate("/search");
+    }
+  }, [isMobile, searchOpen, closeSearch, navigate]);
 
   const handlePlayFromSearch = useCallback(
     (track: any) => {
@@ -789,7 +810,6 @@ export default function AppFrame({ children }: AppFrameProps) {
     [contentViewConfig, isDark, hasCustomBg],
   );
 
-  const isMobile = useIsMobile();
 
 
   // phones: the fullscreen player follows the finger down and folds away
@@ -872,9 +892,9 @@ export default function AppFrame({ children }: AppFrameProps) {
   // overlays pad themselves with it so nothing ends up hidden under the dock
   useEffect(() => {
     const style = document.documentElement.style;
-    if (isMobile) style.setProperty("--lane-dock-h", `calc(58px + var(--lane-safe-bottom, 0px) + ${shouldShowMiniPlayer ? 62 : 0}px)`);
+    if (isMobile) style.setProperty("--lane-dock-h", `calc(58px + var(--lane-safe-bottom, 0px) + ${showMobileMiniPlayer ? 62 : 0}px)`);
     else style.removeProperty("--lane-dock-h");
-  }, [isMobile, shouldShowMiniPlayer]);
+  }, [isMobile, showMobileMiniPlayer]);
   // Android Back closes the topmost overlay before leaving the page
   useEffect(
     () =>
@@ -974,7 +994,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           </div>
 
           <AnimatePresence>
-            {searchOpen && (
+            {searchOpen && !isMobile && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1045,7 +1065,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           />
           {/* floating dock: mini player + translucent tab bar over the content */}
           <div data-mobile-dock className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex flex-col">
-            {shouldShowMiniPlayer && (
+            {showMobileMiniPlayer && (
               <div ref={miniPlayerContainerRef} className="pointer-events-auto w-full">
                 <MobileMiniPlayer />
               </div>
@@ -1094,7 +1114,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {searchOpen && (
+        {searchOpen && !isMobile && (
           <motion.div
             key="search-popup-wrapper"
             ref={searchPopupRef}
@@ -1335,7 +1355,7 @@ export default function AppFrame({ children }: AppFrameProps) {
       <ImportLikesModal />
       <CreatePlaylistModal />
       <ImportReviewModal />
-      <SettingsModal />
+      {!isMobile && <SettingsModal />}
       <YoutubeSignInNotice />
       <UpdateModal />
       <UpdateToastBridge />

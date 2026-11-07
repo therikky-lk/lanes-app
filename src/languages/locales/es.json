@@ -49,6 +49,7 @@
     "sec": "s"
   },
   "common": {
+    "show_more": "Mostrar más",
     "pause": "Pausa",
     "source": "Fuente",
     "app": {
@@ -219,7 +220,13 @@
     "increase": "Aumentar",
     "mute": "Silenciar",
     "unmute": "Activar sonido",
-    "play": "Reproducir"
+    "play": "Reproducir",
+    "cache_track": "Guardar canción en caché",
+    "cache_playlist": "Guardar lista en caché",
+    "cache_saved": "Guardado en caché",
+    "cache_saving": "Guardando en caché…",
+    "cache_failed": "No se pudo guardar en caché",
+    "cache_playlist_result": "Se guardaron {saved} de {total} canciones en caché"
   },
   "home": {
     "recent": "Recientes",
@@ -273,6 +280,7 @@
     "next_mixes": "Mezclas siguientes"
   },
   "library": {
+    "import_from_service": "Importar de {service}",
     "title": "Biblioteca",
     "liked_songs": "Canciones que te gustan",
     "song": "canción",
@@ -474,6 +482,7 @@
     }
   },
   "player": {
+    "open_cover": "Abrir portada",
     "repeat_off": "Repetir: desactivado",
     "repeat_all": "Repetir: todo",
     "repeat_one": "Repetir: canción",
@@ -610,6 +619,7 @@
     "cover_failed": "No se pudo utilizar esta imagen"
   },
   "search": {
+    "recommended_artists": "Artistas recomendados",
     "placeholder": "Buscar canciones, artistas, álbumes...",
     "all": "Todo",
     "songs": "Canciones",
@@ -890,7 +900,7 @@
       "local_desc": "{songs} · se conservan los archivos originales",
       "remove": "Eliminar descargas",
       "remove_size": "¿Quitar {size}?",
-      "clear": "Borrar caché",
+      "clear": "Borrar",
       "clear_size": "¿Borrar {size}?",
       "downloads_limit": "Espacio para descargas",
       "downloads_limit_hint": "Alrededor de {count} canciones. Las descargas se detienen cuando están llenas.",
@@ -953,6 +963,10 @@
       "lossless": "Sin pérdida (FLAC/ALAC) - No disponible"
     },
     "profile": {
+      "remove_avatar": "Eliminar avatar",
+      "avatar_local": "Guardado solo en este dispositivo",
+      "change_avatar": "Cambiar avatar",
+      "avatar_invalid": "Elige una imagen de hasta 20 MB.",
       "title": "Perfil",
       "signed_in_as": "Sesión iniciada como",
       "not_signed_in": "No hay una sesión activa reconocida.",
@@ -1456,5 +1470,12 @@
     "no_devices": "No hay otros dispositivos en línea. Abra Lane en otro dispositivo que haya iniciado sesión en esta cuenta.",
     "offline": "Conectando…",
     "channel": "Canal"
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
   }
 }

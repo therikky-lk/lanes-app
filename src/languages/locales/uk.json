@@ -49,6 +49,7 @@
     "sec": "сек"
   },
   "common": {
+    "show_more": "Показати більше",
     "pause": "Пауза",
     "source": "Джерело",
     "app": {
@@ -219,7 +220,13 @@
     "increase": "Збільшити",
     "mute": "Вимкнути звук",
     "unmute": "Увімкнути звук",
-    "play": "Відтворити"
+    "play": "Відтворити",
+    "cache_track": "Зберегти трек у кеш",
+    "cache_playlist": "Зберегти плейлист у кеш",
+    "cache_saved": "Збережено в кеш",
+    "cache_saving": "Зберігаємо в кеш…",
+    "cache_failed": "Не вдалося зберегти в кеш",
+    "cache_playlist_result": "У кеш збережено {saved} із {total} треків"
   },
   "home": {
     "recent": "Нещодавні",
@@ -273,6 +280,7 @@
     "next_mixes": "Наступні мікси"
   },
   "library": {
+    "import_from_service": "Імпорт із {service}",
     "spotify_liked": {
       "title": "Перенесення улюблених зі Spotify",
       "signin_desc": "Увійдіть в акаунт Spotify, щоб побачити свої вподобані треки.",
@@ -474,6 +482,7 @@
     "error_wrong_password": "Невірний пароль"
   },
   "player": {
+    "open_cover": "Відкрити обкладинку",
     "repeat_off": "Повтор: вимкнено",
     "repeat_all": "Повтор: усе",
     "repeat_one": "Повтор: трек",
@@ -610,6 +619,7 @@
     "cover_failed": "Не вдалося використати це зображення"
   },
   "search": {
+    "recommended_artists": "Рекомендовані виконавці",
     "placeholder": "Пошук треків, виконавців, альбомів...",
     "all": "Все",
     "songs": "Треки",
@@ -982,7 +992,7 @@
       "local_desc": "{songs} · оригінальні файли зберігаються",
       "remove": "Видалити завантаження",
       "remove_size": "Видалити {size}?",
-      "clear": "Очистити кеш",
+      "clear": "Очистити",
       "clear_size": "Очистити {size}?",
       "downloads_limit": "Місце для скачування",
       "downloads_limit_hint": "Близько {count} пісень. Завантаження призупиняються, коли вони заповнені.",
@@ -1045,6 +1055,10 @@
       "lossless": "Без втрат (FLAC/ALAC) — недоступно"
     },
     "profile": {
+      "remove_avatar": "Видалити аватар",
+      "avatar_local": "Зберігається лише на цьому пристрої",
+      "change_avatar": "Змінити аватар",
+      "avatar_invalid": "Виберіть зображення розміром до 20 МБ.",
       "title": "Профіль",
       "signed_in_as": "Ви увійшли як",
       "not_signed_in": "Зараз немає активної сесії.",
@@ -1454,5 +1468,12 @@
     "failed": "Не вдалося завантажити чек. Будь ласка, повторіть спробу.",
     "waiting": "Чекаю…",
     "frame_title": "Перевірка безпеки Cloudflare"
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
   }
 }

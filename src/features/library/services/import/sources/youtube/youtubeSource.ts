@@ -15,16 +15,15 @@ async function collectContinuations(
   signal?: AbortSignal,
 ): Promise<void> {
   let token = extractInnertubeContinuationToken(initialBody);
+  const seenTokens = new Set<string>();
   let pageCount = 0;
-  while (token && pageCount < MAX_CONTINUATION_PAGES) {
+  while (token && !seenTokens.has(token) && pageCount < MAX_CONTINUATION_PAGES) {
+    seenTokens.add(token);
     pageCount += 1;
     const body = await fetchInnertubeContinuation(token, signal);
     if (!body) break;
-    const previousCount = tracks.length;
     parseInnertubeTracks(body, seenIds, tracks);
-    const nextToken = extractInnertubeContinuationToken(body);
-    if (!nextToken || nextToken === token || tracks.length === previousCount) break;
-    token = nextToken;
+    token = extractInnertubeContinuationToken(body);
   }
 }
 

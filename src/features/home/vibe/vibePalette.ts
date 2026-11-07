@@ -17,6 +17,12 @@ function hsl(h: number, s: number, l: number): RGB {
   return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
 }
 
+/** A slow, seamless full-spectrum cycle while no track supplies a cover. */
+export function ambientVibePalette(seconds: number): VibePalette {
+  const hue = 285 + seconds * 4;
+  return [hsl(hue + 12, 0.9, 0.82), hsl(hue, 0.92, 0.56), hsl(hue + 42, 0.88, 0.38)];
+}
+
 export function lerpPalette(a: VibePalette, b: VibePalette, t: number): VibePalette {
   return a.map((ca, i) => ca.map((v, j) => v + (b[i][j] - v) * t) as RGB) as VibePalette;
 }
@@ -45,26 +51,32 @@ function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
 
 /** picks the two most present vivid hues of an image */
 export function paletteFromPixels(data: Uint8ClampedArray): VibePalette {
-  const bins = new Array(24).fill(0);
-  const hueSum = new Array(24).fill(0);
+  const bins = new Array(72).fill(0);
+  const hueSum = new Array(72).fill(0);
+  const saturationSum = new Array(72).fill(0);
+  let opaque = 0;
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] < 128) continue;
+    opaque++;
     const [h, s, v] = rgbToHsv(data[i], data[i + 1], data[i + 2]);
-    if (s < 0.25 || v < 0.2) continue;
-    const w = s * v * s;
-    const bin = Math.floor(h / 15) % 24;
+    // Include pastels and dark artwork instead of collapsing them to orange.
+    if (s < 0.08 || v < 0.06) continue;
+    const w = Math.pow(s, 1.3) * Math.pow(v, 0.8);
+    const bin = Math.floor(h / 5) % 72;
     bins[bin] += w;
     hueSum[bin] += h * w;
+    saturationSum[bin] += s * w;
   }
   const ranked = bins
-    .map((w, i) => ({ w, h: w ? hueSum[i] / w : 0 }))
+    .map((w, i) => ({ w, h: w ? hueSum[i] / w : 0, s: w ? saturationSum[i] / w : 0 }))
     .filter((b) => b.w > 0)
     .sort((a, b) => b.w - a.w);
-  if (ranked.length === 0) return DEFAULT_VIBE_PALETTE;
+  if (ranked.length === 0) return opaque ? [[245, 245, 250], [155, 155, 168], [55, 55, 68]] : DEFAULT_VIBE_PALETTE;
   const main = ranked[0].h;
   const hueDist = (a: number, b: number) => Math.min(Math.abs(a - b), 360 - Math.abs(a - b));
   const second = ranked.find((b) => hueDist(b.h, main) >= 25)?.h ?? (main + 28) % 360;
-  return [hsl(main + 12, 1, 0.82), hsl(main, 0.95, 0.56), hsl(second, 0.9, 0.48)];
+  const saturation = Math.min(0.96, Math.max(0.3, ranked[0].s * 1.1));
+  return [hsl(main + 12, saturation, 0.82), hsl(main, saturation, 0.56), hsl(second, saturation * 0.95, 0.48)];
 }
 
 const cache = new Map<string, VibePalette>();

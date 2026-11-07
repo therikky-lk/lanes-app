@@ -22,6 +22,7 @@ export interface LibraryPlaylistSummary {
 }
 
 export interface LibraryPlaylistDetail {
+  isPublic: boolean;
   id: string;
   title: string;
   description?: string;
@@ -59,6 +60,8 @@ const EMPTY: PlaylistList = { playlists: [], total: 0 };
 let cache = EMPTY;
 let loaded = false;
 let request: Promise<void> | null = null;
+let listConsumers = 0;
+let listRefreshTimer: number | null = null;
 const listeners = new Set<() => void>();
 let view = { data: cache, error: undefined as unknown, isLoading: true };
 
@@ -241,11 +244,20 @@ function toTrack(item: ApiUserPlaylistItem): Track {
 export function usePlaylistsList() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
   useEffect(() => {
-    void load(true);
-    const refreshTimer = window.setInterval(() => {
+    void load();
+    listConsumers += 1;
+    if (listRefreshTimer === null) {
+      listRefreshTimer = window.setInterval(() => {
       void load(true);
-    }, 30_000);
-    return () => window.clearInterval(refreshTimer);
+      }, 60_000);
+    }
+    return () => {
+      listConsumers = Math.max(0, listConsumers - 1);
+      if (listConsumers === 0 && listRefreshTimer !== null) {
+        window.clearInterval(listRefreshTimer);
+        listRefreshTimer = null;
+      }
+    };
   }, []);
   return state;
 }
@@ -310,6 +322,7 @@ export function usePlaylist(id: string | null) {
           id: response.playlist.id,
           title: response.playlist.title,
           description: response.playlist.description,
+          isPublic: response.playlist.isPublic,
           trackCount: response.items.length + localTracks.length,
           coverUrl: playlistCover ?? covers[0] ?? "",
           coverUrls: playlistCover ? [playlistCover] : covers,

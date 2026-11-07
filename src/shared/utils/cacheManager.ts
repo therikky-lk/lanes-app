@@ -9,6 +9,7 @@ import {
 import { queryCache } from "@/shared/cache/queryCache";
 import { lyricsCache } from "@/features/lyrics";
 import { clearCoverRegistry } from "@/features/covers";
+import { clearArtistAvatarMemory } from "@/features/artist/hooks/artistAvatarCache";
 import { useSearchHistoryStore } from "@/features/search/store/searchHistoryStore";
 import { debouncedStorage } from "@/shared/utils/storage";
 
@@ -55,6 +56,7 @@ export interface StorageAnalytics {
  * Clears cached network responses and cover image caches stored in CacheStorage and localStorage.
  */
 export async function clearMediaAndCoverCache(): Promise<void> {
+  clearArtistAvatarMemory();
   clearCoverRegistry();
   if (typeof window !== "undefined" && "caches" in window) {
     try {

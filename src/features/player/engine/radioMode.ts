@@ -23,7 +23,7 @@ export function nextRepeatMode(current: RepeatMode, radio: boolean): RepeatMode 
  * plays through them by itself while the page sleeps (screen off, another app
  * in front), so the music goes on for a good while without the app waking up.
  */
-export const NATIVE_QUEUE_AHEAD = 3;
+export const NATIVE_QUEUE_AHEAD = 15;
 
 /**
  * refill the radio queue once this few tracks (or fewer) are left after the

@@ -3,7 +3,7 @@ import lottie from "lottie-web";
 import cleanDuck from "@/assets/animations/clean_duck.json";
 import { StorageAction } from "./StorageAction";
 import { useModalStore } from "@/features/library/store/modalStore";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { FolderOpenLine, HeartFill, MusicLine } from "@mingcute/react";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
@@ -32,12 +32,14 @@ function LimitPills({ value, options, onChange, label, disabled }: {
   value: number; options: number[]; onChange: (bytes: number) => void; label: string; disabled?: boolean;
 }) {
   const { t } = useTranslation();
+  const selectedId = useId();
   // Keep older, custom cache limits visible after upgrading.
   const values = options.includes(value / GB) ? options : [value / GB, ...options];
-  return <div role="group" aria-label={label} className="flex flex-wrap gap-1">
+  return <div role="group" aria-label={label} className="lane-storage-limit-pills flex flex-nowrap gap-1 overflow-x-auto [scrollbar-width:none]">
     {values.map(size => <button key={size} type="button" disabled={disabled} aria-pressed={value === size * GB}
       onClick={() => onChange(size * GB)}
-      className={`h-[30px] rounded-[9px] border-0 px-[11px] text-[12px] font-medium transition-colors disabled:opacity-50 ${value === size * GB ? "bg-text-primary text-bg-primary" : "bg-black/[0.06] dark:bg-white/[0.07] text-text-secondary hover:bg-black/10 dark:hover:bg-white/10"}`}>
+      className={`relative isolate h-[26px] shrink-0 overflow-hidden whitespace-nowrap rounded-[9px] border-0 px-[9px] text-[11px] font-medium transition-colors duration-200 disabled:opacity-50 ${value === size * GB ? "bg-transparent text-bg-primary" : "bg-black/[0.06] dark:bg-white/[0.07] text-text-secondary hover:bg-black/10 dark:hover:bg-white/10"}`}>
+      {value === size * GB && <motion.span layoutId={selectedId} className="absolute inset-0 -z-10 rounded-[9px] bg-text-primary" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
       {size === 0 ? t("settings.storage.no_limit") : `${Number(size.toFixed(2))} GB`}
     </button>)}
   </div>;
@@ -110,7 +112,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
       <p className="text-[13px] text-text-tertiary">{cleaning ? t("settings.storage.clearing_subtitle") : formatStorageBytes(freedBytes ?? 0)}</p>
       {cleaning ? <div className="w-[200px] h-1 rounded-full overflow-hidden bg-black/10 dark:bg-white/10"><motion.div className="h-full bg-text-primary" initial={{ width: "10%" }} animate={{ width: "90%" }} transition={{ duration: 8, ease: "easeOut" }} /></div>
         : <button type="button" className="rounded-full border-0 px-5 py-2 bg-black/10 dark:bg-white/10 text-text-primary" onClick={() => setFreedBytes(null)}>{t("settings.storage.done_button")}</button>}
-    </motion.div> : <motion.div key="storage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-[24px] py-2">
+    </motion.div> : <motion.div key="storage" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="lane-storage-settings flex flex-col gap-[24px] py-2">
     {!searchQuery?.trim() && <div className="pt-1 pb-0.5" aria-busy={!analytics}>
       <div className="flex items-baseline justify-between gap-4 mb-3">
         <span className="text-[30px] font-semibold tracking-tight text-text-primary tabular-nums">
@@ -131,12 +133,12 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
     <SettingSection label={t("settings.storage.downloads_title")}>
       <SettingRow title={t("settings.storage.categories.liked")} titleKey="settings.storage.categories.liked" searchQuery={searchQuery}
         description={likedDescription} icon={<HeartFill />}
-        control={<div className="flex items-center gap-3"><StorageAction label={formatStorageBytes(downloadedBytes)}
+        control={<div className="flex items-center gap-2"><StorageAction label={formatStorageBytes(downloadedBytes)}
           action={t("settings.storage.remove")} confirmation={t("settings.storage.remove_size", { size: formatStorageBytes(downloadedBytes) })}
           disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(downloadedBytes, offline.removeDownloads)} /><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
       <SettingRow title={t("settings.storage.categories.local")} titleKey="settings.storage.categories.local" searchQuery={searchQuery}
         description={t("settings.storage.local_desc", { songs: t("common.songs", { count: local.length }) })} icon={<MusicLine />}
-        control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-3 py-1.5 text-[12px] text-text-secondary">{formatStorageBytes(localBytes)}</button>} />
+        control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="inline-flex h-[26px] w-[88px] items-center justify-center rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-2 text-[11px] text-text-secondary cursor-pointer">{formatStorageBytes(localBytes)}</button>} />
       <SettingRow title={t("settings.storage.downloads_limit")} titleKey="settings.storage.downloads_limit" searchQuery={searchQuery}
         description={offline.limitBytes ? t("settings.storage.downloads_limit_hint", { count: Math.floor(offline.limitBytes / average) }) : t("settings.storage.downloads_limit_unlimited")}
         control={<LimitPills value={offline.limitBytes} options={[2, 5, 20, 0]} onChange={offline.setLimitBytes} disabled={busy} label={t("settings.storage.downloads_limit")} />} />

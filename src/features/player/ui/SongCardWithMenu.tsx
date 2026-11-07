@@ -1,4 +1,5 @@
 import { memo, useCallback, useMemo, useRef, useState } from "react";
+import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import SongCard from "./SongCard";
 import { useSongMenuItems } from "../hooks/useSongMenuItems";
 import { playerEngine } from "../engine/playerEngine";
@@ -36,6 +37,7 @@ export interface SongCardWithMenuProps {
   playlistItemId?: string;
   playlistTitle?: string;
   onNavigate?: () => void;
+  onOpenArtist?: (artist: { id: string; name: string }) => void;
   compact?: boolean;
   icon?: React.ReactNode;
   showReorderHandle?: boolean;
@@ -45,6 +47,7 @@ export interface SongCardWithMenuProps {
   unavailableNote?: string;
   /** show a direct like button next to the track duration */
   showLikeButton?: boolean;
+  extraMenuItems?: DropdownMenuItem[];
 }
 
 function SongCardWithMenu({
@@ -74,6 +77,7 @@ function SongCardWithMenu({
   playlistItemId,
   playlistTitle,
   onNavigate,
+  onOpenArtist,
   compact,
   icon,
   showReorderHandle,
@@ -81,6 +85,7 @@ function SongCardWithMenu({
   highlight,
   unavailableNote,
   showLikeButton = false,
+  extraMenuItems,
 }: SongCardWithMenuProps) {
   const resolvedDurationMs = useMemo(() => {
     if (durationMs !== undefined) return durationMs;
@@ -95,10 +100,12 @@ function SongCardWithMenu({
     return 0;
   }, [duration, durationMs]);
 
-  const menuItems = useSongMenuItems({
+  const baseMenuItems = useSongMenuItems({
     id,
     title,
     artists,
+    artistId,
+    artistName: artistList?.find((artist) => artist.name)?.name ?? artists.split(",")[0]?.trim(),
     coverUrl,
     duration,
     durationMs: resolvedDurationMs,
@@ -109,6 +116,8 @@ function SongCardWithMenu({
     playlistTitle,
     addedDateLabel,
   });
+
+  const menuItems = useMemo(() => [...baseMenuItems, ...(extraMenuItems ?? [])], [baseMenuItems, extraMenuItems]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{
@@ -219,6 +228,7 @@ function SongCardWithMenu({
       onContextMenu={handleContextMenu}
       menuPosition={menuPosition}
       onNavigate={onNavigate}
+      onOpenArtist={onOpenArtist}
       compact={compact}
       icon={icon}
       showReorderHandle={showReorderHandle}
