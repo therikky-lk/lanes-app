@@ -5,6 +5,7 @@
 //   ⁣lane-local:<base64>   the user's own audio files added to the playlist
 //                          (the audio stays on the device that has it)
 const SEP = "⁣";
+export const MAX_PLAYLIST_DESCRIPTION_LENGTH = 2000;
 const ANY_MARK = /\s*⁣lane-(cover|local):([^\s⁣]+)/g;
 
 function readMarker(description: string | null | undefined, kind: "cover" | "local"): string | undefined {
@@ -16,9 +17,24 @@ function readMarker(description: string | null | undefined, kind: "cover" | "loc
 }
 
 function build(text: string, local: string | undefined, cover: string | undefined): string {
-  const marks = `${local ? `${SEP}lane-local:${local}` : ""}${cover ? `${SEP}lane-cover:${cover}` : ""}`;
-  if (!marks) return text;
-  return `${text}${text ? "\n\n" : ""}${marks}`;
+  const localMark = local ? `${SEP}lane-local:${local}` : "";
+  let coverMark = cover ? `${SEP}lane-cover:${cover}` : "";
+  const separator = text ? "\n\n" : "";
+
+  // Local entries are user data and must stay intact. Covers are optional
+  // metadata, so omit one that cannot fit rather than sending an invalid PATCH.
+  if (localMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
+    throw new Error("Список локальных треков слишком велик для описания плейлиста.");
+  }
+  if (text.length + separator.length + localMark.length + coverMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
+    coverMark = "";
+  }
+
+  const textBudget = Math.max(0, MAX_PLAYLIST_DESCRIPTION_LENGTH - separator.length - localMark.length - coverMark.length);
+  const visibleText = Array.from(text).slice(0, textBudget).join("");
+  const marks = `${localMark}${coverMark}`;
+  if (!marks) return visibleText;
+  return `${visibleText}${visibleText ? "\n\n" : ""}${marks}`;
 }
 
 export function readCoverMarker(description: string | null | undefined): string | undefined {

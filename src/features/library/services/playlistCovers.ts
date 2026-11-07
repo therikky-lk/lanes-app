@@ -5,10 +5,13 @@ import { diag } from "@/shared/platform/diag";
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 256;
-const MIN_SIDE = 96;
+const MIN_SIDE = 24;
 // Keep enough pixels and quality for a sharp playlist tile while staying
 // within the description size accepted by the playlist API.
-const MAX_SYNCED_COVER_LENGTH = 10_000;
+// The image is embedded in the playlist description, whose API limit is
+// 2,000 characters. Leave room for the marker, visible description and any
+// local-track metadata.
+const MAX_SYNCED_COVER_LENGTH = 1_200;
 const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
 
 function coverLog(message: string, details?: unknown): void {
@@ -89,7 +92,7 @@ async function compactCover(source: Blob): Promise<string> {
       // is still accepted by the cover marker parser.
       result = canvas.toDataURL("image/webp", quality);
       if (result.length <= MAX_SYNCED_COVER_LENGTH) break;
-      side = Math.floor(side * 0.8);
+      side = Math.max(MIN_SIDE - 1, Math.floor(side * 0.8));
       quality = Math.max(0.7, quality - 0.04);
     }
 
