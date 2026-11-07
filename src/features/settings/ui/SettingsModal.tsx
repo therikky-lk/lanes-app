@@ -313,7 +313,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             <h2 className="m-0 text-[20px] font-[600] tracking-[-0.01em] text-text-primary" style={font}>
               {t("common.sidebar.settings") || "Settings"}
             </h2>
-            <div><SettingsAccount onSignOut={handleClose} /></div>
+            <div className="ml-auto flex items-center"><SettingsAccount compact onSignOut={handleClose} /></div>
           </div>
         )}
         {!isMobile && <div className="flex justify-start px-[12px] pt-[12px]"><SettingsAccount onSignOut={handleClose} /></div>}
