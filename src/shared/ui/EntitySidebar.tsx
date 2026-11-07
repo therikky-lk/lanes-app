@@ -1,3 +1,4 @@
+import CoverViewer from "./CoverViewer";
 import type { ReactNode } from "react";
 import { ArrowLeftLine } from "@mingcute/react";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -52,12 +53,12 @@ export function EntitySidebar({
             <span>{backLabel}</span>
           </button>
         )}
-        <div
+        <div data-entity-cover
           className={`relative flex aspect-square w-[min(82vw,340px)] self-center items-center justify-center overflow-hidden rounded-xl shadow-[0_16px_50px_rgba(0,0,0,0.45)] ${
             coverClassName || "bg-border-alpha-14"
           } ${onBack ? "mt-[12px]" : ""}`}
         >
-          {cover}
+          <CoverViewer>{cover}</CoverViewer>
         </div>
         <div className="mt-[18px] w-full min-w-0 [&_h1]:text-center [&_h1]:text-[24px]" style={{ fontFamily: "var(--font-inter), sans-serif", fontWeight: 650 }}>
           {title}
@@ -100,7 +101,7 @@ export function EntitySidebar({
           coverClassName || "bg-border-alpha-14"
         } ${onBack ? "mt-[16px]" : ""}`}
       >
-        {cover}
+        <CoverViewer>{cover}</CoverViewer>
       </div>
 
       <div

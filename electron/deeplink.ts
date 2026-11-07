@@ -1,22 +1,25 @@
 // liner:// deeplink parsing, shared by main process (no electron imports here
 // so vitest can cover it). same strict allowlist as the link server: fixed
 // entity types, opaque catalog tokens only.
-export const DEEP_LINK_SCHEME = "liner";
+export const DEEP_LINK_SCHEME = "lane";
+export const DEEP_LINK_SCHEMES = ["lane", "liner"] as const;
 
 const DEEP_LINK_IDS: Record<string, RegExp> = {
+  share: /^[A-Za-z0-9_-]{22}$/,
+  shortcut: /^(wave|likes|settings)$/,
   // youtube channel ids, always UC + 22 base64url chars
   artist: /^UC[A-Za-z0-9_-]{22}$/,
   // innertube album browse ids, e.g. MPREb_xCxkOKReFZv
   album: /^MPRE[A-Za-z0-9_-]{4,64}$/,
   // catalog playlists (VLPL…/PL…) and user playlists (uuid / pl-…),
   // all just opaque tokens from the same safe charset
-  playlist: /^[A-Za-z0-9_-]{8,64}$/,
+  playlist: /^[A-Za-z0-9_-]{8,180}$/,
   // youtube video ids are always 11 base64url chars
   track: /^[A-Za-z0-9_-]{11}$/,
 };
 
 export interface DeeplinkTarget {
-  type: "artist" | "album" | "playlist" | "track";
+  type: "artist" | "album" | "playlist" | "track" | "share" | "shortcut";
   id: string;
 }
 
@@ -27,18 +30,18 @@ export function parseDeeplink(raw: string): DeeplinkTarget | null {
   } catch {
     return null;
   }
-  if (url.protocol !== `${DEEP_LINK_SCHEME}:`) return null;
+  if (!DEEP_LINK_SCHEMES.some((scheme) => url.protocol === `${scheme}:`) || url.username || url.password || url.hash || (url.pathname && url.pathname !== "/")) return null;
   const type = url.hostname.toLowerCase();
-  const pattern = DEEP_LINK_IDS[type];
+  const pattern = Object.hasOwn(DEEP_LINK_IDS, type) ? DEEP_LINK_IDS[type] : null;
   if (!pattern) return null;
   // exactly one id param, extras rejected so ?id=a&id=b can't pick a winner
   const ids = url.searchParams.getAll("id");
-  if (ids.length !== 1) return null;
+  if (ids.length !== 1 || [...url.searchParams.keys()].some(key => key !== "id")) return null;
   const id = ids[0]!;
   if (!pattern.test(id)) return null;
   return { type: type as DeeplinkTarget["type"], id };
 }
 
 export function findDeeplinkArg(argv: string[]): string | undefined {
-  return argv.find((arg) => arg.startsWith(`${DEEP_LINK_SCHEME}://`));
+  return argv.find((arg) => DEEP_LINK_SCHEMES.some((scheme) => arg.startsWith(`${scheme}://`)));
 }

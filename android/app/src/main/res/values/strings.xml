@@ -4,4 +4,8 @@
     <string name="title_activity_main">Lane</string>
     <string name="package_name">com.therikky.lane</string>
     <string name="custom_url_scheme">com.therikky.lane</string>
+    <string name="shortcut_wave">Моя волна</string>
+    <string name="shortcut_likes">Любимые</string>
+    <string name="shortcut_settings">Настройки</string>
+    <string name="shortcut_search">Поиск</string>
 </resources>

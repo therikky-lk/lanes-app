@@ -83,7 +83,8 @@ export function usePopularTracksOnly(limit = 20) {
         }));
         cache.set(`tracks_7d_${limit}`, { data: rawItems, timestamp: Date.now() });
         setData(rawItems);
-        const items = await enrichTrackItems(rawItems);
+        setIsLoading(false);
+        const items = await enrichTrackItems(rawItems).catch(() => rawItems);
         if (!active) return;
         cache.set(`tracks_7d_${limit}`, { data: items, timestamp: Date.now() });
         setData(items);
@@ -127,7 +128,8 @@ export function usePopularTracksAllTime(limit = 20) {
         }));
         cache.set(`tracks_all_${limit}`, { data: rawItems, timestamp: Date.now() });
         setData(rawItems);
-        const items = await enrichTrackItems(rawItems);
+        setIsLoading(false);
+        const items = await enrichTrackItems(rawItems).catch(() => rawItems);
         if (!active) return;
         cache.set(`tracks_all_${limit}`, { data: items, timestamp: Date.now() });
         setData(items);
@@ -194,7 +196,8 @@ export function usePopular(limit = 50) {
           }),
         );
         setData(items);
-        const enrichedTracks = await replaceTrackCoversWithYandex(rawTracks);
+        setIsLoading(false);
+        const enrichedTracks = await replaceTrackCoversWithYandex(rawTracks).catch(() => rawTracks);
         if (!active) return;
         const coverByArtist = new Map<string, string>();
         for (const [index, entry] of (res.items || []).entries()) {

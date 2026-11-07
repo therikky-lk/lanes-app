@@ -1,3 +1,4 @@
+import { readCoverMarker, stripCoverMarker } from "@/features/library/services/playlistCoverMarker";
 import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
 import { useEffect, useMemo, useState } from "react";
 import { api, mediaUrl, toClientTrack } from "@/shared/api";
@@ -105,6 +106,13 @@ export function useCollection(
             }
           }
 
+          if (type === "playlist" && (/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(decodedId) || decodedId.startsWith("pl-"))) {
+            const detail = await api.getPublicPlaylist(decodedId);
+            return { type: "playlist", title: detail.playlist.title,
+              description: stripCoverMarker(detail.playlist.description), coverUrl: readCoverMarker(detail.playlist.description) || ( detail.items[0]?.track.cover?.url ? mediaUrl(detail.items[0].track.cover.url) : ""),
+              tracks: detail.items.map(item => toClientTrack(item.track)),
+            } satisfies CollectionPageData;
+          }
           let collection = type === "playlist"
             ? await api.getPlaylist(id)
             : await api.getAlbum(id).catch(() => null);

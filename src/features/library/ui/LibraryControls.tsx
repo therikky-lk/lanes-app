@@ -1,4 +1,5 @@
 import {
+  AddLine,
   Search2Line,
   GridLine,
   GridFill,
@@ -9,6 +10,7 @@ import { motion } from "framer-motion";
 import TextInput from "@/shared/ui/TextInput";
 import type { LibraryTab, LibraryViewMode } from "../types";
 import { useTranslation } from "@/languages";
+import { useModalStore } from "../store/modalStore";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 
 interface LibraryControlsProps {
@@ -28,6 +30,7 @@ export default function LibraryControls({
 }: LibraryControlsProps) {
   const { t } = useTranslation();
   const hasCustomBg = useIsContentTransparent();
+  const openCreatePlaylist = useModalStore((state) => state.openCreatePlaylist);
 
   const placeholderByTab: Record<LibraryTab, string> = {
     all: t("library.title"),
@@ -38,6 +41,15 @@ export default function LibraryControls({
 
   return (
     <div className="flex flex-wrap items-center gap-[10px]">
+      <button
+        type="button"
+        title={t("library.create_playlist")}
+        aria-label={t("library.create_playlist")}
+        onClick={() => openCreatePlaylist()}
+        className={`inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] border-0 cursor-pointer transition-colors duration-150 active:scale-[0.97] ${hasCustomBg ? "apple-glass-pill text-white/65 hover:text-white" : "bg-border-alpha-14 text-text-tertiary hover:bg-border-alpha-22 hover:text-text-primary"}`}
+      >
+        <AddLine size={20} />
+      </button>
       <TextInput
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}

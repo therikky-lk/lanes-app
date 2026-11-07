@@ -1,3 +1,4 @@
+import ShareButton from "@/shared/ui/ShareButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState, Suspense, useRef } from "react";
 import {
@@ -8,6 +9,7 @@ import {
 } from "@mingcute/react";
 import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
+import { useArtistAvatar } from "../hooks/useArtistAvatar";
 import { useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
@@ -63,6 +65,7 @@ function ArtistContent() {
   const pinned = usePinsStore((st) => Boolean(id && st.pins.some((p) => p.kind === "artist" && p.id === id)));
 
   const { data, loading } = useArtist(id);
+  const artistImage = useArtistAvatar(data ? id ?? undefined : undefined, data?.title, data?.coverUrl ?? undefined);
   const [showAllTracks, setShowAllTracks] = useState(false);
   const [releasesView, setReleasesView] = useState<ReleaseFilter | null>(null);
   const ROW_LIMIT = 14;
@@ -175,11 +178,11 @@ function ArtistContent() {
           isScrolled={isScrolled}
           title={data?.title}
           thumbnail={
-            data?.coverUrl ? (
+            artistImage ? (
               <div className="relative h-[24px] w-[24px] shrink-0 overflow-hidden rounded-full bg-white/10">
                 <CoverImage
-                  src={data.coverUrl}
-                  alt={data.title}
+                  src={artistImage!}
+                  alt={data?.title ?? ""}
                   fill
                   sizes="24px"
                   className="object-cover"
@@ -198,7 +201,7 @@ function ArtistContent() {
           {isReady && data && (
             <div className="col-start-1 row-start-1 w-full pb-[32px]">
               <div className="relative w-full min-h-[340px] md:min-h-[380px] flex flex-col justify-between overflow-hidden">
-                {data.coverUrl ? (
+                {artistImage ? (
                   <div
                     className="absolute inset-0 z-0 overflow-hidden pointer-events-none"
                     style={{
@@ -209,7 +212,7 @@ function ArtistContent() {
                     }}
                   >
                     <CoverImage
-                      src={data.coverUrl}
+                      src={artistImage!}
                       alt={data.title}
                       fill
                       sizes="100vw"
@@ -288,6 +291,7 @@ function ArtistContent() {
                   <YourArtistTracks id={id} name={data.title} />
 
                   <div className="mt-[16px] flex items-center gap-[8px]">
+                    {id && <ShareButton menu type="artist" entityId={decodedId} snapshot={{ title: data.title, coverUrl: artistImage ?? undefined }} />}
                     <Button
                       variant={hasCustomBg ? "glass-primary" : "primary"}
                       onClick={handlePlayAll}

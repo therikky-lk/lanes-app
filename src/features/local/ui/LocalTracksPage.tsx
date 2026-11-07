@@ -1,3 +1,6 @@
+import TrackCollectionHeader from "@/features/library/ui/TrackCollectionHeader";
+import { TrackSearchField, useTrackSearch } from "@/features/library/ui/TrackSearch";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import OfflineCover from "@/features/library/ui/OfflineCover";
 import { shuffle as shuffleList } from "@/shared/utils/shuffle";
 import { useCallback, useRef, useState } from "react";
@@ -9,6 +12,7 @@ import { usePlaylistsList } from "@/features/library/hooks/usePlaylists";
 import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
+import SwipeToDelete from "@/shared/ui/SwipeToDelete";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import SongCard from "@/features/player/ui/SongCard";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -34,6 +38,9 @@ export default function LocalTracksPage() {
   const { toast } = useToast();
   const hasCustomBg = useIsContentTransparent();
   const { tracks, records, isLoading } = useLocalTracks();
+  const isMobile = useIsMobile();
+  const search = useTrackSearch(tracks, CONTEXT);
+  const visibleTracks = search.matches?.map(match => match.track) ?? tracks;
   const likedIds = new Set(records.filter((r) => r.likedAt).map((r) => r.id));
   const currentTrackId = usePlayerStore((s) => s.currentTrack?.id ?? null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -89,59 +96,13 @@ export default function LocalTracksPage() {
       }}
     >
       <div data-window-drag className="absolute top-0 left-0 right-0 h-[56px] z-10" />
-      <div data-page-scroller className="h-full w-full overflow-y-auto pb-[32px]" style={font}>
+      <div data-page-scroller className="h-full w-full overflow-y-auto pb-[32px]" style={{ ...font, paddingTop: isMobile ? "var(--lane-safe-top, 0px)" : 12, paddingBottom: isMobile ? "calc(var(--lane-dock-h, 120px) + 24px)" : 32 }}>
         <ScrollBlurEdge height={72} />
-        <button
-          type="button"
-          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/library"))}
-          data-no-window-drag
-          className={`sticky top-[12px] ml-[32px] z-20 group inline-flex h-[32px] items-center gap-[6px] rounded-md px-[10px] active:scale-[0.94] transition-all cursor-pointer text-[13px] font-[500] border-0 ${
-            hasCustomBg ? "apple-glass-pill" : "bg-bg-panel/85 backdrop-blur-xl text-text-primary hover:bg-bg-panel"
-          }`}
-        >
-          <ArrowLeftLine size={16} className="transition-transform duration-150 group-hover:-translate-x-0.5" />
-          <span>{t("common.back")}</span>
-        </button>
-
-        <header className="flex flex-wrap items-end gap-[20px] px-[32px] pt-[20px] pb-[18px]" data-no-window-drag>
-          <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-md">
-            <OfflineCover kind="local" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="m-0 text-[26px] font-bold tracking-tight text-text-primary">{t("local.title") || "My tracks"}</h1>
-            <p className="m-0 mt-[4px] text-[13px] text-text-tertiary">
-              {t("local.subtitle") || "Your own audio files. They stay on this device."} · {t("common.songs", { count: tracks.length })}
-            </p>
-            <div className="mt-[14px] flex flex-wrap items-center gap-[8px]">
-              <Button
-                variant={hasCustomBg ? "glass-primary" : "primary"}
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="!h-[36px] !text-[13.5px] !font-[500] px-[16px] flex items-center gap-[6px]"
-              >
-                <UploadLine size={16} />
-                {uploading ? t("local.uploading") || "Adding…" : t("local.upload") || "Upload files"}
-              </Button>
-              <Button
-                variant={hasCustomBg ? "glass-action" : "outline"}
-                onClick={() => playAll(false)}
-                disabled={tracks.length === 0}
-                className="!h-[36px] !text-[13px] px-[14px] flex items-center gap-[6px]"
-              >
-                <PlayFill size={15} />
-                {t("common.play_all")}
-              </Button>
-              <Button
-                variant={hasCustomBg ? "glass-action" : "outline"}
-                onClick={() => playAll(true)}
-                disabled={tracks.length === 0}
-                className="!h-[36px] !w-[36px] !p-0 flex items-center justify-center"
-                title={t("common.shuffle")}
-              >
-                <LuShuffle size={16} />
-              </Button>
-            </div>
-          </div>
+        <TrackCollectionHeader title={t("local.title")} kind="local" count={tracks.length}
+          onPlay={() => playAll(false)} onShuffle={() => playAll(true)}
+          onQueue={() => tracks.forEach(track => playerEngine.addToQueue(track))}
+          onSearch={search.toggle} searchOpen={search.isOpen}
+          extra={<Button variant="secondary" size="icon" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label={t("local.upload")}><UploadLine size={18} /></Button>} />
           <input
             ref={fileRef}
             type="file"
@@ -153,9 +114,12 @@ export default function LocalTracksPage() {
               e.target.value = "";
             }}
           />
-        </header>
 
-        <div className="px-[24px]" data-no-window-drag>
+        <div className="px-[14px]">
+          <TrackSearchField search={search} totalCount={tracks.length} placeholder={t("common.search")} closeOnBlur={false}
+            className="!h-[44px] !w-full !rounded-[12px] my-[8px] [&_input]:text-[16px]" />
+        </div>
+        <div className="mx-[14px] rounded-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] py-[8px]" data-no-window-drag>
           {!isLoading && tracks.length === 0 ? (
             <button
               type="button"
@@ -169,11 +133,12 @@ export default function LocalTracksPage() {
               </span>
             </button>
           ) : (
-            tracks.map((track) => (
-              <SongCard
+            visibleTracks.map((track) => {
+              const card = <SongCard
                 key={track.id}
                 className="lane-row"
                 id={track.id}
+                highlight={search.activeQuery}
                 title={track.title}
                 artists={track.artists || t("local.unknown_artist") || "Unknown artist"}
                 artistsClickable={false}
@@ -231,8 +196,17 @@ export default function LocalTracksPage() {
                     },
                   },
                 ]}
-              />
-            ))
+              />;
+              const addToQueue = () => {
+                playerEngine.addToQueue(track);
+                toast(t("common.added_to_queue"), "checkmark", { description: track.title });
+              };
+              return isMobile ? (
+                <SwipeToDelete key={track.id} label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
+                  {card}
+                </SwipeToDelete>
+              ) : <div key={track.id}>{card}</div>;
+            })
           )}
         </div>
       </div>

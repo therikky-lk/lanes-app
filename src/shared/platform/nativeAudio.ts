@@ -6,7 +6,10 @@ import { diag } from "./diag";
 // player, so nothing above this file has to know the difference.
 import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 
-interface NativeState {
+export interface NativeState {
+  trackId?: string;
+  sequence?: number;
+  emittedAt?: number;
   playing: boolean;
   playWhenReady?: boolean;
   seekable?: boolean;
@@ -18,6 +21,7 @@ interface NativeState {
 }
 
 interface LaneAudioPlugin {
+  getState(): Promise<NativeState>;
   load(options: {
     url: string;
     headers?: Record<string, string>;
@@ -97,8 +101,8 @@ export function onNativeRepeat(handler: (() => void) | null): void {
 }
 
 // the native player switched to the queued next track by itself
-let advancedHandler: ((trackId: string) => void) | null = null;
-export function onNativeAdvanced(handler: ((trackId: string) => void) | null): void {
+let advancedHandler: ((trackId: string, state: NativeState) => void | Promise<void>) | null = null;
+export function onNativeAdvanced(handler: ((trackId: string, state: NativeState) => void | Promise<void>) | null): void {
   advancedHandler = handler;
 }
 
@@ -218,7 +222,29 @@ export function createNativeAudioElement(): HTMLAudioElement {
   let playWhenReady = false;
   let seekable = true;
   let seekCheck: { target: number; at: number } | null = null;
-  void LaneAudio.addListener("state", (s) => {
+  let activeTrackId: string | undefined;
+  let expectedTrackId: string | undefined;
+  let lastSequence = -1;
+  let acceptAfter = 0;
+  let snapshotPending = false;
+  let advancePending: Promise<void> = Promise.resolve();
+  const applyState = async (s: NativeState) => {
+    if (s.emittedAt !== undefined && s.emittedAt < acceptAfter) return;
+    if (s.sequence !== undefined && s.sequence <= lastSequence) return;
+    if (expectedTrackId && s.trackId !== expectedTrackId) return;
+    if (s.sequence !== undefined) lastSequence = s.sequence;
+    const sequence = lastSequence;
+    expectedTrackId = undefined;
+    if (s.trackId && s.trackId !== activeTrackId) {
+      activeTrackId = s.trackId;
+      durationMs = NaN;
+      ended = false;
+      error = null;
+      readyState = 0;
+      advancePending = Promise.resolve(advancedHandler?.(s.trackId, s));
+    }
+    await advancePending;
+    if (snapshotPending || sequence !== lastSequence || (s.emittedAt !== undefined && s.emittedAt < acceptAfter)) return;
     // what the player reports right after a seek, for the log
     if (seekCheck && performance.now() - seekCheck.at > 600) {
       diag(`native after seek: at ${Math.round(s.positionMs / 1000)}s (wanted ${Math.round(seekCheck.target / 1000)}s)`);
@@ -278,18 +304,33 @@ export function createNativeAudioElement(): HTMLAudioElement {
       error = new NativeMediaError(2, s.error);
       fire("error");
     }
+  };
+  void LaneAudio.addListener("state", s => {
+    if (s.emittedAt !== undefined && Date.now() - s.emittedAt > 1500) {
+      if (!snapshotPending) void syncLatestState();
+      return;
+    }
+    if (!snapshotPending) void applyState(s).catch(error => diag(`native state sync: ${String(error)}`));
   });
-  void LaneAudio.addListener("advanced", (a) => {
-    diag(`native: moved on to the next track by itself (${a.trackId})`);
-    // a new track is already playing natively: start the clock over
-    positionMs = 0;
-    positionAt = performance.now();
-    durationMs = NaN;
-    ended = false;
-    error = null;
-    readyState = 0;
-    advancedHandler?.(a.trackId);
-    fire("emptied");
+  let resumeEpoch = 0;
+  const syncLatestState = async () => {
+    const epoch = ++resumeEpoch;
+    acceptAfter = Date.now();
+    snapshotPending = true;
+    try {
+      const snapshot = await LaneAudio.getState();
+      if (epoch !== resumeEpoch) return;
+      snapshotPending = false;
+      await applyState(snapshot);
+    } catch (error) { diag(`native resume sync: ${String(error)}`); }
+    finally { if (epoch === resumeEpoch) snapshotPending = false; }
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      resumeEpoch++;
+      acceptAfter = Date.now();
+      snapshotPending = false;
+    } else void syncLatestState();
   });
   void LaneAudio.addListener("remote", (r) => {
     if (r.action === "seeked") {
@@ -304,6 +345,8 @@ export function createNativeAudioElement(): HTMLAudioElement {
 
   const startLoad = async () => {
     const token = ++loadToken;
+    activeTrackId = nowPlaying.trackId;
+    expectedTrackId = src ? nowPlaying.trackId : undefined;
     positionMs = 0;
     positionAt = performance.now();
     durationMs = NaN;
@@ -349,12 +392,22 @@ export function createNativeAudioElement(): HTMLAudioElement {
     }
   };
 
+  let loadScheduled = false;
+  let pendingLoad: Promise<void> = Promise.resolve();
+  const scheduleLoad = () => {
+    if (loadScheduled) return;
+    loadScheduled = true;
+    pendingLoad = Promise.resolve().then(() => {
+      loadScheduled = false;
+      return startLoad();
+    });
+  };
   const define = (name: string, get: () => unknown, set?: (v: never) => void) =>
     Object.defineProperty(el, name, { configurable: true, get, ...(set ? { set } : {}) });
 
   define("src", () => src, (v: string) => {
     src = v ?? "";
-    void startLoad();
+    scheduleLoad();
   });
   define("currentSrc", () => src);
   define("laneStartAt", () => startAtMs, (v: number) => {
@@ -395,6 +448,11 @@ export function createNativeAudioElement(): HTMLAudioElement {
   (el as unknown as { play: () => Promise<void> }).play = async () => {
     wantPlay = true;
     ended = false;
+    // A cached Blob must reach the native player before play; src + load in
+    // the same turn share one transfer instead of writing the file twice.
+    let loading: Promise<void>;
+    do { loading = pendingLoad; await loading; } while (loading !== pendingLoad);
+    if (!wantPlay) return;
     await LaneAudio.play();
   };
   (el as unknown as { pause: () => void }).pause = () => {
@@ -402,7 +460,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
     void LaneAudio.pause();
   };
   (el as unknown as { load: () => void }).load = () => {
-    void startLoad();
+    scheduleLoad();
   };
   const removeAttribute = el.removeAttribute.bind(el);
   el.removeAttribute = (name: string) => {

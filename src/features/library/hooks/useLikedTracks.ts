@@ -31,6 +31,15 @@ let localLiked: Track[] = [];
 // liked uploads of the user's other devices (greyed out here)
 let remoteLocalLiked: Track[] = [];
 
+function uniqueTracks(tracks: Track[]): Track[] {
+  const seen = new Set<string>();
+  return tracks.filter((track) => {
+    if (seen.has(track.id)) return false;
+    seen.add(track.id);
+    return true;
+  });
+}
+
 function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } {
   if (optimisticOverrides.size === 0 && localLiked.length === 0 && remoteLocalLiked.length === 0) {
     return { data: cache, isLoading };
@@ -38,7 +47,7 @@ function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } 
 
   const here = new Set(localLiked.map((t) => t.id));
   const elsewhere = remoteLocalLiked.filter((t) => !here.has(t.id));
-  let tracks = [...localLiked, ...elsewhere, ...cache.tracks].filter(
+  let tracks = uniqueTracks([...localLiked, ...elsewhere, ...cache.tracks]).filter(
     (t) => optimisticOverrides.get(t.id) !== false
   );
   for (const [id, liked] of optimisticOverrides) {
@@ -96,7 +105,8 @@ function cachedTrackToClient(record: CachedTrackRecord): Track {
 async function restoreCachedLibrary(): Promise<boolean> {
   const records = await linerDb.listTracks().catch(() => []);
   if (records.length === 0) return false;
-  cache = { tracks: records.map(cachedTrackToClient), total: records.length };
+  const tracks = uniqueTracks(records.map(cachedTrackToClient));
+  cache = { tracks, total: tracks.length };
   loaded = true;
   emit(false);
   return true;
@@ -122,10 +132,8 @@ function load(force = false): Promise<void> {
 
   const startedAt = Date.now();
   request = (async () => {
-    // Render the last known library immediately. The network refresh below is
-    // best-effort, so a temporary outage never turns the library into an empty
-    // screen.
-    if (!loaded) await restoreCachedLibrary();
+    // Keep the loading skeleton visible until the server's complete, current
+    // list is ready; otherwise stale cache rows and counts flash on entry.
     const tracks: Track[] = [];
     let cursor: string | undefined;
     const remoteLocal = loadLocalLikes();
@@ -141,13 +149,14 @@ function load(force = false): Promise<void> {
     } while (cursor);
     // Keep the API artwork; bulk cover searches made opening a large library
     // issue thousands of unrelated requests.
-    cache = { tracks, total: tracks.length };
-    void Promise.all(tracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
+    const currentTracks = uniqueTracks(tracks);
+    cache = { tracks: currentTracks, total: currentTracks.length };
+    void Promise.all(currentTracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
     loaded = true;
     // keep the optimistic state the server doesn't show yet: overrides made
     // after this reload started, or that it doesn't agree with yet
-    const serverIds = new Set(tracks.map((t) => t.id));
+    const serverIds = new Set(currentTracks.map((t) => t.id));
     for (const [id, liked] of [...optimisticOverrides]) {
       const at = overrideAt.get(id) ?? 0;
       const agrees = serverIds.has(id) === liked;
@@ -158,9 +167,12 @@ function load(force = false): Promise<void> {
     }
     emit(false);
   })()
-    .catch(() => {
-      if (!loaded) void restoreCachedLibrary();
-      loaded = true;
+    .catch(async () => {
+      if (!loaded) {
+        // Offline fallback is only shown after the current request fails.
+        const restored = await restoreCachedLibrary();
+        if (!restored) loaded = true;
+      }
     })
     .finally(() => {
       request = null;

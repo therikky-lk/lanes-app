@@ -1,3 +1,6 @@
+import { queryCache } from "@/shared/cache/queryCache";
+import ShareButton from "@/shared/ui/ShareButton";
+import SwipeToDelete from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useSearchParams } from "react-router-dom";
 import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
@@ -19,7 +22,7 @@ import {
   MenuLine,
 } from "@mingcute/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink } from "react-icons/lu";
+import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink, LuGlobe, LuLockKeyhole } from "react-icons/lu";
 import { FaSpotify } from "react-icons/fa";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
@@ -105,6 +108,7 @@ const TrackItem = memo(function TrackItem({
 }: TrackItemProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const handlePlay = useCallback(() => {
     if (typeof window !== "undefined" && window.__linerWasDragging) return;
     if (track.onlyOnDevice) {
@@ -119,40 +123,56 @@ const TrackItem = memo(function TrackItem({
     );
   }, [track, allTracks, playbackContext, playlistCoverUrl, toast, t]);
 
+  const addToQueue = useCallback(() => {
+    if (track.onlyOnDevice) return;
+    playerEngine.addToQueue(track);
+    toast(t("common.added_to_queue"), "checkmark", {
+      description: track.artists ? `${track.title} — ${track.artists}` : track.title,
+    });
+  }, [track, toast, t]);
+
+  const card = (
+    <SongCardWithMenu
+      id={track.id}
+      title={track.title}
+      artists={track.artists}
+      artistId={track.artistId}
+      artistList={track.artistList}
+      coverUrl={track.coverUrl || playlistCoverUrl}
+      playlistId={playlistId}
+      playlistItemId={track.playlistItemId}
+      playlistTitle={playlistTitle}
+      showLikeButton={Boolean(playlistId)}
+      showReorderHandle={showReorderHandle}
+      onGrabStart={onGrabStart}
+      highlight={highlight}
+      isCurrent={isCurrent}
+      albumTitle={albumTitleOf(track)}
+      addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
+      addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
+      duration={
+        track.durationMs
+          ? `${Math.floor(track.durationMs / 60000)}:${String(
+              Math.floor((track.durationMs % 60000) / 1000),
+            ).padStart(2, "0")}`
+          : undefined
+      }
+      durationMs={track.durationMs}
+      explicit={track.explicit}
+      onPlay={handlePlay}
+      unavailableNote={
+        track.onlyOnDevice ? t("local.only_on_device", { device: track.onlyOnDevice }) : undefined
+      }
+    />
+  );
+
   return (
     <div style={style} data-reorder-item>
-      <SongCardWithMenu
-        id={track.id}
-        title={track.title}
-        artists={track.artists}
-        artistId={track.artistId}
-        artistList={track.artistList}
-        coverUrl={track.coverUrl || playlistCoverUrl}
-        playlistId={playlistId}
-        playlistItemId={track.playlistItemId}
-        playlistTitle={playlistTitle}
-        showLikeButton={Boolean(playlistId)}
-        showReorderHandle={showReorderHandle}
-        onGrabStart={onGrabStart}
-        highlight={highlight}
-        isCurrent={isCurrent}
-        albumTitle={albumTitleOf(track)}
-        addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
-        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
-        duration={
-          track.durationMs
-            ? `${Math.floor(track.durationMs / 60000)}:${String(
-                Math.floor((track.durationMs % 60000) / 1000),
-              ).padStart(2, "0")}`
-            : undefined
-        }
-        durationMs={track.durationMs}
-        explicit={track.explicit}
-        onPlay={handlePlay}
-        unavailableNote={
-          track.onlyOnDevice ? t("local.only_on_device", { device: track.onlyOnDevice }) : undefined
-        }
-      />
+      {isMobile && !track.onlyOnDevice ? (
+        <SwipeToDelete label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
+          {card}
+        </SwipeToDelete>
+      ) : card}
     </div>
   );
 });
@@ -169,6 +189,7 @@ function LibraryPlaylistContent() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isVisibilityUpdating, setIsVisibilityUpdating] = useState(false);
   const reorderTracks = useReorderPlaylistTracks();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -909,48 +930,12 @@ function LibraryPlaylistContent() {
                           <LuShuffle size={16} />
                         </Button>
 
-                        <AnimatePresence mode="popLayout" initial={false}>
-                          {search.isOpen ? (
-                            <motion.div
-                              key="playlist-search-field"
-                              layout
-                              initial={{ opacity: 0, width: 0, scale: 0.96 }}
-                              animate={{ opacity: 1, width: 180, scale: 1 }}
-                              exit={{ opacity: 0, width: 0, scale: 0.96 }}
-                              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                              className={isMobile ? "min-w-0 flex-1 overflow-hidden" : "shrink-0 overflow-hidden"}
-                            >
-                              <TrackSearchField
-                                search={search}
-                                totalCount={currentTracks.length}
-                                placeholder={t("track_search.placeholder_playlist")}
-                                glass={hasCustomBg}
-                                onSubmit={handleSearchSubmit}
-                                className="!h-[36px] !w-full !rounded-[10px]"
-                              />
-                            </motion.div>
-                          ) : (
-                            <motion.div
-                              key="playlist-search-trigger"
-                              layout
-                              initial={{ opacity: 0, width: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, width: 36, scale: 1 }}
-                              exit={{ opacity: 0, width: 0, scale: 0.9 }}
-                              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                              className="shrink-0 overflow-hidden"
-                            >
-                              <Button
-                                variant={hasCustomBg ? "glass-action" : "outline"}
-                                onClick={search.open}
-                                disabled={currentTracks.length === 0}
-                                className="!h-[36px] !w-[36px] !p-0 flex items-center justify-center text-text-primary"
-                                title={searchButtonLabel}
-                              >
-                                <Search2Line size={16} />
-                              </Button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        <Button variant={hasCustomBg ? "glass-action" : "outline"}
+                          onPointerDown={event => event.preventDefault()} onClick={search.toggle}
+                          aria-label={searchButtonLabel} aria-expanded={search.isOpen}
+                          disabled={currentTracks.length === 0} className="!h-[36px] !w-[36px] shrink-0 !p-0">
+                          <Search2Line size={16} />
+                        </Button>
 
                         {!isMobile && currentTracks.length > 0 && (
                           <SegmentedTabs
@@ -965,6 +950,7 @@ function LibraryPlaylistContent() {
                           />
                         )}
 
+                        {!isLikesMode && decodedId && playlistDetail?.isPublic && <ShareButton type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} />}
                         {!isLikesMode && (
                           <DropdownMenu
                             trigger={
@@ -977,6 +963,23 @@ function LibraryPlaylistContent() {
                               </Button>
                             }
                             items={[
+                              {
+                                id: "visibility",
+                                label: t(playlistDetail?.isPublic ? "sharing.make_private" : "sharing.make_public"),
+                                icon: playlistDetail?.isPublic ? <LuLockKeyhole size={15} /> : <LuGlobe size={15} />,
+                                disabled: !playlistDetail || isVisibilityUpdating,
+                                onClick: async () => {
+                                  if (!decodedId || !playlistDetail || isVisibilityUpdating) return;
+                                  const nextIsPublic = !playlistDetail.isPublic;
+                                  setIsVisibilityUpdating(true);
+                                  try {
+                                    await api.updatePlaylist(decodedId, { isPublic: nextIsPublic });
+                                    queryCache.delete(`playlist:detail:${decodedId}`);
+                                    window.dispatchEvent(new Event("library:changed"));
+                                  } catch { toast(t("common.error_something_wrong"), "error"); }
+                                  finally { setIsVisibilityUpdating(false); }
+                                },
+                              },
                               {
                                 id: "rename",
                                 icon: <LuPencil size={15} />,
@@ -1045,6 +1048,13 @@ function LibraryPlaylistContent() {
                 />
               </div>
 
+              <div className={search.isOpen ? "w-full shrink-0 py-[8px]" : "shrink-0"}>
+                <TrackSearchField search={search} totalCount={currentTracks.length}
+                  placeholder={t("track_search.placeholder_playlist")} glass={hasCustomBg}
+                  closeOnBlur={false} onSubmit={handleSearchSubmit}
+                  className="!h-[44px] !w-full !rounded-[12px] [&_input]:text-[16px]" />
+              </div>
+
               <div
                 ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag
@@ -1062,7 +1072,7 @@ function LibraryPlaylistContent() {
                   willChange: "scroll-position",
                   marginTop: isMobile ? undefined : 8,
                   paddingBottom:
-                    isMobile && isLikesMode
+                    isMobile
                       ? "calc(var(--lane-dock-h, 120px) + 48px)"
                       : 24,
                 }}

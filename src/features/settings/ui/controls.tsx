@@ -27,7 +27,7 @@ function matchesSearch({
 
 function RowText({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+    <div className="lane-setting-text flex min-w-0 flex-1 flex-col gap-[3px]">
       <span className="text-pretty text-text-primary text-[13.5px] font-[500] leading-[18px] tracking-[-0.005em]">
         {title}
       </span>
