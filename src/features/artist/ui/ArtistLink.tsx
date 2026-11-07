@@ -20,6 +20,7 @@ export interface ArtistLinkProps {
   className?: string;
   separator?: string;
   onNavigate?: () => void;
+  onOpenArtist?: (artist: { id: string; name: string }) => void;
 }
 
 export default function ArtistLink({
@@ -30,6 +31,7 @@ export default function ArtistLink({
   className = "",
   separator = ", ",
   onNavigate,
+  onOpenArtist,
 }: ArtistLinkProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -66,6 +68,7 @@ export default function ArtistLink({
 
   /** desktop: open the artist; phone: slide up the artist sheet first */
   const goArtist = (targetId: string) => {
+    onOpenArtist?.(sheetArtists.find((artist) => artist.id === targetId) ?? { id: targetId, name: targetId });
     if (isMobile) {
       const list = sheetArtists.some((a) => a.id === targetId)
         ? sheetArtists

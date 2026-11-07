@@ -14,6 +14,10 @@ if (typeof window !== "undefined") {
   setInterval(flushPendingWrites, 1000);
 
   window.addEventListener("beforeunload", flushPendingWrites);
+  window.addEventListener("pagehide", flushPendingWrites);
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPendingWrites();
+  });
 }
 
 export const debouncedStorage = {

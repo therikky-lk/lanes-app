@@ -200,7 +200,7 @@ export function useDailyMixes() {
     // to the server request; kept in the module cache even if this screen is
     // left meanwhile, and shown as soon as they're richer than what's shown
     const total = (list: DailyMix[]) => list.reduce((n, m) => n + m.tracks.length, 0);
-    building = building ?? buildClientMixes(owner).finally(() => {
+    building = building ?? new Promise<void>(resolve => setTimeout(resolve, 1500)).then(() => buildClientMixes(owner)).finally(() => {
       building = null;
     });
     void building

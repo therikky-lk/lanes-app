@@ -603,7 +603,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   background-color: transparent !important;
   border-radius: 0;
 }
-.lane-settings-shell .lane-setting-control [aria-pressed] {
+.lane-settings-shell .lane-setting-control [aria-pressed]:not(.lane-toggle-switch) {
   border-radius: 9px;
 }
 .lane-glass-dialog {
@@ -659,6 +659,29 @@ html[data-hover-reset] [data-window-controls] button:hover {
 /* phone settings: a row's control drops under its title when space runs out */
 .lane-settings-mobile .lane-setting-row { flex-wrap: wrap; row-gap: 10px; }
 .lane-settings-mobile .lane-setting-control:has(.lane-select-trigger) { flex: 0 0 100%; width: 100%; }
+.lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) {
+  align-items: stretch;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) .lane-setting-text {
+  flex: 0 0 100%;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) .lane-setting-control {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-control [role="group"] {
+  width: 100%;
+}
+.lane-settings-mobile .lane-playback-settings .lane-setting-control [role="group"] > button {
+  flex: 1 1 0%;
+  min-width: 0;
+  justify-content: center;
+  padding-inline: 8px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
 .lane-settings-mobile .lane-customization-targets {
   align-items: stretch;
   flex-direction: column;
@@ -964,3 +987,71 @@ html[data-hover-reset] [data-window-controls] button:hover {
 [data-desktop-fullscreen="true"] [data-window-controls] {
   background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none;
 }
+
+/* Keep storage labels and their controls on one line on phones. */
+.lane-settings-mobile .lane-storage-settings .lane-setting-row {
+  flex-wrap: nowrap;
+  gap: 10px;
+}
+.lane-settings-mobile .lane-storage-settings .lane-setting-text > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.lane-settings-mobile .lane-storage-settings .lane-setting-text > span > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.lane-settings-mobile .lane-storage-settings .lane-setting-control {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 56%;
+  justify-content: flex-end;
+}
+.lane-settings-mobile .lane-storage-settings .lane-setting-control > div {
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.lane-settings-mobile .lane-storage-settings .lane-storage-limit-pills {
+  justify-content: flex-start !important;
+}
+.lane-settings-mobile .lane-storage-settings .lane-storage-action {
+  width: clamp(72px, 22vw, 100px);
+  padding-inline: 8px;
+}
+
+/* Stationary blur is mounted before moving a sheet over it. */
+.lane-sheet-dimmer {
+  background: rgb(0 0 0 / 28%);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.lane-frost-sheet {
+  background: rgb(22 22 22 / 78%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.25);
+  backdrop-filter: blur(28px) saturate(1.25);
+  backface-visibility: hidden;
+}
+
+.lane-settings-page .lane-settings-mobile {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  border: 0;
+  box-shadow: none;
+  background: var(--bg-primary);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.lane-settings-page .lane-settings-content {
+  background: var(--bg-primary);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.lane-settings-page { overscroll-behavior-x: contain; }

@@ -1,6 +1,6 @@
 {
   "name": "lane",
-  "version": "1.7.9",
+  "version": "1.7.15",
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
@@ -45,8 +45,9 @@
     },
     "protocols": [
       {
-        "name": "Liner",
+        "name": "Lane",
         "schemes": [
+          "lane",
           "liner"
         ]
       }

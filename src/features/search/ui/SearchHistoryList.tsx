@@ -1,24 +1,29 @@
 import { memo, useRef } from "react";
-import { CloseLine, Search3Line } from "@mingcute/react";
+import { Search3Line } from "@mingcute/react";
+import SwipeToDelete from "@/shared/ui/SwipeToDelete";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import { useTranslation } from "@/languages";
 import { useSearchHistoryStore } from "../store/searchHistoryStore";
 
 export interface SearchHistoryListProps {
+  fullHeight?: boolean;
   onSelectQuery: (query: string) => void;
   onPlayTrack: (track: any) => void;
   onNavigateItem: (item: any) => void;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   onScroll?: () => void;
+  onOpenArtist?: (artist: { id: string; name: string }) => void;
   maskStyle?: React.CSSProperties;
 }
 
 export const SearchHistoryList = memo(function SearchHistoryList({
+  fullHeight = false,
   onSelectQuery,
   onPlayTrack,
   onNavigateItem,
   scrollRef,
   onScroll,
+  onOpenArtist,
   maskStyle,
 }: SearchHistoryListProps) {
   const { t } = useTranslation();
@@ -37,7 +42,7 @@ export const SearchHistoryList = memo(function SearchHistoryList({
     <div
       ref={containerRef}
       onScroll={onScroll}
-      className="max-h-[480px] overflow-y-auto px-[14px] pt-[8px] pb-[14px]"
+      className={`${fullHeight ? "h-full" : "max-h-[480px]"} overflow-y-auto overflow-x-hidden px-[14px] pt-[8px] pb-[14px]`}
       style={maskStyle}
     >
       <div className="flex items-center justify-between px-[6px] pt-[4px] pb-[10px]">
@@ -58,8 +63,8 @@ export const SearchHistoryList = memo(function SearchHistoryList({
         {items.map((item) => {
           if (item.type === "query") {
             return (
+              <SwipeToDelete key={item.id} label={t("common.remove")} onDelete={() => removeItem(item.id)}>
               <div
-                key={item.id}
                 onClick={() => onSelectQuery(item.title)}
                 className="group flex items-center w-full min-w-0 rounded-[8px] hover:bg-border-alpha-14 cursor-pointer transition-colors select-none"
               >
@@ -71,8 +76,8 @@ export const SearchHistoryList = memo(function SearchHistoryList({
                     {item.title}
                   </span>
                 </div>
-                <RemoveHistoryButton label={t("common.remove")} onRemove={() => removeItem(item.id)} />
               </div>
+              </SwipeToDelete>
             );
           }
 
@@ -80,7 +85,8 @@ export const SearchHistoryList = memo(function SearchHistoryList({
           const data = item.itemData ?? item;
 
           return (
-            <div key={item.id} className="group flex items-center w-full min-w-0">
+            <SwipeToDelete key={item.id} label={t("common.remove")} onDelete={() => removeItem(item.id)}>
+            <div className="group flex items-center w-full min-w-0">
               <div className="min-w-0 flex-1">
                 <SongCardWithMenu
                 id={item.id}
@@ -101,33 +107,17 @@ export const SearchHistoryList = memo(function SearchHistoryList({
                     : () => onNavigateItem(data)
                 }
                 onNavigate={() => onNavigateItem(data)}
+                onOpenArtist={onOpenArtist}
+                showLikeButton={item.type === "track"}
               />
               </div>
-              <RemoveHistoryButton label={t("common.remove")} onRemove={() => removeItem(item.id)} />
             </div>
+            </SwipeToDelete>
           );
         })}
       </div>
     </div>
   );
 });
-
-function RemoveHistoryButton({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation();
-        onRemove();
-      }}
-      className="shrink-0 flex items-center justify-center w-[28px] h-[28px] rounded-[6px] text-text-tertiary group-hover:text-text-primary border-none bg-transparent cursor-pointer"
-    >
-      <CloseLine size={16} />
-    </button>
-  );
-}
 
 export default SearchHistoryList;

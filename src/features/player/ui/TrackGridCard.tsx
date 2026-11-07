@@ -28,6 +28,8 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
     id: track.id,
     title: track.title,
     artists: track.artists,
+    artistId: track.artistId,
+    artistName: track.artistList?.find((artist) => artist.name)?.name ?? track.artists.split(",")[0]?.trim(),
     coverUrl,
     durationMs: track.durationMs,
     searchType: "track",
@@ -68,7 +70,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
       onClick={onPlay}
       onContextMenu={onContextMenu}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-[10px] bg-bg-panel">
+      <div className="relative aspect-square w-full overflow-hidden rounded-[16px] bg-[#161616]">
         {coverUrl ? (
           <CoverImage
             src={coverUrl}

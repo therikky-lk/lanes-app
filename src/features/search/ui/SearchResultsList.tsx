@@ -10,6 +10,7 @@ export interface SearchResultsListProps {
   onPlayFromSearch: (track: any) => void;
   onNavigateItem: (item: any) => void;
   onScroll?: () => void;
+  onOpenArtist?: (artist: { id: string; name: string }) => void;
   maskStyle?: React.CSSProperties;
   partialWarning?: string | null;
   scrollRef?: React.RefObject<HTMLDivElement | null>;
@@ -22,6 +23,7 @@ export const SearchResultsList = memo(function SearchResultsList({
   onPlayFromSearch,
   onNavigateItem,
   onScroll,
+  onOpenArtist,
   maskStyle,
   partialWarning,
   scrollRef,
@@ -44,7 +46,7 @@ export const SearchResultsList = memo(function SearchResultsList({
     <div
       ref={containerRef}
       onScroll={onScroll}
-      className="h-full overflow-y-auto px-[14px] pt-[8px] pb-[14px]"
+      className="h-full overflow-y-auto overflow-x-hidden px-[14px] pt-[8px] pb-[14px]"
       style={maskStyle}
     >
       <div
@@ -136,12 +138,10 @@ export const SearchResultsList = memo(function SearchResultsList({
                 durationMs={durationMs}
                 searchType={it._type}
                 totalTracks={it.totalTracks ?? it.total_tracks}
-                onPlay={
-                  it._type === "track"
-                    ? () => onPlayFromSearch(it)
-                    : () => onNavigateItem(it)
-                }
+                onPlay={it._type === "track" ? () => onPlayFromSearch(it) : () => onNavigateItem(it)}
                 onNavigate={() => onNavigateItem(it)}
+                onOpenArtist={onOpenArtist}
+                showLikeButton={it._type === "track"}
               />
             </div>
           );

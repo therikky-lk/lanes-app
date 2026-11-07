@@ -240,6 +240,12 @@ class PlaybackTelemetryTracker {
     }
   }
 
+  public onTrackLooped() {
+    if (!this.activeTrackId) return;
+    this.loopCount += 1;
+    this.lastActivityTime = Date.now();
+  }
+
   public flushCurrentTrack(): Promise<void> {
     if (!this.activeTrackId) return Promise.resolve();
     this.onPausedOrStopped();
@@ -333,6 +339,8 @@ class PlayerEngine {
         const isRepeatOne = usePlayerStore.getState().repeat === "one";
         this.telemetry.onTrackCompleted(isRepeatOne);
       };
+      playerRuntime.onLoop = () => this.telemetry.onTrackLooped();
+      playerRuntime.setRepeatOne(usePlayerStore.getState().repeat === "one");
       playerRuntime.onError = (info) => this.handlePlaybackError(info);
     }
 
@@ -355,6 +363,7 @@ class PlayerEngine {
       const unsub = usePlayerStore.subscribe((state) => {
         // what plays next changed (repeat mode, the queue): hand it over again
         if (state.repeat !== prevRepeat || state.queue !== prevQueue) {
+          if (state.repeat !== prevRepeat) playerRuntime?.setRepeatOne(state.repeat === "one");
           prevRepeat = state.repeat;
           prevQueue = state.queue;
           this.lastPreloadKey = null;
@@ -757,13 +766,13 @@ class PlayerEngine {
     }
   }
 
-  public async skipPrevious(): Promise<void> {
+  public async skipPrevious(forceTrackChange = false): Promise<void> {
     if (forwarded({ type: "prev" })) return;
     const store = usePlayerStore.getState();
     if (store.queue.length === 0) return;
 
     // If playback is > 3 seconds, standard player behavior restarts the track
-    if (store.positionMs > 3000) {
+    if (!forceTrackChange && store.positionMs > 3000) {
       this.seek(0);
       return;
     }
@@ -1308,23 +1317,28 @@ class PlayerEngine {
   }
 
   /** Android: the native player already started the queued next track */
-  public handleNativeAdvance(trackId: string): void {
+  public handleNativeAdvance(trackId: string, snapshot?: { positionMs: number; durationMs: number; playing: boolean; buffering: boolean; playWhenReady?: boolean }): void {
     const store = usePlayerStore.getState();
-    if (store.currentTrack?.id === trackId) return;
+    if (store.currentTrack?.id === trackId) {
+      if (store.repeat === "one") this.telemetry.onTrackLooped();
+      return;
+    }
     const expected = this.computeNextIndex(true);
-    const index =
+    let index =
       expected !== null && store.queue[expected]?.id === trackId
         ? expected
         : store.queue.findIndex((t, i) => i > store.currentIndex && t.id === trackId);
+    // A background session can cross the queue boundary more than once.
+    if (index < 0) index = store.queue.findIndex(t => t.id === trackId);
     if (index < 0) return;
     const track = store.queue[index];
     this.telemetry.onTrackCompleted(false);
     this.sessionId += 1;
     const mySession = this.sessionId;
     store.setCurrentTrack(track, index);
-    store.setPosition(0);
-    store.setDuration(track.durationMs ?? 0);
-    store.setStatus("playing", null);
+    store.setPosition(snapshot?.positionMs ?? 0);
+    store.setDuration(snapshot && snapshot.durationMs > 0 ? snapshot.durationMs : track.durationMs ?? 0);
+    store.setStatus(snapshot ? (snapshot.buffering ? "loading" : (snapshot.playWhenReady ?? snapshot.playing) ? "playing" : "paused") : "playing", null);
     playerRuntime?.updateMediaSessionMetadata(track);
     this.maybeExtendQueue(mySession, track.id, index, store.queue.length);
   }

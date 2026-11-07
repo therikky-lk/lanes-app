@@ -147,7 +147,7 @@ export default function DropdownMenu({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: side === "top" ? 2 : -2 }}
           transition={{ duration: 0.1, ease: "easeOut" }}
-          className={`overflow-hidden rounded-xl border border-white/[0.07] bg-bg-elevated/95 shadow-[0_16px_48px_rgba(0,0,0,0.35)] backdrop-blur-xl p-1.5 min-w-[180px] ${
+          className={`overflow-hidden rounded-xl border border-white/[0.07] bg-bg-elevated/95 shadow-none backdrop-blur-xl p-1.5 min-w-[180px] ${
             isFixed ? "fixed z-[99999]" : side === "top" ? "absolute right-0 bottom-full mb-1 z-50" : "absolute right-0 top-full mt-1 z-50"
           }`}
           style={isFixed ? fixedStyle : {}}

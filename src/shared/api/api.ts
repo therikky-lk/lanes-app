@@ -1,3 +1,4 @@
+import type { ShareEntityType, ShareSnapshot, SharedEntity } from "@/shared/contracts/sharing";
 import { usesLocalAppTransport } from "./localAppTransport";
 import { decodeLyricsStream } from "./lyricsStream";
 import {
@@ -55,7 +56,7 @@ function translate(key: string, vars?: Record<string, string | number>) {
   }
 }
 
-import { getApiBaseUrl } from "./baseUrl";
+import { getApiBaseUrl, LANE_LINK_ORIGIN } from "./baseUrl";
 
 const CLIENT_VERSION =
   (import.meta.env.VITE_CLIENT_VERSION as string | undefined) || `${APP_VERSION}-desktop`;
@@ -196,6 +197,7 @@ async function executeRequest<T>(
   init?: RequestInit,
   allowRefresh = true,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  apiBaseUrl = getApiBaseUrl(),
 ): Promise<T> {
   const startTime = performance.now();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -251,7 +253,7 @@ async function executeRequest<T>(
   let res: Response;
   try {
     res = await fetchWithTimeout(
-      getApiBaseUrl() + path,
+      apiBaseUrl + path,
       {
         ...init,
         headers: {
@@ -328,7 +330,7 @@ async function executeRequest<T>(
     const refreshedSignedHeaders = await signApiRequest(method, path, rawBody);
     try {
       res = await fetchWithTimeout(
-        getApiBaseUrl() + path,
+        apiBaseUrl + path,
         {
           ...init,
           headers: {
@@ -438,21 +440,22 @@ async function request<T>(
   init?: RequestInit,
   allowRefresh = true,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  apiBaseUrl = getApiBaseUrl(),
 ): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   if (method === "GET" && !init?.signal) {
-    const key = `${path}::${allowRefresh}`;
+    const key = `${apiBaseUrl}${path}::${allowRefresh}`;
     const inFlight = inFlightGetRequests.get(key);
     if (inFlight) {
       return inFlight as Promise<T>;
     }
-    const promise = executeRequest<T>(path, init, allowRefresh, timeoutMs).finally(() => {
+    const promise = executeRequest<T>(path, init, allowRefresh, timeoutMs, apiBaseUrl).finally(() => {
       inFlightGetRequests.delete(key);
     });
     inFlightGetRequests.set(key, promise);
     return promise;
   }
-  return executeRequest<T>(path, init, allowRefresh, timeoutMs);
+  return executeRequest<T>(path, init, allowRefresh, timeoutMs, apiBaseUrl);
 }
 
 export class ApiError extends Error {
@@ -669,6 +672,15 @@ async function withAuthProof<T>(
 }
 
 export const api = {
+  createShare(input: { type: ShareEntityType; entityId: string; snapshot: ShareSnapshot }): Promise<{ id: string; url: string }> {
+    return request("/v1/shares", { method: "POST", body: JSON.stringify(input) }, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
+  },
+  getShare(id: string): Promise<SharedEntity> {
+    return request(`/v1/public/shares/${encodeURIComponent(id)}`, undefined, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
+  },
+  getPublicPlaylist(id: string): Promise<{ playlist: ApiUserPlaylist; items: ApiUserPlaylistItem[] }> {
+    return request(`/v1/public/playlists/${encodeURIComponent(id)}`, undefined, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
+  },
   async login(email: string, password: string): Promise<AuthTokens> {
     const result = await withAuthProof("login", email, (proof) =>
       request<AuthTokens>(

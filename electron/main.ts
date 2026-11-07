@@ -22,7 +22,7 @@ import {
   type SignRequestInput,
 } from "./crypto.js";
 import {
-  DEEP_LINK_SCHEME,
+  DEEP_LINK_SCHEMES,
   findDeeplinkArg,
   parseDeeplink,
   type DeeplinkTarget,
@@ -470,12 +470,14 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
-    // register liner:// so browsers / xdg-open route share links to us
+    // Register Lane's current scheme and keep the old scheme for existing links.
     // (on linux the packaged .desktop carries the mime handler too)
-    if (process.defaultApp && process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME, process.execPath, [path.resolve(process.argv[1]!)]);
-    } else {
-      app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME);
+    for (const scheme of DEEP_LINK_SCHEMES) {
+      if (process.defaultApp && process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient(scheme, process.execPath, [path.resolve(process.argv[1]!)]);
+      } else {
+        app.setAsDefaultProtocolClient(scheme);
+      }
     }
     touchBarManager = new TouchBarManager(
       path.join(__dirname, "preload.cjs"),

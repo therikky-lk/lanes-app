@@ -49,6 +49,7 @@
     "sec": "s"
   },
   "common": {
+    "show_more": "Pokaż więcej",
     "pause": "Pauza",
     "source": "Źródło",
     "app": {
@@ -219,7 +220,13 @@
     "increase": "Zwiększ",
     "mute": "Wycisz",
     "unmute": "Włącz dźwięk",
-    "play": "Odtwórz"
+    "play": "Odtwórz",
+    "cache_track": "Zapisz utwór w pamięci podręcznej",
+    "cache_playlist": "Zapisz playlistę w pamięci podręcznej",
+    "cache_saved": "Zapisano w pamięci podręcznej",
+    "cache_saving": "Zapisywanie w pamięci podręcznej…",
+    "cache_failed": "Nie udało się zapisać w pamięci podręcznej",
+    "cache_playlist_result": "Zapisano {saved} z {total} utworów w pamięci podręcznej"
   },
   "home": {
     "recent": "Ostatnio",
@@ -273,6 +280,7 @@
     "next_mixes": "Następne miksy"
   },
   "library": {
+    "import_from_service": "Importuj z {service}",
     "title": "Biblioteka",
     "liked_songs": "Polubione utwory",
     "song": "utwór",
@@ -474,6 +482,7 @@
     }
   },
   "player": {
+    "open_cover": "Otwórz okładkę",
     "repeat_off": "Powtarzanie: wył.",
     "repeat_all": "Powtarzanie: wszystko",
     "repeat_one": "Powtarzanie: utwór",
@@ -610,6 +619,7 @@
     "likes_empty": "Nie ma jeszcze lubianych piosenek"
   },
   "search": {
+    "recommended_artists": "Polecani wykonawcy",
     "placeholder": "Szukaj utworów, wykonawców, albumów...",
     "all": "Wszystko",
     "songs": "Utwory",
@@ -900,7 +910,7 @@
       "local_desc": "{songs} · Zachowane są oryginalne pliki",
       "remove": "Usuń pliki do pobrania",
       "remove_size": "Usunąć {size}?",
-      "clear": "Wyczyść pamięć podręczną",
+      "clear": "Wyczyść",
       "clear_size": "Wyczyść {size}?",
       "downloads_limit": "Miejsce na pliki do pobrania",
       "downloads_limit_hint": "Około {count} utworów. Pobieranie zostaje wstrzymane, gdy jest pełne.",
@@ -963,6 +973,10 @@
       "lossless": "Bezstratna (FLAC/ALAC) - Niedostępna"
     },
     "profile": {
+      "remove_avatar": "Usuń awatar",
+      "avatar_local": "Zapisany tylko na tym urządzeniu",
+      "change_avatar": "Zmień awatar",
+      "avatar_invalid": "Wybierz obraz o rozmiarze do 20 MB.",
       "title": "Profil",
       "signed_in_as": "Zalogowano jako",
       "not_signed_in": "Nie jesteś zalogowany w rozpoznanej sesji.",
@@ -1454,5 +1468,12 @@
     "copy": "Kopia",
     "sign_in": "Zaloguj się na to samo konto na swoich urządzeniach, aby przełączać odtwarzanie między nimi.",
     "channel": "Kanał"
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
   }
 }

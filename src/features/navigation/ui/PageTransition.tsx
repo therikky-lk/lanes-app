@@ -13,7 +13,7 @@ function TransitionContent({ children }: PageTransitionProps) {
   if (pathname !== "/player") {
     shellKeyRef.current = currentKey;
   }
-  const key = pathname === "/player" ? shellKeyRef.current : currentKey;
+  const key = pathname.startsWith("/settings") ? "/settings" : pathname === "/player" ? shellKeyRef.current : currentKey;
   return (
     <div
       key={key}

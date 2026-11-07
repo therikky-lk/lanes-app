@@ -1,3 +1,6 @@
+import { shareEntity } from "@/shared/utils/share";
+import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
+import { LuShare2 } from "react-icons/lu";
 import { useCallback } from "react";
 import {
   LuRadio,
@@ -25,6 +28,8 @@ export interface SongMenuContext {
   id?: string;
   title: string;
   artists: string;
+  artistId?: string;
+  artistName?: string;
   coverUrl: string;
   duration?: string;
   durationMs?: number;
@@ -42,6 +47,8 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     id,
     title,
     artists,
+    artistId,
+    artistName,
     coverUrl,
     duration,
     durationMs,
@@ -302,5 +309,18 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     t,
   ]);
 
-  return buildMenu();
+  const items = buildMenu();
+  // Local files and personal mixes cannot be opened on another device.
+  if (id && !/^(local:|daily-mix|mix-|yt-account:)/.test(id)) items.push({
+    id: "share", label: t("common.share"), icon: <LuShare2 size={15} />,
+    onClick: async () => {
+      try {
+        const type = searchType || "track";
+        const artistAvatarUrl = type === "track" ? await resolveArtistAvatar(artistId, artistName) ?? undefined : undefined;
+        const result = await shareEntity(type, id, { title, subtitle: artists, coverUrl, artistAvatarUrl });
+        if (result === "copied") showToast(t("sharing.copied"), "checkmark");
+      } catch { showToast(t("sharing.failed"), "error"); }
+    },
+  });
+  return items;
 }

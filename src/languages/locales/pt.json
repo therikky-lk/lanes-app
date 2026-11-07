@@ -49,6 +49,7 @@
     "sec": "s"
   },
   "common": {
+    "show_more": "Mostrar mais",
     "pause": "Pausar",
     "source": "Fonte",
     "app": {
@@ -219,7 +220,13 @@
     "increase": "Aumentar",
     "mute": "Silenciar",
     "unmute": "Ativar som",
-    "play": "Reproduzir"
+    "play": "Reproduzir",
+    "cache_track": "Guardar faixa no cache",
+    "cache_playlist": "Guardar playlist no cache",
+    "cache_saved": "Salvo no cache",
+    "cache_saving": "Salvando no cache…",
+    "cache_failed": "Não foi possível salvar no cache",
+    "cache_playlist_result": "{saved} de {total} faixas salvas no cache"
   },
   "home": {
     "recent": "Recentes",
@@ -273,6 +280,7 @@
     "next_mixes": "Próximos mixes"
   },
   "library": {
+    "import_from_service": "Importar de {service}",
     "title": "Biblioteca",
     "liked_songs": "Músicas curtidas",
     "song": "música",
@@ -474,6 +482,7 @@
     }
   },
   "player": {
+    "open_cover": "Abrir capa",
     "repeat_off": "Repetir: desativado",
     "repeat_all": "Repetir: tudo",
     "repeat_one": "Repetir: faixa",
@@ -610,6 +619,7 @@
     "cover_failed": "Não foi possível usar esta imagem"
   },
   "search": {
+    "recommended_artists": "Artistas recomendados",
     "placeholder": "Pesquise faixas, artistas, álbuns...",
     "all": "Tudo",
     "songs": "Músicas",
@@ -949,7 +959,7 @@
       "local_desc": "{songs} · arquivos originais são mantidos",
       "remove": "Remover downloads",
       "remove_size": "Remover {size}?",
-      "clear": "Limpar cache",
+      "clear": "Limpar",
       "clear_size": "Limpar {size}?",
       "downloads_limit": "Espaço para downloads",
       "downloads_limit_hint": "Cerca de {count} músicas. Os downloads são pausados ​​quando estão cheios.",
@@ -1012,6 +1022,10 @@
       "lossless": "Sem perdas (FLAC/ALAC) - Indisponível"
     },
     "profile": {
+      "remove_avatar": "Remover avatar",
+      "avatar_local": "Salvo apenas neste dispositivo",
+      "change_avatar": "Alterar avatar",
+      "avatar_invalid": "Escolha uma imagem de até 20 MB.",
       "title": "Perfil",
       "signed_in_as": "Conectado como",
       "not_signed_in": "No momento não conectado a uma sessão reconhecida.",
@@ -1456,5 +1470,12 @@
     "sign_in": "Faça login na mesma conta em seus dispositivos para alternar a reprodução entre eles.",
     "copied": "Copiado",
     "channel": "Canal"
+  },
+  "sharing": {
+    "copied": "Link copied",
+    "failed": "Could not share. Check your connection and item visibility.",
+    "make_public": "Make public",
+    "make_private": "Make private",
+    "open_failed": "Could not open this link. The item may no longer be available."
   }
 }

@@ -1,9 +1,22 @@
-// base url of the share-link redirector (local testing: http://localhost:1193)
-export const SHARE_BASE_URL = "https://link.tryliner.fun";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { api } from "@/shared/api";
+import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
+import type { ShareEntityType, ShareSnapshot } from "@/shared/contracts/sharing";
+export type { ShareEntityType } from "@/shared/contracts/sharing";
+export const SHARE_BASE_URL = LANE_LINK_ORIGIN;
 
-export type ShareEntityType = "artist" | "album" | "playlist" | "track";
+const nativeShare = registerPlugin<{ share(input: { title: string; url: string }): Promise<void> }>("LaneShare");
 
-// builds a public share link, the redirector bounces it to the liner:// deeplink
-export function buildShareUrl(type: ShareEntityType, id: string): string {
-  return `${SHARE_BASE_URL}/${type}?id=${encodeURIComponent(id)}`;
+export async function shareEntity(type: ShareEntityType, entityId: string, snapshot: ShareSnapshot): Promise<"shared" | "copied" | "cancelled"> {
+  const { url } = await api.createShare({ type, entityId, snapshot });
+  if (Capacitor.getPlatform() === "android") {
+    await nativeShare.share({ title: snapshot.title, url });
+    return "shared";
+  }
+  if (navigator.share) {
+    try { await navigator.share({ title: snapshot.title, url }); return "shared"; }
+    catch (error) { if (error instanceof Error && error.name === "AbortError") return "cancelled"; }
+  }
+  await navigator.clipboard.writeText(url);
+  return "copied";
 }

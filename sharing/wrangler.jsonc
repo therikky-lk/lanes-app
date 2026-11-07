@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "lane-share",
+  "main": "worker-entry.mjs",
+  "compatibility_date": "2026-05-01",
+  "workers_dev": true,
+  "keep_vars": true,
+  "vars": {
+    "ANDROID_SHA256_FINGERPRINTS": "57:51:EC:88:2B:13:2C:0F:96:7F:E4:E6:30:9F:6E:62:D8:44:1D:CD:41:9D:A1:09:04:AB:5D:1C:0D:1A:FC:69"
+  },
+  "routes": [
+    {
+      "pattern": "lane-app.site",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lane-shares"
+    }
+  ],
+  "rules": [
+    {
+      "type": "CompiledWasm",
+      "globs": [
+        "**/*.wasm"
+      ],
+      "fallthrough": true
+    }
+  ]
+}
