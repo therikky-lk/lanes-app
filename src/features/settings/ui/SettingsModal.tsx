@@ -313,10 +313,10 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             <h2 className="m-0 text-[20px] font-[600] tracking-[-0.01em] text-text-primary" style={font}>
               {t("common.sidebar.settings") || "Settings"}
             </h2>
-            <div className="ml-auto"><SettingsAccount onSignOut={handleClose} /></div>
+            <div><SettingsAccount onSignOut={handleClose} /></div>
           </div>
         )}
-        {!isMobile && <div className="flex justify-end px-[12px] pt-[12px]"><SettingsAccount onSignOut={handleClose} /></div>}
+        {!isMobile && <div className="flex justify-start px-[12px] pt-[12px]"><SettingsAccount onSignOut={handleClose} /></div>}
         <div className="px-[12px] pt-[14px] pb-[8px]">
           <div className="relative flex items-center">
             <Search2Line

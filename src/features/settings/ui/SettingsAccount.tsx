@@ -62,7 +62,7 @@ export default function SettingsAccount({ onSignOut }: { onSignOut: () => void }
   };
   return <>
     <div className="flex min-w-0 max-w-full items-center gap-[8px]">
-      {user && <span className="max-w-[140px] truncate text-[13px] font-[550] text-text-primary">{displayName}</span>}
+      {user && <span className="max-w-[180px] truncate text-[16px] font-[600] text-text-primary">{displayName}</span>}
       <button type="button" aria-label={t("settings.profile.title")} aria-haspopup="dialog" onClick={() => setOpen(true)} className="flex h-[40px] w-[40px] shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-full border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/50">
         <UserAvatar key={user?.avatarUrl} user={user} size={40} className="!rounded-full" />
       </button>
