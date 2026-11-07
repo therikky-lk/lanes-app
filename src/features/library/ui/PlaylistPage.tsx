@@ -972,11 +972,7 @@ function LibraryPlaylistContent() {
                                   const nextIsPublic = !playlistDetail.isPublic;
                                   setIsVisibilityUpdating(true);
                                   try {
-                                    await api.updatePlaylist(decodedId, {
-                                      title: playlistDetail.title,
-                                      ...(playlistDetail.description !== undefined ? { description: playlistDetail.description } : {}),
-                                      isPublic: nextIsPublic,
-                                    });
+                                    await api.updatePlaylist(decodedId, { isPublic: nextIsPublic });
                                     queryCache.delete(`playlist:detail:${decodedId}`);
                                     window.dispatchEvent(new Event("library:changed"));
                                   } catch { toast(t("common.error_something_wrong"), "error"); }
