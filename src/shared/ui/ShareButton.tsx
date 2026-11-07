@@ -8,6 +8,7 @@ import type { ShareEntityType, ShareSnapshot } from "@/shared/contracts/sharing"
 import DropdownMenu from "./DropdownMenu";
 import type { DropdownMenuItem } from "./DropdownMenu";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
+import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
 
 export default function ShareButton({ type, entityId, snapshot, menu = false }: {
   type: ShareEntityType; entityId: string; snapshot: ShareSnapshot; menu?: boolean;
@@ -18,7 +19,12 @@ export default function ShareButton({ type, entityId, snapshot, menu = false }: 
     if (busy) return;
     setBusy(true);
     try {
-      const result = await shareEntity(type, entityId, snapshot);
+      const coverUrl = type === "artist"
+        ? (snapshot.coverUrl?.startsWith("https://")
+          ? snapshot.coverUrl
+          : await resolveArtistAvatar(entityId, snapshot.title) ?? undefined)
+        : snapshot.coverUrl;
+      const result = await shareEntity(type, entityId, { ...snapshot, coverUrl });
       if (result === "copied") showToast(t("sharing.copied"), "checkmark");
     } catch {
       if (type === "artist") {
