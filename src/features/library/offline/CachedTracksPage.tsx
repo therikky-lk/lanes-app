@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import SwipeToDelete from "@/shared/ui/SwipeToDelete";
+import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { DeleteLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
@@ -36,7 +36,7 @@ export default function CachedTracksPage() {
     </div>
     {loaded && cached.length > 0 && tracks.length === 0 && <p className="py-[24px] text-center text-text-tertiary">{t("common.no_results")}</p>}
     {!loaded ? <p className="text-text-tertiary">…</p> : cached.length === 0 ? <p className="py-12 text-center text-text-tertiary">{t("library.cached_empty")}</p> : <div className="rounded-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] py-[8px]">{tracks.map(track => {
-      const card = <SongCardWithMenu showLikeButton searchType="track" durationMs={track.durationMs}
+      const card = <SongCardWithMenu key={track.id} showLikeButton searchType="track" durationMs={track.durationMs}
         id={track.id} title={track.title} artists={track.artists} artistId={track.artistId} artistList={track.artistList}
         coverUrl={track.coverUrl} albumTitle={track.album?.title} highlight={search.activeQuery} isCurrent={current === track.id}
         duration={`${Math.floor(track.durationMs / 60000)}:${String(Math.floor(track.durationMs / 1000) % 60).padStart(2, "0")}`}
@@ -48,7 +48,9 @@ export default function CachedTracksPage() {
         playerEngine.addToQueue(track);
         toast(t("common.added_to_queue"), "checkmark", { description: track.title });
       };
-      return isMobile ? <SwipeToDelete key={track.id} label={t("common.add_to_queue")} onAddToQueue={addToQueue}>{card}</SwipeToDelete> : <div key={track.id}>{card}</div>;
+      return isMobile
+        ? <SwipeToQueue key={track.id} label={t("common.add_to_queue")} onAddToQueue={addToQueue}>{card}</SwipeToQueue>
+        : <div key={track.id}>{card}</div>;
     })}</div>}
   </div>;
 }

@@ -1,8 +1,10 @@
 import type { AlbumDetails, CatalogPlaylistDetails, Track, TrackArtist } from "@/shared/contracts";
-import { findFirst, type JsonRecord, walkRecords } from "@/shared/utils/json";
+import { asRecord, findFirst, stringValue, type JsonRecord, walkRecords } from "@/shared/utils/json";
 import { getRuns, getText, runPageType, runsToArtists, yearFromRuns } from "./innertubeJson";
 import { coverFromThumbnail } from "./innertubeThumbnail";
 import { isMusicVideo, mapInnertubeTrack, musicVideoType } from "./innertubeTrackMapper";
+import { mapYoutubePlaylistTracks } from "@/shared/media/youtube/playlist/youtubePlaylistTracks";
+import { parsePlaylistAuthor } from "@/shared/media/youtube/account/playlistAuthor";
 
 export function mapInnertubeBrowseTracks(
   body: unknown,
@@ -13,8 +15,8 @@ export function mapInnertubeBrowseTracks(
   const seen = new Set<string>();
   walkRecords(body, (record) => {
     if (!record.musicResponsiveListItemRenderer) return false;
-    // Collections can contain official videos and user uploads alongside
-    // audio tracks. Artist pages may include official clips; never include UGC.
+    // Album/artist shelves contain videos alongside audio tracks. Artist pages
+    // may include official clips; explicit playlists use a separate mapper.
     if (
       isMusicVideo(record) &&
       !(includeOfficialMusicVideos && musicVideoType(record) === "MUSIC_VIDEO_TYPE_OMV")
@@ -101,10 +103,21 @@ function playlistMetadata(header: JsonRecord | undefined): { author?: string; de
 }
 
 export function mapInnertubePlaylistDetails(id: string, body: unknown): CatalogPlaylistDetails | null {
-  const header = findFirst(body, "musicResponsiveHeaderRenderer");
-  const title = getText(header?.title);
+  const header = findFirst(body, "musicResponsiveHeaderRenderer") ??
+    findFirst(body, "musicDetailHeaderRenderer") ?? findFirst(body, "playlistHeaderRenderer") ??
+    findFirst(body, "musicHeaderRenderer");
+  const sidebar = findFirst(body, "playlistSidebarPrimaryInfoRenderer");
+  const microformat = findFirst(body, "microformatDataRenderer");
+  const entity = findFirst(body, "entityMetadataRenderer");
+  const title = getText(header?.title) ?? stringValue(header?.title) ??
+    stringValue(findFirst(body, "playlistMetadataRenderer")?.title) ??
+    getText(sidebar?.title) ?? stringValue(findFirst(body, "pageHeaderRenderer")?.pageTitle) ?? stringValue(microformat?.title) ??
+    getText(entity?.title) ?? stringValue(asRecord(entity?.title)?.content);
   if (!title) return null;
-  const cover = coverFromThumbnail(header?.thumbnail) ?? microformatCover(body);
+  const cover = coverFromThumbnail(header?.thumbnail) ?? microformatCover(body) ??
+    coverFromThumbnail(findFirst(body, "playlistVideoThumbnailRenderer")?.thumbnail);
+  const owner = getText(header?.ownerText) ?? getText(findFirst(body, "videoOwnerRenderer")?.title) ?? parsePlaylistAuthor(entity);
+  const description = getText(header?.descriptionText) ?? stringValue(microformat?.description);
   const year = yearFromRuns(header?.subtitle);
   const trackCount = trackCountFrom(header?.secondSubtitle);
   return {
@@ -112,9 +125,11 @@ export function mapInnertubePlaylistDetails(id: string, body: unknown): CatalogP
     id,
     title,
     ...playlistMetadata(header),
+    ...(owner ? { author: owner } : {}),
+    ...(description ? { description } : {}),
     ...(year ? { year } : {}),
     ...(cover ? { cover } : {}),
     ...(trackCount ? { trackCount } : {}),
-    tracks: mapInnertubeBrowseTracks(body),
+    tracks: mapYoutubePlaylistTracks(body),
   };
 }
