@@ -20,6 +20,8 @@
       h1 { margin: 22px 0 12px; font-size: clamp(38px, 9vw, 58px); line-height: 1.02; letter-spacing: -.07em; }
       h1 span { color: #ff4d4d; }
       p { margin: 0; color: #888; font-size: 15px; line-height: 1.7; }
+      .stats-link { display: inline-flex; margin-top: 26px; padding: 9px 13px; border: 1px solid #292929; border-radius: 999px; color: #aaa; font-size: 12px; transition: background .16s ease, color .16s ease; }
+      .stats-link:hover { background: #19191d; color: #fff; }
       footer { position: fixed; right: 22px; bottom: 18px; left: 22px; color: #555; font-size: 10px; text-align: center; letter-spacing: .12em; }
       @media (prefers-reduced-motion: no-preference) { .status::before { animation: pulse 1.7s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .4; } } }
     </style>
@@ -31,6 +33,7 @@
       <span class="status">В РАЗРАБОТКЕ</span>
       <h1>Скоро будет<br /><span>Lane.</span></h1>
       <p>Мы готовим приложение. Загляни сюда немного позже.</p>
+      <a class="stats-link" href="/stats/">Статистика приложения</a>
     </main>
     <footer>LANE MUSIC PLAYER</footer>
   </body>
