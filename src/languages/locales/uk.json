@@ -590,6 +590,7 @@
     "loading_playback": "Завантаження відтворення",
     "now_playing": "Зараз грає",
     "next_in_queue": "Далі в черзі",
+    "added_by_you": "Додано вами",
     "reorder_track": "Перетягнути трек"
   },
   "playlist": {
