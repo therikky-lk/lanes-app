@@ -18,6 +18,7 @@ export function useLyricsAnimator({
   isPlaying,
   positionMs,
   durationMs,
+  enabled = true,
   onActiveLineChange,
 }: {
   syncedLines: SyncedLine[];
@@ -25,6 +26,7 @@ export function useLyricsAnimator({
   isPlaying: boolean;
   positionMs: number;
   durationMs: number;
+  enabled?: boolean;
   onActiveLineChange: (indices: number[]) => void;
 }) {
   const isPlayingRef = useRef(isPlaying);
@@ -130,6 +132,7 @@ export function useLyricsAnimator({
   );
 
   useEffect(() => {
+    if (!enabled) return;
     let rafId: number;
 
     const tick = () => {
@@ -147,28 +150,26 @@ export function useLyricsAnimator({
 
       let newMainLineIndex = -1;
       if (isSynced && lines.length > 0) {
-        for (let i = 0; i < lines.length; i++) {
-          if (estimated >= lines[i].timeMs) {
-            if (!lines[i].text.match(/^\s*<[^>]+>/)) {
-              newMainLineIndex = i;
-            }
-          } else {
-            break;
-          }
+        // Find the last reached line in logarithmic time; lyrics can contain
+        // hundreds of lines and this runs once per animation frame.
+        let low = 0;
+        let high = lines.length;
+        while (low < high) {
+          const middle = (low + high) >>> 1;
+          if (estimated >= lines[middle].timeMs) low = middle + 1;
+          else high = middle;
         }
+        newMainLineIndex = low - 1;
+        while (newMainLineIndex >= 0 && /^\s*<[^>]+>/.test(lines[newMainLineIndex].text)) newMainLineIndex -= 1;
       }
 
       const newActiveIndices: number[] = [];
       if (newMainLineIndex >= 0) {
         newActiveIndices.push(newMainLineIndex);
         for (let i = newMainLineIndex + 1; i < lines.length; i++) {
-          if (lines[i].text.match(/^\s*<[^>]+>/)) {
-            if (estimated >= lines[i].timeMs) {
-              newActiveIndices.push(i);
-            }
-          } else {
-            break;
-          }
+          if (!/^\s*<[^>]+>/.test(lines[i].text)) break;
+          if (estimated < lines[i].timeMs) break;
+          newActiveIndices.push(i);
         }
       }
 
@@ -224,7 +225,7 @@ export function useLyricsAnimator({
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, []);
+  }, [enabled]);
 
   return { setWordSpans, setWordData, clearWordSpans, registerWordSpan };
 }

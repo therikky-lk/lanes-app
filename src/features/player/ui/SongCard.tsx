@@ -172,6 +172,7 @@ function SongCard({
 
   return (
     <div
+      data-reorder-item
       className={`group w-full ${addedDate !== undefined ? "flex items-center justify-between md:grid md:items-center md:justify-normal" : "flex items-center justify-between"} rounded-[10px] ${paddingClass} outline-none transition-colors duration-150 ease-out ${
         className ?? ""
       } ${unavailableNote ? "opacity-[0.42]" : ""} ${onPlay ? "cursor-pointer" : ""} ${onPlay && !className?.includes("hover:bg-") ? "hover:bg-border-alpha-14" : ""}`}
@@ -185,6 +186,7 @@ function SongCard({
         if (e.clientY <= 32) return;
         if (!onGrabStart) return;
         const target = e.target as HTMLElement;
+        if (target.closest("[data-reorder-handle]")) return;
         if (
           target.closest("button") ||
           target.closest("a") ||
@@ -360,6 +362,28 @@ function SongCard({
           >
             {duration}
           </span>
+        )}
+        {showReorderHandle && onGrabStart && (
+          <button
+            type="button"
+            aria-label={t("player.reorder_track") || "Reorder track"}
+            title={t("player.reorder_track") || "Reorder track"}
+            data-reorder-handle
+            data-prevent-drag
+            onPointerDown={event => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              event.stopPropagation();
+              onGrabStart(event as unknown as React.PointerEvent<HTMLDivElement>);
+            }}
+            className="ml-[4px] flex h-[36px] w-[28px] shrink-0 touch-none items-center justify-center rounded-md border-0 bg-transparent text-text-tertiary transition-colors hover:bg-white/[0.06] hover:text-text-primary active:cursor-grabbing"
+          >
+            <svg aria-hidden="true" width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
+              <circle cx="5" cy="4" r="1.25" /><circle cx="11" cy="4" r="1.25" />
+              <circle cx="5" cy="10" r="1.25" /><circle cx="11" cy="10" r="1.25" />
+              <circle cx="5" cy="16" r="1.25" /><circle cx="11" cy="16" r="1.25" />
+            </svg>
+          </button>
         )}
         {menuItems && menuItems.length > 0 && (
           <DropdownMenu

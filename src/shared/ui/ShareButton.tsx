@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LuEllipsis, LuShare2, LuSend } from "react-icons/lu";
+import { LuEllipsis, LuShare2 } from "react-icons/lu";
 import Button from "./Button";
 import { showToast } from "./Toast";
 import { useTranslation } from "@/languages";
@@ -10,7 +10,7 @@ import type { DropdownMenuItem } from "./DropdownMenu";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
 import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
 
-export default function ShareButton({ type, entityId, snapshot, menu = false, extraMenuItems = [] }: {
+export default function ShareButton({ type, entityId, snapshot, menu = true, extraMenuItems = [] }: {
   type: ShareEntityType; entityId: string; snapshot: ShareSnapshot; menu?: boolean; extraMenuItems?: DropdownMenuItem[];
 }) {
   const { t } = useTranslation();
@@ -52,7 +52,11 @@ export default function ShareButton({ type, entityId, snapshot, menu = false, ex
       items={items}
     />;
   }
-  return <Button variant="outline" disabled={busy} title={t("common.share")} aria-label={t("common.share")}
-    className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center !border-accent-primary/25 !bg-accent-primary/10 !text-accent-primary transition-colors hover:!bg-accent-primary/20"
-    onClick={handleShare}><LuSend size={16} strokeWidth={2.2} /></Button>;
+  return <DropdownMenu
+    trigger={<Button variant="outline" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
+      className="!h-[38px] !w-[38px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm">
+      <LuEllipsis size={19} />
+    </Button>}
+    items={[{ id: "share-artist", label: t("common.share"), icon: <LuShare2 size={15} />, disabled: busy, onClick: handleShare }, ...extraMenuItems]}
+  />;
 }

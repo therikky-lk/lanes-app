@@ -25,6 +25,7 @@ export type AuthState = {
     displayName: string,
   ) => Promise<void>;
   updateProfile: (patch: UpdateProfileInput) => Promise<PublicUser>;
+  setAvatarUrl: (avatarUrl: string | null) => void;
   logout: () => Promise<void>;
 };
 
@@ -116,6 +117,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       user: prev.user ? { ...prev.user, ...updated } : updated,
     }));
     return updated;
+  },
+  setAvatarUrl: (avatarUrl) => {
+    const current = getAuthSession();
+    if (current) setAuthSession({ ...current, user: { ...current.user, avatarUrl } });
+    set(state => ({ user: state.user ? { ...state.user, avatarUrl } : null }));
   },
   logout: async () => {
     await clearPlayback();

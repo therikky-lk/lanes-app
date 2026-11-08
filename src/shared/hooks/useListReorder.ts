@@ -143,11 +143,12 @@ export function useListReorder<T>({
       if (e.button !== 0) return;
 
       const target = e.target as HTMLElement;
+      const isReorderHandle = Boolean(target.closest("[data-reorder-handle]"));
       if (
-        target.closest("button") ||
+        (target.closest("button") && !isReorderHandle) ||
         target.closest("a") ||
         target.closest("[role='menuitem']") ||
-        target.closest("[data-prevent-drag]")
+        (target.closest("[data-prevent-drag]") && !isReorderHandle)
       ) {
         return;
       }

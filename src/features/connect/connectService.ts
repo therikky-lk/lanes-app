@@ -49,6 +49,8 @@ interface WireTrack {
 
 interface RemoteState {
   track: WireTrack | null;
+  /** Current track followed by the next items, so the remote queue stays visible. */
+  queue?: WireTrack[];
   status: "playing" | "paused" | "loading" | "idle";
   positionMs: number;
   at: number;
@@ -290,8 +292,10 @@ function seen(device: ConnectDevice): void {
 /** what this device is playing right now (only meaningful when not following) */
 function localState(): RemoteState {
   const p = usePlayerStore.getState();
+  const queue = queueWindow(p.queue, p.currentIndex);
   return {
     track: p.currentTrack ? toWire(p.currentTrack) : null,
+    queue: queue.length ? queue : p.currentTrack ? [toWire(p.currentTrack)] : [],
     status: p.status === "error" ? "paused" : p.status,
     positionMs: p.positionMs,
     at: Date.now(),
@@ -310,7 +314,8 @@ function broadcastState(force = false): void {
   // drifting from where followers would extrapolate it). Followers move the
   // position on their own, so a playing device doesn't need to keep publishing
   // (ntfy rate-limits chatty clients, and dropped messages are what desyncs).
-  const signature = `${state.track.id}|${state.status}|${myEpoch}|${state.rate}|${state.pitch}`;
+  const queueSignature = (state.queue ?? []).map(track => track.id).join(",");
+  const signature = `${state.track.id}|${state.status}|${myEpoch}|${state.rate}|${state.pitch}|${queueSignature}`;
   const prev = lastBroadcastState;
   const volumeChanged = !!prev && Math.abs(prev.volume - state.volume) > 0.005;
   const seeked = !!prev && Math.abs(livePosition(prev) - state.positionMs) > 2500;
@@ -321,7 +326,7 @@ function broadcastState(force = false): void {
   if (broadcastTimer) clearTimeout(broadcastTimer);
   broadcastTimer = null;
   if (urgent) {
-    void send({ t: "state", from: me(), state });
+    void sendState(state);
     // a single dropped message must not leave the other device stuck on a
     // stale status: repeat the settled state once shortly after
     if (resendTimer) clearTimeout(resendTimer);
@@ -331,7 +336,7 @@ function broadcastState(force = false): void {
       const settled = localState();
       if (!settled.track) return;
       lastBroadcastState = settled;
-      void send({ t: "state", from: me(), state: settled });
+      void sendState(settled);
     }, 1500);
   } else {
     // a volume slider fires many times a second: send the last value
@@ -340,9 +345,18 @@ function broadcastState(force = false): void {
       if (useConnectStore.getState().followingId) return;
       const latest = localState();
       lastBroadcastState = latest;
-      void send({ t: "state", from: me(), state: latest });
+      void sendState(latest);
     }, 200);
   }
+}
+
+async function sendState(state: RemoteState): Promise<void> {
+  const queue = state.queue ?? [];
+  const message = await fitQueue(
+    (tracks): Message => ({ t: "state", from: me(), state: { ...state, queue: tracks } }),
+    queue,
+  );
+  await send(message);
 }
 
 function onPlayerChange(state: { status: string }, prev: { status: string }): void {
@@ -356,9 +370,19 @@ function onPlayerChange(state: { status: string }, prev: { status: string }): vo
 function applyRemote(state: RemoteState): void {
   const store = usePlayerStore.getState();
   const track = state.track ? fromWire(state.track) : null;
-  if (track && store.currentTrack?.id !== track.id) {
-    store.setQueue([track]);
-    store.setCurrentTrack(track, 0);
+  if (track) {
+    const remoteQueue = state.queue?.length ? state.queue.map(fromWire) : [track];
+    const currentAt = remoteQueue.findIndex(item => item.id === track.id);
+    const queue = currentAt >= 0
+      ? [track, ...remoteQueue.slice(currentAt + 1)]
+      : [track, ...remoteQueue];
+    const queueChanged = queue.length !== store.queue.length || queue.some((item, index) => item.id !== store.queue[index]?.id);
+    if (store.currentTrack?.id !== track.id || store.currentIndex !== 0) {
+      store.setQueue(queue);
+      store.setCurrentTrack(track, 0);
+    } else if (queueChanged) {
+      store.setQueue(queue);
+    }
   }
   if (!track) return;
   store.setDuration(track.durationMs || store.durationMs);
@@ -464,6 +488,24 @@ function intercept(action: RemoteAction): boolean {
   const { followingId, remote } = useConnectStore.getState();
   if (!followingId) return false;
   if (action.type === "load") return forwardLoad(followingId, action);
+  if (action.type === "reorder") {
+    const upcomingFrom = action.fromIndex - 1;
+    const upcomingTo = action.toIndex - 1;
+    if (remote?.queue) {
+      const queue = [...remote.queue];
+      if (upcomingFrom >= 0 && upcomingFrom < queue.length - 1 && upcomingTo >= 0 && upcomingTo < queue.length - 1) {
+        const [item] = queue.splice(upcomingFrom + 1, 1);
+        queue.splice(upcomingTo + 1, 0, item);
+        const next = { ...remote, queue };
+        useConnectStore.setState({ remote: next });
+        applyRemote(next);
+      }
+    }
+    if (upcomingFrom >= 0 && upcomingTo >= 0) {
+      void send({ t: "cmd", from: me(), to: followingId, action: { ...action, fromIndex: upcomingFrom, toIndex: upcomingTo } });
+    }
+    return true;
+  }
   // keep the mirrored UI snappy: apply the obvious part locally right away
   if (remote) {
     let next: RemoteState | null = null;
@@ -537,6 +579,12 @@ function runCommand(action: WireCommand): void {
       if (track) void playerEngine.playTrack(track, queue, action.context, null, queue.indexOf(track));
       break;
     }
+    case "reorder":
+      {
+        const currentIndex = usePlayerStore.getState().currentIndex;
+        playerEngine.reorderQueue(currentIndex + 1 + action.fromIndex, currentIndex + 1 + action.toIndex);
+      }
+      break;
     case "toggle":
       playerEngine.togglePlayPause();
       break;

@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { DeleteLine } from "@mingcute/react";
@@ -17,12 +18,27 @@ export default function CachedTracksPage() {
   const { t } = useTranslation();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { cached, loaded, refresh } = useOfflineLibraryStore();
+  const { cached, loaded, refresh } = useOfflineLibraryStore(useShallow(state => ({
+    cached: state.cached,
+    loaded: state.loaded,
+    refresh: state.refresh,
+  })));
   const current = usePlayerStore(state => state.currentTrack?.id);
   const search = useTrackSearch(cached, "cache:tracks");
-  useEffect(() => { void refresh().catch(() => toast(t("settings.cache.local_cache.error"), "error")); }, [refresh, t, toast]);
+  const [visibleCount, setVisibleCount] = useState(60);
+  useEffect(() => {
+    if (!loaded) void refresh().catch(() => toast(t("settings.cache.local_cache.error"), "error"));
+  }, [loaded, refresh, t, toast]);
   const tracks = search.matches?.map((match) => match.track) ?? cached;
+  useEffect(() => setVisibleCount(60), [search.activeQuery, tracks.length]);
+  const visibleTracks = tracks.slice(0, visibleCount);
   return <div className="h-full overflow-y-auto px-4 sm:px-8 pt-5 pb-24" data-page-scroller
+    onScroll={event => {
+      const node = event.currentTarget;
+      if (tracks.length > visibleCount && node.scrollHeight - node.scrollTop - node.clientHeight < 520) {
+        setVisibleCount(count => Math.min(count + 40, tracks.length));
+      }
+    }}
     style={isMobile ? { paddingTop: "calc(var(--lane-safe-top, 0px) + 12px)", paddingBottom: "calc(var(--lane-dock-h, 120px) + 24px)" } : undefined}>
     <TrackCollectionHeader title={t("library.cached_songs")} kind="cache" count={cached.length}
       onPlay={() => { if (cached[0]) void playerEngine.playTrack(cached[0], cached, "cache:tracks"); }}
@@ -35,7 +51,7 @@ export default function CachedTracksPage() {
         onSubmit={() => { if (tracks[0]) void playerEngine.playTrack(tracks[0], cached, "cache:tracks"); }} />
     </div>
     {loaded && cached.length > 0 && tracks.length === 0 && <p className="py-[24px] text-center text-text-tertiary">{t("common.no_results")}</p>}
-    {!loaded ? <p className="text-text-tertiary">…</p> : cached.length === 0 ? <p className="py-12 text-center text-text-tertiary">{t("library.cached_empty")}</p> : <div className="rounded-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] py-[8px]">{tracks.map(track => {
+    {!loaded ? <p className="text-text-tertiary">…</p> : cached.length === 0 ? <p className="py-12 text-center text-text-tertiary">{t("library.cached_empty")}</p> : <div className="rounded-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] py-[8px]">{visibleTracks.map(track => {
       const card = <SongCardWithMenu key={track.id} showLikeButton searchType="track" durationMs={track.durationMs}
         id={track.id} title={track.title} artists={track.artists} artistId={track.artistId} artistList={track.artistList}
         coverUrl={track.coverUrl} albumTitle={track.album?.title} highlight={search.activeQuery} isCurrent={current === track.id}

@@ -206,6 +206,42 @@ class LinerDb {
     return this.memTracks.get(id) || null;
   }
 
+  /** Read cached metadata for a set of IDs in one IndexedDB transaction. */
+  async getTracks(ids: string[]): Promise<CachedTrackRecord[]> {
+    const uniqueIds = [...new Set(ids)];
+    const records = new Map<string, CachedTrackRecord>();
+    for (const id of uniqueIds) {
+      const cached = this.memTracks.get(id);
+      if (cached) records.set(id, cached);
+    }
+    const missing = uniqueIds.filter((id) => !records.has(id));
+    if (missing.length) {
+      const loaded = await this.runTransaction("tracks", "readonly", (store) =>
+        new Promise<CachedTrackRecord[]>((resolve) => {
+          const found: CachedTrackRecord[] = [];
+          let remaining = missing.length;
+          const done = () => {
+            remaining -= 1;
+            if (remaining === 0) resolve(found);
+          };
+          for (const id of missing) {
+            const request = store.get(id);
+            request.onsuccess = () => {
+              if (request.result) found.push(request.result as CachedTrackRecord);
+              done();
+            };
+            request.onerror = done;
+          }
+        }),
+      );
+      for (const record of loaded ?? []) {
+        records.set(record.id, record);
+        this.memTracks.set(record.id, record);
+      }
+    }
+    return uniqueIds.map((id) => records.get(id)).filter((record): record is CachedTrackRecord => Boolean(record));
+  }
+
   async listTracks(): Promise<CachedTrackRecord[]> {
     const result = await this.runTransaction("tracks", "readonly", (store) => {
       return new Promise<CachedTrackRecord[]>((resolve) => {

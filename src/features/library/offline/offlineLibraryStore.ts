@@ -53,12 +53,10 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>((set, get) => 
       do {
         refreshAgain = false;
         const [downloads, entries] = await Promise.all([downloadsDb.list(), linerDb.listAudioEntries()]);
-        const cached = (await Promise.all(entries.filter(entry => entry.byteSize > 0).map(async entry => {
-          const record = await linerDb.getTrack(entry.trackId);
-          if (!record) return null;
-          return { ...record, coverUrl: record.coverUrl ?? "", playCount: 0,
-            album: record.albumTitle ? { id: record.albumId ?? "", title: record.albumTitle } : undefined } as Track;
-        }))).filter((track): track is Track => track !== null);
+        const audioEntries = entries.filter(entry => entry.byteSize > 0);
+        const records = await linerDb.getTracks(audioEntries.map(entry => entry.trackId));
+        const cached = records.map(record => ({ ...record, coverUrl: record.coverUrl ?? "", playCount: 0,
+          album: record.albumTitle ? { id: record.albumId ?? "", title: record.albumTitle } : undefined } as Track));
         const cachedTrackIds = new Set([...downloads.filter(entry => entry.byteSize > 0).map(entry => entry.track.id), ...entries.filter(entry => entry.byteSize > 0).map(entry => entry.trackId)]);
         set({ downloads, cached, cachedTrackIds, loaded: true });
       } while (refreshAgain);

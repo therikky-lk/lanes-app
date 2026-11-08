@@ -1012,11 +1012,11 @@ export default function AppFrame({ children }: AppFrameProps) {
                 <motion.aside
                   key="right-drawer"
                   ref={queueDrawerRef}
-                  initial={{ x: RIGHT_DRAWER_WIDTH }}
+                  initial={{ x: isMobile ? "100%" : RIGHT_DRAWER_WIDTH }}
                   animate={{ x: 0 }}
-                  exit={{ x: RIGHT_DRAWER_WIDTH }}
+                  exit={{ x: isMobile ? "100%" : RIGHT_DRAWER_WIDTH }}
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                  className="pointer-events-auto absolute inset-y-0 right-0 z-[50]"
+                  className={`pointer-events-auto absolute inset-y-0 right-0 ${isMobile ? "z-[60]" : "z-[50]"}`}
                   style={{ width: isMobile ? "100%" : RIGHT_DRAWER_WIDTH }}
                 >
                   <RightDrawer
@@ -1052,7 +1052,7 @@ export default function AppFrame({ children }: AppFrameProps) {
         )}
       </div>
 
-      {isMobile && (
+      {isMobile && !isRightDrawerOpen && (
         <>
           {/* soft shade behind the status bar icons: no blur, no edge */}
           <div
@@ -1067,7 +1067,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           <div data-mobile-dock className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex flex-col">
             {showMobileMiniPlayer && (
               <div ref={miniPlayerContainerRef} className="pointer-events-auto w-full">
-                <MobileMiniPlayer onQueueToggle={handleQueuePopupToggleRequest} />
+                <MobileMiniPlayer />
               </div>
             )}
             <div className="pointer-events-auto w-full">
@@ -1102,7 +1102,6 @@ export default function AppFrame({ children }: AppFrameProps) {
             >
               <FullscreenPlayer
                 onClose={closeFullscreenPlayer}
-                onQueueOpen={handleQueuePopupToggleRequest}
                 effectsReady={fullscreenEffectsReady}
               />
             </motion.div>

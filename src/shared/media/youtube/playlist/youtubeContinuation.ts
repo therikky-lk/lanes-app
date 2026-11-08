@@ -54,7 +54,9 @@ export async function visitYoutubePlaylistPages(
       .map((key) => findFirst(main, key))
       .find((list) => asArray(list?.contents).length > 0 || asArray(list?.continuations).length > 0) ?? main;
     visit(shelf);
-    const token = extractInnertubeContinuationToken(shelf);
+    // Continuation commands are commonly siblings of `contents`, rather than
+    // children of the selected list renderer.
+    const token = extractInnertubeContinuationToken(shelf) ?? extractInnertubeContinuationToken(page);
     if (!token || seenTokens.has(token)) return;
     seenTokens.add(token);
     // Let failures reach the caller instead of caching a truncated playlist.

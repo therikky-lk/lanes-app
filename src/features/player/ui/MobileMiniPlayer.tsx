@@ -1,7 +1,6 @@
 import { useConnectStore } from "@/features/connect/connectService";
 import { useTranslation } from "@/languages";
 import { SkipNext, SkipPrevious } from "@solar-icons/react";
-import { Sidebar } from "@solar-icons/react";
 import { HeartFill, HeartLine } from "@mingcute/react";
 import { useCallback, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -18,7 +17,7 @@ function MobileProgress() {
   return <div className="h-full w-full origin-left rounded-full bg-text-primary" style={{ transform: `scaleX(${progress})` }} />;
 }
 
-export default function MobileMiniPlayer({ onQueueToggle }: { onQueueToggle?: () => void } = {}) {
+export default function MobileMiniPlayer() {
   const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, status: s.status, queue: s.queue, currentIndex: s.currentIndex, repeat: s.repeat })));
   const setFullscreen = usePlayerStore((s) => s.setFullscreen);
   const track = player.currentTrack;
@@ -123,15 +122,6 @@ export default function MobileMiniPlayer({ onQueueToggle }: { onQueueToggle?: ()
         className="inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
       >
         <SkipNext size={22} weight="Bold" />
-      </button>
-      <button
-        type="button"
-        aria-label={t("player.queue")}
-        title={t("player.queue")}
-        onClick={(e) => { e.stopPropagation(); onQueueToggle?.(); }}
-        className="inline-flex h-[40px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary cursor-pointer"
-      >
-        <Sidebar size={20} weight="Bold" />
       </button>
       <div className="absolute bottom-0 left-[8px] right-[8px] h-[2px] rounded-full bg-border-alpha-14">
         {/* scaleX instead of width: no layout on every position tick */}
