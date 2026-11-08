@@ -17,7 +17,6 @@ import {
   CalendarLine,
   CheckLine,
   ArrowLeftLine,
-  Search2Line,
 } from "@mingcute/react";
 import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
@@ -40,7 +39,7 @@ import { useCollection } from "../hooks/useCollection";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import {
   useTrackSearch,
-  useTrackSearchButtonLabel,
+  TrackSearchButton,
   TrackSearchField,
   TrackSearchEmpty,
 } from "@/features/library/ui/TrackSearch";
@@ -149,7 +148,6 @@ function CollectionContent() {
   const playbackContext = id ? `${entityType}:${decodedId}` : (data?.title || null);
 
   const search = useTrackSearch(data?.tracks ?? NO_TRACKS, `${type}:${decodedId}`);
-  const searchButtonLabel = useTrackSearchButtonLabel();
   const visibleTracks = useMemo(
     () => search.matches ?? (data?.tracks ?? NO_TRACKS).map((track, index) => ({ track, index })),
     [search.matches, data?.tracks],
@@ -518,19 +516,7 @@ function CollectionContent() {
                           <LuShuffle size={16} />
                         </Button>
 
-                        <Button
-                          variant={hasCustomBg ? "glass-action" : "outline"}
-                          onClick={search.toggle}
-                          // keep focus in the field so its blur-to-close doesn't fire first
-                          onMouseDown={(e) => {
-                            if (search.isOpen) e.preventDefault();
-                          }}
-                          disabled={!data || data.tracks.length === 0}
-                          className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
-                          title={searchButtonLabel}
-                        >
-                          <Search2Line size={16} />
-                        </Button>
+                        <TrackSearchButton search={search} glass={hasCustomBg} disabled={!data || data.tracks.length === 0} />
 
                         {!isDailyMix && (
                           <ShareButton menu type={type} entityId={decodedId} snapshot={{ title: data.title, subtitle: data.author, coverUrl: data.coverUrl }} extraMenuItems={[

@@ -1,6 +1,7 @@
+import { handleTrusted } from "./ipc-guard.js";
 // Lane Connect relay for the desktop app, run in the main process with Node's
 // own networking: no renderer CORS rules, system DNS, and errors we can report.
-import { ipcMain, type WebContents } from "electron";
+import { type WebContents } from "electron";
 
 const TOPIC = /^lane_[a-f0-9]{20,64}$/;
 const ALLOWED_RELAYS = new Set(["https://ntfy.sh", "https://ntfy.envs.net"]);
@@ -72,7 +73,7 @@ async function streamLoop(sender: WebContents, relay: string, topic: string, abo
 }
 
 export function registerConnectRelay(): void {
-  ipcMain.handle("connect:subscribe", (event, request: { relay: string; topic: string }) => {
+  handleTrusted("connect:subscribe", (event, request: { relay: string; topic: string }) => {
     if (!ALLOWED_RELAYS.has(request.relay) || !TOPIC.test(request.topic)) throw new Error("not allowed");
     const k = key(request.relay, request.topic);
     subscriptions.get(k)?.abort.abort();
@@ -81,13 +82,13 @@ export function registerConnectRelay(): void {
     void streamLoop(event.sender, request.relay, request.topic, abort);
     return true;
   });
-  ipcMain.handle("connect:unsubscribe", (_event, request: { relay: string; topic: string }) => {
+  handleTrusted("connect:unsubscribe", (_event, request: { relay: string; topic: string }) => {
     const k = key(request.relay, request.topic);
     subscriptions.get(k)?.abort.abort();
     subscriptions.delete(k);
     return true;
   });
-  ipcMain.handle("connect:publish", async (_event, request: { relay: string; topic: string; text: string }) => {
+  handleTrusted("connect:publish", async (_event, request: { relay: string; topic: string; text: string }) => {
     if (!ALLOWED_RELAYS.has(request.relay) || !TOPIC.test(request.topic)) throw new Error("not allowed");
     const res = await fetch(`${request.relay}/${request.topic}`, { method: "POST", body: request.text });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

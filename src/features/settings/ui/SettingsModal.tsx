@@ -73,7 +73,11 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Audio", titleKey: "player.equalizer", descKey: "player.equalizer_hint" },
   { tabId: "Storage", titleKey: "settings.storage.downloads_limit", descKey: "settings.storage.downloads_limit_hint" },
   { tabId: "Storage", titleKey: "settings.storage.categories.liked", descKey: "settings.storage.liked_toggle" },
-  { tabId: "Storage", titleKey: "settings.storage.cached_in_library", descKey: "settings.storage.cached_in_library_desc" },
+  { tabId: "Appearance", titleKey: "library.liked_songs" },
+  { tabId: "Appearance", titleKey: "library.cached_songs" },
+  { tabId: "Appearance", titleKey: "library.on_device" },
+  { tabId: "Appearance", titleKey: "settings.storage.remember_library_view", descKey: "settings.storage.remember_library_view_desc" },
+  { tabId: "Appearance", titleKey: "settings.storage.remember_library_layout", descKey: "settings.storage.remember_library_layout_desc" },
   { tabId: "Storage", titleKey: "settings.storage.cache_row_title", descKey: "settings.storage.cache_row_desc" },
 
   // Shortcuts

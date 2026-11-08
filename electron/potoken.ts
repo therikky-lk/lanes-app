@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain, type IpcMainEvent } from "electron";
+import { isTrustedSender } from "./ipc-guard.js";
 
 const BOTGUARD_PAGE = "https://www.youtube.com/robots.txt";
 const START_TIMEOUT_MS = 20_000;
@@ -38,7 +39,8 @@ export class PoTokenService {
       if (!response.ok) throw new Error(`interpreter download failed with ${response.status}`);
       return response.text();
     });
-    ipcMain.handle("potoken:mint", (_event, identifier: unknown) => {
+    ipcMain.handle("potoken:mint", (event, identifier: unknown) => {
+      if (!isTrustedSender(event)) throw new Error("untrusted sender for potoken:mint");
       if (typeof identifier !== "string" || !IDENTIFIER.test(identifier)) throw new Error("invalid identifier");
       return this.mint(identifier);
     });

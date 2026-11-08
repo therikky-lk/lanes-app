@@ -1,5 +1,5 @@
 import type { ImportSource } from "@/shared/contracts";
-import { withCoverMarker } from "../playlistCoverMarker";
+import { canSyncCoverMarker, withCoverMarker } from "../playlistCoverMarker";
 
 // The server keeps only title/description for playlists. What a playlist was
 // imported from (and the original cover art) is remembered on this device so the
@@ -56,7 +56,9 @@ export function saveImportedPlaylistMeta(playlistId: string, source: ImportSourc
     void import("@/shared/api").then(({ api }) =>
       api
         .getUserPlaylist(playlistId)
-        .then((detail) => api.updatePlaylist(playlistId, { description: withCoverMarker(detail.playlist.description, cover) }))
+        .then((detail) => canSyncCoverMarker(detail.playlist.description, cover)
+          ? api.updatePlaylist(playlistId, { description: withCoverMarker(detail.playlist.description, cover) })
+          : undefined)
         .catch(() => undefined),
     );
   }

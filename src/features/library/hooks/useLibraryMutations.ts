@@ -1,5 +1,6 @@
 import { usePlayerStore } from "@/features/player/store/playerStore";
 import type { Track } from "@/shared/types";
+import type { Track as ApiTrackBase } from "@/shared/contracts";
 import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { setLocalLike } from "@/features/local/localLikesSync";
 import { useCallback, useState } from "react";
@@ -47,10 +48,10 @@ function useMutation<T, R = unknown>(action: (input: T) => Promise<R>) {
 }
 
 export function useAddPlaylistTracks() {
-  return useMutation(({ playlistId, trackId }: { playlistId: string; trackId: string }) =>
+  return useMutation(({ playlistId, trackId, trackSnapshot }: { playlistId: string; trackId: string; trackSnapshot?: ApiTrackBase }) =>
     isLocalTrackId(trackId)
       ? addLocalTrackToPlaylist(playlistId, trackId).then(() => undefined)
-      : api.addPlaylistTrack(playlistId, trackId).then(() => undefined)
+      : api.addPlaylistTrack(playlistId, trackId, trackSnapshot).then(() => undefined)
   );
 }
 

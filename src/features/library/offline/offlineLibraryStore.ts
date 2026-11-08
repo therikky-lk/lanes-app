@@ -10,7 +10,10 @@ import type { Track } from "@/shared/types";
 
 const ENABLED = "lane_download_likes";
 const LIMIT = "lane_download_limit";
-const VISIBLE = "liner_cached_songs_online";
+const DEFAULT_COLLECTIONS = "liner_cached_songs_online";
+const SHOW_LIKED_COLLECTION = "lane_library_show_liked";
+const SHOW_CACHED_COLLECTION = "lane_library_show_cached";
+const SHOW_LOCAL_COLLECTION = "lane_library_show_local";
 const GB = 1024 ** 3;
 function read(key: string) { try { return localStorage.getItem(key); } catch { return null; } }
 function write(key: string, value: string) { try { localStorage.setItem(key, value); } catch {} }
@@ -24,13 +27,17 @@ interface OfflineLibraryState {
   loaded: boolean;
   enabled: boolean;
   limitBytes: number;
-  visibleOnline: boolean;
+  showLikedCollection: boolean;
+  showCachedCollection: boolean;
+  showLocalCollection: boolean;
   phase: Phase;
   pending: number;
   refresh: () => Promise<void>;
   setEnabled: (enabled: boolean) => void;
   setLimitBytes: (bytes: number) => void;
-  setVisibleOnline: (visible: boolean) => void;
+  setShowLikedCollection: (visible: boolean) => void;
+  setShowCachedCollection: (visible: boolean) => void;
+  setShowLocalCollection: (visible: boolean) => void;
   removeDownloads: () => Promise<void>;
 }
 let refreshRequest: Promise<void> | undefined;
@@ -45,7 +52,9 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>((set, get) => 
   downloads: [], cached: [], cachedTrackIds: new Set(), loaded: false,
   enabled: read(ENABLED) === "1",
   limitBytes: read(LIMIT) !== null && Number.isFinite(storedLimit) && storedLimit >= 0 ? storedLimit : 5 * GB,
-  visibleOnline: read(VISIBLE) !== "0",
+  showLikedCollection: read(SHOW_LIKED_COLLECTION) !== null ? read(SHOW_LIKED_COLLECTION) !== "0" : read(DEFAULT_COLLECTIONS) !== "0",
+  showCachedCollection: read(SHOW_CACHED_COLLECTION) !== null ? read(SHOW_CACHED_COLLECTION) !== "0" : read(DEFAULT_COLLECTIONS) !== "0",
+  showLocalCollection: read(SHOW_LOCAL_COLLECTION) !== null ? read(SHOW_LOCAL_COLLECTION) !== "0" : read(DEFAULT_COLLECTIONS) !== "0",
   phase: "idle", pending: 0,
   refresh: () => {
     if (refreshRequest) { refreshAgain = true; return refreshRequest; }
@@ -72,7 +81,9 @@ export const useOfflineLibraryStore = create<OfflineLibraryState>((set, get) => 
     if (!Number.isFinite(bytes) || bytes < 0) return;
     write(LIMIT, String(bytes)); set({ limitBytes: bytes }); scheduleDownloads();
   },
-  setVisibleOnline: visibleOnline => { write(VISIBLE, visibleOnline ? "1" : "0"); set({ visibleOnline }); },
+  setShowLikedCollection: visible => { write(SHOW_LIKED_COLLECTION, visible ? "1" : "0"); set({ showLikedCollection: visible }); },
+  setShowCachedCollection: visible => { write(SHOW_CACHED_COLLECTION, visible ? "1" : "0"); set({ showCachedCollection: visible }); },
+  setShowLocalCollection: visible => { write(SHOW_LOCAL_COLLECTION, visible ? "1" : "0"); set({ showLocalCollection: visible }); },
   removeDownloads: async () => {
     get().setEnabled(false);
     // Let an in-flight write finish before clearing the database.

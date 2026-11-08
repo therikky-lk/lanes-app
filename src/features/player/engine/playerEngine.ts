@@ -4,6 +4,7 @@ import { EQ_MAX_CUSTOM_PRESETS, EQ_PRESET_NAME_MAX } from "./equalizer";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { diag } from "@/shared/platform/diag";
 import { isNativeApp } from "@/shared/platform/native";
+import { normalizeNativeDuration } from "@/shared/platform/nativeAudio";
 import {
   usePlayerStore,
   type PlayerCommand,
@@ -992,13 +993,18 @@ class PlayerEngine {
 
   public addToQueue(track: Track): void {
     const store = usePlayerStore.getState();
-    const newQueue = [...store.queue, track];
+    const queuedTrack = { ...track, queuedByUser: true };
+    // User additions belong at the front of upcoming playback, ahead of radio/autoplay items.
+    const insertAt = Math.max(0, store.currentIndex + 1);
+    const newQueue = [...store.queue.slice(0, insertAt), queuedTrack, ...store.queue.slice(insertAt)];
     store.setQueue(newQueue);
     if (this.masterPlaylist.length > 0) {
-      this.masterPlaylist.push(track);
+      const currentTrack = store.currentTrack;
+      const currentAt = currentTrack ? this.masterPlaylist.findIndex(item => item.id === currentTrack.id) : -1;
+      this.masterPlaylist.splice(currentAt >= 0 ? currentAt + 1 : this.masterPlaylist.length, 0, queuedTrack);
     }
     if (store.shuffle) {
-      this.originalUpcomingQueue.push(track);
+      this.originalUpcomingQueue.unshift(queuedTrack);
     }
     this.preloadNextTrack(store);
   }
@@ -1348,7 +1354,7 @@ class PlayerEngine {
     const mySession = this.sessionId;
     store.setCurrentTrack(track, index);
     store.setPosition(snapshot?.positionMs ?? 0);
-    store.setDuration(snapshot && snapshot.durationMs > 0 ? snapshot.durationMs : track.durationMs ?? 0);
+    store.setDuration(normalizeNativeDuration(snapshot?.durationMs ?? 0, track.durationMs ?? 0));
     store.setStatus(snapshot ? (snapshot.buffering ? "loading" : (snapshot.playWhenReady ?? snapshot.playing) ? "playing" : "paused") : "playing", null);
     playerRuntime?.updateMediaSessionMetadata(track);
     this.preloadNextTrack(usePlayerStore.getState());

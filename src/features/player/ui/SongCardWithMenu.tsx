@@ -7,8 +7,10 @@ import { usePlayerStore } from "../store/playerStore";
 import { useToast } from "@/shared/ui";
 import { useTranslation } from "@/languages";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
+import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
 
 import type { TrackArtist } from "@/shared/types";
+import type { Track as ApiTrackBase } from "@/shared/contracts";
 
 export interface SongCardWithMenuProps {
   id?: string;
@@ -27,6 +29,7 @@ export interface SongCardWithMenuProps {
   trackNumber?: number;
   rowNumber?: number;
   albumTitle?: string;
+  trackSnapshot?: ApiTrackBase;
   addedDate?: string;
   addedDateTooltip?: string;
   addedDateLabel?: string;
@@ -69,6 +72,7 @@ function SongCardWithMenu({
   trackNumber,
   rowNumber,
   albumTitle,
+  trackSnapshot,
   addedDate,
   addedDateTooltip,
   addedDateLabel,
@@ -111,6 +115,17 @@ function SongCardWithMenu({
     artistId,
     artistName: artistList?.find((artist) => artist.name)?.name ?? artists.split(",")[0]?.trim(),
     coverUrl,
+    albumTitle,
+    trackSnapshot: trackSnapshot ?? (id ? {
+      id,
+      title,
+      artists: artistList?.map(({ id: artistId, name }) => ({ id: artistId ?? "", name }))
+        ?? [{ id: artistId ?? "", name: artists || "" }],
+      durationMs: resolvedDurationMs,
+      ...(coverUrl ? { cover: { url: coverUrl, width: 480, height: 480 } } : {}),
+      ...(albumTitle ? { album: { id: "", title: albumTitle } } : {}),
+      ...(explicit !== undefined ? { explicit } : {}),
+    } : undefined),
     duration,
     durationMs: resolvedDurationMs,
     searchType,
@@ -134,6 +149,7 @@ function SongCardWithMenu({
   const isLiked = useIsTrackLiked(id);
   const likeMutation = useLikeTrack();
   const unlikeMutation = useUnlikeTrack();
+  const isCached = useOfflineLibraryStore((state) => Boolean(id && state.cachedTrackIds.has(id)));
   const togglingLikeRef = useRef(false);
   const trackDoubleClickBehavior = usePlayerStore(
     (state) => state.trackDoubleClickBehavior,
@@ -225,6 +241,7 @@ function SongCardWithMenu({
       addedDate={addedDate}
       addedDateTooltip={addedDateTooltip}
       isCurrent={isCurrent}
+      isCached={isCached}
       trackId={id}
       repostedBy={repostedBy}
       menuItems={hideMenuTrigger ? undefined : menuItems}

@@ -24,6 +24,7 @@ import {
   setNativeHeaderProvider,
   setNativeNowPlaying,
   setNativeEqualizer,
+  normalizeNativeDuration,
 } from "@/shared/platform/nativeAudio";
 
 
@@ -330,7 +331,11 @@ export class PlayerRuntime {
       if (!this.currentTrackId) return;
       if (Number.isNaN(audioEl.duration) || audioEl.duration <= 0) return;
 
-      usePlayerStore.getState().setDuration(Math.round(audioEl.duration * 1000));
+      const state = usePlayerStore.getState();
+      const reportedDuration = Math.round(audioEl.duration * 1000);
+      state.setDuration(isNativeApp()
+        ? normalizeNativeDuration(reportedDuration, state.currentTrack?.durationMs ?? 0)
+        : reportedDuration);
       this.syncMediaSessionPosition();
     });
 

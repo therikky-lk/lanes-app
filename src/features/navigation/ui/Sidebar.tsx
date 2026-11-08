@@ -39,6 +39,8 @@ const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
   vhs: vhsLogo,
 };
 
+const SIDEBAR_SLOT_CLASS = "inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center";
+
 interface SidebarProps {
   searchOpen: boolean;
   onSearchToggle: () => void;
@@ -85,7 +87,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
               type="button"
               aria-pressed={searchOpen}
               onClick={onSearchToggle}
-              className={`group relative inline-flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100`}
+              className={`${SIDEBAR_SLOT_CLASS} group relative bg-transparent border-0 p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100`}
             >
               <Icon
                 size={26}
@@ -109,7 +111,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
             key={item.id}
             to={item.href!}
             aria-current={active ? "page" : undefined}
-            className={`group relative inline-flex items-center justify-center cursor-pointer active:scale-[0.96] transition-transform duration-100`}
+            className={`${SIDEBAR_SLOT_CLASS} group relative cursor-pointer active:scale-[0.96] transition-transform duration-100`}
           >
             <Icon
               size={26}
@@ -137,7 +139,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
           type="button"
           aria-pressed={settingsOpen}
           onClick={toggleSettings}
-          className={`group relative inline-flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100`}
+          className={`${SIDEBAR_SLOT_CLASS} group relative bg-transparent border-0 p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100`}
         >
           <Icon
             size={26}

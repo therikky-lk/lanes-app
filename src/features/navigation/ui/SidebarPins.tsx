@@ -72,7 +72,7 @@ export default function SidebarPins() {
 
   return (
     <>
-      <div className="mx-auto h-px w-[28px] shrink-0 bg-border-primary" role="separator" />
+      <div className="mx-auto h-px w-[36px] shrink-0 bg-border-primary" role="separator" />
       <Reorder.Group
         axis="y"
         values={order}
@@ -103,7 +103,7 @@ export default function SidebarPins() {
                   type="button"
                   aria-current={active ? "page" : undefined}
                   aria-label={pin.title}
-                  className="group block border-0 bg-transparent p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100"
+                  className="group flex h-[36px] w-[36px] shrink-0 items-center justify-center border-0 bg-transparent p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100"
                   onClick={() => {
                     if (!dragged.current) navigate(pin.href);
                   }}

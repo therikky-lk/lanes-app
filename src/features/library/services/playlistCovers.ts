@@ -4,14 +4,12 @@ import { getImportedPlaylistMeta } from "./import/importedPlaylistMeta";
 import { diag } from "@/shared/platform/diag";
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
-const MAX_SIDE = 256;
+const MAX_SIDE = 512;
 const MIN_SIDE = 24;
-// Keep enough pixels and quality for a sharp playlist tile while staying
-// within the description size accepted by the playlist API.
-// The image is embedded in the playlist description, whose API limit is
-// 2,000 characters. Leave room for the marker, visible description and any
-// local-track metadata.
-const MAX_SYNCED_COVER_LENGTH = 1_200;
+// The production API enforces a 2,000-character description cap. Keep the
+// synced thumbnail small; the full-resolution image remains local.
+const MAX_SYNCED_COVER_LENGTH = 1_350;
+const MAX_LOCAL_COVER_LENGTH = 250_000;
 const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
 
 function coverLog(message: string, details?: unknown): void {
@@ -45,7 +43,7 @@ export function hasCustomPlaylistCover(playlistId: string | null | undefined): b
   return Boolean(playlistId && (readAll()[playlistId] || serverCovers.get(playlistId)?.startsWith("data:image/")));
 }
 
-async function compactCover(source: Blob): Promise<string> {
+async function compactCover(source: Blob, maxLength: number): Promise<string> {
   let bitmap: ImageBitmap | HTMLImageElement;
   let dispose = () => {};
   try {
@@ -80,7 +78,7 @@ async function compactCover(source: Blob): Promise<string> {
     let quality = 0.84;
     let result = "";
 
-    while (side >= MIN_SIDE) {
+    while (side >= MIN_SIDE - 1) {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = side;
       const ctx = canvas.getContext("2d");
@@ -91,7 +89,7 @@ async function compactCover(source: Blob): Promise<string> {
       // Android. Browsers that do not support it return a PNG data URL, which
       // is still accepted by the cover marker parser.
       result = canvas.toDataURL("image/webp", quality);
-      if (result.length <= MAX_SYNCED_COVER_LENGTH) break;
+      if (result.length <= maxLength) break;
       side = Math.max(MIN_SIDE - 1, Math.floor(side * 0.8));
       quality = Math.max(0.7, quality - 0.04);
     }
@@ -106,14 +104,14 @@ async function compactCover(source: Blob): Promise<string> {
 
 export async function imageFileToCover(file: File): Promise<string> {
   coverLog("processing selected file", { type: file.type, bytes: file.size });
-  return compactCover(file);
+  return compactCover(file, MAX_LOCAL_COVER_LENGTH);
 }
 
 /** Recompress a legacy local cover before syncing it through playlist metadata. */
 export async function compactPlaylistCover(dataUrl: string): Promise<string> {
   if (!dataUrl.startsWith("data:image/")) return dataUrl;
   const blob = await fetch(dataUrl).then((response) => response.blob());
-  return compactCover(blob);
+  return compactCover(blob, MAX_SYNCED_COVER_LENGTH);
 }
 
 export function getCustomPlaylistCover(playlistId: string | null | undefined): string | undefined {

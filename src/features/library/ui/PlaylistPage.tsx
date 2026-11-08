@@ -14,7 +14,6 @@ import {
   PlaylistFill,
   PlaylistLine,
   CheckLine,
-  Search2Line,
   PicLine,
   GridLine,
   MenuLine,
@@ -25,7 +24,7 @@ import { FaSpotify } from "react-icons/fa";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
-import { readCoverMarker, stripCoverMarker, withCoverMarker } from "../services/playlistCoverMarker";
+import { canSyncCoverMarker, readCoverMarker, stripCoverMarker, withCoverMarker, withDescriptionText } from "../services/playlistCoverMarker";
 import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
@@ -49,7 +48,7 @@ import { TRACK_TAGS, useTrackTags, type TrackTag } from "../services/trackTags";
 import LikedCover from "./LikedCover";
 import {
   useTrackSearch,
-  useTrackSearchButtonLabel,
+  TrackSearchButton,
   TrackSearchField,
   TrackSearchEmpty,
 } from "./TrackSearch";
@@ -346,7 +345,6 @@ function LibraryPlaylistContent() {
   );
 
   const search = useTrackSearch(currentTracks, id);
-  const searchButtonLabel = useTrackSearchButtonLabel();
   const isFiltering = search.matches !== null;
   const visibleTracks = useMemo(
     () => search.matches ?? currentTracks.map((track, index) => ({ track, index })),
@@ -518,8 +516,13 @@ function LibraryPlaylistContent() {
     diag(`[Lane][PlaylistCover] saved locally, syncing ${JSON.stringify({ playlistId, bytes: cover?.length ?? 0 })}`);
     try {
       const detail = await api.getUserPlaylist(playlistId);
+      const nextDescription = withCoverMarker(detail.playlist.description, cover ?? undefined);
+      if (!canSyncCoverMarker(detail.playlist.description, cover ?? undefined)) {
+        diag(`[Lane][PlaylistCover] retained locally; server description is full ${JSON.stringify({ playlistId })}`);
+        return true;
+      }
       await api.updatePlaylist(playlistId, {
-        description: withCoverMarker(detail.playlist.description, cover ?? undefined),
+        description: nextDescription,
       });
       diag(`[Lane][PlaylistCover] server sync complete ${JSON.stringify({ playlistId })}`);
       return true;
@@ -685,7 +688,16 @@ function LibraryPlaylistContent() {
             style={{ top: 0, height: 56 }}
             data-no-window-drag
           >
-            <strong className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white">{viewData.title}</strong>
+            <div className="relative flex h-[32px] w-[32px] shrink-0 items-center justify-center overflow-hidden rounded-[7px] bg-[#161616]">
+              {isLikesMode ? (
+                <LikedCover heartRatio={0.4} />
+              ) : viewData.coverUrl ? (
+                <CoverImage src={viewData.coverUrl} alt="" fill sizes="32px" className="object-cover" unoptimized />
+              ) : (
+                <PlaylistFill size={16} className="text-white/60" />
+              )}
+            </div>
+            <strong className="min-w-0 max-w-[min(36vw,420px)] truncate text-[15px] font-semibold text-white">{viewData.title}</strong>
             <Button variant="primary" onClick={handlePlayAll} disabled={!currentTracks.length} aria-label={t("common.play_all")} className="!h-[34px] shrink-0 gap-[6px] !px-[10px] !text-[12px] max-sm:!w-[34px] max-sm:!p-0">
               <PlayFill size={15} /><span className="max-sm:hidden">{t("common.play_all")}</span>
             </Button>
@@ -868,12 +880,17 @@ function LibraryPlaylistContent() {
                           if (!isEditingDescription) return;
                           const next = e.currentTarget.textContent?.trim() ?? "";
                           if (decodedId && next !== viewData.bio) {
-                            void api
-                              // keep the synced cover marker behind the edited text
-                              .updatePlaylist(decodedId, { description: withCoverMarker(next, getCustomPlaylistCover(decodedId) ?? readCoverMarker(playlistDetail?.description)) })
-                              .then(() =>
-                                window.dispatchEvent(new Event("library:changed")),
-                              );
+                            try {
+                              // Keep the old description and cover if the complete edit exceeds the API limit.
+                              const nextDescription = withDescriptionText(playlistDetail?.description, next);
+                              if (nextDescription.length <= 2_000) {
+                                void api.updatePlaylist(decodedId, { description: nextDescription }).then(() => window.dispatchEvent(new Event("library:changed")));
+                              } else {
+                                toast(t("playlist.cover_failed") || "Description is too long", "error");
+                              }
+                            } catch {
+                              toast(t("playlist.cover_failed") || "Description is too long", "error");
+                            }
                           }
                           setIsEditingDescription(false);
                         }}
@@ -1016,12 +1033,7 @@ function LibraryPlaylistContent() {
                           <LuShuffle size={16} />
                         </Button>
 
-                        <Button variant={hasCustomBg ? "glass-action" : "outline"}
-                          onPointerDown={event => event.preventDefault()} onClick={search.toggle}
-                          aria-label={searchButtonLabel} aria-expanded={search.isOpen}
-                          disabled={currentTracks.length === 0} className="!h-[36px] !w-[36px] shrink-0 !p-0">
-                          <Search2Line size={16} />
-                        </Button>
+                        <TrackSearchButton search={search} glass={hasCustomBg} disabled={currentTracks.length === 0} />
 
                         {!isMobile && currentTracks.length > 0 && (
                           <SegmentedTabs

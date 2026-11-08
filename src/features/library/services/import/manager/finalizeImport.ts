@@ -15,6 +15,7 @@ function uniqueTracks(tracks: Track[]): Track[] {
 async function addOneByOne(playlistId: string, tracks: Track[]): Promise<number> {
   let saved = 0;
   let cursor = 0;
+  let failed = 0;
   const worker = async () => {
     while (cursor < tracks.length) {
       const track = tracks[cursor++];
@@ -23,10 +24,14 @@ async function addOneByOne(playlistId: string, tracks: Track[]): Promise<number>
         saved += 1;
       } catch (error) {
         if (error instanceof ApiError && error.status === 409) saved += 1;
+        else failed += 1;
       }
     }
   };
   await Promise.all(Array.from({ length: Math.min(FALLBACK_CONCURRENCY, tracks.length) }, worker));
+  if (failed > 0) {
+    throw new Error(`Could not save ${failed} of ${tracks.length} playlist tracks.`);
+  }
   return saved;
 }
 
@@ -36,9 +41,9 @@ const SAVE_CHUNK = 100;
 
 async function addChunk(playlistId: string, tracks: Track[]): Promise<number> {
   for (let attempt = 0; ; attempt++) {
+    let result: Awaited<ReturnType<typeof api.addPlaylistTrackSnapshots>>;
     try {
-      const result = await api.addPlaylistTrackSnapshots(playlistId, tracks);
-      return result.added;
+      result = await api.addPlaylistTrackSnapshots(playlistId, tracks);
     } catch (error) {
       if (error instanceof ApiError && (error.status === 404 || error.status === 405 || error.status === 413)) {
         return addOneByOne(playlistId, tracks);
@@ -47,7 +52,29 @@ async function addChunk(playlistId: string, tracks: Track[]): Promise<number> {
       const retryable = status === undefined || status === 0 || status === 408 || status === 429 || status >= 500;
       if (!retryable || attempt >= 3) throw error;
       await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
+      continue;
     }
+
+    const reportedAdded = Number.isFinite(result.added)
+      ? Math.max(0, Math.min(tracks.length, result.added))
+      : 0;
+    if (reportedAdded >= tracks.length && (result.rejected ?? 0) <= 0) return reportedAdded;
+
+    const returnedIds = new Set(
+      (result.items ?? [])
+        .map((item) => item.track?.id)
+        .filter((id): id is string => typeof id === "string" && tracks.some((track) => track.id === id)),
+    );
+    // If the server gave a count but omitted some item snapshots, account
+    // for the accepted prefix before retrying unconfirmed tracks individually.
+    for (const track of tracks.slice(0, reportedAdded)) returnedIds.add(track.id);
+    const missing = tracks.filter((track) => !returnedIds.has(track.id));
+    const recovered = await addOneByOne(playlistId, missing);
+    if (recovered < missing.length) {
+      throw new Error(`Could not save ${missing.length - recovered} of ${tracks.length} playlist tracks.`);
+    }
+    const confirmed = tracks.filter((track) => returnedIds.has(track.id)).length;
+    return confirmed + recovered;
   }
 }
 
@@ -69,6 +96,14 @@ export async function finalizeImportedPlaylist(
     ...(description?.trim() ? { description: description.trim().slice(0, 2000) } : {}),
   });
   const unique = uniqueTracks(tracks);
-  const saved = unique.length > 0 ? await addTracks(playlist.id, unique) : 0;
-  return { playlistId: playlist.id, saved };
+  try {
+    const saved = unique.length > 0 ? await addTracks(playlist.id, unique) : 0;
+    if (saved !== unique.length) {
+      throw new Error(`Only ${saved} of ${unique.length} playlist tracks were saved.`);
+    }
+    return { playlistId: playlist.id, saved };
+  } catch (error) {
+    await api.deletePlaylist(playlist.id).catch(() => undefined);
+    throw error;
+  }
 }

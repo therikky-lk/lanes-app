@@ -1,6 +1,7 @@
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { memo, useEffect, useRef, useState } from "react";
 import { HeartFill, HeartLine, More2Fill, RepeatFill } from "@mingcute/react";
+import { LuCircleArrowDown } from "react-icons/lu";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import { useTranslation } from "@/languages";
@@ -38,6 +39,8 @@ export interface SongCardProps {
   addedDateTooltip?: string;
   /** highlight the row as the one playing now */
   isCurrent?: boolean;
+  /** show that the audio is available in the local cache */
+  isCached?: boolean;
   /** shows where the track streams from */
   trackId?: string;
   repostedBy?: string;
@@ -81,6 +84,7 @@ function SongCard({
   addedDate,
   addedDateTooltip,
   isCurrent = false,
+  isCached = false,
   trackId,
   repostedBy,
   menuItems,
@@ -258,6 +262,16 @@ function SongCard({
           </div>
         )}
 
+        {isCached && (
+          <span
+            className="-ml-[8px] -mr-[8px] inline-flex h-[17px] w-[17px] shrink-0 items-center justify-center text-emerald-400"
+            title={t("common.cache_saved")}
+            aria-label={t("common.cache_saved")}
+          >
+            <LuCircleArrowDown size={16} aria-hidden="true" />
+          </span>
+        )}
+
         <div className="min-w-0 flex flex-col gap-[2px]">
           <div className="flex items-center gap-[8px]">
             <h3
@@ -403,6 +417,16 @@ function SongCard({
             open={resolvedMenuOpen}
             onOpenChange={handleMenuOpenChange}
             position={resolvedMenuPosition}
+            closeLabel={t("common.close")}
+            mobileSheetHeader={(
+              <div className="flex flex-col items-center px-[8px] pb-[12px] pt-[4px] text-center">
+                <div className="relative mb-[14px] h-[112px] w-[112px] overflow-hidden rounded-[14px] bg-black/20 shadow-[0_8px_28px_rgba(0,0,0,0.35)]">
+                  <CoverImage src={coverUrl} alt={shownTitle} fill sizes="112px" placeholder="empty" className="object-cover" />
+                </div>
+                <h2 className="m-0 max-w-full truncate text-[18px] font-[600] leading-[24px] text-text-primary">{shownTitle}</h2>
+                <p className="m-0 mt-[4px] max-w-full truncate text-[14px] leading-[20px] text-text-secondary">{artists}</p>
+              </div>
+            )}
           />
         )}
       </div>

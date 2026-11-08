@@ -98,16 +98,16 @@ export default function SearchPage() {
           <input ref={input} type="search" enterKeyHint="search" autoComplete="off" autoCapitalize="none" spellCheck={false} aria-label={t("common.search")} placeholder={t("search.placeholder")} value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 border-0 bg-transparent text-[16px] text-text-primary outline-none [&::-webkit-search-cancel-button]:hidden" />
           {hasQuery && <button type="button" aria-label={t("common.clear_search")} className="flex h-[36px] w-[36px] shrink-0 items-center justify-center border-0 bg-transparent text-text-secondary" onClick={() => { setQuery(""); input.current?.focus(); }}><CloseLine size={20} /></button>}
         </form>
-        <div className="mt-[12px] flex gap-[6px] overflow-x-auto pb-[2px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t("common.search")}>
+        {hasQuery && <div className="mt-[12px] flex gap-[6px] overflow-x-auto pb-[2px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t("common.search")}>
           {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={key === filter} onClick={() => setFilter(key)} className={`h-[32px] shrink-0 rounded-[10px] border-0 px-[12px] text-[13px] ${key === filter ? "bg-text-primary text-bg-primary" : "bg-bg-panel text-text-secondary"}`}>{t(label)}</button>)}
-        </div>
+        </div>}
       </header>
       <div className="relative min-h-0 flex-1">
         {!hasQuery ? <div className="h-full overflow-y-auto">
           {historyCount > 0 && <SearchHistoryList onSelectQuery={(value) => { setQuery(value); rememberQuery(value); input.current?.blur(); }} onPlayTrack={play} onNavigateItem={open} onOpenArtist={rememberArtist} />}
           <RecommendedArtists />
         </div> : query.trim().length < 2 ? null : <>
-          {results.length > 0 ? <SearchResultsList items={results} isArtistSearchFilter={filter === "artist"} isPlaylistSearchFilter={filter === "playlist"} onPlayFromSearch={play} onNavigateItem={open} onOpenArtist={rememberArtist} /> : !search.loading && <div className="flex h-full flex-col items-center justify-center gap-[12px] px-[24px] text-center text-text-secondary"><p>{search.error ? t("common.error_network") : t("common.no_results")}</p>{search.error && <Button variant="secondary" onClick={() => void search.runNow()}><SearchLine size={18} />{t("common.search")}</Button>}</div>}
+          {results.length > 0 ? <SearchResultsList items={results} isArtistSearchFilter={filter === "artist"} isPlaylistSearchFilter={filter === "playlist"} onPlayFromSearch={play} onNavigateItem={open} onOpenArtist={rememberArtist} /> : search.loading ? <div role="status" className="flex h-full items-center justify-center gap-[10px] text-[14px] text-text-secondary"><span className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-text-secondary border-t-transparent" />{t("common.loading")}</div> : <div className="flex h-full flex-col items-center justify-center gap-[12px] px-[24px] text-center text-text-secondary"><p>{search.error ? t("common.error_network") : t("common.no_results")}</p>{search.error && <Button variant="secondary" onClick={() => void search.runNow()}><SearchLine size={18} />{t("common.search")}</Button>}</div>}
         </>}
       </div>
     </section>

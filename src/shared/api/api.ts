@@ -917,11 +917,12 @@ export const api = {
 
   getUserPlaylist(
     id: string,
+    options?: { signal?: AbortSignal },
   ): Promise<{ playlist: ApiUserPlaylist; items: ApiUserPlaylistItem[] }> {
     return request<{
       playlist: ApiUserPlaylist;
       items: ApiUserPlaylistItem[];
-    }>(`/v1/me/playlists/${encodeURIComponent(id)}`);
+    }>(`/v1/me/playlists/${encodeURIComponent(id)}`, options?.signal ? { signal: options.signal } : undefined);
   },
 
   createPlaylist(input: {

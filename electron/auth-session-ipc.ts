@@ -2,21 +2,10 @@ import { app, BrowserWindow, ipcMain, net, safeStorage, type IpcMainEvent, type 
 import path from "node:path";
 import { AuthSessionStore } from "./auth-session-store.js";
 import { syncServerTime } from "./crypto.js";
-
-function isAppUrl(url: string | undefined): boolean {
-  if (!url) return false;
-  if (url.startsWith("file:")) return true;
-  const devServer = process.env.VITE_DEV_SERVER_URL;
-  if (!devServer) return false;
-  try {
-    return new URL(url).origin === new URL(devServer).origin;
-  } catch {
-    return false;
-  }
-}
+import { isAppUrl, isTrustedSender } from "./ipc-guard.js";
 
 function fromApp(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
-  return isAppUrl(event.senderFrame?.url);
+  return isTrustedSender(event);
 }
 
 export function registerAuthSessionIpc(): AuthSessionStore {

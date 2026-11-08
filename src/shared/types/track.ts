@@ -25,4 +25,6 @@ export interface Track {
   };
   /** the user's own file, kept on another device: the name of that device */
   onlyOnDevice?: string;
+  /** Marks a manual queue addition so the queue UI can group it separately. */
+  queuedByUser?: boolean;
 }

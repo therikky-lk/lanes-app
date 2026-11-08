@@ -21,7 +21,6 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
   const connChecks = useConnectivityStore((s) => s.checks);
   const connLastRunAt = useConnectivityStore((s) => s.lastRunAt);
   const runAndSaveDump = useConnectivityStore((s) => s.runAndSaveDump);
-
   useEffect(() => {
     setMounted(true);
   }, []);

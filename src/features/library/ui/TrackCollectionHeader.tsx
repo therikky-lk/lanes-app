@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { AddLine, PlayFill, Search2Line } from "@mingcute/react";
+import { AddLine, PlayFill } from "@mingcute/react";
 import { LuShuffle } from "react-icons/lu";
 import { useTranslation } from "@/languages";
 import EntitySidebar from "@/shared/ui/EntitySidebar";
 import Button from "@/shared/ui/Button";
 import OfflineCover from "./OfflineCover";
+import { TrackSearchButton } from "./TrackSearch";
 
 export default function TrackCollectionHeader({ title, kind, count, onPlay, onQueue, onShuffle, onSearch, searchOpen, extra }: {
   title: string; kind: "cache" | "local"; count: number;
@@ -18,7 +19,7 @@ export default function TrackCollectionHeader({ title, kind, count, onPlay, onQu
       actions={<div className="flex w-fit max-md:w-full items-center gap-[8px]">
         <Button variant="secondary" className="min-w-0 flex-none max-md:flex-1" disabled={!count} onClick={onQueue}><AddLine size={18} /><span className="truncate">{t("common.add_to_queue")}</span></Button>
         <Button variant="secondary" size="icon" disabled={!count} onClick={onShuffle} aria-label={t("common.shuffle")}><LuShuffle size={18} /></Button>
-        <Button variant={searchOpen ? "primary" : "secondary"} size="icon" disabled={!count} aria-label={t("common.search")} aria-expanded={searchOpen} onPointerDown={event => event.preventDefault()} onClick={onSearch}><Search2Line size={18} /></Button>
+        <TrackSearchButton search={{ isOpen: searchOpen, toggle: onSearch }} disabled={!count} />
         {extra}
       </div>}
     />
