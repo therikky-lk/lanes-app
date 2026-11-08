@@ -740,7 +740,10 @@ function LibraryPlaylistContent() {
               <motion.div
                 initial={false}
                 animate={{
-                  height: !isMobile && showScrollToolbar ? 0 : "auto",
+                  // Keep the 56px desktop titlebar lane reserved when the
+                  // hero collapses, so the list never slides underneath the
+                  // compact toolbar/window controls.
+                  height: !isMobile && showScrollToolbar ? 56 : "auto",
                   opacity: !isMobile && showScrollToolbar ? 0 : 1,
                 }}
                 transition={{ duration: 0.22, ease: "easeInOut" }}
