@@ -49,6 +49,7 @@ export interface SongCardWithMenuProps {
   /** show a direct like button next to the track duration */
   showLikeButton?: boolean;
   extraMenuItems?: DropdownMenuItem[];
+  hideMenuTrigger?: boolean;
 }
 
 function SongCardWithMenu({
@@ -88,6 +89,7 @@ function SongCardWithMenu({
   unavailableNote,
   showLikeButton = false,
   extraMenuItems,
+  hideMenuTrigger = false,
 }: SongCardWithMenuProps) {
   const resolvedDurationMs = useMemo(() => {
     if (durationMs !== undefined) return durationMs;
@@ -225,7 +227,7 @@ function SongCardWithMenu({
       isCurrent={isCurrent}
       trackId={id}
       repostedBy={repostedBy}
-      menuItems={menuItems}
+      menuItems={hideMenuTrigger ? undefined : menuItems}
       menuOpen={menuOpen}
       onMenuOpenChange={handleMenuOpenChange}
       onContextMenu={handleContextMenu}

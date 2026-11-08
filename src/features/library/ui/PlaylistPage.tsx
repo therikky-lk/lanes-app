@@ -63,6 +63,7 @@ interface TrackItemProps {
   allTracks: Track[];
   style?: React.CSSProperties;
   showReorderHandle?: boolean;
+  hideMenuTrigger?: boolean;
   onGrabStart?: (e: React.PointerEvent<HTMLDivElement>) => void;
   highlight?: string;
   isCurrent?: boolean;
@@ -119,6 +120,7 @@ const TrackItem = memo(function TrackItem({
   allTracks,
   style,
   showReorderHandle,
+  hideMenuTrigger,
   onGrabStart,
   highlight,
   isCurrent,
@@ -161,7 +163,8 @@ const TrackItem = memo(function TrackItem({
         playlistId={playlistId}
         playlistItemId={track.playlistItemId}
         playlistTitle={playlistTitle}
-        showLikeButton={Boolean(playlistId)}
+        showLikeButton={Boolean(playlistId) && !hideMenuTrigger}
+        hideMenuTrigger={hideMenuTrigger}
         showReorderHandle={showReorderHandle}
         onGrabStart={onGrabStart}
         highlight={highlight}
@@ -208,6 +211,7 @@ function LibraryPlaylistContent() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [isPlaylistEditMode, setIsPlaylistEditMode] = useState(false);
   const [showScrollToolbar, setShowScrollToolbar] = useState(false);
   const reorderTracks = useReorderPlaylistTracks();
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -309,6 +313,8 @@ function LibraryPlaylistContent() {
   const trackListContainerRef = useRef<HTMLDivElement>(null);
   const [optimisticTracks, setOptimisticTracks] = useState<Track[] | null>(null);
 
+  useEffect(() => setIsPlaylistEditMode(false), [decodedId]);
+
   useEffect(() => {
     setOptimisticTracks(null);
   }, [viewData?.revision, decodedId]);
@@ -403,9 +409,10 @@ function LibraryPlaylistContent() {
   const [addedToQueue, setAddedToQueue] = useState(false);
 
   const handlePlaylistScroll = useCallback((container: HTMLElement | null) => {
-    setShowScrollToolbar((container?.scrollTop ?? 0) > 150);
+    if (isMobile) return;
+    setShowScrollToolbar((container?.scrollTop ?? 0) > 80);
     if (rafIdRef.current === null) targetScrollTopRef.current = null;
-  }, []);
+  }, [isMobile]);
 
   const handleAddToQueue = useCallback(() => {
     if (!playableTracks.length || !viewData) return;
@@ -656,7 +663,7 @@ function LibraryPlaylistContent() {
         />
       </div>
       <AnimatePresence>
-        {showScrollToolbar && viewData && (
+        {!isMobile && showScrollToolbar && viewData && (
           <motion.div
             key="playlist-scroll-toolbar"
             initial={{ opacity: 0, y: -10 }}
@@ -664,7 +671,7 @@ function LibraryPlaylistContent() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[8px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] shadow-lg backdrop-blur-xl md:px-[32px]"
-            style={{ top: isMobile ? "var(--lane-safe-top, 0px)" : 0, height: isMobile ? "calc(56px + var(--lane-safe-top, 0px))" : 56, paddingTop: isMobile ? "var(--lane-safe-top, 0px)" : undefined }}
+            style={{ top: 0, height: 56 }}
             data-no-window-drag
           >
             <strong className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white">{viewData.title}</strong>
@@ -1003,8 +1010,18 @@ function LibraryPlaylistContent() {
                           />
                         )}
 
-                        {!isLikesMode && decodedId && (
-                          <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} extraMenuItems={[
+                        {!isLikesMode && decodedId && (isPlaylistEditMode ? (
+                          <Button variant="outline" onClick={() => setIsPlaylistEditMode(false)} aria-label={t("common.save")} title={t("common.save")} className="!h-[36px] !w-[36px] shrink-0 !p-0">
+                            <CheckLine size={17} />
+                          </Button>
+                        ) : (
+                          <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} className="!bg-border-alpha-14" extraMenuItems={[
+                              {
+                                id: "edit-order",
+                                icon: <LuPencil size={15} />,
+                                label: t("playlist.edit_order"),
+                                onClick: () => setIsPlaylistEditMode(true),
+                              },
                               {
                                 id: "rename",
                                 icon: <LuPencil size={15} />,
@@ -1065,7 +1082,7 @@ function LibraryPlaylistContent() {
                                 },
                               },
                           ]} />
-                        )}
+                        ))}
                       </div>
                     </div>
                   }
@@ -1272,10 +1289,11 @@ function LibraryPlaylistContent() {
                       showLikedDateInMenu={isLikesMode && isMobile}
                       playlistCoverUrl={viewData.coverUrl}
                       allTracks={playableTracks}
-                      showReorderHandle={canReorder}
+                      showReorderHandle={canReorder && isPlaylistEditMode}
+                      hideMenuTrigger={isPlaylistEditMode}
                       highlight={search.activeQuery || undefined}
                       onGrabStart={
-                        canReorder && !isDragging
+                        canReorder && isPlaylistEditMode && !isDragging
                           ? (e) => handleCardGrab(index, track, e)
                           : undefined
                       }
