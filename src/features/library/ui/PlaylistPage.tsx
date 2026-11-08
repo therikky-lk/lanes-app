@@ -213,6 +213,7 @@ function LibraryPlaylistContent() {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isPlaylistEditMode, setIsPlaylistEditMode] = useState(false);
   const [showScrollToolbar, setShowScrollToolbar] = useState(false);
+  const trackFiltersRef = useRef<HTMLDivElement>(null);
   const reorderTracks = useReorderPlaylistTracks();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -313,7 +314,10 @@ function LibraryPlaylistContent() {
   const trackListContainerRef = useRef<HTMLDivElement>(null);
   const [optimisticTracks, setOptimisticTracks] = useState<Track[] | null>(null);
 
-  useEffect(() => setIsPlaylistEditMode(false), [decodedId]);
+  useEffect(() => {
+    setIsPlaylistEditMode(false);
+    setShowScrollToolbar(false);
+  }, [decodedId]);
 
   useEffect(() => {
     setOptimisticTracks(null);
@@ -410,7 +414,14 @@ function LibraryPlaylistContent() {
 
   const handlePlaylistScroll = useCallback((container: HTMLElement | null) => {
     if (isMobile) return;
-    setShowScrollToolbar((container?.scrollTop ?? 0) > 80);
+    const filters = trackFiltersRef.current;
+    // Keep the full playlist controls visible until the filter chips and the
+    // track column labels have scrolled away. The compact toolbar then takes
+    // over the top edge without sitting on top of the large playlist header.
+    const toolbarThreshold = filters
+      ? filters.offsetTop + filters.offsetHeight + 38
+      : 64;
+    setShowScrollToolbar((container?.scrollTop ?? 0) > toolbarThreshold);
     if (rafIdRef.current === null) targetScrollTopRef.current = null;
   }, [isMobile]);
 
@@ -726,6 +737,18 @@ function LibraryPlaylistContent() {
                   : "relative z-10 flex flex-col items-stretch px-[16px] h-full w-full min-h-0 box-border"
               }
             >
+              <motion.div
+                initial={false}
+                animate={{
+                  height: !isMobile && showScrollToolbar ? 0 : "auto",
+                  opacity: !isMobile && showScrollToolbar ? 0 : 1,
+                }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="w-full shrink-0 overflow-hidden"
+                aria-hidden={!isMobile && showScrollToolbar}
+                style={{ pointerEvents: !isMobile && showScrollToolbar ? "none" : "auto" }}
+                data-no-window-drag
+              >
               <div
                 className={isMobile ? "shrink-0 w-full pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[4px]"}
                 data-no-window-drag
@@ -1095,6 +1118,7 @@ function LibraryPlaylistContent() {
                   closeOnBlur={false} onSubmit={handleSearchSubmit}
                   className="!h-[44px] !w-full !rounded-[12px] [&_input]:text-[16px]" />
               </div>
+              </motion.div>
 
               <div
                 ref={isMobile ? undefined : scrollRef}
@@ -1127,6 +1151,7 @@ function LibraryPlaylistContent() {
               <ScrollBlurEdge height={60} />
               {isLikesMode && allTracks.length > 0 && (
                 <div
+                  ref={trackFiltersRef}
                   className={`flex flex-nowrap snap-x snap-mandatory scroll-px-[8px] gap-[6px] overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-[8px] pt-[8px] ${isMobile ? "pb-[16px]" : "pb-[12px]"}`}
                   style={{ fontFamily: "var(--font-inter), sans-serif" }}
                 >
