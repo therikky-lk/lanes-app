@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="description" content="Ежедневная статистика Lane: пользователи, прослушивания и страны." />
+    <title>Статистика Lane</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, Geist, ui-sans-serif, system-ui, sans-serif; background: #09090b; color: #f5f5f6; font-synthesis: none; }
+      * { box-sizing: border-box; }
+      body { min-height: 100svh; margin: 0; background: radial-gradient(ellipse at 50% -22%, rgba(255, 77, 77, .15), transparent 52%), #09090b; }
+      a { color: inherit; text-decoration: none; }
+      .shell { width: min(100% - 32px, 880px); margin: 0 auto; padding: 26px 0 48px; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 28px; }
+      .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 750; letter-spacing: -.04em; }
+      .mark { display: flex; align-items: center; gap: 2px; height: 20px; }
+      .mark i { width: 3px; border-radius: 3px; background: #ff5b5b; }
+      .mark i:nth-child(1) { height: 8px; }.mark i:nth-child(2) { height: 16px; }.mark i:nth-child(3) { height: 11px; }.mark i:nth-child(4) { height: 19px; }
+      .back { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px; border: 1px solid #29292f; border-radius: 999px; color: #c8c8ce; font-size: 12px; transition: background .16s ease, color .16s ease; }
+      .back:hover { background: #19191d; color: #fff; }
+      .logout { cursor: pointer; background: transparent; font: inherit; }
+      .intro { padding: 22px 0 24px; }
+      .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #a0a0aa; font-size: 11px; letter-spacing: .13em; text-transform: uppercase; }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: #54d48a; box-shadow: 0 0 12px rgba(84,212,138,.5); }
+      h1 { margin: 13px 0 8px; font-size: clamp(34px, 7vw, 52px); line-height: 1.04; letter-spacing: -.065em; }
+      .subtitle { margin: 0; color: #92929d; font-size: 14px; line-height: 1.6; }
+      .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+      .card { min-width: 0; border: 1px solid #26262d; border-radius: 17px; background: linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.018)); box-shadow: 0 12px 38px rgba(0,0,0,.12); }
+      .metric { padding: 19px; }
+      .label { color: #a0a0aa; font-size: 12px; }
+      .value { margin-top: 9px; font-size: clamp(27px, 5vw, 36px); font-weight: 700; line-height: 1; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+      .unit { color: #a0a0aa; font-size: 13px; font-weight: 500; letter-spacing: 0; }
+      .panel { margin-top: 14px; padding: 18px; }
+      .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+      h2 { margin: 0; font-size: 14px; font-weight: 650; }
+      .muted { color: #777782; font-size: 11px; }
+      .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 9px; min-height: 150px; }
+      .day { display: flex; min-width: 0; height: 150px; flex-direction: column; align-items: center; justify-content: end; gap: 8px; }
+      .bar-wrap { display: flex; width: 100%; height: 112px; align-items: end; justify-content: center; }
+      .bar { width: min(100%, 34px); min-height: 3px; border-radius: 8px 8px 4px 4px; background: linear-gradient(180deg, #ff7474, #fa424e); box-shadow: 0 0 20px rgba(255,77,77,.13); transition: height .3s ease; }
+      .day-label { color: #858590; font-size: 10px; white-space: nowrap; }
+      .day-value { color: #c7c7cf; font-size: 10px; font-variant-numeric: tabular-nums; }
+      .countries { display: flex; flex-wrap: wrap; gap: 8px; }
+      .country { display: inline-flex; align-items: center; gap: 9px; min-height: 34px; padding: 0 11px; border: 1px solid #2a2a31; border-radius: 999px; background: rgba(255,255,255,.035); color: #d5d5dc; font-size: 12px; }
+      .country b { color: #ff8080; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+      .message { margin-top: 14px; padding: 15px 17px; color: #a0a0aa; font-size: 13px; line-height: 1.55; }
+      .gate { width: min(100%, 460px); margin: 8px auto 0; padding: 22px; }
+      .gate p { margin: 7px 0 17px; color: #92929d; font-size: 13px; line-height: 1.55; }
+      .gate h2 { font-size: 16px; }
+      .gate-form { display: flex; gap: 8px; }
+      .gate input { min-width: 0; flex: 1; height: 42px; padding: 0 13px; border: 1px solid #303039; border-radius: 11px; outline: none; background: #101014; color: #f5f5f6; font: inherit; font-size: 13px; }
+      .gate input:focus { border-color: #77717b; box-shadow: 0 0 0 3px rgba(255,255,255,.06); }
+      .gate button { height: 42px; padding: 0 15px; border: 0; border-radius: 11px; background: #f5f5f6; color: #111; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+      .gate button:disabled { opacity: .55; cursor: wait; }
+      .gate-error { min-height: 16px; margin-top: 9px; color: #ff8585; font-size: 11px; }
+      [hidden] { display: none !important; }
+      footer { padding-top: 24px; color: #5d5d66; font-size: 10px; text-align: center; letter-spacing: .12em; }
+      @media (max-width: 520px) { .shell { width: min(100% - 24px, 880px); padding-top: 18px; }.summary { gap: 8px; }.metric { padding: 15px; }.panel { padding: 14px; }.days { gap: 4px; }.day-label, .day-value { font-size: 9px; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <a class="brand" href="/" aria-label="Lane"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>lane</span></a>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a class="back" href="/">← <span data-copy="back">На главную</span></a>
+          <button id="logout" class="back logout" type="button" hidden data-copy="logout">Выйти</button>
+        </div>
+      </header>
+      <main>
+        <section class="intro">
+          <div class="eyebrow"><span class="dot"></span><span data-copy="live">Открытая статистика</span></div>
+          <h1 data-copy="title">Статистика Lane</h1>
+          <p class="subtitle" data-copy="subtitle">Активность приложения за последние 7 дней.</p>
+        </section>
+        <section id="gate" class="card gate">
+          <h2 data-copy="loginTitle">Вход по коду</h2>
+          <p data-copy="loginText">Введите код доступа, чтобы посмотреть статистику.</p>
+          <form id="login-form" class="gate-form">
+            <input id="access-code" type="password" autocomplete="current-password" inputmode="text" required aria-label="Access code" />
+            <button type="submit" data-copy="login">Войти</button>
+          </form>
+          <div id="gate-error" class="gate-error" role="alert"></div>
+        </section>
+        <div id="stats-content" hidden>
+        <section class="summary" aria-label="Summary">
+          <article class="card metric"><div class="label" data-copy="active">Активных пользователей-дней</div><div id="active" class="value">—</div></article>
+          <article class="card metric"><div class="label" data-copy="listened">Музыки прослушано</div><div id="listened" class="value">—</div></article>
+        </section>
+        <section class="card panel">
+          <div class="panel-head"><h2 data-copy="daily">Активность по дням</h2><span class="muted" data-copy="usersPerDay">пользователи за день</span></div>
+          <div id="days" class="days" aria-live="polite"></div>
+        </section>
+        <section class="card panel">
+          <div class="panel-head"><h2 data-copy="countries">Страны входа</h2><span class="muted" data-copy="logins">входы за 7 дней</span></div>
+          <div id="countries" class="countries"></div>
+        </section>
+        <p id="message" class="card message" role="status" data-copy="loading">Загружаем статистику…</p>
+        </div>
+      </main>
+      <footer>LANE MUSIC PLAYER</footer>
+    </div>
+    <script>
+      const ru = navigator.language.toLowerCase().startsWith("ru");
+      document.documentElement.lang = ru ? "ru" : "en";
+      const words = ru ? {
+        back: "На главную", logout: "Выйти", loginTitle: "Вход по коду", loginText: "Введите код доступа, чтобы посмотреть статистику.", login: "Войти", live: "Статистика приложения", title: "Статистика Lane", subtitle: "Активность приложения за последние 7 дней.",
+        active: "Активных пользователей-дней", listened: "Музыки прослушано", daily: "Активность по дням", usersPerDay: "пользователи за день",
+        countries: "Страны входа", logins: "входы за 7 дней", loading: "Загружаем статистику…", empty: "Данные появятся здесь, когда начнут поступать события активности.",
+        error: "Не удалось загрузить статистику. Попробуйте обновить страницу.", noCountries: "Пока нет данных о странах входа.", minutes: "мин", users: "чел.", wrongCode: "Неверный код. Попробуйте ещё раз.", loginUnavailable: "Вход по коду пока не настроен на сервере."
+      } : {
+        back: "Home", logout: "Sign out", loginTitle: "Sign in with a code", loginText: "Enter the access code to view statistics.", login: "Sign in", live: "App statistics", title: "Lane statistics", subtitle: "App activity over the last 7 days.",
+        active: "Active user-days", listened: "Music listened", daily: "Daily activity", usersPerDay: "users per day",
+        countries: "Login countries", logins: "sign-ins over 7 days", loading: "Loading statistics…", empty: "Activity data will appear here as events are collected.",
+        error: "Could not load statistics. Please refresh the page.", noCountries: "There is no login country data yet.", minutes: "min", users: "users", wrongCode: "Incorrect code. Please try again.", loginUnavailable: "Code sign-in has not been configured on the server yet."
+      };
+      document.querySelectorAll("[data-copy]").forEach(node => { node.textContent = words[node.dataset.copy]; });
+      const el = (tag, className, value) => { const node = document.createElement(tag); if (className) node.className = className; if (value !== undefined) node.textContent = value; return node; };
+      const message = document.getElementById("message");
+      let currentCode = "";
+      const formatCountry = code => {
+        if (code === "unknown") return ru ? "Неизвестно" : "Unknown";
+        try { return new Intl.DisplayNames([navigator.language], { type: "region" }).of(code.toUpperCase()) || code.toUpperCase(); }
+        catch { return code.toUpperCase(); }
+      };
+      async function loadStats() {
+        const response = await fetch("/v1/public/stats/daily?days=7", { cache: "no-store", headers: { Authorization: `Bearer ${currentCode}` } });
+        if (!response.ok) throw new Error("request failed");
+        const data = await response.json();
+          const days = Array.isArray(data.days) ? data.days : [];
+          const activeDays = days.reduce((sum, day) => sum + (Number(day.activeUsers) || 0), 0);
+          const minutes = days.reduce((sum, day) => sum + (Number(day.listenedMinutes) || 0), 0);
+          document.getElementById("active").textContent = activeDays.toLocaleString(navigator.language);
+          const listened = document.getElementById("listened");
+          listened.replaceChildren(document.createTextNode(`${minutes.toLocaleString(navigator.language)} `), el("span", "unit", words.minutes));
+          const bars = document.getElementById("days");
+          bars.replaceChildren();
+          const ordered = [...days].sort((a, b) => a.day.localeCompare(b.day));
+          const max = Math.max(1, ...ordered.map(day => Number(day.activeUsers) || 0));
+          ordered.forEach(day => {
+            const date = new Date(`${day.day}T00:00:00`);
+            const dayNode = el("div", "day");
+            dayNode.append(el("span", "day-value", String(Number(day.activeUsers) || 0)));
+            const barWrap = el("div", "bar-wrap");
+            const bar = el("div", "bar");
+            bar.style.height = `${Math.max(3, 100 * (Number(day.activeUsers) || 0) / max)}%`;
+            bar.title = `${Number(day.activeUsers) || 0} ${words.users}`;
+            barWrap.append(bar);
+            dayNode.append(barWrap);
+            dayNode.append(el("span", "day-label", date.toLocaleDateString(navigator.language, { weekday: "short" })));
+            bars.append(dayNode);
+          });
+          const totals = new Map();
+          days.flatMap(day => Array.isArray(day.loginCountries) ? day.loginCountries : []).forEach(item => {
+            totals.set(item.country, (totals.get(item.country) || 0) + (Number(item.logins) || 0));
+          });
+          const countries = document.getElementById("countries");
+          countries.replaceChildren();
+          [...totals].sort((a, b) => b[1] - a[1]).forEach(([code, count]) => {
+            const chip = el("span", "country");
+            chip.append(el("span", "", formatCountry(code)), el("b", "", count.toLocaleString(navigator.language)));
+            countries.append(chip);
+          });
+          if (!totals.size) countries.append(el("span", "muted", words.noCountries));
+          message.textContent = words.empty;
+          message.hidden = days.some(day => Number(day.activeUsers) || Number(day.listenedMinutes));
+      }
+      async function unlock() {
+        message.hidden = false;
+        message.textContent = words.loading;
+        await loadStats();
+        document.getElementById("gate").hidden = true;
+        document.getElementById("stats-content").hidden = false;
+        document.getElementById("logout").hidden = false;
+      }
+      const gateError = document.getElementById("gate-error");
+      const form = document.getElementById("login-form");
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = form.querySelector("button");
+        button.disabled = true;
+        gateError.textContent = "";
+        try {
+          const enteredCode = document.getElementById("access-code").value;
+          const response = await fetch("/v1/public/stats/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: enteredCode }) });
+          if (response.status === 401) throw new Error(words.wrongCode);
+          if (!response.ok) throw new Error(words.loginUnavailable);
+          currentCode = enteredCode;
+          await unlock();
+          document.getElementById("access-code").value = "";
+        } catch (error) { currentCode = ""; document.getElementById("access-code").value = enteredCode; gateError.textContent = error.message || words.loginUnavailable; }
+        finally { button.disabled = false; }
+      });
+      document.getElementById("logout").addEventListener("click", () => {
+        currentCode = "";
+        window.location.reload();
+      });
+    </script>
+  </body>
+</html>
