@@ -10,6 +10,7 @@ import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
 import { applyLyricsLatency, lyricsOutputLatencyMs } from "@/features/lyrics/engine/lyricsLatency";
 import { AddLine, Edit2Line } from "@mingcute/react";
+import { LuCaptions } from "react-icons/lu";
 import {
   useCallback,
   useEffect,
@@ -688,7 +689,7 @@ export function FullscreenPlayer({
       >
         {!isMobile && <VisualQualityPicker />}
         {showProviderIsland && <LyricsProviderIsland />}
-        {hasLyrics && (
+        {hasLyrics && !isMobile && (
           <button
             type="button"
             onClick={() => setCustomLyricsOpen(true)}
@@ -704,11 +705,13 @@ export function FullscreenPlayer({
             type="button"
             onClick={() => setMobileLyrics((v) => !v)}
             aria-pressed={mobileLyrics}
-            className={`inline-flex h-[34px] items-center gap-[6px] rounded-lg border-none px-[14px] text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
+            aria-label={t("player.lyrics") || "Lyrics"}
+            title={t("player.lyrics") || "Lyrics"}
+            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none p-0 text-[13px] font-[500] backdrop-blur-xl transition-colors cursor-pointer ${
               mobileLyrics ? "bg-white text-black" : "bg-black/45 text-white/85"
             }`}
           >
-            {t("player.lyrics") || "Lyrics"}
+            <LuCaptions size={19} />
           </button>
         )}
         {isMobile && (
