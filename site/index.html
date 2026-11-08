@@ -3,87 +3,230 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Lane — музыка скоро будет звучать." />
-    <title>Lane — скоро</title>
+    <meta name="theme-color" content="#071638" />
+    <meta name="description" content="Lane готовится к запуску. Скоро здесь будет готовое." />
+    <title>Lane — страница в разработке</title>
     <style>
       :root {
         color-scheme: dark;
         font-family: Inter, Geist, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #000;
-        color: #f4f4f4;
-        --muted: #929296;
-        --panel: #1a1a1c;
-        --line: #363639;
-        --accent: #ff4d4d;
+        color: #eef3ff;
+        background: #071638;
+        --ink: #eef3ff;
+        --muted: #c4d2f2;
+        --grid: rgba(208, 224, 255, .12);
+        --outline: rgba(228, 238, 255, .92);
+        --panel: rgba(7, 22, 56, .32);
       }
       * { box-sizing: border-box; }
-      body { min-height: 100svh; margin: 0; background: #000; }
-      main { display: flex; min-height: 100svh; flex-direction: column; padding: 16px 20px 20px; }
-      .pause-mark {
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        min-height: 100svh;
+        margin: 0;
+        background-color: #071638;
+        background-image:
+          linear-gradient(var(--grid) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+          radial-gradient(ellipse at 50% 48%, #173879 0%, #102b68 48%, #071638 100%);
+        background-size: 32px 32px, 32px 32px, cover;
+        background-attachment: fixed;
+      }
+      main {
         display: grid;
-        width: 48px;
-        height: 48px;
-        place-items: center;
-        border-radius: 50%;
-        background: #f1f1f2;
-        color: #090909;
-      }
-      .pause-mark svg { width: 19px; height: 19px; fill: currentColor; }
-      h1 { margin: 13px 0 7px; font-size: clamp(48px, 8.2vw, 72px); line-height: .98; letter-spacing: -.065em; font-weight: 650; }
-      p { max-width: 440px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; letter-spacing: -.015em; }
-      .player {
-        display: flex;
-        width: min(100%, 960px);
-        min-height: 48px;
+        width: min(100%, 1240px);
+        min-height: 100vh;
+        min-height: 100svh;
+        grid-template-columns: minmax(0, 1.4fr) minmax(270px, .8fr);
         align-items: center;
-        gap: 14px;
-        margin-top: auto;
-        padding: 0 16px;
-        border: 1px solid rgba(255,255,255,.04);
-        border-radius: 12px;
-        background: var(--panel);
+        gap: clamp(36px, 7vw, 100px);
+        margin: 0 auto;
+        padding: clamp(28px, 6vw, 76px);
       }
-      .controls { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
-      .control { display: grid; width: 13px; height: 24px; place-items: center; padding: 0; border: 0; background: transparent; color: #8b8b8f; }
-      .control svg { width: 13px; height: 13px; fill: currentColor; }
-      .time { flex: 0 0 auto; color: #d3d3d5; font-size: 10px; font-variant-numeric: tabular-nums; }
-      .progress { position: relative; height: 3px; flex: 1; overflow: hidden; border-radius: 999px; background: #454549; }
-      .progress::before { width: 0; height: 100%; background: var(--accent); content: ""; }
-      .volume { display: grid; width: 18px; height: 22px; flex: 0 0 auto; place-items: center; color: #9a9a9d; }
-      .volume svg { width: 14px; height: 14px; fill: currentColor; }
-      .eyebrow { margin-top: 14px; color: #626267; font-size: 10px; letter-spacing: .14em; }
-      @media (max-width: 560px) {
-        main { padding: 16px 16px 18px; }
-        h1 { margin-top: 17px; font-size: clamp(43px, 12vw, 62px); }
-        p { max-width: 350px; font-size: 13px; }
-        .desktop-break { display: none; }
-        .player { min-height: 46px; gap: 10px; padding: 0 12px; }
-        .controls { gap: 8px; }
-        .eyebrow { margin-top: 12px; }
+      .intro { min-width: 0; }
+      .eyebrow, .panel-label, .stage-status, .detail {
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      }
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 24px;
+        color: #c8d8ff;
+        font-size: 12px;
+        letter-spacing: .2em;
+        text-transform: uppercase;
+      }
+      .eyebrow::before { width: 22px; height: 1px; background: var(--outline); content: ""; }
+      h1 {
+        max-width: 720px;
+        margin: 0;
+        font-size: clamp(50px, 8.5vw, 88px);
+        font-weight: 650;
+        line-height: .99;
+        letter-spacing: -.065em;
+        text-wrap: balance;
+      }
+      .description {
+        max-width: 550px;
+        margin: 22px 0 0;
+        color: var(--muted);
+        font-size: clamp(15px, 1.8vw, 18px);
+        line-height: 1.65;
+        letter-spacing: -.02em;
+      }
+      .panel {
+        position: relative;
+        padding: 26px 26px 20px;
+        border: 2px solid var(--outline);
+        background: var(--panel);
+        box-shadow: 8px 8px 0 rgba(3, 13, 35, .2);
+        transition: box-shadow .2s ease, background .2s ease;
+      }
+      .panel::before, .panel::after {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-color: var(--ink);
+        border-style: solid;
+        content: "";
+      }
+      .panel::before { top: -2px; left: -2px; border-width: 2px 0 0 2px; }
+      .panel::after { right: -2px; bottom: -2px; border-width: 0 2px 2px 0; }
+      .panel-label {
+        margin: 0 0 14px;
+        color: #bbcef6;
+        font-size: 10px;
+        letter-spacing: .2em;
+      }
+      .stages { display: grid; gap: 2px; }
+      .stage {
+        display: flex;
+        width: 100%;
+        min-height: 34px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 4px 7px;
+        border: 0;
+        border-radius: 2px;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        transition: background .16s ease, transform .16s ease;
+      }
+      .stage:hover, .stage[aria-pressed="true"] { background: rgba(229, 239, 255, .12); }
+      .stage:hover { transform: translateX(3px); }
+      .stage:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+      .stage-name { font-size: 14px; }
+      .stage-status { color: #d5e0f7; font-size: 12px; white-space: nowrap; }
+      .detail {
+        min-height: 34px;
+        margin: 13px 7px 0;
+        padding-top: 10px;
+        border-top: 1px solid rgba(228, 238, 255, .25);
+        color: #b8caed;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+      footer {
+        position: fixed;
+        right: 22px;
+        bottom: 16px;
+      }
+      .telegram-link {
+        display: inline-flex;
+        min-height: 42px;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        padding: 0 16px;
+        border: 1px solid rgba(228, 238, 255, .7);
+        border-radius: 4px;
+        background: rgba(7, 22, 56, .82);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 550;
+        letter-spacing: .01em;
+        text-decoration: none;
+        transition: color .16s ease, background .16s ease, transform .16s ease;
+      }
+      .telegram-link:hover {
+        transform: translateY(-2px);
+        background: var(--ink);
+        color: #071638;
+      }
+      .telegram-link:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+      .telegram-link svg { width: 16px; height: 16px; fill: currentColor;
+      }
+      @media (max-width: 760px) {
+        main {
+          min-height: 100vh;
+          min-height: 100svh;
+          grid-template-columns: minmax(0, 1fr);
+          align-content: center;
+          gap: 32px;
+          padding: 40px 24px 64px;
+        }
+        .eyebrow { margin-bottom: 20px; font-size: 10px; letter-spacing: .16em; }
+        h1 { max-width: 600px; font-size: clamp(48px, 12vw, 74px); }
+        .description { margin-top: 17px; font-size: 15px; }
+        .panel { width: 100%; max-width: 500px; justify-self: center; padding: 23px 20px 16px; }
+        .stage-name { font-size: 14px; }
+        .stage-status { font-size: 11px; }
+        footer { right: 16px; bottom: 14px; left: 16px; text-align: center; }
+      }
+      @media (max-width: 380px) {
+        main { gap: 26px; padding-right: 18px; padding-left: 18px; }
+        h1 { font-size: clamp(43px, 11.6vw, 54px); }
+        .panel { padding-right: 15px; padding-left: 15px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
       }
     </style>
   </head>
   <body>
     <main>
-      <section aria-labelledby="title">
-        <span class="pause-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM15 5h4v14h-4z" /></svg>
-        </span>
-        <h1 id="title">Пока тишина.</h1>
-        <p>Плеер ещё в разработке. Скоро здесь заиграет<br class="desktop-break" /> музыка.</p>
+      <section class="intro" aria-labelledby="title">
+        <p class="eyebrow">ЧЕРТЁЖ № 404 — ГОТОВИТСЯ</p>
+        <h1 id="title">Страница в разработке</h1>
+        <p class="description">Раздел ещё на стадии проекта. Возвращайтесь позже — к тому времени здесь будет готовое.</p>
       </section>
-      <div class="player" role="group" aria-label="Плеер Lane — скоро">
-        <span class="controls" aria-hidden="true">
-          <span class="control"><svg viewBox="0 0 24 24"><path d="M5 5v14h2V5H5zm14 1.5L9 12l10 5.5v-11z" /></svg></span>
-          <span class="control"><svg viewBox="0 0 24 24"><path d="M8 5.8c0-.78.85-1.26 1.52-.86l10.08 6.2a1 1 0 0 1 0 1.72l-10.08 6.2A1 1 0 0 1 8 18.2V5.8Z" /></svg></span>
-          <span class="control"><svg viewBox="0 0 24 24"><path d="M17 5v14h2V5h-2zM5 6.5v11L15 12 5 6.5z" /></svg></span>
-        </span>
-        <span class="time">0:00</span>
-        <span class="progress" aria-hidden="true"></span>
-        <span class="volume" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6l-5 4H3zm12.5 2a3.5 3.5 0 0 0-2-3.16v6.31a3.5 3.5 0 0 0 2-3.15zm-2-8.65v2.06a7 7 0 0 1 0 13.18v2.06a9 9 0 0 0 0-17.3z" /></svg></span>
-      </div>
-      <footer class="eyebrow">LANE MUSIC PLAYER</footer>
+      <section class="panel" aria-labelledby="panel-title">
+        <p class="panel-label" id="panel-title">ЭТАПЫ</p>
+        <div class="stages" role="group" aria-label="Этапы разработки">
+          <button class="stage" type="button" data-detail="Идея определена — собираем Lane в единое целое." aria-pressed="false">
+            <span class="stage-name">Идея</span><span class="stage-status">[x] ГОТОВО</span>
+          </button>
+          <button class="stage" type="button" data-detail="Визуальный стиль и основные экраны уже готовы." aria-pressed="false">
+            <span class="stage-name">Дизайн</span><span class="stage-status">[x] ГОТОВО</span>
+          </button>
+          <button class="stage" type="button" data-detail="Собираем страницы и доводим детали интерфейса." aria-pressed="true">
+            <span class="stage-name">Вёрстка</span><span class="stage-status">[~] В РАБОТЕ</span>
+          </button>
+          <button class="stage" type="button" data-detail="О запуске сообщим здесь. Заглядывайте позже." aria-pressed="false">
+            <span class="stage-name">Запуск</span><span class="stage-status">[ ] СКОРО</span>
+          </button>
+        </div>
+        <p class="detail" id="stage-detail" aria-live="polite">Собираем страницы и доводим детали интерфейса.</p>
+      </section>
     </main>
+    <footer>
+      <a class="telegram-link" href="https://t.me/therikky_ls" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 4.6a1.5 1.5 0 0 0-1.55-.28L3.1 10.8a1.5 1.5 0 0 0 .12 2.84l4.12 1.3 1.3 4.12a1.5 1.5 0 0 0 2.84.12l6.48-16.75a1.5 1.5 0 0 0-.56-1.83ZM9.1 14.9l7.35-7.35-5.83 9.73-.8-2.55a1.5 1.5 0 0 0-.72-.83Z" /></svg>
+        Перейти в Telegram
+      </a>
+    </footer>
+    <script>
+      const stages = [...document.querySelectorAll(".stage")];
+      const detail = document.querySelector("#stage-detail");
+      stages.forEach((stage) => stage.addEventListener("click", () => {
+        stages.forEach((item) => item.setAttribute("aria-pressed", String(item === stage)));
+        detail.textContent = stage.dataset.detail;
+      }));
+    </script>
   </body>
 </html>
