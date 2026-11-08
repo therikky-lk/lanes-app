@@ -72,8 +72,8 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
   };
 
   return (
-    <div className="relative mx-auto h-[88px] w-[320px] max-w-full shrink-0">
-      <div className={`absolute inset-x-[10px] top-[11px] h-[65px] animate-pulse rounded-[10px] bg-white/10 transition-opacity ${phase === "loading" ? "opacity-100" : "opacity-0"}`} />
+    <div className="relative mx-auto h-[220px] w-[360px] max-w-full shrink-0">
+      <div className={`absolute inset-x-[10px] top-[11px] h-[200px] animate-pulse rounded-[10px] bg-white/10 transition-opacity ${phase === "loading" ? "opacity-100" : "opacity-0"}`} />
       {!isNativeApp() && phase !== "error" && phase !== "expired" && <iframe
         key={attempt}
         ref={frameRef}

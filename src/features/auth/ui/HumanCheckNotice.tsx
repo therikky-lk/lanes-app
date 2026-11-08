@@ -39,8 +39,10 @@ export default function HumanCheckNotice() {
           exit={{ opacity: 0, y: -12, scale: 0.98 }}
           transition={{ type: "spring", stiffness: 420, damping: 34 }}
           className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
-          <section className="w-[356px] max-w-full rounded-[24px] border border-white/10 bg-[#202023]/95 p-[18px] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+          <section className="w-[396px] max-w-full rounded-[24px] border border-white/10 bg-[#202023]/95 p-[18px] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
             <h2 className="text-[16px] font-semibold text-white">{t("human_check.title")}</h2>
             <p className="mt-1 text-[13px] leading-[1.4] text-white/65">
               {phase === "expired" ? t("human_check.expired") : failed ? t("human_check.failed") : t("human_check.description")}
