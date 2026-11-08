@@ -712,7 +712,7 @@ export function FullscreenPlayer({
                 <span className="h-[4px] w-[36px] rounded-full bg-white/30" />
               </button>
               <div className="max-h-[calc(88dvh-62px-var(--lane-safe-bottom,0px))] overflow-y-auto overscroll-contain">
-                <FullscreenQueueSheet />
+                <FullscreenQueueSheet onClose={() => setQueueOpen(false)} />
               </div>
             </motion.div>
           </motion.div>
@@ -744,16 +744,10 @@ export function FullscreenPlayer({
             type="button"
             onClick={() => setQueueOpen(true)}
             aria-label={t("player.queue")}
-            title={t("player.queue")}
             aria-expanded={queueOpen}
-            className={`relative inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl active:scale-[0.92] transition-[transform,background-color] duration-150 cursor-pointer ${queueOpen ? "bg-white text-black" : "bg-black/45 text-white/85"}`}
+            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl active:scale-[0.92] transition-[transform,background-color] duration-150 cursor-pointer ${queueOpen ? "bg-white text-black" : "bg-black/45 text-white/85"}`}
           >
             <Sidebar size={18} weight="Bold" />
-            {Math.max(0, player.queue.length - player.currentIndex - 1) > 0 && (
-              <span className="absolute -right-[4px] -top-[4px] min-w-[16px] rounded-full bg-white px-[4px] text-[9px] leading-[16px] text-black tabular-nums">
-                {Math.min(99, player.queue.length - player.currentIndex - 1)}
-              </span>
-            )}
           </button>
         )}
         {hasLyrics && !isMobile && (
