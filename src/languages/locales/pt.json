@@ -1376,7 +1376,7 @@
     "only_on_device": "Somente em “{device}”",
     "only_on_device_toast": "Esta faixa só toca em “{device}”",
     "added_from_device": "Seu arquivo deste dispositivo",
-    "add_failed": "Não foi possível adicionar sua faixa à playlist"
+    "add_failed": "Não é possível adicionar faixas locais às playlists. Elas só estão disponíveis no dispositivo original."
   },
   "history": {
     "today": "Hoje",

@@ -1374,7 +1374,7 @@
     "only_on_device": "Yalnızca “{device}”de",
     "only_on_device_toast": "Bu parça yalnızca “{device}”de çalınır",
     "added_from_device": "Bu cihazdaki dosyanız",
-    "add_failed": "Parçanız çalma listesine eklenemedi"
+    "add_failed": "Yerel parçalar çalma listelerine eklenemez. Yalnızca orijinal cihazlarında kullanılabilirler."
   },
   "history": {
     "today": "Bugün",

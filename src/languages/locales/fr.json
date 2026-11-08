@@ -1374,7 +1374,7 @@
     "only_on_device": "Uniquement sur «{device}»",
     "only_on_device_toast": "Cette piste est diffusée uniquement sur «{device}»",
     "added_from_device": "Votre fichier depuis cet appareil",
-    "add_failed": "Impossible d'ajouter votre morceau à la liste de lecture"
+    "add_failed": "Les morceaux locaux ne peuvent pas être ajoutés aux playlists. Ils sont disponibles uniquement sur leur appareil d'origine."
   },
   "history": {
     "today": "Aujourd'hui",

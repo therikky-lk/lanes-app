@@ -1385,7 +1385,7 @@
     "only_on_device": "Only on “{device}”",
     "only_on_device_toast": "This track only plays on “{device}”",
     "added_from_device": "Your file from this device",
-    "add_failed": "Couldn’t add your track to the playlist"
+    "add_failed": "Local tracks can’t be added to playlists. They’re only available on their original device."
   },
   "connect": {
     "code_section": "Pair by code",

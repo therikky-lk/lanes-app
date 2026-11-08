@@ -1376,7 +1376,7 @@
     "only_on_device": "Nur bei „{device}“",
     "only_on_device_toast": "Dieser Titel wird nur auf „{device}“ abgespielt.",
     "added_from_device": "Ihre Datei von diesem Gerät",
-    "add_failed": "Ihr Titel konnte nicht zur Wiedergabeliste hinzugefügt werden"
+    "add_failed": "Lokale Titel können nicht zu Playlists hinzugefügt werden. Sie sind nur auf ihrem ursprünglichen Gerät verfügbar."
   },
   "history": {
     "today": "Heute",

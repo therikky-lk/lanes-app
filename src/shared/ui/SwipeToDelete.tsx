@@ -88,7 +88,7 @@ export default function SwipeToDelete({ children, label, onDelete, onAddToQueue 
         {onAddToQueue ? <AddLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} /> : <DeleteLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} />}
         <span className="text-[11px] font-medium">{label}</span>
       </button>
-      <div style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 320ms cubic-bezier(.22,1,.36,1)", background: offset === 0 ? undefined : "var(--bg-primary)" }}>
+      <div style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 320ms cubic-bezier(.22,1,.36,1)" }}>
         {children}
       </div>
     </div>
