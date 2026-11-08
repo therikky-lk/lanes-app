@@ -11,7 +11,7 @@ import type { Track } from "@/shared/types";
 
 const QUEUE_ROW_HEIGHT = 68;
 
-export default function FullscreenQueueSheet({ onClose }: { onClose: () => void }) {
+export default function FullscreenQueueSheet() {
   const { t } = useTranslation();
   const player = usePlayerStore(useShallow(state => ({
     queue: state.queue,
@@ -55,11 +55,8 @@ export default function FullscreenQueueSheet({ onClose }: { onClose: () => void 
 
   return (
     <div className="flex min-h-0 flex-col gap-[14px] text-text-primary" onClick={event => event.stopPropagation()}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
         <h2 className="m-0 text-[16px] font-semibold">{t("player.queue")}</h2>
-        <button type="button" aria-label={t("common.close")} onClick={onClose} className="flex h-[34px] w-[34px] items-center justify-center rounded-full border-0 bg-white/[0.08] text-text-secondary hover:bg-white/[0.14] hover:text-text-primary active:scale-95">
-          <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
-        </button>
       </div>
 
       {nowPlaying && (
