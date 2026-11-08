@@ -215,11 +215,11 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
         )}
       </div>
 
-      {isMobile ? <div className="mt-[12px] grid grid-cols-2 gap-x-[12px] gap-y-[20px] px-[16px] pb-[20px]">
+      {isMobile ? <div className="mt-[18px] grid grid-cols-2 gap-x-[12px] gap-y-[20px] px-[16px] pb-[20px]">
         {(showAll ? mixes : mixes.slice(0, 2)).map(mix => <DailyMixCard key={mix.id} mix={mix} />)}
       </div> : (      <ScrollableRow
         controller={scroll}
-        className="min-w-0 flex flex-nowrap gap-[28px] overflow-x-auto pl-8 pr-8 pb-[20px] pt-0 mt-[3px]"
+        className="min-w-0 flex flex-nowrap gap-[28px] overflow-x-auto pl-8 pr-8 pb-[20px] pt-0 mt-[10px]"
       >
         {mixes.map((mix, index) => (
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />

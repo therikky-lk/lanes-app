@@ -6,7 +6,9 @@ import {
   type AccentVariant,
 } from "@/features/player";
 import { useTranslation, LOCALE_OPTIONS } from "@/languages";
-import { Select } from "@/shared/ui";
+import { Select, ToggleSwitch } from "@/shared/ui";
+import { useLibraryPreferences } from "@/features/library/store/libraryPreferences";
+import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
 import {
   useCustomizationStore,
   selectIsGlassThemeActive,
@@ -181,6 +183,16 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const accentVariant = usePlayerStore((state) => state.accentVariant);
   const setAccentVariant = usePlayerStore((state) => state.setAccentVariant);
   const isGlassActive = useCustomizationStore(selectIsGlassThemeActive);
+  const rememberLibraryCategory = useLibraryPreferences((state) => state.rememberCategory);
+  const rememberLibraryLayout = useLibraryPreferences((state) => state.rememberLayout);
+  const setRememberLibraryCategory = useLibraryPreferences((state) => state.setRememberCategory);
+  const setRememberLibraryLayout = useLibraryPreferences((state) => state.setRememberLayout);
+  const showLikedCollection = useOfflineLibraryStore((state) => state.showLikedCollection);
+  const showCachedCollection = useOfflineLibraryStore((state) => state.showCachedCollection);
+  const showLocalCollection = useOfflineLibraryStore((state) => state.showLocalCollection);
+  const setShowLikedCollection = useOfflineLibraryStore((state) => state.setShowLikedCollection);
+  const setShowCachedCollection = useOfflineLibraryStore((state) => state.setShowCachedCollection);
+  const setShowLocalCollection = useOfflineLibraryStore((state) => state.setShowLocalCollection);
 
   useEffect(() => {
     setMounted(true);
@@ -192,6 +204,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
     !window.matchMedia("(prefers-color-scheme: dark)").matches;
 
   return (
+    <>
     <SettingSection>
       <SettingRow
         title={t("settings.language.label")}
@@ -264,5 +277,31 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
       </SettingBlock>
 
     </SettingSection>
+
+    <SettingSection label={t("settings.storage.library_display_title")}>
+      <SettingRow title={t("library.liked_songs")} titleKey="library.liked_songs" searchQuery={searchQuery}
+        control={<ToggleSwitch checked={showLikedCollection} onChange={setShowLikedCollection} ariaLabel={t("library.liked_songs")} />} />
+      <SettingRow title={t("library.cached_songs")} titleKey="library.cached_songs" searchQuery={searchQuery}
+        control={<ToggleSwitch checked={showCachedCollection} onChange={setShowCachedCollection} ariaLabel={t("library.cached_songs")} />} />
+      <SettingRow title={t("library.on_device")} titleKey="library.on_device" searchQuery={searchQuery}
+        control={<ToggleSwitch checked={showLocalCollection} onChange={setShowLocalCollection} ariaLabel={t("library.on_device")} />} />
+      <SettingRow
+        title={t("settings.storage.remember_library_view")}
+        titleKey="settings.storage.remember_library_view"
+        descKey="settings.storage.remember_library_view_desc"
+        searchQuery={searchQuery}
+        description={t("settings.storage.remember_library_view_desc")}
+        control={<ToggleSwitch checked={rememberLibraryCategory} onChange={setRememberLibraryCategory} ariaLabel={t("settings.storage.remember_library_view")} />}
+      />
+      <SettingRow
+        title={t("settings.storage.remember_library_layout")}
+        titleKey="settings.storage.remember_library_layout"
+        descKey="settings.storage.remember_library_layout_desc"
+        searchQuery={searchQuery}
+        description={t("settings.storage.remember_library_layout_desc")}
+        control={<ToggleSwitch checked={rememberLibraryLayout} onChange={setRememberLibraryLayout} ariaLabel={t("settings.storage.remember_library_layout")} />}
+      />
+    </SettingSection>
+    </>
   );
 }

@@ -1,7 +1,8 @@
+import { handleTrusted, onTrusted } from "./ipc-guard.js";
 // Spotify account link for importing the user's Liked Songs: a login window in
 // its own persistent session; requests that need the login go through that
 // session so its cookies are attached (the page itself never sees them).
-import { BrowserWindow, ipcMain, session } from "electron";
+import { BrowserWindow, session } from "electron";
 
 const PARTITION = "persist:lane-spotify";
 const ALLOWED_HOSTS = new Set(["open.spotify.com", "api.spotify.com", "clienttoken.spotify.com", "api-partner.spotify.com"]);
@@ -45,13 +46,13 @@ function login(parent: BrowserWindow | null): Promise<boolean> {
 }
 
 export function registerSpotifyAccount(getWindow: () => BrowserWindow | null): void {
-  ipcMain.handle("spotify:has-login", () => hasLogin());
-  ipcMain.handle("spotify:login", () => login(getWindow()));
-  ipcMain.handle("spotify:logout", async () => {
+  handleTrusted("spotify:has-login", () => hasLogin());
+  handleTrusted("spotify:login", () => login(getWindow()));
+  handleTrusted("spotify:logout", async () => {
     await spotifySession().clearStorageData();
     return true;
   });
-  ipcMain.handle(
+  handleTrusted(
     "spotify:fetch",
     async (_event, request: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => {
       const target = new URL(request.url);

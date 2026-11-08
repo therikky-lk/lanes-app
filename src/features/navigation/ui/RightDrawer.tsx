@@ -26,6 +26,7 @@ const QueueList = memo(function QueueList({
   currentIndex,
   compact = false,
   startIndex = 0,
+  endIndex,
   playbackContext,
   playbackContextCover,
   scrollContainerRef,
@@ -35,16 +36,17 @@ const QueueList = memo(function QueueList({
   currentIndex: number;
   compact?: boolean;
   startIndex?: number;
+  endIndex?: number;
   playbackContext: any;
   playbackContextCover: any;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
 }) {
-  const effectiveLimit = Math.max(
+  const effectiveLimit = Math.min(endIndex ?? queue.length, Math.max(
     queueLimit,
     currentIndex >= 0 ? currentIndex + 25 : 0,
-  );
+  ));
   const visibleQueue = useMemo(
-    () => queue.slice(startIndex, effectiveLimit),
+    () => queue.slice(startIndex, Math.max(startIndex, effectiveLimit)),
     [queue, effectiveLimit, startIndex],
   );
 
@@ -868,7 +870,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
         {activeTab === "queue" && (
           <div
             ref={queueScrollCallbackRef}
-            className="absolute inset-0 overflow-y-auto px-[10px] pt-[6px] pb-[16px]"
+            className="absolute inset-0 overflow-y-auto px-[10px] pt-[2px] pb-[12px]"
             style={
               isQueueScrolled
                 ? {
@@ -929,23 +931,26 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
                 />
               </section>
             )}
-            {isMobile && player.currentTrack && player.queue.length > player.currentIndex + 1 && (
-              <h2 className="px-2 pb-2 text-[13px] font-semibold text-text-primary">
-                {t("player.next_in_queue")}
-              </h2>
-            )}
-            {player.queue.length > 0 && (!isMobile || player.queue.length > player.currentIndex + 1) ? (
-              <QueueList
-                queue={player.queue}
-                queueLimit={queueLimit}
-                currentIndex={player.currentIndex}
-                compact={isMobile}
-                startIndex={isMobile ? Math.max(0, player.currentIndex + 1) : 0}
-                playbackContext={player.playbackContext}
-                playbackContextCover={player.playbackContextCover}
-                scrollContainerRef={queueScrollRef}
-              />
-            ) : !player.currentTrack ? (
+            {(() => {
+              const upcomingStart = isMobile ? Math.max(0, player.currentIndex + 1) : 0;
+              let addedEnd = upcomingStart;
+              while (addedEnd < player.queue.length && player.queue[addedEnd].queuedByUser) addedEnd++;
+              const visibleEnd = Math.max(queueLimit, player.currentIndex >= 0 ? player.currentIndex + 25 : 0);
+              const hasUpcoming = player.queue.length > 0 && (!isMobile || player.queue.length > upcomingStart);
+              if (!hasUpcoming) return null;
+              if (!isMobile) return <QueueList queue={player.queue} queueLimit={queueLimit} currentIndex={player.currentIndex} compact={false} playbackContext={player.playbackContext} playbackContextCover={player.playbackContextCover} scrollContainerRef={queueScrollRef} />;
+              return <>
+                {addedEnd > upcomingStart && <>
+                  <h2 className="px-2 pb-2 text-[13px] font-semibold text-text-primary">{t("player.added_by_you")}</h2>
+                  <QueueList queue={player.queue} queueLimit={addedEnd} currentIndex={player.currentIndex} compact startIndex={upcomingStart} endIndex={addedEnd} playbackContext={player.playbackContext} playbackContextCover={player.playbackContextCover} scrollContainerRef={queueScrollRef} />
+                </>}
+                {visibleEnd > addedEnd && <>
+                  <h2 className="px-2 pb-2 text-[13px] font-semibold text-text-primary">{t("player.next_in_queue")}</h2>
+                  <QueueList queue={player.queue} queueLimit={visibleEnd} currentIndex={player.currentIndex} compact startIndex={addedEnd} endIndex={visibleEnd} playbackContext={player.playbackContext} playbackContextCover={player.playbackContextCover} scrollContainerRef={queueScrollRef} />
+                </>}
+              </>;
+            })()}
+            {!player.currentTrack && player.queue.length === 0 ? (
               <div className="h-full flex items-center justify-center text-text-tertiary text-[14px]">
                 {t("player.queue_empty")}
               </div>

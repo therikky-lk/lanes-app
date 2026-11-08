@@ -1,6 +1,8 @@
+import { confineToApp, handleTrusted, isAppUrl, onTrusted } from "./ipc-guard.js";
+import { keepsOwnCors, needsOpenCors, withOpenCors } from "./cors.js";
 import { registerConnectRelay } from "./connect-relay";
 import { registerSpotifyAccount } from "./spotify-account";
-import { app, BaseWindow, BrowserWindow, globalShortcut, ipcMain, shell, screen, dialog, session, nativeImage, powerSaveBlocker } from "electron";
+import { app, BaseWindow, BrowserWindow, globalShortcut, shell, screen, dialog, session, nativeImage, powerSaveBlocker } from "electron";
 import type { Display, Rectangle } from "electron";
 import { autoUpdater } from "electron-updater";
 import path from "node:path";
@@ -296,12 +298,12 @@ function createWindow() {
   mainWindow.on("hide", broadcastWindowState);
   mainWindow.on("show", broadcastWindowState);
 
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https:") || url.startsWith("http:")) {
-      shell.openExternal(url);
-    }
-    return { action: "deny" };
-  });
+  const isTrustedAppUrl = (url: string) =>
+    isAppUrl(url, process.env.VITE_DEV_SERVER_URL, [
+      RENDERER_DIST,
+      path.join(app.getPath("userData"), "bundles"),
+    ]);
+  confineToApp(mainWindow.webContents, (url) => { void shell.openExternal(url); }, isTrustedAppUrl);
 
   mainWindow.webContents.on("render-process-gone", (_event, details) => {
     console.error(
@@ -492,7 +494,7 @@ if (!gotTheLock) {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("overlay:action", { type });
       },
     );
-    ipcMain.on("touchbar:update-state", (_event, state: { status: string; track?: unknown }) => {
+    onTrusted("touchbar:update-state", (_event, state: { status: string; track?: unknown }) => {
       updateSleepBlocker(state.status);
       thumbar?.update(state);
     });
@@ -531,7 +533,7 @@ if (!gotTheLock) {
     );
 
     // window controls
-    ipcMain.handle("window:minimize", () => {
+    handleTrusted("window:minimize", () => {
       // cannot minimize a native fullscreen window or under hyprland tiling wm
       if (!mainWindow || mainWindow.isFullScreen() || isHyprland) return;
       // windows 11 + add-on: the window flies into the overlay pill it is about to become
@@ -546,7 +548,7 @@ if (!gotTheLock) {
       mainWindow.minimize();
     });
 
-    ipcMain.handle("window:toggle-maximize", () => {
+    handleTrusted("window:toggle-maximize", () => {
       if (!mainWindow) return;
       // on macos, frameless windows enter native fullscreen mode
       if (process.platform === "darwin") {
@@ -562,24 +564,24 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("window:toggle-fullscreen", () => {
+    handleTrusted("window:toggle-fullscreen", () => {
       if (!mainWindow) return;
       mainWindow.setFullScreen(!mainWindow.isFullScreen());
     });
 
-    ipcMain.handle("window:close", () => {
+    handleTrusted("window:close", () => {
       mainWindow?.close();
     });
 
-    ipcMain.handle("window:is-maximized", () => {
+    handleTrusted("window:is-maximized", () => {
       return mainWindow?.isMaximized() ?? false;
     });
 
-    ipcMain.handle("window:is-fullscreen", () => {
+    handleTrusted("window:is-fullscreen", () => {
       return mainWindow?.isFullScreen() ?? false;
     });
 
-    ipcMain.handle("app:get-version", () => {
+    handleTrusted("app:get-version", () => {
       return app.getVersion();
     });
 
@@ -697,7 +699,7 @@ if (!gotTheLock) {
       })();
     }
 
-    ipcMain.handle(
+    handleTrusted(
       "app:set-icon",
       async (
         _event,
@@ -784,22 +786,16 @@ if (!gotTheLock) {
     );
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      const responseHeaders: Record<string, string[]> = {};
-      // drop the server's own CORS headers first: a second
-      // Access-Control-Allow-Origin (other letter case) makes Chromium reject
-      // the response, which broke EventSource / fetch to servers that do send
-      // CORS (ntfy.sh for Lane Connect)
-      let methods: string[] | undefined;
-      for (const [name, value] of Object.entries(details.responseHeaders || {})) {
-        const lower = name.toLowerCase();
-        if (lower === "access-control-allow-methods") methods = value;
-        if (lower.startsWith("access-control-allow-")) continue;
-        responseHeaders[name] = value;
+      const allowLoopback = !app.isPackaged;
+      if (!needsOpenCors(details.url, allowLoopback)) {
+        callback({ responseHeaders: details.responseHeaders });
+        return;
       }
-      responseHeaders["Access-Control-Allow-Origin"] = ["*"];
-      responseHeaders["Access-Control-Allow-Headers"] = ["*"];
-      responseHeaders["Access-Control-Allow-Methods"] = methods ?? ["GET, HEAD, POST, OPTIONS"];
-      callback({ responseHeaders });
+      callback(withOpenCors(
+        details.responseHeaders,
+        details.method,
+        keepsOwnCors(details.url, allowLoopback),
+      ));
     });
 
     let lastSavedExportPath: string | null = null;
@@ -816,7 +812,7 @@ if (!gotTheLock) {
     // long jobs (importing thousands of liked songs) keep running with the
     // window hidden or the laptop idle: the system must not suspend the app
     let jobBlockerId: number | null = null;
-    ipcMain.handle("power:keep-awake", (_event, on: boolean) => {
+    handleTrusted("power:keep-awake", (_event, on: boolean) => {
       if (on && jobBlockerId === null) jobBlockerId = powerSaveBlocker.start("prevent-app-suspension");
       if (!on && jobBlockerId !== null) {
         powerSaveBlocker.stop(jobBlockerId);
@@ -826,7 +822,7 @@ if (!gotTheLock) {
     });
     registerConnectRelay();
 
-    ipcMain.handle("dialog:save-dump", async (_event, { filename, content }: { filename: string; content: string }) => {
+    handleTrusted("dialog:save-dump", async (_event, { filename, content }: { filename: string; content: string }) => {
       if (!mainWindow) return { success: false, canceled: true };
       try {
         const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
@@ -871,11 +867,11 @@ if (!gotTheLock) {
       }
     };
 
-    ipcMain.handle("shell:open-downloads", async (_event, customPath?: string) => {
+    handleTrusted("shell:open-downloads", async (_event, customPath?: string) => {
       return openFolderOrItem(customPath);
     });
 
-    ipcMain.handle("shell:open-export-folder", async (_event, customPath?: string) => {
+    handleTrusted("shell:open-export-folder", async (_event, customPath?: string) => {
       return openFolderOrItem(customPath);
     });
 
@@ -920,7 +916,7 @@ if (!gotTheLock) {
       } catch {}
     };
 
-    ipcMain.handle("storage:get-cache-stats", async () => {
+    handleTrusted("storage:get-cache-stats", async () => {
       try {
         const userData = app.getPath("userData");
         const cachePath = getCacheDirectory();
@@ -964,7 +960,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("shell:open-cache-folder", async () => {
+    handleTrusted("shell:open-cache-folder", async () => {
       try {
         const cachePath = getCacheDirectory();
         await shell.openPath(cachePath);
@@ -975,7 +971,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("storage:clear-covers-cache", async () => {
+    handleTrusted("storage:clear-covers-cache", async () => {
       try {
         await session.defaultSession.clearStorageData({
           storages: ["serviceworkers", "cachestorage"],
@@ -989,7 +985,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("storage:clear-audio-cache", async () => {
+    handleTrusted("storage:clear-audio-cache", async () => {
       try {
         // The renderer clears only the temporary object stores. Removing Chromium's
         // IndexedDB directories also destroys imported files and offline downloads.
@@ -1002,7 +998,7 @@ if (!gotTheLock) {
     });
 
     // clears chromium http and v8 code cache
-    ipcMain.handle("storage:clear-http-cache", async () => {
+    handleTrusted("storage:clear-http-cache", async () => {
       try {
         await session.defaultSession.clearCache();
         await session.defaultSession.clearCodeCaches({});
@@ -1275,21 +1271,21 @@ if (!gotTheLock) {
       else resize();
     };
 
-    ipcMain.on("window:drag-start", () => {
+    onTrusted("window:drag-start", () => {
       if (!mainWindow || mainWindow.isFullScreen()) return;
       dragging = true;
       if (mainWindow.isMaximized()) restoreForDrag();
       beginDrag();
     });
 
-    ipcMain.on("window:drag-end", () => {
+    onTrusted("window:drag-end", () => {
       dragging = false;
       dragStartCursor = null;
       dragStartBounds = null;
       if (snapEnabled) settleSnap();
     });
 
-    ipcMain.on("window:drag-move", () => {
+    onTrusted("window:drag-move", () => {
       if (!mainWindow || mainWindow.isFullScreen()) return;
       if (mainWindow.isMaximized()) {
         restoreForDrag();
@@ -1314,7 +1310,7 @@ if (!gotTheLock) {
     });
 
     // signing ipc handlers
-    ipcMain.handle("signer:sign-cover-url", (_event, payload: string) => {
+    handleTrusted("signer:sign-cover-url", (_event, payload: string) => {
       try {
         return signCoverUrl(payload);
       } catch (err: any) {
@@ -1323,7 +1319,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle(
+    handleTrusted(
       "signer:sign-monitor-request",
       (_event, request: SignRequestInput) => {
         try {
@@ -1335,7 +1331,7 @@ if (!gotTheLock) {
       },
     );
 
-    ipcMain.handle("signer:sign-request", (_event, request: SignRequestInput) => {
+    handleTrusted("signer:sign-request", (_event, request: SignRequestInput) => {
       try {
         return signRequest(request);
       } catch (err: any) {
@@ -1344,7 +1340,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle(
+    handleTrusted(
       "signer:sign-raw-payload",
       (_event, payload: number[] | Uint8Array) => {
         try {
@@ -1357,7 +1353,7 @@ if (!gotTheLock) {
       },
     );
 
-    ipcMain.handle(
+    handleTrusted(
       "signer:sync-time",
       (_event, dateHeaderOrMs: string | number) => {
         try {
@@ -1369,7 +1365,7 @@ if (!gotTheLock) {
       },
     );
 
-    ipcMain.handle("signer:get-time-offset", () => {
+    handleTrusted("signer:get-time-offset", () => {
       return getServerTimeOffset();
     });
 
@@ -1383,7 +1379,7 @@ if (!gotTheLock) {
 
     // offline-dump diagnostics: real dns + tcp from the user machine.
     // hosts come from the renderer but are re-validated here.
-    ipcMain.handle("net:diagnose", async (_event, hosts: unknown): Promise<MainNetResult> => {
+    handleTrusted("net:diagnose", async (_event, hosts: unknown): Promise<MainNetResult> => {
       const list = (
         Array.isArray(hosts)
           ? hosts.filter(
@@ -1634,7 +1630,7 @@ if (!gotTheLock) {
       });
     });
 
-    ipcMain.handle("updater:check-for-updates", async () => {
+    handleTrusted("updater:check-for-updates", async () => {
       if (!app.isPackaged || LANE_FORK_UPDATES_DISABLED) {
         return { available: false, error: "Updater is disabled in this build" };
       }
@@ -1650,7 +1646,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("updater:download-update", async () => {
+    handleTrusted("updater:download-update", async () => {
       if (!app.isPackaged) {
         return { success: false, error: "Updater is disabled in dev mode" };
       }
@@ -1662,7 +1658,7 @@ if (!gotTheLock) {
       }
     });
 
-    ipcMain.handle("updater:quit-and-install", () => {
+    handleTrusted("updater:quit-and-install", () => {
       setImmediate(() => {
         autoUpdater.quitAndInstall(false, true);
       });
@@ -1670,31 +1666,31 @@ if (!gotTheLock) {
     });
 
     // OTA bundle updater IPC handlers
-    ipcMain.handle("bundle:check", async () => {
+    handleTrusted("bundle:check", async () => {
       if (!bundleManager) {
         return { available: false, error: "Bundle updater inactive (dev mode)" };
       }
       return await bundleManager.checkForUpdates();
     });
 
-    ipcMain.handle("bundle:download-and-install", async (_event, manifest) => {
+    handleTrusted("bundle:download-and-install", async (_event, manifest) => {
       if (!bundleManager) {
         return { success: false, error: "Bundle updater inactive (dev mode)" };
       }
       return await bundleManager.downloadAndInstall(manifest);
     });
 
-    ipcMain.handle("bundle:hot-swap", () => {
+    handleTrusted("bundle:hot-swap", () => {
       if (!bundleManager) return false;
       return bundleManager.hotSwap();
     });
 
-    ipcMain.handle("bundle:rollback", () => {
+    handleTrusted("bundle:rollback", () => {
       if (!bundleManager) return false;
       return bundleManager.rollback();
     });
 
-    ipcMain.handle("bundle:get-status", () => {
+    handleTrusted("bundle:get-status", () => {
       const activeState = bundleManager?.getActiveState?.() || null;
       return {
         appVersion: app.getVersion(),

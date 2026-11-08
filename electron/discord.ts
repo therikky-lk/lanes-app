@@ -1,5 +1,5 @@
+import { handleTrusted, onTrusted } from "./ipc-guard.js";
 import { Client, StatusDisplayType, type SetActivity } from "@xhayper/discord-rpc";
-import { ipcMain } from "electron";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -169,15 +169,15 @@ export class DiscordRpcManager {
   }
 
   private registerIpcHandlers(): void {
-    ipcMain.on("discord:update-state", (_event, payload: DiscordRpcStatePayload) => {
+    onTrusted("discord:update-state", (_event, payload: DiscordRpcStatePayload) => {
       this.updateState(payload);
     });
 
-    ipcMain.on("discord:update-settings", (_event, patch: Partial<DiscordRpcSettings>) => {
+    onTrusted("discord:update-settings", (_event, patch: Partial<DiscordRpcSettings>) => {
       this.updateSettings(patch);
     });
 
-    ipcMain.handle("discord:get-status", () => {
+    handleTrusted("discord:get-status", () => {
       return {
         connected: this.isConnected,
         username: this.client?.user?.username,

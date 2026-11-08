@@ -77,7 +77,7 @@ export default function WindowControls({
         data-no-window-drag
         data-no-tooltip="true"
         data-window-controls
-        className={`flex items-center h-[32px] min-h-[32px] max-h-[32px] box-border px-[3px] gap-[2px] rounded-lg pointer-events-auto transition-colors ${
+        className={`flex items-center h-[30px] min-h-[30px] max-h-[30px] box-border px-[2px] gap-0 rounded-lg pointer-events-auto transition-colors ${
           isFullscreen
             ? "lane-fs-window-controls text-white"
             : isGlass
@@ -93,7 +93,7 @@ export default function WindowControls({
           disabled={isMinimizeDisabled}
           aria-disabled={isMinimizeDisabled}
           data-no-tooltip="true"
-          className={`flex items-center justify-center w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md border-none bg-transparent transition-colors ${
+          className={`flex items-center justify-center w-[24px] h-[26px] min-w-[24px] min-h-[26px] max-h-[26px] rounded-md border-none bg-transparent transition-colors ${
             isMinimizeDisabled
               ? "opacity-30 cursor-not-allowed pointer-events-none"
               : isFullscreen
@@ -112,7 +112,7 @@ export default function WindowControls({
           type="button"
           onClick={handleMaximize}
           data-no-tooltip="true"
-          className={`flex items-center justify-center w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md cursor-pointer border-none bg-transparent transition-colors active:scale-95 ${
+          className={`flex items-center justify-center w-[24px] h-[26px] min-w-[24px] min-h-[26px] max-h-[26px] rounded-md cursor-pointer border-none bg-transparent transition-colors active:scale-95 ${
             isFullscreen
               ? "text-white/80 hover:text-white hover:bg-white/10"
               : isGlass
@@ -135,7 +135,7 @@ export default function WindowControls({
           type="button"
           onClick={handleClose}
           data-no-tooltip="true"
-          className={`flex items-center justify-center w-[26px] h-[26px] min-w-[26px] min-h-[26px] max-h-[26px] rounded-md cursor-pointer border-none bg-transparent transition-colors hover:bg-[#E81123] hover:text-white active:scale-95 ${
+          className={`flex items-center justify-center w-[24px] h-[26px] min-w-[24px] min-h-[26px] max-h-[26px] rounded-md cursor-pointer border-none bg-transparent transition-colors hover:bg-[#E81123] hover:text-white active:scale-95 ${
             isFullscreen
               ? "text-white/80 hover:text-white hover:bg-[#E81123]"
               : isGlass

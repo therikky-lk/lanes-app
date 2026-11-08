@@ -17,6 +17,16 @@ export interface UserAvatarProps {
 export function UserAvatar({ user, size = 36, className = "" }: UserAvatarProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const avatarUrl = useLocalAvatar(user?.id, user?.avatarUrl);
+  const displayAvatarUrl = useMemo(() => {
+    if (!avatarUrl || avatarUrl.startsWith("data:")) return avatarUrl;
+    try {
+      const url = new URL(avatarUrl, window.location.href);
+      url.searchParams.set("v", String(Date.now()));
+      return url.toString();
+    } catch {
+      return avatarUrl;
+    }
+  }, [avatarUrl]);
 
   const initial = useMemo(() => {
     if (!user) return "";
@@ -24,7 +34,7 @@ export function UserAvatar({ user, size = 36, className = "" }: UserAvatarProps)
     return name ? name[0].toUpperCase() : "";
   }, [user]);
 
-  const hasImage = Boolean(avatarUrl && failedUrl !== avatarUrl);
+  const hasImage = Boolean(displayAvatarUrl && failedUrl !== displayAvatarUrl);
 
   return (
     <div
@@ -33,10 +43,10 @@ export function UserAvatar({ user, size = 36, className = "" }: UserAvatarProps)
     >
       {hasImage ? (
         <img
-          src={avatarUrl!}
+          src={displayAvatarUrl!}
           alt={user?.displayName || user?.username || "Avatar"}
           className="w-full h-full object-cover"
-          onError={() => setFailedUrl(avatarUrl)}
+          onError={() => setFailedUrl(displayAvatarUrl)}
           draggable={false}
         />
       ) : initial ? (

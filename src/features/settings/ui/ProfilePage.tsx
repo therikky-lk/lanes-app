@@ -149,7 +149,7 @@ export default function ProfilePage() {
         <h1 className="m-0 text-[18px] font-[650] text-text-primary">{t("settings.profile.title")}</h1>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[24px] md:px-[32px]" style={{ paddingBottom: isMobile ? "calc(var(--lane-dock-h, 120px) + 24px)" : undefined }}>
-        <div className="mx-auto flex w-full max-w-[540px] flex-col items-center rounded-[20px] border border-border-primary/40 bg-bg-panel/45 px-[20px] py-[28px] sm:px-[32px]">
+        <div className="mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[16px] border border-border-primary/40 bg-bg-panel/45 px-[18px] py-[20px] sm:px-[24px]">
           <div className="relative mb-[18px] h-[120px] w-[120px] overflow-hidden rounded-full bg-bg-elevated">
             {cropImage ? (
               <img

@@ -10,6 +10,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { Search2Line } from "@mingcute/react";
 import { useTranslation } from "@/languages";
+import Button from "@/shared/ui/Button";
 import { isMacPlatform } from "@/features/shortcuts";
 import { isBlockingOverlayOpen } from "@/features/navigation/utils/shortcutGuards";
 import {
@@ -36,6 +37,36 @@ export interface TrackSearchState<T> {
   close: () => void;
   /** search button: hides an open field, opens a closed one */
   toggle: () => void;
+}
+
+export function TrackSearchButton({
+  search,
+  disabled = false,
+  glass = false,
+  className = "",
+}: {
+  search: Pick<TrackSearchState<unknown>, "isOpen" | "toggle">;
+  disabled?: boolean;
+  glass?: boolean;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const label = useTrackSearchButtonLabel();
+  return (
+    <Button
+      variant={search.isOpen ? "primary" : glass ? "glass-action" : "outline"}
+      size="icon"
+      className={`!h-[36px] !w-[36px] shrink-0 !p-0 ${className}`}
+      disabled={disabled}
+      aria-label={t("common.search")}
+      title={label || t("common.search")}
+      aria-expanded={search.isOpen}
+      onPointerDown={(event) => event.preventDefault()}
+      onClick={search.toggle}
+    >
+      <Search2Line size={16} />
+    </Button>
+  );
 }
 
 export function useTrackSearch<T extends SearchableTrack>(

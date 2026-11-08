@@ -13,7 +13,7 @@ import { useModalStore } from "../../store/modalStore";
 import { useImportStore } from "../../store/importStore";
 import { api, resolveApiErrorMessage } from "@/shared/api";
 import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
-import { withCoverMarker } from "../../services/playlistCoverMarker";
+import { canSyncCoverMarker, withCoverMarker } from "../../services/playlistCoverMarker";
 import { diag } from "@/shared/platform/diag";
 
 type Tab = "create" | "import";
@@ -101,10 +101,12 @@ export default function CreatePlaylistModal() {
         try {
           setPlaylistCover(playlist.id, cover, { notify: false });
           diag(`[Lane][PlaylistCover] syncing newly created cover ${JSON.stringify({ playlistId: playlist.id, bytes: cover.length })}`);
-          await api.updatePlaylist(playlist.id, {
-            description: withCoverMarker(playlist.description, cover),
-          });
-          diag(`[Lane][PlaylistCover] new cover sync complete ${JSON.stringify({ playlistId: playlist.id })}`);
+          if (canSyncCoverMarker(playlist.description, cover)) {
+            await api.updatePlaylist(playlist.id, { description: withCoverMarker(playlist.description, cover) });
+            diag(`[Lane][PlaylistCover] new cover sync complete ${JSON.stringify({ playlistId: playlist.id })}`);
+          } else {
+            diag(`[Lane][PlaylistCover] new cover kept locally; description limit reached ${JSON.stringify({ playlistId: playlist.id })}`);
+          }
         } catch (error) {
           diag(`[Lane][PlaylistCover] new cover sync failed ${JSON.stringify({ playlistId: playlist.id, error: error instanceof Error ? error.message : String(error) })}`);
           // The playlist is already created; a storage failure must not undo it.
@@ -114,7 +116,7 @@ export default function CreatePlaylistModal() {
 
       if (pendingTrack) {
         try {
-          await addTrack.mutateAsync({ playlistId: playlist.id, trackId: pendingTrack.id });
+          await addTrack.mutateAsync({ playlistId: playlist.id, trackId: pendingTrack.id, trackSnapshot: pendingTrack.trackSnapshot });
           toast(t("common.added_to_playlist"), "checkmark", {
             description: playlist.title || trimmed,
           });

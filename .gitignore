@@ -66,6 +66,10 @@ scratch/
 # tests are kept and run locally only
 *.test.ts
 *.test.tsx
+!electron/cors.test.ts
+!electron/ipc-guard.test.ts
+!src/features/library/services/import/manager/finalizeImport.test.ts
+!src/shared/media/youtube/playlist/youtubeContinuation.test.ts
 
 /dist-web
 

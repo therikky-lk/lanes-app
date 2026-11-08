@@ -5,7 +5,9 @@
 //   ⁣lane-local:<base64>   the user's own audio files added to the playlist
 //                          (the audio stays on the device that has it)
 const SEP = "⁣";
-export const MAX_PLAYLIST_DESCRIPTION_LENGTH = 2000;
+// The production API currently rejects descriptions above 2,000 characters.
+// Keep margin for its validation/normalization and never truncate user text.
+export const MAX_PLAYLIST_DESCRIPTION_LENGTH = 2_000;
 const ANY_MARK = /\s*⁣lane-(cover|local):([^\s⁣]+)/g;
 
 function readMarker(description: string | null | undefined, kind: "cover" | "local"): string | undefined {
@@ -26,15 +28,16 @@ function build(text: string, local: string | undefined, cover: string | undefine
   if (localMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
     throw new Error("Список локальных треков слишком велик для описания плейлиста.");
   }
+  if (text.length + separator.length + localMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
+    throw new Error("Описание и локальные треки превышают лимит сервера. Данные сохранены без изменений.");
+  }
   if (text.length + separator.length + localMark.length + coverMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
-    coverMark = "";
+    throw new Error("Описание плейлиста превышает лимит сервера. Данные сохранены без изменений.");
   }
 
-  const textBudget = Math.max(0, MAX_PLAYLIST_DESCRIPTION_LENGTH - separator.length - localMark.length - coverMark.length);
-  const visibleText = Array.from(text).slice(0, textBudget).join("");
   const marks = `${localMark}${coverMark}`;
-  if (!marks) return visibleText;
-  return `${visibleText}${visibleText ? "\n\n" : ""}${marks}`;
+  if (!marks) return text;
+  return `${text}${text ? "\n\n" : ""}${marks}`;
 }
 
 export function readCoverMarker(description: string | null | undefined): string | undefined {
@@ -49,7 +52,35 @@ export function stripCoverMarker(description: string | null | undefined): string
 }
 
 export function withCoverMarker(description: string | null | undefined, coverUrl: string | undefined): string {
-  return build(stripCoverMarker(description), readMarker(description, "local"), coverUrl);
+  const original = description ?? "";
+  let next: string;
+  try {
+    next = build(stripCoverMarker(original), readMarker(original, "local"), coverUrl);
+  } catch (error) {
+    if (coverUrl) return original;
+    throw error;
+  }
+  // If the cover doesn't fit, preserve the original description byte for byte.
+  if (coverUrl && readCoverMarker(next) !== coverUrl) return original;
+  return next;
+}
+
+/** Replace visible description text while preserving both hidden metadata markers. */
+export function withDescriptionText(description: string | null | undefined, text: string): string {
+  return build(text, readMarker(description, "local"), readCoverMarker(description));
+}
+
+export function hasCoverMarker(description: string | null | undefined, coverUrl: string | undefined): boolean {
+  return readCoverMarker(description) === coverUrl;
+}
+
+export function canSyncCoverMarker(description: string | null | undefined, coverUrl: string | undefined): boolean {
+  try {
+    const next = withCoverMarker(description, coverUrl);
+    return next.length <= 2_000 && hasCoverMarker(next, coverUrl);
+  } catch {
+    return false;
+  }
 }
 
 /** one of the user's own files in a playlist */

@@ -154,9 +154,6 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
         description={cacheLimit ? t("settings.storage.cache_limit_hint", { count: Math.floor(cacheLimit / average) }) : t("settings.storage.cache_limit_unlimited")}
         control={<LimitPills value={cacheLimit} options={[1, 3, 10, 0]} label={t("settings.storage.cache_limit")} disabled={busy}
           onChange={value => { void run(async () => { await setAudioCacheLimitBytes(value); setCacheLimit(value); }); }} />} />
-      <SettingRow title={t("settings.storage.cached_in_library")} titleKey="settings.storage.cached_in_library" searchQuery={searchQuery}
-        description={t("settings.storage.cached_in_library_desc")}
-        control={<ToggleSwitch checked={offline.visibleOnline} onChange={offline.setVisibleOnline} ariaLabel={t("settings.storage.cached_in_library")} />} />
     </SettingSection>
   </motion.div>}
   </AnimatePresence>;

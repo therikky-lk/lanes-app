@@ -3,9 +3,8 @@ import { getLocalTrack, isLocalTrackId, type LocalTrackRecord } from "@/shared/m
 import type { LocalPlaylistEntry } from "@/features/library/services/playlistCoverMarker";
 
 // A file from "My tracks" can be added to any playlist. The audio stays on the
-// device it was uploaded on; the playlist only remembers (in its description,
-// which every device gets from the server) the title and which device has it.
-// Other devices show the row greyed out: "only on <device>".
+// device it was uploaded on; the playlist stores only metadata and its device
+// marker. Other devices show the row greyed out: "only on <device>".
 
 /** a playlist row's album marks the device the file lives on */
 export const DEVICE_ALBUM_PREFIX = "lane-device:";

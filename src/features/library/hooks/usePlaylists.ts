@@ -1,6 +1,6 @@
 import { compactPlaylistCover, getCustomPlaylistCover, getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
-import { readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
-import { buildLocalPlaylistEntry, localEntryToTrack } from "@/features/local/localPlaylistTracks";
+import { canSyncCoverMarker, readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
+import { buildLocalPlaylistEntry, DEVICE_ALBUM_PREFIX, localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { isLocalLikesPlaylist } from "@/features/local/localLikesSync";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -147,6 +147,8 @@ function load(force = false): Promise<void> {
           };
         }
         const covers = extractCovers(detail.items);
+        const serverTrackIds = new Set(detail.items.map((item) => item.track.id));
+        const legacyLocalCount = readLocalEntries(playlist.description).filter((item) => !serverTrackIds.has(item.id)).length;
         const entry: CoverCacheEntry = {
           coverUrls: covers,
           trackCount: detail.items.length,
@@ -155,7 +157,7 @@ function load(force = false): Promise<void> {
         coverCache[playlist.id] = entry;
         return {
           ...playlist,
-          trackCount: detail.items.length + localCount,
+          trackCount: detail.items.length + legacyLocalCount,
           coverUrl: covers[0] ?? "",
           coverUrls: covers,
         };
@@ -179,13 +181,13 @@ function load(force = false): Promise<void> {
         // attach them to the playlist so every signed-in device can restore it.
         void compactPlaylistCover(customCover)
           .then((cover) => {
-            if (cover === fromServer) return;
+            if (cover === fromServer || !canSyncCoverMarker(playlist.description, cover)) return;
             return api.updatePlaylist(playlist.id, { description: withCoverMarker(playlist.description, cover) });
           })
           .catch(() => undefined);
       }
       const local = getImportedPlaylistMeta(playlist.id)?.coverUrl;
-      if (local && !fromServer) {
+      if (local && !fromServer && canSyncCoverMarker(playlist.description, local)) {
         // imported on this device before the cover was synced: send it up once
         void api
           .updatePlaylist(playlist.id, { description: withCoverMarker(playlist.description, local) })
@@ -241,6 +243,53 @@ function toTrack(item: ApiUserPlaylistItem): Track {
   };
 }
 
+type UserPlaylistResponse = Awaited<ReturnType<typeof api.getUserPlaylist>>;
+const localTrackMigrationRequests = new Map<string, Promise<UserPlaylistResponse>>();
+
+function localEntrySnapshot(entry: ReturnType<typeof readLocalEntries>[number]) {
+  return {
+    id: entry.id,
+    title: entry.title,
+    artists: entry.artists ? entry.artists.split(/\s*,\s*/).filter(Boolean).map((name) => ({ id: "", name })) : [],
+    durationMs: entry.durationMs,
+    album: { id: `${DEVICE_ALBUM_PREFIX}${entry.deviceId}`, title: entry.deviceName },
+  };
+}
+
+/** Move old description-packed local tracks into playlist rows before removing their marker. */
+async function migrateLocalPlaylistEntries(playlistId: string, initial: UserPlaylistResponse): Promise<UserPlaylistResponse> {
+  const entries = readLocalEntries(initial.playlist.description);
+  if (!entries.length) return initial;
+  const ongoing = localTrackMigrationRequests.get(playlistId);
+  if (ongoing) return ongoing;
+
+  const request = (async () => {
+    const currentIds = new Set(initial.items.map((item) => item.track.id));
+    const missing = entries.filter((entry) => !currentIds.has(entry.id));
+    if (missing.length) {
+      try { await api.addPlaylistTrackSnapshots(playlistId, missing.map(localEntrySnapshot)); }
+      catch { /* Keep the metadata marker as the durable copy if migration fails. */ }
+    }
+
+    let latest = initial;
+    try { latest = await api.getUserPlaylist(playlistId, { signal: new AbortController().signal }); } catch { return initial; }
+    const persistedIds = new Set(latest.items.map((item) => item.track.id));
+    if (!entries.every((entry) => persistedIds.has(entry.id))) return latest;
+
+    // Remove the old blob only after every local item is verified in the new rows.
+    try {
+      const description = withLocalEntries(latest.playlist.description, []);
+      if (description !== latest.playlist.description && description.length <= 2_000) {
+        latest = { ...latest, playlist: await api.updatePlaylist(playlistId, { description }) };
+      }
+    } catch { /* Leave the original description unchanged if it cannot fit. */ }
+    return latest;
+  })();
+  localTrackMigrationRequests.set(playlistId, request);
+  try { return await request; }
+  finally { localTrackMigrationRequests.delete(playlistId); }
+}
+
 export function usePlaylistsList() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
   useEffect(() => {
@@ -289,7 +338,8 @@ export function usePlaylist(id: string | null) {
     const fetchDetail = async (isBackground = false) => {
       if (!isBackground && !queryCache.get(cacheKey)) setIsLoading(true);
       try {
-        const response = await api.getUserPlaylist(id);
+        let response = await api.getUserPlaylist(id);
+        response = await migrateLocalPlaylistEntries(id, response);
         if (!active) return;
 
         const covers = extractCovers(response.items);
@@ -300,7 +350,7 @@ export function usePlaylist(id: string | null) {
         if (localCover && localCover !== syncedCover) {
           void compactPlaylistCover(localCover)
             .then((cover) => {
-              if (cover !== syncedCover) {
+              if (cover !== syncedCover && canSyncCoverMarker(response.playlist.description, cover)) {
                 return api.updatePlaylist(id, { description: withCoverMarker(response.playlist.description, cover) });
               }
               return undefined;
@@ -317,7 +367,8 @@ export function usePlaylist(id: string | null) {
         writeCoverCache(coverCache);
 
         const remoteTracks = await replaceTrackCoversWithYandex(response.items.map(toTrack));
-        const localTracks = readLocalEntries(response.playlist.description).map(localEntryToTrack);
+        const itemIds = new Set(response.items.map((item) => item.track.id));
+        const localTracks = readLocalEntries(response.playlist.description).filter((entry) => !itemIds.has(entry.id)).map(localEntryToTrack);
         const detail: LibraryPlaylistDetail = {
           id: response.playlist.id,
           title: response.playlist.title,
@@ -350,14 +401,20 @@ export function usePlaylist(id: string | null) {
   return { data, error, isLoading };
 }
 
-/** add one of the user's own files: it's kept in the playlist's description */
+/** Add local-file metadata as a normal playlist item; the audio stays on this device. */
 export async function addLocalTrackToPlaylist(playlistId: string, trackId: string): Promise<void> {
   const entry = await buildLocalPlaylistEntry(trackId);
   if (!entry) throw new ApiError(404, "Local track was not found.");
-  const { playlist } = await api.getUserPlaylist(playlistId);
-  const entries = readLocalEntries(playlist.description);
-  if (entries.some((e) => e.id === entry.id)) throw new ApiError(409, "Track is already in the playlist.");
-  await api.updatePlaylist(playlistId, { description: withLocalEntries(playlist.description, [...entries, entry]) });
+  let detail = await api.getUserPlaylist(playlistId);
+  detail = await migrateLocalPlaylistEntries(playlistId, detail);
+  const legacyEntries = readLocalEntries(detail.playlist.description);
+  if (detail.items.some((item) => item.track.id === entry.id) || legacyEntries.some((item) => item.id === entry.id)) {
+    throw new ApiError(409, "Track is already in the playlist.");
+  }
+  const result = await api.addPlaylistTrackSnapshots(playlistId, [localEntrySnapshot(entry)]);
+  if (!result.items.some((item) => item.track.id === entry.id)) {
+    throw new ApiError(400, "The server rejected this local track; existing playlist data was kept.");
+  }
   queryCache.delete(`playlist:detail:${playlistId}`);
 }
 

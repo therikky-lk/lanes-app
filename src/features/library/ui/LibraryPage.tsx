@@ -29,6 +29,7 @@ import { useIsContentTransparent } from "@/features/settings/store/customization
 import ImportingPlaylistCard from "./ImportingPlaylistCard";
 import LikedCover from "./LikedCover";
 import { useYoutubeLibraryItems } from "@/features/youtube-auth";
+import { readSavedLibraryTab, readSavedLibraryView, saveLibraryDisplay, useLibraryPreferences } from "../store/libraryPreferences";
 
 const PAGE_SIZE = 24;
 const libraryTabIcons = { all: Classify2Line, playlists: PlaylistLine, albums: AlbumLine, artists: User3Line };
@@ -169,7 +170,11 @@ function LikesPlaylistCard({
 export default function LibraryPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<LibraryTab>("all");
+  const rememberCategory = useLibraryPreferences((state) => state.rememberCategory);
+  const rememberLayout = useLibraryPreferences((state) => state.rememberLayout);
+  const [activeTab, setActiveTab] = useState<LibraryTab>(() =>
+    useLibraryPreferences.getState().rememberCategory ? readSavedLibraryTab() ?? "all" : "all",
+  );
   const [mobileMenu, setMobileMenu] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -184,19 +189,12 @@ export default function LibraryPage() {
   const [stateByTab, setStateByTab] = useState<LibraryState>(initialState);
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [showTopFog, setShowTopFog] = useState(false);
-  const [viewMode, setViewMode] = useState<LibraryViewMode>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("liner_library_view_mode");
-      if (saved === "grid" || saved === "list") {
-        return saved;
-      }
-    }
-    return "grid";
-  });
+  const [viewMode, setViewMode] = useState<LibraryViewMode>(() =>
+    useLibraryPreferences.getState().rememberLayout ? readSavedLibraryView() ?? "grid" : "grid",
+  );
 
   const handleViewModeChange = useCallback((newMode: LibraryViewMode) => {
     setViewMode(newMode);
-    localStorage.setItem("liner_library_view_mode", newMode);
   }, []);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -218,15 +216,11 @@ export default function LibraryPage() {
   const youtubePlaylistItems = useYoutubeLibraryItems();
   const { tracks: localTracks, isLoading: localLoading } = useLocalTracks();
   const cached = useOfflineLibraryStore(state => state.cached);
-  const cacheVisible = useOfflineLibraryStore(state => state.visibleOnline);
+  const showLikedCollection = useOfflineLibraryStore(state => state.showLikedCollection);
+  const showCachedCollection = useOfflineLibraryStore(state => state.showCachedCollection);
+  const showLocalCollection = useOfflineLibraryStore(state => state.showLocalCollection);
   const offlineLoaded = useOfflineLibraryStore(state => state.loaded);
   useEffect(() => { void useOfflineLibraryStore.getState().refresh().catch(() => {}); }, []);
-  const [online, setOnline] = useState(navigator.onLine);
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine);
-    window.addEventListener("online", update); window.addEventListener("offline", update);
-    return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); };
-  }, []);
   const { data: likedCount, isLoading: likedCountLoading } =
     useLikedTrackCount();
   const openCreatePlaylist = useModalStore((state) => state.openCreatePlaylist);
@@ -259,6 +253,10 @@ export default function LibraryPage() {
       setActiveTab(tab);
     }
   }, []);
+
+  useEffect(() => {
+    if (rememberCategory || rememberLayout) saveLibraryDisplay(activeTab, viewMode, rememberCategory, rememberLayout);
+  }, [rememberCategory, rememberLayout, activeTab, viewMode]);
 
   const filteredItems = useMemo(() => {
     let source: LibraryItemViewModel[];
@@ -517,37 +515,40 @@ export default function LibraryPage() {
                   prependNodes={
                     (activeTab === "playlists" || activeTab === "all") && !hasSearchQuery
                       ? [
-                          <LikesPlaylistCard
-                            key="likes-playlist-card"
-                            count={likedCount}
-                            isLoading={likedCountLoading}
-                            viewMode={viewMode}
-                            onClick={() =>
-                              navigate("/library/playlist?id=likes")
-                            }
-                          />,
-                          ...(cacheVisible || !online ? [<LikesPlaylistCard
-                            key="cached-tracks-card" count={cached.length} isLoading={!offlineLoaded}
-                            viewMode={viewMode} title={t("library.cached_songs")} Icon={TimeLine}
-                            onClick={() => navigate("/library/cached")} />] : []),
-                          <LikesPlaylistCard
-                            key="local-tracks-card"
-                            count={localTracks.length}
-                            isLoading={localLoading}
-                            viewMode={viewMode}
-                            title={t("library.on_device")}
-                            Icon={MusicLine}
-                            onClick={() => navigate("/local")}
-                          />,
-                          ...(isImporting && importJob
-                            ? [
-                                <ImportingPlaylistCard
-                                  key={`importing-playlist-${importJob.id}`}
-                                  job={importJob}
-                                  viewMode={viewMode}
-                                />,
-                              ]
-                            : []),
+                          ...(showLikedCollection ? [
+                            <LikesPlaylistCard
+                              key="likes-playlist-card"
+                              count={likedCount}
+                              isLoading={likedCountLoading}
+                              viewMode={viewMode}
+                              onClick={() => navigate("/library/playlist?id=likes")}
+                            />,
+                          ] : []),
+                          ...(showCachedCollection ? [<LikesPlaylistCard
+                              key="cached-tracks-card"
+                              count={cached.length}
+                              isLoading={!offlineLoaded}
+                              viewMode={viewMode}
+                              title={t("library.cached_songs")}
+                              Icon={TimeLine}
+                              onClick={() => navigate("/library/cached")}
+                            />] : []),
+                          ...(showLocalCollection ? [<LikesPlaylistCard
+                              key="local-tracks-card"
+                              count={localTracks.length}
+                              isLoading={localLoading}
+                              viewMode={viewMode}
+                              title={t("library.on_device")}
+                              Icon={MusicLine}
+                              onClick={() => navigate("/local")}
+                            />] : []),
+                          ...(isImporting && importJob ? [
+                            <ImportingPlaylistCard
+                              key={`importing-playlist-${importJob.id}`}
+                              job={importJob}
+                              viewMode={viewMode}
+                            />,
+                          ] : []),
                         ]
                       : undefined
                   }
@@ -564,7 +565,7 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary/70 backdrop-blur-xl"
+            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
             <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">

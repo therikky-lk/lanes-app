@@ -20,6 +20,16 @@ export interface NativeState {
   error?: string;
 }
 
+/** ExoPlayer can briefly report the length of a short ranged response as the
+ * whole item length. Keep catalog metadata when that native value is implausibly
+ * short; playback position and native end events remain untouched. */
+export function normalizeNativeDuration(reportedMs: number, trackDurationMs: number): number {
+  if (reportedMs > 0 && trackDurationMs >= 60_000 && reportedMs < trackDurationMs * 0.5) {
+    return trackDurationMs;
+  }
+  return reportedMs > 0 ? reportedMs : trackDurationMs;
+}
+
 interface LaneAudioPlugin {
   getState(): Promise<NativeState>;
   load(options: {

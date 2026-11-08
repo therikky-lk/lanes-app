@@ -8,6 +8,7 @@ import CoverImage from "@/features/covers/ui/CoverImage";
 import { useTranslation } from "@/languages";
 import { useAddPlaylistTracks, usePlaylistsList } from "../../hooks";
 import { useModalStore } from "../../store/modalStore";
+import { diag } from "@/shared/platform/diag";
 
 const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
 
@@ -76,7 +77,7 @@ export default function AddToPlaylistModal() {
     const targetPlaylist = playlists.find((p) => p.id === playlistId);
     setAddingTo(playlistId);
     try {
-      await addTrack.mutateAsync({ playlistId, trackId: track.id });
+      await addTrack.mutateAsync({ playlistId, trackId: track.id, trackSnapshot: track.trackSnapshot });
       toast(t("common.added_to_playlist"), "checkmark", {
         description: targetPlaylist?.title || undefined,
       });
@@ -87,6 +88,12 @@ export default function AddToPlaylistModal() {
           description: track.title || undefined,
         });
       } else {
+        diag(`[Lane][AddToPlaylist] failed ${JSON.stringify({
+          status: error instanceof ApiError ? error.status : undefined,
+          code: error instanceof ApiError ? error.code : undefined,
+          requestId: error instanceof ApiError ? error.requestId : undefined,
+          message: error instanceof Error ? error.message : String(error),
+        })}`);
         toast(t("common.failed_add_playlist"), "error");
       }
     } finally {

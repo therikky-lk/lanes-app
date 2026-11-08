@@ -23,6 +23,7 @@ import {
 } from "@/features/library";
 import { useTranslation } from "@/languages";
 import { showToast } from "@/shared/ui";
+import type { Track as ApiTrackBase } from "@/shared/contracts";
 
 export interface SongMenuContext {
   id?: string;
@@ -33,12 +34,14 @@ export interface SongMenuContext {
   coverUrl: string;
   duration?: string;
   durationMs?: number;
+  albumTitle?: string;
   searchType?: "track" | "album" | "artist" | "playlist";
   totalTracks?: number;
   playlistId?: string;
   playlistItemId?: string;
   playlistTitle?: string;
   addedDateLabel?: string;
+  trackSnapshot?: ApiTrackBase;
 }
 
 export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
@@ -50,6 +53,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     artistId,
     artistName,
     coverUrl,
+    albumTitle,
     duration,
     durationMs,
     searchType,
@@ -58,6 +62,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
     playlistItemId,
     playlistTitle,
     addedDateLabel,
+    trackSnapshot,
   } = ctx;
 
   const { data: playlistsData } = usePlaylistsList();
@@ -254,6 +259,14 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
               artists,
               coverUrl,
               duration,
+              trackSnapshot: trackSnapshot ?? (id ? {
+                id,
+                title,
+                artists: [{ id: artistId ?? "", name: artistName || artists || "" }],
+                durationMs: durationMs ?? 0,
+                ...(coverUrl ? { cover: { url: coverUrl, width: 480, height: 480 } } : {}),
+                ...(albumTitle ? { album: { id: "", title: albumTitle } } : {}),
+              } : undefined),
               playlists: playlistsData?.playlists ?? [],
             });
           },

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ImportReview } from "@/shared/api";
+import type { Track as ApiTrackBase } from "@/shared/contracts";
 
 export interface LibraryItemDetail {
   id: string;
@@ -25,6 +26,7 @@ export interface TrackDetail {
   coverUrl: string;
   duration?: string;
   durationMs?: number;
+  trackSnapshot?: ApiTrackBase;
   playlists?: PlaylistOption[];
 }
 
