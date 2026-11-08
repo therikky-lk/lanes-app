@@ -663,14 +663,15 @@ function LibraryPlaylistContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[10px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] shadow-lg backdrop-blur-xl md:px-[32px]"
+            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[8px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] shadow-lg backdrop-blur-xl md:px-[32px]"
+            style={{ top: isMobile ? "var(--lane-safe-top, 0px)" : 0, height: isMobile ? "calc(56px + var(--lane-safe-top, 0px))" : 56, paddingTop: isMobile ? "var(--lane-safe-top, 0px)" : undefined }}
             data-no-window-drag
           >
             <strong className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white">{viewData.title}</strong>
-            <Button variant="primary" onClick={handlePlayAll} disabled={!currentTracks.length} className="!h-[34px] shrink-0 gap-[6px] !px-[12px] !text-[12px]">
-              <PlayFill size={15} />{t("common.play_all")}
+            <Button variant="primary" onClick={handlePlayAll} disabled={!currentTracks.length} aria-label={t("common.play_all")} className="!h-[34px] shrink-0 gap-[6px] !px-[10px] !text-[12px] max-sm:!w-[34px] max-sm:!p-0">
+              <PlayFill size={15} /><span className="max-sm:hidden">{t("common.play_all")}</span>
             </Button>
-            <Button variant="outline" onClick={handleAddToQueue} disabled={!currentTracks.length} aria-label={t("common.add_to_queue")} className="!h-[34px] shrink-0 gap-[5px] !px-[10px] !text-[12px]">
+            <Button variant="outline" onClick={handleAddToQueue} disabled={!currentTracks.length} aria-label={t("common.add_to_queue")} className="!h-[34px] shrink-0 gap-[5px] !px-[10px] !text-[12px] max-sm:!w-[34px] max-sm:!p-0">
               {addedToQueue ? <CheckLine size={16} /> : <AddLine size={16} />}
               <span className="hidden sm:inline">{t("common.add_to_queue")}</span>
             </Button>
