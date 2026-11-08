@@ -135,7 +135,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
         description={likedDescription} icon={<HeartFill />}
         control={<div className="flex items-center gap-2"><StorageAction label={formatStorageBytes(downloadedBytes)}
           action={t("settings.storage.remove")} confirmation={t("settings.storage.remove_size", { size: formatStorageBytes(downloadedBytes) })}
-          disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(downloadedBytes, offline.removeDownloads)} /><ToggleSwitch size="medium" checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
+          disabled={busy || downloadedBytes === 0} onConfirm={() => void remove(downloadedBytes, offline.removeDownloads)} /><ToggleSwitch checked={offline.enabled} onChange={offline.setEnabled} disabled={busy} ariaLabel={t("settings.storage.liked_toggle")} /></div>} />
       <SettingRow title={t("settings.storage.categories.local")} titleKey="settings.storage.categories.local" searchQuery={searchQuery}
         description={t("settings.storage.local_desc", { songs: t("common.songs", { count: local.length }) })} icon={<MusicLine />}
         control={<button type="button" onClick={() => { useModalStore.getState().closeSettings(); navigate("/local"); }} className="inline-flex h-[26px] w-[88px] items-center justify-center rounded-full bg-black/[0.06] dark:bg-white/[0.06] border-0 px-2 text-[11px] text-text-secondary cursor-pointer">{formatStorageBytes(localBytes)}</button>} />
@@ -156,7 +156,7 @@ export function StorageTab({ searchQuery }: { searchQuery?: string }) {
           onChange={value => { void run(async () => { await setAudioCacheLimitBytes(value); setCacheLimit(value); }); }} />} />
       <SettingRow title={t("settings.storage.cached_in_library")} titleKey="settings.storage.cached_in_library" searchQuery={searchQuery}
         description={t("settings.storage.cached_in_library_desc")}
-        control={<ToggleSwitch size="medium" checked={offline.visibleOnline} onChange={offline.setVisibleOnline} ariaLabel={t("settings.storage.cached_in_library")} />} />
+        control={<ToggleSwitch checked={offline.visibleOnline} onChange={offline.setVisibleOnline} ariaLabel={t("settings.storage.cached_in_library")} />} />
     </SettingSection>
   </motion.div>}
   </AnimatePresence>;
