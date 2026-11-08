@@ -712,7 +712,7 @@ export function FullscreenPlayer({
                 <span className="h-[4px] w-[36px] rounded-full bg-white/30" />
               </button>
               <div className="max-h-[calc(88dvh-62px-var(--lane-safe-bottom,0px))] overflow-y-auto overscroll-contain">
-                <FullscreenQueueSheet onClose={() => setQueueOpen(false)} />
+                <FullscreenQueueSheet />
               </div>
             </motion.div>
           </motion.div>
