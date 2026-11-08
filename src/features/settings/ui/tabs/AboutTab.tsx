@@ -1,6 +1,7 @@
 import DiagnosticsBox from "./DiagnosticsBox";
 import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaTelegramPlane, FaGithub } from "react-icons/fa";
 import { Refresh1Line } from "@mingcute/react";
 import { QuestionCircle } from "@solar-icons/react";
@@ -23,9 +24,6 @@ import scanlinesLogo from "@/assets/branding/logo-scanlines.svg";
 import vhsLogo from "@/assets/branding/logo-vhs.svg";
 import { usePlayerStore, type AccentVariant } from "@/features/player";
 import { useUpdaterStore } from "@/features/updater";
-import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
-
-interface DailyStatsResponse { days: Array<{ day: string; activeUsers: number; listenedMinutes: number; loginCountries: Array<{ country: string; logins: number }> }> }
 
 const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
   spotify: spotifyLogo,
@@ -44,6 +42,7 @@ const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
 
 export function AboutTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const accentVariant = usePlayerStore((state) => state.accentVariant);
 
@@ -54,17 +53,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
     sha256: string | null;
   } | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [dailyStats, setDailyStats] = useState<DailyStatsResponse | null>(null);
   const isRussian = typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ru");
-
-  useEffect(() => {
-    let active = true;
-    fetch(`${LANE_LINK_ORIGIN}/v1/public/stats/daily?days=7`, { cache: "no-store" })
-      .then(response => response.ok ? response.json() as Promise<DailyStatsResponse> : null)
-      .then(data => { if (active && data) setDailyStats(data); })
-      .catch(() => {});
-    return () => { active = false; };
-  }, []);
 
   const compareVersions = (a: string, b: string) => {
     const left = a.replace(/^v/i, "").split(".").map(Number);
@@ -243,27 +232,9 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           </div>
         </div>
       </div>
-      {dailyStats && <section className="mt-[12px] w-full max-w-[604px] rounded-[16px] border border-border-primary/30 bg-bg-panel/55 p-[18px]">
-        <h3 className="m-0 mb-[12px] text-[15px] font-[600] text-text-primary">{isRussian ? "Статистика за 7 дней" : "Last 7 days"}</h3>
-        <div className="grid grid-cols-2 gap-[10px]">
-          <div className="rounded-xl bg-white/[0.05] p-[12px]"><div className="text-[20px] font-[650] text-text-primary">{dailyStats.days.reduce((sum, day) => sum + day.activeUsers, 0)}</div><div className="text-[12px] text-text-tertiary">{isRussian ? "активных пользователей-дней" : "active user-days"}</div></div>
-          <div className="rounded-xl bg-white/[0.05] p-[12px]"><div className="text-[20px] font-[650] text-text-primary">{dailyStats.days.reduce((sum, day) => sum + day.listenedMinutes, 0)} {isRussian ? "мин" : "min"}</div><div className="text-[12px] text-text-tertiary">{isRussian ? "музыки прослушано" : "music listened"}</div></div>
-        </div>
-        <div className="mt-[12px] flex flex-col gap-[6px]">
-          {[...dailyStats.days].reverse().map(day => <div key={day.day} className="flex items-center justify-between rounded-lg bg-white/[0.04] px-[10px] py-[7px] text-[12px] text-text-secondary">
-            <span>{new Date(`${day.day}T00:00:00`).toLocaleDateString(navigator.language, { weekday: "short", month: "short", day: "numeric" })}</span>
-            <span>{day.activeUsers} {isRussian ? "чел." : "users"} · {day.listenedMinutes} {isRussian ? "мин" : "min"}</span>
-          </div>)}
-        </div>
-        <div className="mt-[12px] flex flex-wrap gap-[6px]">
-          {Array.from(new Map(dailyStats.days.flatMap(day => day.loginCountries).map(item => [item.country, item.logins])).entries())
-            .sort((a, b) => b[1] - a[1]).slice(0, 6).map(([country, logins]) => {
-              let name = country.toUpperCase();
-              try { if (country !== "unknown") name = new Intl.DisplayNames([navigator.language], { type: "region" }).of(country.toUpperCase()) || name; } catch {}
-              return <span key={country} className="rounded-lg bg-white/[0.05] px-[9px] py-[6px] text-[12px] text-text-secondary">{name} · {logins}</span>;
-            })}
-        </div>
-      </section>}
+      <Button variant="secondary" size="sm" onClick={() => navigate("/stats")} className="mt-[12px] w-full max-w-[604px] !h-[40px] !rounded-[12px]">
+        {isRussian ? "Открыть статистику" : "Open statistics"}
+      </Button>
       {isNativeApp() && <DiagnosticsBox />}
     </div>
   );

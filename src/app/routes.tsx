@@ -11,6 +11,7 @@ import LoginPage from "@/features/auth/ui/LoginPage";
 import PlayerPage from "@/features/player/ui/FullscreenPlayer";
 import LocalTracksPage from "@/features/local/ui/LocalTracksPage";
 import RecentPage from "@/features/home/ui/RecentPage";
+import StatsPage from "@/features/stats/ui/StatsPage";
 
 export function AppRoutes() {
   return (
@@ -22,6 +23,7 @@ export function AppRoutes() {
       <Route path="/library/cached" element={<CachedTracksPage />} />
       <Route path="/local" element={<LocalTracksPage />} />
       <Route path="/recent" element={<RecentPage />} />
+      <Route path="/stats" element={<StatsPage />} />
       <Route path="/artist" element={<ArtistPage />} />
       <Route path="/collection" element={<CollectionPage />} />
       <Route path="/login" element={<LoginPage />} />
