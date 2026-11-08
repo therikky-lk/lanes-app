@@ -82,8 +82,8 @@ export default function SwipeToDelete({ children, label, onDelete, onAddToQueue 
         aria-hidden={offset === 0}
         tabIndex={offset === 0 ? -1 : 0}
         onClick={(event) => { event.stopPropagation(); if (onAddToQueue) { setOffset(0); onAddToQueue(); } else onDelete?.(); }}
-        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-[3px] border-0 px-[12px] text-white"
-        style={{ width: Math.max(ACTION_WIDTH, -offset), backgroundColor: onAddToQueue ? (armed ? "#15803d" : "#22c55e") : (armed ? "#dc2626" : "#ef4444"), visibility: offset === 0 ? "hidden" : "visible" }}
+        className="absolute inset-y-0 right-0 flex w-[76px] flex-col items-center justify-center gap-[3px] border-0 bg-[#1c1c1e] px-[8px] text-white transition-colors"
+        style={{ width: ACTION_WIDTH, backgroundColor: armed ? "#303033" : "#1c1c1e", visibility: offset === 0 ? "hidden" : "visible" }}
       >
         {onAddToQueue ? <AddLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} /> : <DeleteLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} />}
         <span className="text-[11px] font-medium">{label}</span>

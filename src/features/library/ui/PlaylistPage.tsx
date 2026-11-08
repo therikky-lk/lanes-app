@@ -208,6 +208,7 @@ function LibraryPlaylistContent() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [showScrollToolbar, setShowScrollToolbar] = useState(false);
   const reorderTracks = useReorderPlaylistTracks();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -400,6 +401,11 @@ function LibraryPlaylistContent() {
 
   const { toast } = useToast();
   const [addedToQueue, setAddedToQueue] = useState(false);
+
+  const handlePlaylistScroll = useCallback((container: HTMLElement | null) => {
+    setShowScrollToolbar((container?.scrollTop ?? 0) > 150);
+    if (rafIdRef.current === null) targetScrollTopRef.current = null;
+  }, []);
 
   const handleAddToQueue = useCallback(() => {
     if (!playableTracks.length || !viewData) return;
@@ -649,6 +655,33 @@ function LibraryPlaylistContent() {
           className="flex-1 min-w-0 h-full pointer-events-auto"
         />
       </div>
+      <AnimatePresence>
+        {showScrollToolbar && viewData && (
+          <motion.div
+            key="playlist-scroll-toolbar"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[10px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] shadow-lg backdrop-blur-xl md:px-[32px]"
+            data-no-window-drag
+          >
+            <strong className="min-w-0 flex-1 truncate text-[15px] font-semibold text-white">{viewData.title}</strong>
+            <Button variant="primary" onClick={handlePlayAll} disabled={!currentTracks.length} className="!h-[34px] shrink-0 gap-[6px] !px-[12px] !text-[12px]">
+              <PlayFill size={15} />{t("common.play_all")}
+            </Button>
+            <Button variant="outline" onClick={handleAddToQueue} disabled={!currentTracks.length} aria-label={t("common.add_to_queue")} className="!h-[34px] shrink-0 gap-[5px] !px-[10px] !text-[12px]">
+              {addedToQueue ? <CheckLine size={16} /> : <AddLine size={16} />}
+              <span className="hidden sm:inline">{t("common.add_to_queue")}</span>
+            </Button>
+            <Button variant="outline" onClick={handleShufflePlay} disabled={!currentTracks.length} aria-label={t("common.shuffle")} className="!h-[34px] !w-[34px] shrink-0 !p-0"><LuShuffle size={15} /></Button>
+            {!isMobile && <SegmentedTabs iconOnly value={trackView} onChange={setTrackView} className="h-[34px] shrink-0" options={[
+              { id: "list" as const, label: <MenuLine size={15} />, title: t("common.list") || "List" },
+              { id: "grid" as const, label: <GridLine size={15} />, title: t("common.grid") || "Grid" },
+            ]} />}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <input
         ref={coverInputRef}
         type="file"
@@ -678,6 +711,7 @@ function LibraryPlaylistContent() {
           >
             <div
               ref={isMobile ? scrollRef : undefined}
+              onScroll={isMobile ? event => handlePlaylistScroll(event.currentTarget) : undefined}
               className={
                 isMobile
                   ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"
@@ -1048,9 +1082,7 @@ function LibraryPlaylistContent() {
                 ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag
                 onScroll={() => {
-                  if (rafIdRef.current === null) {
-                    targetScrollTopRef.current = null;
-                  }
+                  handlePlaylistScroll(scrollRef.current);
                 }}
                 className={`relative isolate ${
                   isMobile
