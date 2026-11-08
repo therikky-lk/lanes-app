@@ -14,6 +14,8 @@ export interface StickyHeaderProps {
   rightContent?: ReactNode;
   fallbackBackRoute?: string;
   className?: string;
+  desktopBackdrop?: boolean;
+  plainMetadata?: boolean;
 }
 
 export function StickyHeader({
@@ -25,6 +27,8 @@ export function StickyHeader({
   rightContent,
   fallbackBackRoute = "/library",
   className = "",
+  desktopBackdrop = false,
+  plainMetadata = false,
 }: StickyHeaderProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -60,7 +64,14 @@ export function StickyHeader({
               backdropFilter: isScrolled ? "blur(24px) saturate(1.5)" : "none",
               WebkitBackdropFilter: isScrolled ? "blur(24px) saturate(1.5)" : "none",
             }
-          : { height: "56px", marginBottom: "-56px" }
+        : {
+            height: "56px",
+            marginBottom: "-56px",
+            transition: "background-color 0.25s ease, backdrop-filter 0.25s ease",
+            backgroundColor: desktopBackdrop && isScrolled ? "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)" : "transparent",
+            backdropFilter: desktopBackdrop && isScrolled ? "blur(24px) saturate(1.5)" : "none",
+            WebkitBackdropFilter: desktopBackdrop && isScrolled ? "blur(24px) saturate(1.5)" : "none",
+          }
       }
       data-window-drag
     >
@@ -89,9 +100,11 @@ export function StickyHeader({
             <div
               data-no-window-drag
               className={`inline-flex items-center gap-[8px] h-[32px] pl-[4px] pr-[12px] rounded-md min-w-0 ${isMobile ? "max-w-[calc(100vw-130px)]" : "max-w-[calc(100vw-360px)]"} select-none transition-all duration-200 ease-out ${
-                hasCustomBg
-                  ? "apple-glass-pill"
-                  : "bg-bg-panel/85 backdrop-blur-xl text-text-primary"
+                plainMetadata
+                  ? "bg-transparent text-text-primary"
+                  : hasCustomBg
+                    ? "apple-glass-pill"
+                    : "bg-bg-panel/85 backdrop-blur-xl text-text-primary"
               } ${
                 isScrolled
                   ? "opacity-100 translate-x-0 scale-100 pointer-events-auto"
