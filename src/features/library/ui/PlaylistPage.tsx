@@ -681,7 +681,7 @@ function LibraryPlaylistContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[8px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] shadow-lg backdrop-blur-xl md:px-[32px]"
+            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[8px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] pr-[116px] shadow-lg backdrop-blur-xl md:pl-[32px] md:pr-[148px]"
             style={{ top: 0, height: 56 }}
             data-no-window-drag
           >
