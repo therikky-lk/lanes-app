@@ -28,7 +28,9 @@ export default function PhoneMenu({
   if (!open || !pos) return null;
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[180]" onClick={onClose} />
+      <div className="fixed inset-0 z-[180]" onClick={onClose}
+        onWheel={event => { event.preventDefault(); event.stopPropagation(); }}
+        onTouchMove={event => { event.preventDefault(); event.stopPropagation(); }} />
       <motion.div
         className="fixed z-[181] w-[248px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[16px] border border-border-primary/40 p-[6px] shadow-none"
         initial={{ opacity: 0, y: -4 }}

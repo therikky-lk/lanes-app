@@ -661,6 +661,13 @@ export class PlayerRuntime {
     if (this.nativeQueuePending === pendingKey) return;
     if (this.nativeQueued?.afterTrackId === afterTrackId && this.nativeQueued.ids === ids) return;
     this.nativeQueueAbort?.abort();
+    // Remove the previously handed-off native track before preparing a new
+    // queue snapshot. Otherwise a manual Next can advance to stale audio while
+    // the React player has already moved to the newly selected queue item.
+    if (this.nativeQueued) {
+      clearNativeNext();
+      this.nativeQueued = null;
+    }
     const controller = new AbortController();
     this.nativeQueueAbort = controller;
     this.nativeQueuePending = pendingKey;

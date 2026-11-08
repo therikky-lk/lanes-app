@@ -216,7 +216,7 @@ export function installNativeFetchHeaders(): void {
     // Apply the same app identity to challenge, auth and subsequent API calls.
     if (isApi) {
       const userAgent = headers.get("User-Agent") || navigator.userAgent;
-      headers.set("User-Agent", new URL(url).origin === "https://api.tryliner.fun"
+      headers.set("User-Agent", ["https://api.tryliner.fun", "https://lane-app.site"].includes(new URL(url).origin)
         ? appApiUserAgent(userAgent)
         : userAgent);
     }

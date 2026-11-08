@@ -59,6 +59,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
 
   const onContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setMenuPosition({ x: e.clientX, y: e.clientY });
     setMenuOpen(true);
   }, []);

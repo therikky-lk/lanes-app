@@ -10,8 +10,8 @@ import type { DropdownMenuItem } from "./DropdownMenu";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
 import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
 
-export default function ShareButton({ type, entityId, snapshot, menu = false }: {
-  type: ShareEntityType; entityId: string; snapshot: ShareSnapshot; menu?: boolean;
+export default function ShareButton({ type, entityId, snapshot, menu = false, extraMenuItems = [] }: {
+  type: ShareEntityType; entityId: string; snapshot: ShareSnapshot; menu?: boolean; extraMenuItems?: DropdownMenuItem[];
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export default function ShareButton({ type, entityId, snapshot, menu = false }: 
     const items: DropdownMenuItem[] = [{
       id: "share-artist", label: t("common.share"), icon: <LuShare2 size={15} />, disabled: busy,
       onClick: handleShare,
-    }];
+    }, ...extraMenuItems];
     return <DropdownMenu
       trigger={<Button variant="outline" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
         className="!h-[38px] !w-[38px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm">

@@ -152,6 +152,7 @@ export default function DropdownMenu({
           }`}
           style={isFixed ? fixedStyle : {}}
           onClick={(e) => e.stopPropagation()}
+          onWheel={(e) => { e.preventDefault(); e.stopPropagation(); }}
         >
           <div className="flex flex-col gap-0.5">
             {items.map((item) => (

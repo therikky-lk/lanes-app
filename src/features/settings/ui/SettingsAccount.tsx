@@ -7,6 +7,8 @@ import Dialog from "@/shared/ui/Dialog";
 import Button from "@/shared/ui/Button";
 import UserAvatar from "@/shared/ui/UserAvatar";
 import { useLocalAvatar, useLocalAvatarStore } from "@/features/auth/store/localAvatarStore";
+import { getAccessToken } from "@/shared/api";
+import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
 
 async function readAvatar(file: File): Promise<string> {
   if (!file.type.startsWith("image/") || file.size > 20 * 1024 * 1024) throw new Error("invalid image");
@@ -29,7 +31,7 @@ export default function SettingsAccount({ onSignOut, compact = false }: { onSign
   const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const avatarUrl = useLocalAvatar(user?.id, user?.avatarUrl);
-  const setAvatar = useLocalAvatarStore(state => state.setAvatar);
+  const removeLocalAvatar = useLocalAvatarStore(state => state.removeAvatar);
   const logout = useAuthStore(state => state.logout);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -48,17 +50,35 @@ export default function SettingsAccount({ onSignOut, compact = false }: { onSign
     try {
       const result = await readAvatar(file);
       if (request.current === id && user) {
-        try { setAvatar(user.id, result); } catch { setError(t("settings.profile.save_failed")); }
+        const accessToken = getAccessToken();
+        if (!accessToken) throw new Error("unauthorized");
+        const response = await fetch(`${LANE_LINK_ORIGIN}/v1/me/avatar`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl: result }),
+        });
+        if (!response.ok) throw new Error("avatar upload failed");
+        const uploaded = await response.json() as { avatarUrl?: string };
+        if (!uploaded.avatarUrl) throw new Error("invalid avatar response");
+        await useAuthStore.getState().updateProfile({ avatarUrl: uploaded.avatarUrl });
+        if (request.current === id) removeLocalAvatar(user.id);
       }
-    } catch { if (request.current === id) setError(t("settings.profile.avatar_invalid")); }
+    } catch { if (request.current === id) setError(t("settings.profile.save_failed")); }
     finally { if (request.current === id) setBusy(false); }
   };
-  const removeAvatar = () => {
+  const removeAvatar = async () => {
     if (!user || busy) return;
+    setBusy(true);
     setError("");
     try {
-      setAvatar(user.id, null);
+      const accessToken = getAccessToken();
+      if (!accessToken) throw new Error("unauthorized");
+      const response = await fetch(`${LANE_LINK_ORIGIN}/v1/me/avatar`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!response.ok) throw new Error("avatar delete failed");
+      await useAuthStore.getState().updateProfile({ avatarUrl: null });
+      removeLocalAvatar(user.id);
     } catch { setError(t("settings.profile.save_failed")); }
+    finally { setBusy(false); }
   };
   return <>
     <div className="flex min-w-0 max-w-full items-center gap-[10px]">
