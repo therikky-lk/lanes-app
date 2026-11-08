@@ -34,6 +34,8 @@ export interface SongCardProps {
   albumTitle?: string;
   /** Saved date column used by the liked tracks table. */
   addedDate?: string;
+  /** Relative time shown when hovering the saved date. */
+  addedDateTooltip?: string;
   /** highlight the row as the one playing now */
   isCurrent?: boolean;
   /** shows where the track streams from */
@@ -77,6 +79,7 @@ function SongCard({
   rowNumber,
   albumTitle,
   addedDate,
+  addedDateTooltip,
   isCurrent = false,
   trackId,
   repostedBy,
@@ -312,7 +315,7 @@ function SongCard({
         <div
           className="hidden md:block w-[140px] shrink-0 pl-[16px] truncate text-[14px] text-text-secondary"
           style={{ fontFamily: "var(--font-inter), sans-serif", fontWeight: 350 }}
-          title={addedDate}
+          title={addedDateTooltip ?? addedDate}
         >
           {addedDate}
         </div>

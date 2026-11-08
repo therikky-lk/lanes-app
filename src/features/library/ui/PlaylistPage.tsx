@@ -88,6 +88,28 @@ function formatLikedDate(value: Track["likedAt"]): string | undefined {
   }).format(date);
 }
 
+function formatLikedDateRelative(value: Track["likedAt"]): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return undefined;
+  const seconds = (date.getTime() - Date.now()) / 1000;
+  const absolute = Math.abs(seconds);
+  const [unit, divisor]: [Intl.RelativeTimeFormatUnit, number] = absolute >= 365 * 86400
+    ? ["year", 365 * 86400]
+    : absolute >= 30 * 86400
+      ? ["month", 30 * 86400]
+      : absolute >= 7 * 86400
+        ? ["week", 7 * 86400]
+        : absolute >= 86400
+          ? ["day", 86400]
+          : absolute >= 3600
+            ? ["hour", 3600]
+            : absolute >= 60
+              ? ["minute", 60]
+              : ["second", 1];
+  return new Intl.RelativeTimeFormat(navigator.language, { numeric: "auto" }).format(Math.round(seconds / divisor), unit);
+}
+
 const TrackItem = memo(function TrackItem({
   track,
   playlistId,
@@ -146,6 +168,7 @@ const TrackItem = memo(function TrackItem({
         isCurrent={isCurrent}
         albumTitle={albumTitleOf(track)}
         addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
+        addedDateTooltip={showLikedDate ? formatLikedDateRelative(track.likedAt) : undefined}
         addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
         duration={
           track.durationMs

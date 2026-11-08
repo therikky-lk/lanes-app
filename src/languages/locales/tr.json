@@ -974,7 +974,7 @@
     },
     "profile": {
       "remove_avatar": "Avatarı kaldır",
-      "avatar_local": "Yalnızca bu cihazda kaydedilir",
+      "avatar_local": "Lane hesabınızla senkronize edilir",
       "change_avatar": "Avatarı değiştir",
       "avatar_invalid": "En fazla 20 MB boyutunda bir resim seçin.",
       "title": "Profil",

@@ -352,7 +352,7 @@ function CollectionContent() {
               }
             >
               <div
-                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[4px]"}
+                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[16px]"}
                 data-no-window-drag
               >
                 <EntitySidebar

@@ -964,7 +964,7 @@
     },
     "profile": {
       "remove_avatar": "Eliminar avatar",
-      "avatar_local": "Guardado solo en este dispositivo",
+      "avatar_local": "Sincronizado con tu cuenta de Lane",
       "change_avatar": "Cambiar avatar",
       "avatar_invalid": "Elige una imagen de hasta 20 MB.",
       "title": "Perfil",

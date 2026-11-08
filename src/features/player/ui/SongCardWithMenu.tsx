@@ -28,6 +28,7 @@ export interface SongCardWithMenuProps {
   rowNumber?: number;
   albumTitle?: string;
   addedDate?: string;
+  addedDateTooltip?: string;
   addedDateLabel?: string;
   isCurrent?: boolean;
   repostedBy?: string;
@@ -68,6 +69,7 @@ function SongCardWithMenu({
   rowNumber,
   albumTitle,
   addedDate,
+  addedDateTooltip,
   addedDateLabel,
   isCurrent,
   repostedBy,
@@ -219,6 +221,7 @@ function SongCardWithMenu({
       rowNumber={rowNumber}
       albumTitle={albumTitle}
       addedDate={addedDate}
+      addedDateTooltip={addedDateTooltip}
       isCurrent={isCurrent}
       trackId={id}
       repostedBy={repostedBy}

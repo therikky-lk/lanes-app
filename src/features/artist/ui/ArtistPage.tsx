@@ -176,6 +176,8 @@ function ArtistContent() {
       >
         <StickyHeader
           isScrolled={isScrolled}
+          desktopBackdrop
+          plainMetadata
           title={data?.title}
           thumbnail={
             artistImage ? (
