@@ -1,4 +1,3 @@
-import { queryCache } from "@/shared/cache/queryCache";
 import ShareButton from "@/shared/ui/ShareButton";
 import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -22,7 +21,7 @@ import {
   MenuLine,
 } from "@mingcute/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink, LuGlobe, LuLockKeyhole } from "react-icons/lu";
+import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink } from "react-icons/lu";
 import { FaSpotify } from "react-icons/fa";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
@@ -188,7 +187,6 @@ function LibraryPlaylistContent() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [isVisibilityUpdating, setIsVisibilityUpdating] = useState(false);
   const reorderTracks = useReorderPlaylistTracks();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descriptionRef = useRef<HTMLParagraphElement>(null);
@@ -949,7 +947,7 @@ function LibraryPlaylistContent() {
                           />
                         )}
 
-                        {!isLikesMode && decodedId && playlistDetail?.isPublic && <ShareButton type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} />}
+                        {!isLikesMode && decodedId && <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} />}
                         {!isLikesMode && (
                           <DropdownMenu
                             trigger={
@@ -962,23 +960,6 @@ function LibraryPlaylistContent() {
                               </Button>
                             }
                             items={[
-                              {
-                                id: "visibility",
-                                label: t(playlistDetail?.isPublic ? "sharing.make_private" : "sharing.make_public"),
-                                icon: playlistDetail?.isPublic ? <LuLockKeyhole size={15} /> : <LuGlobe size={15} />,
-                                disabled: !playlistDetail || isVisibilityUpdating,
-                                onClick: async () => {
-                                  if (!decodedId || !playlistDetail || isVisibilityUpdating) return;
-                                  const nextIsPublic = !playlistDetail.isPublic;
-                                  setIsVisibilityUpdating(true);
-                                  try {
-                                    await api.updatePlaylist(decodedId, { isPublic: nextIsPublic });
-                                    queryCache.delete(`playlist:detail:${decodedId}`);
-                                    window.dispatchEvent(new Event("library:changed"));
-                                  } catch { toast(t("common.error_something_wrong"), "error"); }
-                                  finally { setIsVisibilityUpdating(false); }
-                                },
-                              },
                               {
                                 id: "rename",
                                 icon: <LuPencil size={15} />,
