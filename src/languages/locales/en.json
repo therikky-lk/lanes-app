@@ -628,6 +628,7 @@
     "col_album": "Album",
     "col_date_added": "Date added",
     "change_cover": "Change cover",
+    "edit_order": "Reorder tracks",
     "reset_cover": "Reset cover",
     "cover_failed": "Could not use this image"
   },
