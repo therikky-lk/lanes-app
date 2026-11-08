@@ -3,7 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useShallow } from "zustand/react/shallow";
 import { usePlayerStore } from "../store/playerStore";
 import { playerEngine } from "../engine/playerEngine";
-import SongCardWithMenu from "./SongCardWithMenu";
+import SongCard from "./SongCard";
 import { useTranslation } from "@/languages";
 import { useListReorder } from "@/shared/hooks";
 import { FloatingDragCard, ReorderDropPlaceholder } from "@/shared/ui";
@@ -11,7 +11,7 @@ import type { Track } from "@/shared/types";
 
 const QUEUE_ROW_HEIGHT = 68;
 
-export default function FullscreenQueueSheet() {
+export default function FullscreenQueueSheet({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const player = usePlayerStore(useShallow(state => ({
     queue: state.queue,
@@ -57,24 +57,27 @@ export default function FullscreenQueueSheet() {
     <div className="flex min-h-0 flex-col gap-[14px] text-text-primary" onClick={event => event.stopPropagation()}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="m-0 text-[16px] font-semibold">{t("player.queue")}</h2>
+        <button type="button" aria-label={t("common.close")} onClick={onClose} className="flex h-[34px] w-[34px] items-center justify-center rounded-full border-0 bg-white/[0.08] text-text-secondary hover:bg-white/[0.14] hover:text-text-primary active:scale-95">
+          <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12" /></svg>
+        </button>
       </div>
 
       {nowPlaying && (
         <section className="min-w-0">
           <h3 className="mb-[7px] mt-0 px-[2px] text-[12px] font-semibold text-text-secondary">{t("player.now_playing")}</h3>
-          <SongCardWithMenu
+          <SongCard
             id={nowPlaying.id}
             title={nowPlaying.title}
             artists={nowPlaying.artists}
             artistId={nowPlaying.artistId}
             artistList={nowPlaying.artistList}
             explicit={nowPlaying.explicit}
-            durationMs={nowPlaying.durationMs}
             compact
             coverUrl={nowPlaying.coverUrl ?? ""}
-            className="rounded-[12px] bg-white/[0.07] p-[8px]"
+            className="select-none rounded-[12px] bg-white/[0.07] p-[8px]"
             imageShape="square"
             isCurrent
+            onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}
           />
         </section>
       )}
@@ -118,20 +121,20 @@ export default function FullscreenQueueSheet() {
                       backfaceVisibility: "hidden",
                     }}
                   >
-                    <SongCardWithMenu
+                    <SongCard
                       id={item.id}
                       title={item.title}
                       artists={item.artists}
                       artistId={item.artistId}
                       artistList={item.artistList}
                       explicit={item.explicit}
-                      durationMs={item.durationMs}
                       compact
                       coverUrl={item.coverUrl ?? ""}
-                      className="rounded-[10px] bg-white/[0.035] p-[8px] transition-colors hover:bg-white/[0.07]"
+                      className="select-none rounded-[10px] bg-white/[0.035] p-[8px] transition-colors hover:bg-white/[0.07]"
                       imageShape="square"
                       showReorderHandle
                       onGrabStart={event => handleCardGrab(row.index, item, event)}
+                      onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}
                       onPlay={() => {
                         if (typeof window !== "undefined" && window.__linerWasDragging) return;
                         void playerEngine.playTrack(item, player.queue, player.playbackContext, player.playbackContextCover, queueIndex, true);
@@ -147,17 +150,16 @@ export default function FullscreenQueueSheet() {
 
       {isDragging && draggedItem && (
         <FloatingDragCard x={pointerPos.x} y={pointerPos.y} offsetX={grabOffset.x} offsetY={grabOffset.y} width={itemWidth}>
-          <SongCardWithMenu
+          <SongCard
             id={draggedItem.id}
             title={draggedItem.title}
             artists={draggedItem.artists}
             artistId={draggedItem.artistId}
             artistList={draggedItem.artistList}
             explicit={draggedItem.explicit}
-            durationMs={draggedItem.durationMs}
             compact
             coverUrl={draggedItem.coverUrl ?? ""}
-            className="rounded-[10px] border border-white/10 bg-bg-elevated p-[8px] shadow-2xl"
+            className="select-none rounded-[10px] border border-white/10 bg-bg-elevated p-[8px] shadow-2xl"
             imageShape="square"
           />
         </FloatingDragCard>

@@ -124,7 +124,11 @@ function SongCard({
       onContextMenu(e);
       return;
     }
-    if (!hasMenu) return;
+    if (!hasMenu) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     setOwnMenuPosition({ x: e.clientX, y: e.clientY });
@@ -367,7 +371,6 @@ function SongCard({
           <button
             type="button"
             aria-label={t("player.reorder_track") || "Reorder track"}
-            title={t("player.reorder_track") || "Reorder track"}
             data-reorder-handle
             data-prevent-drag
             onPointerDown={event => {
