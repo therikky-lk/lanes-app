@@ -1374,7 +1374,7 @@
     "only_on_device": "Tylko na „{device}”",
     "only_on_device_toast": "Ten utwór jest odtwarzany tylko na „{device}”",
     "added_from_device": "Twój plik z tego urządzenia",
-    "add_failed": "Nie można dodać utworu do listy odtwarzania"
+    "add_failed": "Nie można dodawać lokalnych utworów do playlist. Są dostępne tylko na oryginalnym urządzeniu."
   },
   "history": {
     "today": "Dzisiaj",

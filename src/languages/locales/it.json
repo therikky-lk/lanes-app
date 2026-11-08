@@ -1374,7 +1374,7 @@
     "only_on_device": "Solo su “{device}”",
     "only_on_device_toast": "Questa traccia viene riprodotta solo su \"{device}\"",
     "added_from_device": "Il tuo file da questo dispositivo",
-    "add_failed": "Impossibile aggiungere la traccia alla playlist"
+    "add_failed": "I brani locali non possono essere aggiunti alle playlist. Sono disponibili solo sul dispositivo originale."
   },
   "history": {
     "today": "Oggi",

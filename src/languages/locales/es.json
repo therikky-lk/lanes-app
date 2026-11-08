@@ -1376,7 +1376,7 @@
     "only_on_device": "Sólo en “{device}”",
     "only_on_device_toast": "Esta pista solo se reproduce en “{device}”",
     "added_from_device": "Tu archivo desde este dispositivo",
-    "add_failed": "No se pudo agregar tu pista a la lista de reproducción"
+    "add_failed": "No se pueden añadir pistas locales a las listas de reproducción. Solo están disponibles en el dispositivo original."
   },
   "history": {
     "today": "Hoy",

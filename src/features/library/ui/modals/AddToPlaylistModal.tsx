@@ -6,6 +6,7 @@ import TextInput from "@/shared/ui/TextInput";
 import Dialog from "@/shared/ui/Dialog";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { useTranslation } from "@/languages";
+import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { useAddPlaylistTracks, usePlaylistsList } from "../../hooks";
 import { useModalStore } from "../../store/modalStore";
 import { diag } from "@/shared/platform/diag";
@@ -74,6 +75,10 @@ export default function AddToPlaylistModal() {
 
   const handleAddToPlaylist = async (playlistId: string) => {
     if (!track) return;
+    if (isLocalTrackId(track.id)) {
+      toast(t("local.add_failed"), "error");
+      return;
+    }
     const targetPlaylist = playlists.find((p) => p.id === playlistId);
     setAddingTo(playlistId);
     try {
