@@ -1011,7 +1011,7 @@ function LibraryPlaylistContent() {
                         )}
 
                         {!isLikesMode && decodedId && (isPlaylistEditMode ? (
-                          <Button variant="outline" onClick={() => setIsPlaylistEditMode(false)} aria-label={t("common.save")} title={t("common.save")} className="!h-[36px] !w-[36px] shrink-0 !p-0">
+                          <Button variant="outline" onClick={() => setIsPlaylistEditMode(false)} aria-label={t("playlist.save_order")} title={t("playlist.save_order")} className="!h-[36px] !w-[36px] shrink-0 !p-0">
                             <CheckLine size={17} />
                           </Button>
                         ) : (

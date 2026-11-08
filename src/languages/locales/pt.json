@@ -587,7 +587,10 @@
     "visual_quality_lite_hint": "Ainda fundo, letras simples",
     "instrumental_hint": "Esta música é instrumental",
     "seek": "Mudar posição",
-    "loading_playback": "Carregando reprodução"
+    "loading_playback": "Carregando reprodução",
+    "now_playing": "Tocando agora",
+    "next_in_queue": "Próximas na fila",
+    "reorder_track": "Reordenar faixa"
   },
   "playlist": {
     "playlist": "Lista de reprodução",
@@ -616,7 +619,9 @@
     "col_date_added": "Data de adição",
     "change_cover": "Alterar capa",
     "reset_cover": "Redefinir tampa",
-    "cover_failed": "Não foi possível usar esta imagem"
+    "cover_failed": "Não foi possível usar esta imagem",
+    "edit_order": "Reordenar faixas",
+    "save_order": "Salvar ordem"
   },
   "search": {
     "recommended_artists": "Artistas recomendados",
@@ -1079,7 +1084,10 @@
         "description": "Apareça nos rankings de maiores ouvintes de artistas e nas classificações globais."
       },
       "badge_public": "Público",
-      "badge_private": "Privado"
+      "badge_private": "Privado",
+      "crop_zoom": "Zoom",
+      "crop_hint": "Arraste a imagem para ajustar o recorte",
+      "save_crop": "Salvar avatar"
     },
     "about": {
       "update_app": "Atualizar aplicativo",

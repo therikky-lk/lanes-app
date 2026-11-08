@@ -587,7 +587,10 @@
     "repeat": "Tekrarla",
     "instrumental_hint": "Bu şarkı enstrümantal",
     "seek": "Sarma",
-    "loading_playback": "Oynatma yükleniyor"
+    "loading_playback": "Oynatma yükleniyor",
+    "now_playing": "Şimdi çalıyor",
+    "next_in_queue": "Sıradaki",
+    "reorder_track": "Parçayı taşı"
   },
   "playlist": {
     "playlist": "Çalma listesi",
@@ -616,7 +619,9 @@
     "change_cover": "Kapağı değiştirin",
     "reset_cover": "Kapağı sıfırla",
     "cover_failed": "Bu resim kullanılamadı",
-    "likes_empty": "Henüz beğenilen şarkı yok"
+    "likes_empty": "Henüz beğenilen şarkı yok",
+    "edit_order": "Parçaları yeniden sırala",
+    "save_order": "Sıralamayı kaydet"
   },
   "search": {
     "recommended_artists": "Önerilen sanatçılar",
@@ -1030,7 +1035,10 @@
         "description": "Sanatçıların en çok dinleyenler listelerinde ve genel sıralamalarda yer al."
       },
       "badge_public": "Herkese açık",
-      "badge_private": "Gizli"
+      "badge_private": "Gizli",
+      "crop_zoom": "Yakınlaştır",
+      "crop_hint": "Kırpmayı ayarlamak için resmi sürükleyin",
+      "save_crop": "Avatarı kaydet"
     },
     "about": {
       "update_app": "Uygulamayı güncelle",
