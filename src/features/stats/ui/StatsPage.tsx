@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftLine } from "@mingcute/react";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 
 interface DailyStatsResponse {
   days: Array<{
@@ -14,6 +15,7 @@ interface DailyStatsResponse {
 
 export default function StatsPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState<DailyStatsResponse | null>(null);
   const [failed, setFailed] = useState(false);
   const authChecked = true;
@@ -59,7 +61,12 @@ export default function StatsPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-bg-primary">
-      <header className="flex h-[60px] shrink-0 items-center gap-[12px] border-b border-border-primary/50 px-[16px] md:px-[32px]">
+      <header
+        className="flex shrink-0 items-center gap-[12px] border-b border-border-primary/50 px-[16px] md:px-[32px]"
+        style={isMobile
+          ? { height: "calc(60px + var(--lane-safe-top, 0px))", paddingTop: "var(--lane-safe-top, 0px)" }
+          : { height: 60 }}
+      >
         <button type="button" aria-label={isRussian ? "Назад" : "Back"} onClick={() => navigate(-1)} className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-white/[0.05] text-text-secondary transition-colors hover:bg-white/[0.1] hover:text-text-primary">
           <ArrowLeftLine size={19} />
         </button>
@@ -70,15 +77,18 @@ export default function StatsPage() {
         {authenticated && <button type="button" onClick={() => void signOut()} className="ml-auto rounded-full border border-border-primary bg-transparent px-[12px] py-[7px] text-[12px] text-text-secondary hover:bg-white/[0.05]">{isRussian ? "Выйти" : "Sign out"}</button>}
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[22px] md:px-[32px]">
+      <main
+        className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[22px] md:px-[32px]"
+        style={isMobile ? { paddingBottom: "calc(var(--lane-dock-h, 120px) + 24px)" } : undefined}
+      >
         <div className="mx-auto flex w-full max-w-[760px] flex-col gap-[18px]">
           {!authChecked && <div role="progressbar" className="rounded-[16px] border border-border-primary/40 bg-bg-panel/45 px-[16px] py-[22px] text-[13px] text-text-tertiary">{isRussian ? "Проверяем вход…" : "Checking sign-in…"}</div>}
-          {authChecked && !authenticated && <form onSubmit={signIn} className="mx-auto w-full max-w-[440px] rounded-[18px] border border-border-primary/45 bg-bg-panel/60 p-[20px]">
+          {authChecked && !authenticated && <form onSubmit={signIn} className="mx-auto w-full max-w-[440px] rounded-[18px] border border-border-primary/45 bg-bg-panel/60 p-[18px] sm:p-[20px]">
             <h2 className="m-0 text-[17px] font-[650] text-text-primary">{isRussian ? "Вход по коду" : "Sign in with a code"}</h2>
             <p className="mb-[16px] mt-[6px] text-[13px] text-text-tertiary">{isRussian ? "Введите код доступа, чтобы посмотреть статистику." : "Enter the access code to view statistics."}</p>
-            <input autoFocus type="password" autoComplete="current-password" value={accessCode} onChange={event => setAccessCode(event.target.value)} aria-label={isRussian ? "Код доступа" : "Access code"} className="h-[42px] w-full rounded-[11px] border border-border-primary bg-bg-primary px-[12px] text-[14px] text-text-primary outline-none focus:border-text-tertiary" />
+            <input autoFocus={!isMobile} type="password" autoComplete="current-password" value={accessCode} onChange={event => setAccessCode(event.target.value)} aria-label={isRussian ? "Код доступа" : "Access code"} className="h-[48px] w-full rounded-[11px] border border-border-primary bg-bg-primary px-[12px] text-[16px] md:h-[42px] md:text-[14px] text-text-primary outline-none focus:border-text-tertiary" />
             {loginError && <p role="alert" className="mb-0 mt-[9px] text-[12px] text-red-400">{loginError}</p>}
-            <button type="submit" disabled={loginBusy || !accessCode} className="mt-[12px] h-[40px] w-full rounded-[11px] border-0 bg-text-primary text-bg-primary text-[13px] font-[600] disabled:opacity-50">{loginBusy ? (isRussian ? "Проверяем…" : "Checking…") : (isRussian ? "Войти" : "Sign in")}</button>
+            <button type="submit" disabled={loginBusy || !accessCode} className="mt-[12px] h-[48px] w-full rounded-[11px] border-0 bg-text-primary text-bg-primary text-[14px] font-[600] md:h-[40px] md:text-[13px] disabled:opacity-50">{loginBusy ? (isRussian ? "Проверяем…" : "Checking…") : (isRussian ? "Войти" : "Sign in")}</button>
           </form>}
           {authenticated && stats && <>
             <section className="grid grid-cols-1 gap-[12px] sm:grid-cols-2">
@@ -95,7 +105,7 @@ export default function StatsPage() {
             <section className="rounded-[16px] border border-border-primary/40 bg-bg-panel/45 p-[16px]">
               <h2 className="m-0 mb-[10px] text-[14px] font-[600] text-text-primary">{isRussian ? "По дням" : "Daily activity"}</h2>
               <div className="flex flex-col gap-[6px]">
-                {[...stats.days].reverse().map(day => <div key={day.day} className="flex items-center justify-between gap-[12px] rounded-[10px] bg-white/[0.035] px-[12px] py-[10px] text-[12px]">
+                {[...stats.days].reverse().map(day => <div key={day.day} className="flex flex-col items-start justify-between gap-[4px] rounded-[10px] bg-white/[0.035] px-[12px] py-[10px] text-[12px] sm:flex-row sm:items-center sm:gap-[12px]">
                   <span className="text-text-secondary">{new Date(`${day.day}T00:00:00`).toLocaleDateString(navigator.language, { weekday: "short", month: "short", day: "numeric" })}</span>
                   <span className="text-right text-text-tertiary">{day.activeUsers} {isRussian ? "чел." : "users"} <span className="mx-[4px] opacity-40">·</span> {day.listenedMinutes} {isRussian ? "мин" : "min"}</span>
                 </div>)}

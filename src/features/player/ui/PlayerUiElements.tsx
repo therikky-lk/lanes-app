@@ -126,7 +126,8 @@ export const PlayerUiElements = memo(function PlayerUiElements({
     coverDragX.set(0);
     swipePending.current = false;
     coverPointerStartRef.current = null;
-  }, [track?.id, isMobile, coverDragX]);
+  // Queue entries can share an ID; the cursor still changes and must reset the artwork.
+  }, [track?.id, player.currentIndex, isMobile, coverDragX]);
   useEffect(() => () => { coverAnimation.current?.stop(); setArtworkInteracting(false); }, []);
   const lastTapRef = useRef(0);
   const coverPointerStartRef = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
@@ -163,12 +164,14 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           swipePending.current = true;
           const distance = coverStep.current;
           const before = track?.id;
+          const beforeIndex = player.currentIndex;
           coverAnimation.current = animate(coverDragX, intent === "next" ? -distance : distance, { duration: 0.18, ease: "easeOut" });
           void coverAnimation.current.then(async () => {
             try { if (intent === "next") await playerEngine.skipNext(); else await playerEngine.skipPrevious(); }
             catch { /* The player reports playback failures through its normal state. */ }
             finally {
-              if (playerEngine.getSnapshot().currentTrack?.id === before) {
+              const snapshot = playerEngine.getSnapshot();
+              if (snapshot.currentTrack?.id === before && snapshot.currentIndex === beforeIndex) {
                 swipePending.current = false;
                 coverAnimation.current = animate(coverDragX, 0, { type: "spring", stiffness: 350, damping: 32 });
               }
@@ -194,7 +197,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
       showHeart();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [track, isLiked, likeMutation, showHeart, isMobile, coverDragX],
+    [track, player.currentIndex, isLiked, likeMutation, showHeart, isMobile, coverDragX],
   );
 
   const { t } = useTranslation();
@@ -339,7 +342,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
       <PlaybackTimeline width={`min(calc(${S} + 72px), 92vw)`} />
 
       {/* Primary Playback Controls */}
-      <div className="flex items-center gap-[26px]">
+      <div className={`flex items-center ${isMobile ? "gap-[clamp(8px,3.5vw,16px)]" : "gap-[26px]"}`}>
         <button
           type="button"
           aria-label={player.shuffle ? t("player.shuffle_on") : t("player.shuffle_off")}
@@ -399,6 +402,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             <Repeat size={22} />
           )}
         </button>
+
       </div>
 
       {/* Volume (Compact smooth slider, size sm) */}

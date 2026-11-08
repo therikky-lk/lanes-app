@@ -1054,8 +1054,8 @@ function LibraryPlaylistContent() {
                 }}
                 className={`relative isolate ${
                   isMobile
-                    ? `min-w-0 w-full flex-none rounded-[14px] px-[8px] pt-[8px] ${currentTracks.length > 0 && !isLikesMode ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
-                    : `min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] px-[8px] pt-[8px] pb-[24px] overscroll-contain ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
+                    ? `min-w-0 w-full flex-none rounded-[14px] px-[8px] pt-[16px] ${currentTracks.length > 0 && !isLikesMode ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
+                    : `min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] px-[8px] pt-[16px] pb-[24px] overscroll-contain ${currentTracks.length > 0 ? "bg-black/[0.03] dark:bg-white/[0.04] backdrop-blur-xl" : "bg-transparent"}`
                 }`}
                 style={{
                   willChange: "scroll-position",

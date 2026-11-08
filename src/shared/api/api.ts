@@ -721,7 +721,7 @@ export const api = {
   },
 
   updateProfile(data: UpdateProfileInput): Promise<PublicUser> {
-    return request<PublicUser>("/v1/users/me", {
+    return request<PublicUser>("/v1/me", {
       method: "PATCH",
       body: JSON.stringify(data),
     });

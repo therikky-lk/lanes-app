@@ -34,6 +34,7 @@ import { EqualizerPicker } from "./EqualizerPicker";
 import { isEqActive } from "../engine/equalizer";
 import { Settings6Line } from "@mingcute/react";
 import { DownLine } from "@mingcute/react";
+import { Sidebar } from "@solar-icons/react";
 import { preloadCoverArt, useCoverSrc } from "@/features/covers";
 import "@braccato/core/element";
 import "@braccato/core/styles/variables.css";
@@ -44,7 +45,7 @@ import { SpeedPitchPicker } from "./SpeedPitchPicker";
 import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
-import { Sidebar } from "@solar-icons/react";
+import FullscreenQueueSheet from "./FullscreenQueueSheet";
 
 const BRACCATO_TAG = "braccato-lyrics";
 
@@ -213,21 +214,19 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
       if (audioEl && !Number.isNaN(audioEl.currentTime)) {
         const currentMs = audioEl.currentTime * 1000 - Math.max(appliedLatency, 0);
         const lines = useLyricsStore.getState().syncedLines;
-        let idx = -1;
-        for (let i = 0; i < lines.length; i++) {
-          const prevEnd =
-            i > 0 && lines[i - 1].words && lines[i - 1].words!.length > 0
-              ? lines[i - 1].words![lines[i - 1].words!.length - 1].endMs
-              : i > 0
-                ? lines[i - 1].timeMs
-                : 0;
+        let low = 0;
+        let high = lines.length;
+        while (low < high) {
+          const i = (low + high) >>> 1;
+          const previous = lines[i - 1];
+          const prevEnd = previous?.words?.length
+            ? previous.words[previous.words.length - 1].endMs
+            : previous?.timeMs ?? 0;
           const targetEarlyMs = Math.max(prevEnd, lines[i].timeMs - 600);
-          if (targetEarlyMs <= currentMs) {
-            idx = i;
-          } else {
-            break;
-          }
+          if (targetEarlyMs <= currentMs) low = i + 1;
+          else high = i;
         }
+        const idx = low - 1;
         if (idx !== lastReportedIndex) {
           lastReportedIndex = idx;
           useLyricsStore.getState().setActiveLineIndex(idx >= 0 ? idx : null);
@@ -360,13 +359,11 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
 export interface FullscreenPlayerProps {
   effectsReady?: boolean;
   onClose: () => void;
-  onQueueOpen?: () => void;
 }
 
 export function FullscreenPlayer({
   effectsReady = true,
   onClose,
-  onQueueOpen,
 }: FullscreenPlayerProps) {
   const { t } = useTranslation();
   const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, queue: s.queue, currentIndex: s.currentIndex, isEqEnabled: s.isEqEnabled, eqGains: s.eqGains })));
@@ -411,6 +408,7 @@ export function FullscreenPlayer({
   }, [isMobile, mobileLyrics]);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [audioSheet, setAudioSheet] = useState<"speed" | "eq">("speed");
+  const [queueOpen, setQueueOpen] = useState(false);
   const speedSheetDragControls = useDragControls();
   const speedChanged = usePlayerStore(
     (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
@@ -666,7 +664,56 @@ export function FullscreenPlayer({
               >
                 <span className="h-[4px] w-[36px] rounded-full bg-white/30" />
               </button>
-              {audioSheet === "eq" ? <EqualizerPicker /> : <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />}
+              {audioSheet === "eq"
+                ? <EqualizerPicker />
+                : <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {queueOpen && (
+          <motion.div
+            key="fullscreen-queue-modal"
+            className="absolute inset-0 z-50 flex items-end"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14, ease: "easeOut" }}
+            onClick={() => setQueueOpen(false)}
+            data-no-sheet-drag
+          >
+            <div className="lane-sheet-dimmer absolute inset-0" />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              drag="y"
+              dragListener={false}
+              dragControls={speedSheetDragControls}
+              dragConstraints={{ top: 0, bottom: typeof window === "undefined" ? 1000 : window.innerHeight }}
+              dragElastic={0}
+              dragMomentum={false}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 90 || info.velocity.y > 650) setQueueOpen(false);
+              }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="lane-frost-sheet relative w-full max-h-[88dvh] overflow-hidden rounded-t-2xl border-t border-white/[0.08] bg-black/20 p-[18px] pb-[calc(var(--lane-safe-bottom,0px)+16px)] backdrop-blur-xl"
+              onClick={event => event.stopPropagation()}
+              style={{ maxHeight: "min(88dvh, calc(100dvh - var(--lane-safe-top, 0px) - 16px))", touchAction: "pan-y" }}
+            >
+              <button
+                type="button"
+                aria-label={t("player.queue")}
+                onPointerDown={event => speedSheetDragControls.start(event)}
+                className="mx-auto mb-[12px] flex h-[24px] w-[72px] touch-none cursor-grab items-center justify-center border-0 bg-transparent active:cursor-grabbing"
+              >
+                <span className="h-[4px] w-[36px] rounded-full bg-white/30" />
+              </button>
+              <div className="max-h-[calc(88dvh-62px-var(--lane-safe-bottom,0px))] overflow-y-auto overscroll-contain">
+                <FullscreenQueueSheet />
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -692,6 +739,23 @@ export function FullscreenPlayer({
       >
         {!isMobile && <VisualQualityPicker />}
         {showProviderIsland && (!isMobile || mobileLyrics) && <LyricsProviderIsland />}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => setQueueOpen(true)}
+            aria-label={t("player.queue")}
+            title={t("player.queue")}
+            aria-expanded={queueOpen}
+            className={`relative inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl active:scale-[0.92] transition-[transform,background-color] duration-150 cursor-pointer ${queueOpen ? "bg-white text-black" : "bg-black/45 text-white/85"}`}
+          >
+            <Sidebar size={18} weight="Bold" />
+            {Math.max(0, player.queue.length - player.currentIndex - 1) > 0 && (
+              <span className="absolute -right-[4px] -top-[4px] min-w-[16px] rounded-full bg-white px-[4px] text-[9px] leading-[16px] text-black tabular-nums">
+                {Math.min(99, player.queue.length - player.currentIndex - 1)}
+              </span>
+            )}
+          </button>
+        )}
         {hasLyrics && !isMobile && (
           <button
             type="button"
@@ -715,13 +779,6 @@ export function FullscreenPlayer({
             }`}
           >
             <LuCaptions size={19} />
-          </button>
-        )}
-        {isMobile && (
-          <button type="button" aria-label={t("player.queue")} title={t("player.queue")}
-            onClick={onQueueOpen}
-            className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl cursor-pointer">
-            <Sidebar size={19} weight="Bold" />
           </button>
         )}
         {isMobile && (

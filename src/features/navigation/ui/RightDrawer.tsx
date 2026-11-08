@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { usePlayerState, playerEngine } from "@/features/player";
+import { usePlayerStore, playerEngine } from "@/features/player";
+import { useShallow } from "zustand/react/shallow";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import { useLyricsStore, type WordData, useLyricsAnimator } from "@/features/lyrics";
 import { useTranslation } from "@/languages";
 import { useToast, ReorderDropPlaceholder, FloatingDragCard } from "@/shared/ui";
 import { useListReorder } from "@/shared/hooks";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { FiMusic } from "react-icons/fi";
 import { ArrowLeftLine } from "@mingcute/react";
 import { useTheme } from "next-themes";
+import MobileMiniPlayer from "@/features/player/ui/MobileMiniPlayer";
 import {
   useIsContentTransparent,
   useCustomizationStore,
@@ -21,6 +24,8 @@ const QueueList = memo(function QueueList({
   queue,
   queueLimit,
   currentIndex,
+  compact = false,
+  startIndex = 0,
   playbackContext,
   playbackContextCover,
   scrollContainerRef,
@@ -28,6 +33,8 @@ const QueueList = memo(function QueueList({
   queue: any[];
   queueLimit: number;
   currentIndex: number;
+  compact?: boolean;
+  startIndex?: number;
   playbackContext: any;
   playbackContextCover: any;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -37,15 +44,38 @@ const QueueList = memo(function QueueList({
     currentIndex >= 0 ? currentIndex + 25 : 0,
   );
   const visibleQueue = useMemo(
-    () => queue.slice(0, effectiveLimit),
-    [queue, effectiveLimit],
+    () => queue.slice(startIndex, effectiveLimit),
+    [queue, effectiveLimit, startIndex],
   );
 
   const queueContainerRef = useRef<HTMLDivElement>(null);
+  const [renderRange, setRenderRange] = useState({ start: 0, end: 24 });
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+    const updateRange = () => {
+      const list = queueContainerRef.current;
+      if (!list) return;
+      const listTop = list.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top + scrollContainer.scrollTop;
+      const viewTop = Math.max(0, scrollContainer.scrollTop - listTop);
+      const start = Math.max(0, Math.floor(viewTop / QUEUE_ITEM_HEIGHT) - 5);
+      const end = Math.min(visibleQueue.length, Math.ceil((viewTop + scrollContainer.clientHeight) / QUEUE_ITEM_HEIGHT) + 5);
+      setRenderRange(previous => previous.start === start && previous.end === end ? previous : { start, end });
+    };
+    updateRange();
+    scrollContainer.addEventListener("scroll", updateRange, { passive: true });
+    const observer = new ResizeObserver(updateRange);
+    observer.observe(scrollContainer);
+    return () => {
+      scrollContainer.removeEventListener("scroll", updateRange);
+      observer.disconnect();
+    };
+  }, [scrollContainerRef, visibleQueue.length]);
 
   const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
-    playerEngine.reorderQueue(fromIndex, toIndex);
-  }, []);
+    playerEngine.reorderQueue(fromIndex + startIndex, toIndex + startIndex);
+  }, [startIndex]);
 
   const {
     isDragging,
@@ -89,16 +119,18 @@ const QueueList = memo(function QueueList({
         </div>
       )}
 
-      {visibleQueue.map((item, index) => {
+      {visibleQueue.slice(renderRange.start, renderRange.end).map((item, rowOffset) => {
+        const localIndex = renderRange.start + rowOffset;
+        const index = localIndex + startIndex;
         const isCurrent = index === currentIndex;
-        const isThisDragged = isDragging && index === dragIndex;
+        const isThisDragged = isDragging && localIndex === dragIndex;
 
         let shiftY = 0;
-        if (isDragging && dragIndex !== null && dropIndex !== null && index !== dragIndex) {
+        if (isDragging && dragIndex !== null && dropIndex !== null && localIndex !== dragIndex) {
           if (dragIndex < dropIndex) {
-            if (index > dragIndex && index <= dropIndex) shiftY = -QUEUE_ITEM_HEIGHT;
+            if (localIndex > dragIndex && localIndex <= dropIndex) shiftY = -QUEUE_ITEM_HEIGHT;
           } else if (dragIndex > dropIndex) {
-            if (index >= dropIndex && index < dragIndex) shiftY = QUEUE_ITEM_HEIGHT;
+            if (localIndex >= dropIndex && localIndex < dragIndex) shiftY = QUEUE_ITEM_HEIGHT;
           }
         }
 
@@ -107,7 +139,7 @@ const QueueList = memo(function QueueList({
             key={`${item.id}-${index}`}
             style={{
               position: "absolute",
-              top: `${index * QUEUE_ITEM_HEIGHT}px`,
+              top: `${localIndex * QUEUE_ITEM_HEIGHT}px`,
               left: 0,
               width: "100%",
               height: `${QUEUE_ITEM_HEIGHT}px`,
@@ -128,13 +160,14 @@ const QueueList = memo(function QueueList({
               artistList={item.artistList}
               explicit={item.explicit}
               durationMs={item.durationMs}
+              compact={compact}
               coverUrl={
                 item.coverUrl ?? (item as { cover_url?: string }).cover_url ?? ""
               }
               showReorderHandle
               onGrabStart={
                 !isDragging
-                  ? (e) => handleCardGrab(index, item, e)
+                  ? (e) => handleCardGrab(localIndex, item, e)
                   : undefined
               }
               className={`p-[8px] rounded-[10px] transition-colors duration-150 ${
@@ -196,8 +229,18 @@ export interface RightDrawerProps {
 }
 
 function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
-  const player = usePlayerState();
+  const player = usePlayerStore(useShallow(state => ({
+    queue: state.queue,
+    currentIndex: state.currentIndex,
+    currentTrack: state.currentTrack,
+    status: state.status,
+    playbackContext: state.playbackContext,
+    playbackContextCover: state.playbackContextCover,
+    positionMs: activeTab === "lyrics" ? state.positionMs : 0,
+    durationMs: activeTab === "lyrics" ? state.durationMs : 0,
+  })));
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const hasCustomBg = useIsContentTransparent();
   const { resolvedTheme } = useTheme();
@@ -250,6 +293,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
   const scrollQueueToCurrent = useCallback(
     (smooth = false) => {
       const container = queueScrollRef.current;
+      if (isMobile) return;
       if (!container || player.currentIndex < 0 || player.queue.length === 0) return;
       const targetY = Math.max(
         0,
@@ -267,12 +311,13 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
         container.scrollTop = targetY;
       }
     },
-    [player.currentIndex, player.queue.length],
+    [isMobile, player.currentIndex, player.queue.length],
   );
 
   const queueScrollCallbackRef = useCallback(
     (node: HTMLDivElement | null) => {
       queueScrollRef.current = node;
+      if (isMobile) return;
       if (node && player.currentIndex >= 0 && player.queue.length > 0) {
         const targetY = Math.max(
           0,
@@ -287,7 +332,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
         setIsQueueScrolled(targetY > 2);
       }
     },
-    [],
+    [isMobile, player.currentIndex, player.queue.length],
   );
 
   const prevQueueTrackIdRef = useRef<string | null>(player.currentTrack?.id ?? null);
@@ -477,6 +522,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
     isPlaying,
     positionMs: player.positionMs,
     durationMs: player.durationMs,
+    enabled: activeTab === "lyrics",
     onActiveLineChange: handleActiveLineChange,
   });
 
@@ -665,7 +711,11 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
           ? ""
           : "bg-bg-primary"
       }`}
-      style={drawerVarsStyle}
+      style={{
+        ...drawerVarsStyle,
+        paddingTop: isMobile ? "var(--lane-safe-top, 0px)" : undefined,
+        paddingBottom: isMobile ? "var(--lane-safe-bottom, 0px)" : undefined,
+      }}
     >
       {hasCustomBg && backgroundImage ? (
         <div
@@ -846,20 +896,64 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
               }
             }}
           >
-            {player.queue.length > 0 ? (
+            {isMobile && player.currentTrack && (
+              <section className="mb-5">
+                <h2 className="px-2 pb-2 text-[13px] font-semibold text-text-primary">
+                  {t("player.now_playing")}
+                </h2>
+                <SongCardWithMenu
+                  id={player.currentTrack.id}
+                  title={player.currentTrack.title}
+                  artists={player.currentTrack.artists}
+                  artistId={player.currentTrack.artistId}
+                  artistList={player.currentTrack.artistList}
+                  explicit={player.currentTrack.explicit}
+                  durationMs={player.currentTrack.durationMs}
+                  compact
+                  coverUrl={player.currentTrack.coverUrl ?? ""}
+                  className="p-[8px] rounded-[12px] bg-bg-elevated/80"
+                  imageShape="square"
+                  onPlay={() => {
+                    const index = player.currentIndex;
+                    if (index >= 0 && player.queue[index]) {
+                      void playerEngine.playTrack(
+                        player.queue[index],
+                        player.queue,
+                        player.playbackContext,
+                        player.playbackContextCover,
+                        index,
+                        true,
+                      );
+                    }
+                  }}
+                />
+              </section>
+            )}
+            {isMobile && player.currentTrack && player.queue.length > player.currentIndex + 1 && (
+              <h2 className="px-2 pb-2 text-[13px] font-semibold text-text-primary">
+                {t("player.next_in_queue")}
+              </h2>
+            )}
+            {player.queue.length > 0 && (!isMobile || player.queue.length > player.currentIndex + 1) ? (
               <QueueList
                 queue={player.queue}
                 queueLimit={queueLimit}
                 currentIndex={player.currentIndex}
+                compact={isMobile}
+                startIndex={isMobile ? Math.max(0, player.currentIndex + 1) : 0}
                 playbackContext={player.playbackContext}
                 playbackContextCover={player.playbackContextCover}
                 scrollContainerRef={queueScrollRef}
               />
-            ) : (
+            ) : !player.currentTrack ? (
               <div className="h-full flex items-center justify-center text-text-tertiary text-[14px]">
                 {t("player.queue_empty")}
               </div>
-            )}
+            ) : isMobile && player.queue.length <= player.currentIndex + 1 ? (
+              <div className="px-2 py-3 text-[13px] text-text-tertiary">
+                {t("player.queue_empty")}
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -1139,6 +1233,11 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
           </div>
         ))}
       </div>
+      {isMobile && player.currentTrack && (
+        <div className="relative z-20 shrink-0 px-[8px] pt-[8px]" data-no-sheet-drag>
+          <MobileMiniPlayer />
+        </div>
+      )}
     </div>
   );
 }

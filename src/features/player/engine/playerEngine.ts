@@ -59,6 +59,7 @@ export type RemoteAction =
   | { type: "volume"; volume: number }
   | { type: "rate"; rate: number }
   | { type: "pitch"; semitones: number }
+  | { type: "reorder"; fromIndex: number; toIndex: number }
   /** a new track / queue picked while mirroring: start it over there */
   | { type: "load"; queue: Track[]; index: number; context: string | null };
 
@@ -1065,6 +1066,7 @@ class PlayerEngine {
   }
 
   public reorderQueue(fromIndex: number, toIndex: number): void {
+    if (forwarded({ type: "reorder", fromIndex, toIndex })) return;
     const store = usePlayerStore.getState();
     const queue = [...store.queue];
     if (
@@ -1090,6 +1092,8 @@ class PlayerEngine {
     }
 
     store.setQueue(queue);
+    if (!store.shuffle) this.masterPlaylist = [...queue];
+    else this.originalUpcomingQueue = queue.slice(newCurrentIndex + 1);
     if (newCurrentIndex !== store.currentIndex) {
       store.setCurrentTrack(store.currentTrack, newCurrentIndex);
     }
@@ -1280,7 +1284,8 @@ class PlayerEngine {
     }
 
     const currentId = state.currentTrack?.id || "none";
-    const preloadKey = `${currentId}->${nextTrack.id}:${state.repeat}`;
+    const upcomingKey = this.upcoming(state, NATIVE_QUEUE_AHEAD).map((track) => track.id).join(",");
+    const preloadKey = `${currentId}->${upcomingKey}:${state.repeat}`;
     if (this.lastPreloadKey === preloadKey) {
       return;
     }
@@ -1346,6 +1351,7 @@ class PlayerEngine {
     store.setDuration(snapshot && snapshot.durationMs > 0 ? snapshot.durationMs : track.durationMs ?? 0);
     store.setStatus(snapshot ? (snapshot.buffering ? "loading" : (snapshot.playWhenReady ?? snapshot.playing) ? "playing" : "paused") : "playing", null);
     playerRuntime?.updateMediaSessionMetadata(track);
+    this.preloadNextTrack(usePlayerStore.getState());
     this.maybeExtendQueue(mySession, track.id, index, store.queue.length);
   }
 
