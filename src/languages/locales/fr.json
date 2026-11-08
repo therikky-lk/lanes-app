@@ -587,7 +587,10 @@
     "repeat": "Répéter",
     "instrumental_hint": "Ce morceau est instrumental",
     "seek": "Se déplacer dans le morceau",
-    "loading_playback": "Chargement de la lecture"
+    "loading_playback": "Chargement de la lecture",
+    "now_playing": "En cours de lecture",
+    "next_in_queue": "À suivre",
+    "reorder_track": "Réorganiser le titre"
   },
   "playlist": {
     "playlist": "Liste de lecture",
@@ -616,7 +619,9 @@
     "change_cover": "Changer de couverture",
     "reset_cover": "Réinitialiser le couvercle",
     "cover_failed": "Impossible d'utiliser cette image",
-    "likes_empty": "Aucune chanson aimée pour l'instant"
+    "likes_empty": "Aucune chanson aimée pour l'instant",
+    "edit_order": "Réorganiser les titres",
+    "save_order": "Enregistrer l’ordre"
   },
   "search": {
     "recommended_artists": "Artistes recommandés",
@@ -1030,7 +1035,10 @@
         "description": "Apparaissez dans les classements des meilleurs auditeurs d'artistes et dans les classements mondiaux."
       },
       "badge_public": "Publique",
-      "badge_private": "Privé"
+      "badge_private": "Privé",
+      "crop_zoom": "Zoom",
+      "crop_hint": "Faites glisser l’image pour ajuster le recadrage",
+      "save_crop": "Enregistrer l’avatar"
     },
     "about": {
       "update_app": "Mettre à jour l’application",

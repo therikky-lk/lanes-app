@@ -600,7 +600,8 @@
     "visual_quality_lite_hint": "Still background, plain lyrics",
     "instrumental_hint": "This song is instrumental",
     "seek": "Seek",
-    "loading_playback": "Loading playback"
+    "loading_playback": "Loading playback",
+    "reorder_track": "Reorder track"
   },
   "playlist": {
     "playlist": "Playlist",
@@ -630,7 +631,8 @@
     "change_cover": "Change cover",
     "edit_order": "Reorder tracks",
     "reset_cover": "Reset cover",
-    "cover_failed": "Could not use this image"
+    "cover_failed": "Could not use this image",
+    "save_order": "Save order"
   },
   "search": {
     "recommended_artists": "Recommended artists",

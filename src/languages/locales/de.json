@@ -587,7 +587,10 @@
     "visual_quality_lite_hint": "Stiller Hintergrund, einfacher Text",
     "instrumental_hint": "Dieses Lied ist instrumental",
     "seek": "Spulen",
-    "loading_playback": "Wiedergabe wird geladen"
+    "loading_playback": "Wiedergabe wird geladen",
+    "now_playing": "Jetzt läuft",
+    "next_in_queue": "Als Nächstes",
+    "reorder_track": "Titel verschieben"
   },
   "playlist": {
     "playlist": "Wiedergabeliste",
@@ -616,7 +619,9 @@
     "change_cover": "Bezug wechseln",
     "reset_cover": "Abdeckung zurücksetzen",
     "cover_failed": "Dieses Bild konnte nicht verwendet werden",
-    "likes_empty": "Noch keine Lieblingslieder"
+    "likes_empty": "Noch keine Lieblingslieder",
+    "edit_order": "Titel neu anordnen",
+    "save_order": "Reihenfolge speichern"
   },
   "search": {
     "recommended_artists": "Empfohlene Künstler",
@@ -971,7 +976,10 @@
         "description": "Erscheine in den Bestenlisten der Top-Hörer für Künstler und in globalen Rankings."
       },
       "badge_public": "Öffentlich",
-      "badge_private": "Privat"
+      "badge_private": "Privat",
+      "crop_zoom": "Zoom",
+      "crop_hint": "Ziehe das Bild, um den Ausschnitt anzupassen",
+      "save_crop": "Avatar speichern"
     },
     "about": {
       "update_app": "App aktualisieren",

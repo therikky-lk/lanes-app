@@ -587,7 +587,10 @@
     "repeat": "Ripeti",
     "instrumental_hint": "Questo brano è strumentale",
     "seek": "Sposta la riproduzione",
-    "loading_playback": "Caricamento della riproduzione"
+    "loading_playback": "Caricamento della riproduzione",
+    "now_playing": "In riproduzione",
+    "next_in_queue": "In coda",
+    "reorder_track": "Riordina brano"
   },
   "playlist": {
     "playlist": "Elenco brani",
@@ -616,7 +619,9 @@
     "change_cover": "Cambia rivestimento",
     "reset_cover": "Ripristinare il coperchio",
     "cover_failed": "Impossibile utilizzare questa immagine",
-    "likes_empty": "Ancora nessuna canzone piaciuta"
+    "likes_empty": "Ancora nessuna canzone piaciuta",
+    "edit_order": "Riordina brani",
+    "save_order": "Salva ordine"
   },
   "search": {
     "recommended_artists": "Artisti consigliati",
@@ -1030,7 +1035,10 @@
         "description": "Compari nelle classifiche dei migliori ascoltatori degli artisti e in quelle globali."
       },
       "badge_public": "Pubblico",
-      "badge_private": "Privato"
+      "badge_private": "Privato",
+      "crop_zoom": "Zoom",
+      "crop_hint": "Trascina l’immagine per regolare il ritaglio",
+      "save_crop": "Salva avatar"
     },
     "about": {
       "update_app": "Aggiorna app",

@@ -587,7 +587,10 @@
     "repeat": "Powtórz",
     "instrumental_hint": "Ten utwór jest instrumentalny",
     "seek": "Przewijanie",
-    "loading_playback": "Ładowanie odtwarzania"
+    "loading_playback": "Ładowanie odtwarzania",
+    "now_playing": "Teraz odtwarzane",
+    "next_in_queue": "Następne w kolejce",
+    "reorder_track": "Przeciągnij utwór"
   },
   "playlist": {
     "playlist": "Playlista",
@@ -616,7 +619,9 @@
     "change_cover": "Zmień okładkę",
     "reset_cover": "Zresetuj okładkę",
     "cover_failed": "Nie można użyć tego obrazu",
-    "likes_empty": "Nie ma jeszcze lubianych piosenek"
+    "likes_empty": "Nie ma jeszcze lubianych piosenek",
+    "edit_order": "Zmień kolejność utworów",
+    "save_order": "Zapisz kolejność"
   },
   "search": {
     "recommended_artists": "Polecani wykonawcy",
@@ -1030,7 +1035,10 @@
         "description": "Pojawiaj się w rankingach najaktywniejszych słuchaczy wykonawców i w rankingach globalnych."
       },
       "badge_public": "Publiczny",
-      "badge_private": "Prywatny"
+      "badge_private": "Prywatny",
+      "crop_zoom": "Powiększenie",
+      "crop_hint": "Przeciągnij obraz, aby dostosować kadr",
+      "save_crop": "Zapisz avatar"
     },
     "about": {
       "update_app": "Aktualizuj aplikację",
