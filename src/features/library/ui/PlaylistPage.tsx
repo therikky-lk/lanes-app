@@ -10,7 +10,6 @@ import { useToast, ReorderDropPlaceholder, FloatingDragCard, EntitySidebar, SIDE
 import {
   AddLine,
   PlayFill,
-  More2Line,
   HeartFill,
   PlaylistFill,
   PlaylistLine,
@@ -30,7 +29,6 @@ import { readCoverMarker, stripCoverMarker, withCoverMarker } from "../services/
 import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
-import DropdownMenu from "@/shared/ui/DropdownMenu";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { useModalStore } from "../store/modalStore";
@@ -947,19 +945,8 @@ function LibraryPlaylistContent() {
                           />
                         )}
 
-                        {!isLikesMode && decodedId && <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} />}
-                        {!isLikesMode && (
-                          <DropdownMenu
-                            trigger={
-                              <Button
-                                variant={hasCustomBg ? "glass-action" : "outline"}
-                                className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
-                                title={t("common.more")}
-                              >
-                                <More2Line size={18} />
-                              </Button>
-                            }
-                            items={[
+                        {!isLikesMode && decodedId && (
+                          <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} extraMenuItems={[
                               {
                                 id: "rename",
                                 icon: <LuPencil size={15} />,
@@ -1019,8 +1006,7 @@ function LibraryPlaylistContent() {
                                   });
                                 },
                               },
-                            ]}
-                          />
+                          ]} />
                         )}
                       </div>
                     </div>

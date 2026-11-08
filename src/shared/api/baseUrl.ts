@@ -1,5 +1,5 @@
-export const DEFAULT_PRIMARY_API = "https://api.tryliner.fun";
 export const LANE_LINK_ORIGIN = "https://lane-app.site";
+export const DEFAULT_PRIMARY_API = LANE_LINK_ORIGIN;
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const HTTP_API_HOST = "lucid-1.ru-west.hyprr.space";
@@ -16,7 +16,7 @@ export function isSecureBaseUrl(url: string): boolean {
 
 export function resolveApiBaseUrl(envUrl: string | undefined): string {
   const clean = envUrl?.trim().replace(/\/+$/, "");
-  if (clean === LANE_LINK_ORIGIN) return DEFAULT_PRIMARY_API;
+  if (clean === "https://api.tryliner.fun") return LANE_LINK_ORIGIN;
   return clean && isSecureBaseUrl(clean) ? clean : DEFAULT_PRIMARY_API;
 }
 

@@ -44,6 +44,7 @@ import { SpeedPitchPicker } from "./SpeedPitchPicker";
 import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
+import { Sidebar } from "@solar-icons/react";
 
 const BRACCATO_TAG = "braccato-lyrics";
 
@@ -359,11 +360,13 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
 export interface FullscreenPlayerProps {
   effectsReady?: boolean;
   onClose: () => void;
+  onQueueOpen?: () => void;
 }
 
 export function FullscreenPlayer({
   effectsReady = true,
   onClose,
+  onQueueOpen,
 }: FullscreenPlayerProps) {
   const { t } = useTranslation();
   const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, queue: s.queue, currentIndex: s.currentIndex, isEqEnabled: s.isEqEnabled, eqGains: s.eqGains })));
@@ -688,7 +691,7 @@ export function FullscreenPlayer({
         data-no-window-drag
       >
         {!isMobile && <VisualQualityPicker />}
-        {showProviderIsland && <LyricsProviderIsland />}
+        {showProviderIsland && (!isMobile || mobileLyrics) && <LyricsProviderIsland />}
         {hasLyrics && !isMobile && (
           <button
             type="button"
@@ -712,6 +715,13 @@ export function FullscreenPlayer({
             }`}
           >
             <LuCaptions size={19} />
+          </button>
+        )}
+        {isMobile && (
+          <button type="button" aria-label={t("player.queue")} title={t("player.queue")}
+            onClick={onQueueOpen}
+            className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl cursor-pointer">
+            <Sidebar size={19} weight="Bold" />
           </button>
         )}
         {isMobile && (

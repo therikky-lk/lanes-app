@@ -16,7 +16,6 @@ import {
   MusicLine,
   CalendarLine,
   CheckLine,
-  More2Line,
   ArrowLeftLine,
   Search2Line,
 } from "@mingcute/react";
@@ -30,7 +29,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   useToast,
   EntitySidebar,
-  DropdownMenu,
   SIDEBAR_TITLE_CLASS,
   SIDEBAR_SUBTITLE_CLASS,
 } from "@/shared/ui";
@@ -535,20 +533,8 @@ function CollectionContent() {
                         </Button>
 
                         {!isDailyMix && (
-                          <>
-                          <ShareButton type={type} entityId={decodedId} snapshot={{ title: data.title, subtitle: data.author, coverUrl: data.coverUrl }} />
-                          <DropdownMenu
-                            trigger={
-                              <Button
-                                variant={hasCustomBg ? "glass-action" : "outline"}
-                                className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
-                                title={t("common.more")}
-                              >
-                                <More2Line size={18} />
-                              </Button>
-                            }
-                            items={[
-                              {
+                          <ShareButton menu type={type} entityId={decodedId} snapshot={{ title: data.title, subtitle: data.author, coverUrl: data.coverUrl }} extraMenuItems={[
+                            {
                                 id: "library",
                                 icon: inLibrary ? (
                                   <FolderCheckFill size={16} />
@@ -559,10 +545,8 @@ function CollectionContent() {
                                   ? t("common.remove_from_library")
                                   : t("common.save_to_library"),
                                 onClick: handleSaveToLibrary,
-                              },
-                            ]}
-                          />
-                          </>
+                            },
+                          ]} />
                         )}
                       </div>
                     </div>

@@ -291,7 +291,6 @@ function ArtistContent() {
                   <YourArtistTracks id={id} name={data.title} />
 
                   <div className="mt-[16px] flex items-center gap-[8px]">
-                    {id && <ShareButton menu type="artist" entityId={decodedId} snapshot={{ title: data.title, coverUrl: data.coverUrl ?? undefined }} />}
                     <Button
                       variant={hasCustomBg ? "glass-primary" : "primary"}
                       onClick={handlePlayAll}
@@ -374,6 +373,7 @@ function ArtistContent() {
                     >
                       {pinned ? <PinFill size={18} /> : <PinLine size={18} />}
                     </Button>
+                    {id && <ShareButton menu type="artist" entityId={decodedId} snapshot={{ title: data.title, coverUrl: data.coverUrl ?? undefined }} />}
 
                   </div>
                 </div>

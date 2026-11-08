@@ -720,6 +720,11 @@ class PlayerEngine {
   public async skipNext(isAutoEnd: boolean = false): Promise<void> {
     if (!isAutoEnd && forwarded({ type: "next" })) return;
     const store = usePlayerStore.getState();
+    if (!isAutoEnd && store.currentTrack) {
+      // A manually requested Next supersedes any native look-ahead item already
+      // handed to Android. Clear it before updating the visible queue cursor.
+      playerRuntime?.queueNextNatively(store.currentTrack.id, []);
+    }
     const nextIndex = this.computeNextIndex(isAutoEnd);
 
     if (nextIndex === null && isRadioContext(store.playbackContext) && store.currentTrack) {
@@ -762,6 +767,7 @@ class PlayerEngine {
       if (playerRuntime) {
         void playerRuntime.loadAndPlay(nextTrack);
       }
+      this.preloadNextTrack(usePlayerStore.getState());
       this.maybeExtendQueue(mySession, nextTrack.id, nextIndex, store.queue.length);
     }
   }

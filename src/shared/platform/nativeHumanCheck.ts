@@ -9,7 +9,7 @@ export const nativeHumanCheck = registerPlugin<{
 
 /** Use the same browser identity as the challenge and login requests. */
 export function humanCheckUserAgent(): string {
-  return new URL(getApiBaseUrl()).origin === "https://api.tryliner.fun"
+  return ["https://api.tryliner.fun", "https://lane-app.site"].includes(new URL(getApiBaseUrl()).origin)
     ? appApiUserAgent(navigator.userAgent)
     : navigator.userAgent;
 }
