@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeftLine, CloseLine, Edit2Line, ExitLine } from "@mingcute/react";
+import { ArrowLeftLine, Edit2Line, ExitLine } from "@mingcute/react";
 import { useAuthStore } from "@/features/auth";
-import { useLocalAvatar, useLocalAvatarStore } from "@/features/auth/store/localAvatarStore";
+import { useLocalAvatarStore } from "@/features/auth/store/localAvatarStore";
 import { useTranslation } from "@/languages";
 import { getAccessToken } from "@/shared/api";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
@@ -52,7 +52,6 @@ export default function ProfilePage() {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
-  const avatarUrl = useLocalAvatar(user?.id, user?.avatarUrl);
   const removeLocalAvatar = useLocalAvatarStore(state => state.removeAvatar);
   const logout = useAuthStore(state => state.logout);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -123,27 +122,6 @@ export default function ProfilePage() {
     }
   };
 
-  const removeAvatar = async () => {
-    if (!user || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      const accessToken = getAccessToken();
-      if (!accessToken) throw new Error("unauthorized");
-      const response = await fetch(`${LANE_LINK_ORIGIN}/v1/me/avatar`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!response.ok) throw new Error("avatar delete failed");
-      useAuthStore.getState().setAvatarUrl(null);
-      removeLocalAvatar(user.id);
-    } catch {
-      setError(t("settings.profile.save_failed"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!cropImage) return;
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -186,7 +164,6 @@ export default function ProfilePage() {
                 }}
               />
             ) : <UserAvatar key={user?.avatarUrl} user={user} size={120} className="!h-full !w-full !rounded-full !border-0" />}
-            {avatarUrl && user && !cropImage && <button type="button" disabled={busy} aria-label={t("settings.profile.remove_avatar")} onClick={() => void removeAvatar()} className="absolute right-0 top-0 flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full border-0 bg-black/75 text-white shadow-lg disabled:opacity-50"><CloseLine size={17} /></button>}
           </div>
           <strong className="max-w-full truncate text-[22px] font-[650] tracking-[-0.02em] text-text-primary">{displayName}</strong>
           <span className="mt-[4px] max-w-full truncate text-[14px] text-text-tertiary">{user?.username ? `@${user.username}` : user?.email}</span>
