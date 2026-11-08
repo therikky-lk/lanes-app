@@ -144,12 +144,15 @@ public class LaneHumanCheckPlugin extends Plugin {
                         finish(null, "Verification HTTP " + response.getStatusCode());
                 }
             });
-            content.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(160)));
+            // Interactive Turnstile challenges can expand after the first tap;
+            // keep enough room so the challenge isn't clipped in the dialog.
+            content.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(240)));
             Button cancel = new Button(getActivity());
             cancel.setText(call.getString("cancel", ""));
             cancel.setOnClickListener(v -> finish(null, null));
             content.addView(cancel);
             dialog.setContentView(content);
+            dialog.setCanceledOnTouchOutside(false);
             dialog.setOnDismissListener(d -> finish(null, null));
             dialog.show();
             if (dialog.getWindow() != null) dialog.getWindow().setLayout(
