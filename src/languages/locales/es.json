@@ -590,6 +590,7 @@
     "loading_playback": "Cargando reproducción",
     "now_playing": "Reproduciendo ahora",
     "next_in_queue": "Siguiente en la cola",
+    "added_by_you": "Añadido por ti",
     "reorder_track": "Reordenar canción"
   },
   "playlist": {

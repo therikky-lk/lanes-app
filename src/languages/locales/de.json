@@ -590,6 +590,7 @@
     "loading_playback": "Wiedergabe wird geladen",
     "now_playing": "Jetzt läuft",
     "next_in_queue": "Als Nächstes",
+    "added_by_you": "Von dir hinzugefügt",
     "reorder_track": "Titel verschieben"
   },
   "playlist": {

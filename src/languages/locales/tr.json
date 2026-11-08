@@ -590,6 +590,7 @@
     "loading_playback": "Oynatma yükleniyor",
     "now_playing": "Şimdi çalıyor",
     "next_in_queue": "Sıradaki",
+    "added_by_you": "Senin eklediklerin",
     "reorder_track": "Parçayı taşı"
   },
   "playlist": {
