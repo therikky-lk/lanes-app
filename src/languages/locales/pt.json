@@ -1311,6 +1311,8 @@
     "wall_subtitle": "O Lane não consegue alcançar os seus servidores. A sua música e a sua biblioteca estão seguras.",
     "wall_title_server": "Os servidores da Lane estão com problemas",
     "wall_subtitle_server": "Sua conexão está boa, o servidor respondeu com um erro. Sua música e biblioteca estão seguras; tente novamente em alguns minutos.",
+    "wall_title_vpn": "A rede parece estar bloqueando o Lane",
+    "wall_subtitle_vpn": "Se você está na Rússia, ative uma VPN e toque em «Tentar novamente».",
     "steps_title": "Correções rápidas que vale tentar",
     "step_net": "Verifique se o Wi-Fi ou o cabo está conectado e se as páginas abrem no navegador.",
     "step_vpn": "Pause a VPN, o proxy ou filtros de DNS por um minuto — eles costumam bloquear o app.",

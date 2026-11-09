@@ -1340,7 +1340,9 @@
     "support": "Contactar soporte",
     "support_hint": "Adjunta el archivo del informe para que el equipo de soporte tenga toda la información.",
     "wall_title_server": "Los servidores de Lane tienen problemas",
-    "wall_subtitle_server": "Tu conexión está bien, el servidor respondió con un error. Tu música y tu biblioteca están a salvo, inténtalo de nuevo en unos minutos."
+    "wall_subtitle_server": "Tu conexión está bien, el servidor respondió con un error. Tu música y tu biblioteca están a salvo, inténtalo de nuevo en unos minutos.",
+    "wall_title_vpn": "La red parece bloquear Lane",
+    "wall_subtitle_vpn": "Si estás en Rusia, activa una VPN y pulsa «Reintentar»."
   },
   "updater": {
     "modal_title": "Nueva actualización disponible",

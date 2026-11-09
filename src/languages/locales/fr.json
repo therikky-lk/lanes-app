@@ -1309,6 +1309,8 @@
     "wall_subtitle": "Lane n'arrive pas à joindre ses serveurs. Votre musique et votre bibliothèque sont en sécurité.",
     "wall_title_server": "Les serveurs de Lane rencontrent des difficultés",
     "wall_subtitle_server": "Votre connexion fonctionne, mais le serveur a répondu par une erreur. Votre musique et votre bibliothèque sont en sécurité, réessayez dans quelques minutes.",
+    "wall_title_vpn": "Le réseau semble bloquer Lane",
+    "wall_subtitle_vpn": "Si vous êtes en Russie, activez un VPN et appuyez sur « Réessayer ».",
     "steps_title": "Solutions rapides à essayer",
     "step_net": "Vérifiez que le Wi-Fi ou le câble est connecté et que les pages s'ouvrent dans un navigateur.",
     "step_vpn": "Mettez en pause le VPN, le proxy ou les filtres DNS pendant une minute : ils bloquent souvent l'application.",

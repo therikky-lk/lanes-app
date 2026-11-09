@@ -1309,6 +1309,8 @@
     "wall_subtitle": "Lane sunucularına ulaşamıyor. Müziğin ve kitaplığın güvende.",
     "wall_title_server": "Lane sunucularında sorun var",
     "wall_subtitle_server": "Bağlantın sorunsuz, ancak sunucu bir hatayla yanıt verdi. Müziğin ve kitaplığın güvende, birkaç dakika sonra tekrar dene.",
+    "wall_title_vpn": "Ağ Lane'i engelliyor olabilir",
+    "wall_subtitle_vpn": "Rusya'daysan VPN'i aç ve «Tekrar dene»ye dokun.",
     "steps_title": "Denemeye değer hızlı çözümler",
     "step_net": "Wi-Fi'nin veya kablonun bağlı olduğundan ve sayfaların tarayıcıda açıldığından emin ol.",
     "step_vpn": "VPN, proxy veya DNS filtrelerini bir dakikalığına durdur, çoğu zaman uygulamayı engellerler.",
