@@ -15,6 +15,18 @@ export function isServerOutage(checks: { id: string; detail?: string }[]): boole
   return checks.some((c) => c.id === "api" && /^HTTP 5\d\d$/.test(c.detail ?? ""));
 }
 
+/** A reachable device with several unrelated Lane origins blocked often means ISP filtering. */
+export function isLikelyNetworkRestriction(
+  checks: { id: string; status: string }[],
+): boolean {
+  const deviceOnline = checks.some((check) => check.id === "device" && check.status === "ok");
+  const apiBlocked = checks.some((check) => check.id === "api" && check.status === "fail");
+  const otherOriginsBlocked = ["covers", "link"].filter((id) =>
+    checks.some((check) => check.id === id && check.status === "fail"),
+  ).length;
+  return deviceOnline && apiBlocked && otherOriginsBlocked === 2;
+}
+
 export function stripQuery(path: string): string {
   const cut = path.indexOf("?");
   return cut === -1 ? path : path.slice(0, cut);

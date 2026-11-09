@@ -1,5 +1,5 @@
 import { getAuthSession, getValidAccessToken } from "../api/auth-session";
-import { getApiBaseUrl } from "../api/baseUrl";
+import { getApiBaseUrlForAuthBackend } from "../api/baseUrl";
 import { APP_VERSION } from "../config/version";
 import { signApiRequest } from "../api/requestSigner";
 import { syncServerTime } from "../api/serverTime";
@@ -88,7 +88,7 @@ export class PresenceClient {
         platform: getPlatform(),
       });
       const signedHeaders = await signApiRequest("POST", path, body);
-      const res = await fetch(`${getApiBaseUrl()}${path}`, {
+      const res = await fetch(`${getApiBaseUrlForAuthBackend(session.authBackend)}${path}`, {
         method: "POST",
         headers: {
           "content-type": "application/json",

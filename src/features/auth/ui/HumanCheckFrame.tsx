@@ -10,7 +10,7 @@ interface CheckMessage {
   token?: string;
 }
 
-export default function HumanCheckFrame({ action, attempt }: { action: HumanCheckAction; attempt: number }) {
+export default function HumanCheckFrame({ action, attempt, apiBaseUrl }: { action: HumanCheckAction; attempt: number; apiBaseUrl?: string }) {
   const { t } = useTranslation();
   const frameRef = useRef<HTMLIFrameElement>(null);
   const phase = useHumanCheckStore((state) => state.phase);
@@ -24,7 +24,7 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
     const timeout = setTimeout(() => {
       if (active) setPhase("error");
     }, 60_000);
-    const origin = humanCheckOrigin();
+    const origin = humanCheckOrigin(apiBaseUrl);
     const onMessage = (event: MessageEvent<CheckMessage>) => {
       if (event.origin !== origin || event.source !== frameRef.current?.contentWindow) return;
       const data = event.data;
@@ -39,7 +39,7 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
       clearTimeout(timeout);
       window.removeEventListener("message", onMessage);
     };
-  }, [action, attempt, setPhase, solve, t]);
+  }, [action, apiBaseUrl, attempt, setPhase, solve, t]);
 
   const markLoaded = () => {
     if (useHumanCheckStore.getState().phase === "loading") setPhase("ready");
@@ -51,7 +51,7 @@ export default function HumanCheckFrame({ action, attempt }: { action: HumanChec
       {phase !== "error" && phase !== "expired" && <iframe
         key={attempt}
         ref={frameRef}
-        src={humanCheckPageUrl(action)}
+        src={humanCheckPageUrl(action, apiBaseUrl)}
         title={t("human_check.frame_title")}
         scrolling="no"
         onLoad={markLoaded}

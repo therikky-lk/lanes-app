@@ -4,8 +4,8 @@ import { ArrowLeftLine, Edit2Line, ExitLine } from "@mingcute/react";
 import { useAuthStore } from "@/features/auth";
 import { useLocalAvatarStore } from "@/features/auth/store/localAvatarStore";
 import { useTranslation } from "@/languages";
-import { getAccessToken } from "@/shared/api";
-import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
+import { getAccessToken, getAuthSession } from "@/shared/api";
+import { getApiBaseUrlForAuthBackend, LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import Button from "@/shared/ui/Button";
@@ -102,7 +102,10 @@ export default function ProfilePage() {
       const accessToken = getAccessToken();
       if (!accessToken) throw new Error("unauthorized");
       const dataUrl = makeCroppedAvatar(cropImage, zoom, offset);
-      const response = await fetch(`${LANE_LINK_ORIGIN}/v1/me/avatar`, {
+      const session = getAuthSession();
+      const isHyprrAccount = session?.authBackend === "hyprr";
+      const apiBaseUrl = getApiBaseUrlForAuthBackend(session?.authBackend);
+      const response = await fetch(`${isHyprrAccount ? apiBaseUrl : LANE_LINK_ORIGIN}/v1/me/avatar`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ dataUrl }),
@@ -110,11 +113,16 @@ export default function ProfilePage() {
       if (!response.ok) throw new Error("avatar upload failed");
       const uploaded = await response.json() as { avatarUrl?: string };
       if (!uploaded.avatarUrl) throw new Error("invalid avatar response");
-      const freshAvatarUrl = new URL(uploaded.avatarUrl, LANE_LINK_ORIGIN);
-      freshAvatarUrl.searchParams.set("v", String(Date.now()));
+      const freshAvatarUrl = uploaded.avatarUrl.startsWith("data:")
+        ? uploaded.avatarUrl
+        : (() => {
+          const url = new URL(uploaded.avatarUrl!, apiBaseUrl);
+          url.searchParams.set("v", String(Date.now()));
+          return url.toString();
+        })();
       // Store the returned CDN URL on the profile too; relying on the upload
       // response only updated this device's cached auth session.
-      await useAuthStore.getState().updateProfile({ avatarUrl: freshAvatarUrl.toString() });
+      await useAuthStore.getState().updateProfile({ avatarUrl: freshAvatarUrl });
       removeLocalAvatar(user.id);
       setCropImage(null);
     } catch {

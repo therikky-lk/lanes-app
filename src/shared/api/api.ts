@@ -47,6 +47,7 @@ import {
   stripQuery,
 } from "@/features/connectivity";
 import { useConnectivityStore } from "@/features/connectivity/store/connectivityStore";
+import { trackPendingWrite } from "./pendingWrites";
 
 function translate(key: string, vars?: Record<string, string | number>) {
   try {
@@ -56,7 +57,7 @@ function translate(key: string, vars?: Record<string, string | number>) {
   }
 }
 
-import { getApiBaseUrl, LANE_LINK_ORIGIN } from "./baseUrl";
+import { getApiBaseUrl, getApiBaseUrlForAuthBackend, getNewAccountApiBaseUrl, LANE_LINK_ORIGIN } from "./baseUrl";
 
 const CLIENT_VERSION =
   (import.meta.env.VITE_CLIENT_VERSION as string | undefined) || `${APP_VERSION}-desktop`;
@@ -172,7 +173,8 @@ function extractSubFromToken(token: string): string | undefined {
 export function mediaUrl(path: string): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return getApiBaseUrl() + (path.startsWith("/") ? path : "/" + path);
+  const apiBaseUrl = getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend);
+  return apiBaseUrl + (path.startsWith("/") ? path : "/" + path);
 }
 
 // upgrades youtube/google avatar artwork to maximum native resolution (=s0)
@@ -197,11 +199,12 @@ async function executeRequest<T>(
   init?: RequestInit,
   allowRefresh = true,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  apiBaseUrl = getApiBaseUrl(),
+  apiBaseUrl?: string,
 ): Promise<T> {
   const startTime = performance.now();
   const method = (init?.method ?? "GET").toUpperCase();
   const currentSession = getAuthSession();
+  apiBaseUrl ??= getApiBaseUrlForAuthBackend(currentSession?.authBackend);
   let accessToken = allowRefresh ? await getValidAccessToken() : null;
 
   if (allowRefresh && currentSession?.accessToken && !accessToken && !path.startsWith("/v1/auth/")) {
@@ -440,22 +443,24 @@ async function request<T>(
   init?: RequestInit,
   allowRefresh = true,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  apiBaseUrl = getApiBaseUrl(),
+  apiBaseUrl?: string,
 ): Promise<T> {
+  const resolvedApiBaseUrl = apiBaseUrl ?? getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend);
   const method = (init?.method ?? "GET").toUpperCase();
   if (method === "GET" && !init?.signal) {
-    const key = `${apiBaseUrl}${path}::${allowRefresh}`;
+    const key = `${resolvedApiBaseUrl}${path}::${allowRefresh}`;
     const inFlight = inFlightGetRequests.get(key);
     if (inFlight) {
       return inFlight as Promise<T>;
     }
-    const promise = executeRequest<T>(path, init, allowRefresh, timeoutMs, apiBaseUrl).finally(() => {
+    const promise = executeRequest<T>(path, init, allowRefresh, timeoutMs, resolvedApiBaseUrl).finally(() => {
       inFlightGetRequests.delete(key);
     });
     inFlightGetRequests.set(key, promise);
     return promise;
   }
-  return executeRequest<T>(path, init, allowRefresh, timeoutMs, apiBaseUrl);
+  const promise = executeRequest<T>(path, init, allowRefresh, timeoutMs, resolvedApiBaseUrl);
+  return method === "GET" ? promise : trackPendingWrite(promise);
 }
 
 export class ApiError extends Error {
@@ -594,12 +599,12 @@ function authBody(proof: AuthProof) {
   return { pow: proof.pow, turnstile: proof.turnstile };
 }
 
-function authInit(proof: AuthProof, body: unknown): RequestInit {
+function authInit(proof: AuthProof, body: unknown, apiBaseUrl = getApiBaseUrl()): RequestInit {
   return {
     method: "POST",
     body: JSON.stringify(body),
     // Preserve challenge and edge cookies for every authentication request.
-    credentials: "include",
+    credentials: apiBaseUrl === getNewAccountApiBaseUrl() ? "omit" : "include",
   };
 }
 
@@ -610,16 +615,18 @@ function blockedBeforeOurServer(error: unknown): boolean {
 async function humanCheck(
   challenge: PowChallenge,
   purpose: HumanCheckAction,
+  apiBaseUrl: string,
 ): Promise<string | undefined> {
   const requested = challenge.turnstile?.mode;
   const mode = isHumanCheckMode(requested) ? requested : "off";
   if (mode === "off" && !challenge.turnstile?.edge) return undefined;
-  return runHumanCheck(purpose, mode === "off" ? "optional" : mode);
+  return runHumanCheck(purpose, mode === "off" ? "optional" : mode, apiBaseUrl);
 }
 
 async function authProofFor(
   purpose: HumanCheckAction,
   email: string,
+  apiBaseUrl: string,
 ): Promise<AuthProof> {
   let challenge: PowChallenge;
   try {
@@ -630,9 +637,11 @@ async function authProofFor(
         body: JSON.stringify({ purpose, email }),
         // The challenge may issue the edge cookie required by login/register.
         // Android's native fetch bridge persists cookies only for credentialed requests.
-        credentials: "include",
+        credentials: apiBaseUrl === getNewAccountApiBaseUrl() ? "omit" : "include",
       },
       false,
+      DEFAULT_TIMEOUT_MS,
+      apiBaseUrl,
     );
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return {};
@@ -644,7 +653,7 @@ async function authProofFor(
       ? undefined
       : solvePow(challenge);
   void work?.catch(() => undefined);
-  const turnstile = await humanCheck(challenge, purpose);
+  const turnstile = await humanCheck(challenge, purpose, apiBaseUrl);
   return {
     pow: await work,
     turnstile,
@@ -656,10 +665,11 @@ async function withAuthProof<T>(
   purpose: HumanCheckAction,
   email: string,
   send: (proof: AuthProof) => Promise<T>,
+  apiBaseUrl = getApiBaseUrl(),
 ): Promise<T> {
   let proof: AuthProof | undefined;
   try {
-    proof = await authProofFor(purpose, email);
+    proof = await authProofFor(purpose, email, apiBaseUrl);
     return await send(proof);
   } catch (error) {
     const retryable =
@@ -667,7 +677,7 @@ async function withAuthProof<T>(
       (error instanceof ApiError && !!error.code && RETRYABLE_POW_CODES.has(error.code)) ||
       (proof?.edge === true && blockedBeforeOurServer(error));
     if (!retryable) throw error;
-    return send(await authProofFor(purpose, email));
+    return send(await authProofFor(purpose, email, apiBaseUrl));
   }
 }
 
@@ -682,13 +692,44 @@ export const api = {
     return request(`/v1/public/playlists/${encodeURIComponent(id)}`, undefined, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
   },
   async login(email: string, password: string): Promise<AuthTokens> {
-    const result = await withAuthProof("login", email, (proof) =>
-      request<AuthTokens>(
-        "/v1/auth/login",
-        authInit(proof, { email, password, ...authBody(proof) }),
-        false,
-      ),
-    );
+    const newAccountApi = getNewAccountApiBaseUrl();
+    let result: AuthTokens;
+    try {
+      if (!newAccountApi) throw new ApiError(0, "New account service is not configured.", "NEW_ACCOUNT_API_NOT_CONFIGURED");
+      result = await withAuthProof("login", email, (proof) =>
+        request<AuthTokens>(
+          "/v1/auth/login",
+          authInit(proof, { email, password, ...authBody(proof) }, newAccountApi),
+          false,
+          DEFAULT_TIMEOUT_MS,
+          newAccountApi,
+        ),
+        newAccountApi,
+      );
+      result = { ...result, authBackend: "hyprr" };
+    } catch (error) {
+      // Both providers deliberately return the same 401 for an unknown email
+      // and a bad password. Also keep legacy accounts usable during a new-store
+      // outage; the password must still validate on the legacy API.
+      const canTryLegacy = !newAccountApi || (error instanceof ApiError && (
+        (error.status === 401 && ["ACCOUNT_NOT_FOUND", "INVALID_CREDENTIALS"].includes(error.code ?? "")) ||
+        error.status >= 500 ||
+        error.code === "NETWORK_ERROR"
+      ));
+      if (!canTryLegacy) throw error;
+      const legacyApi = getApiBaseUrl();
+      result = await withAuthProof("login", email, (proof) =>
+        request<AuthTokens>(
+          "/v1/auth/login",
+          authInit(proof, { email, password, ...authBody(proof) }, legacyApi),
+          false,
+          DEFAULT_TIMEOUT_MS,
+          legacyApi,
+        ),
+        legacyApi,
+      );
+      result = { ...result, authBackend: "liner" };
+    }
     setAuthSession(result);
     return result;
   },
@@ -699,6 +740,8 @@ export const api = {
     username: string,
     displayName: string,
   ): Promise<AuthTokens> {
+    const newAccountApi = getNewAccountApiBaseUrl();
+    if (!newAccountApi) throw new ApiError(0, "New account service is not configured.", "NEW_ACCOUNT_API_NOT_CONFIGURED");
     const result = await withAuthProof("register", email, (proof) =>
       request<AuthTokens>(
         "/v1/auth/register",
@@ -708,12 +751,16 @@ export const api = {
           ...authBody(proof),
           username: username.trim().toLowerCase(),
           displayName: displayName.trim(),
-        }),
+        }, newAccountApi),
         false,
+        DEFAULT_TIMEOUT_MS,
+        newAccountApi,
       ),
+      newAccountApi,
     );
-    setAuthSession(result);
-    return result;
+    const session = { ...result, authBackend: "hyprr" as const };
+    setAuthSession(session);
+    return session;
   },
 
   getMe(): Promise<AuthUser> {
@@ -871,11 +918,13 @@ export const api = {
   },
 
   async likeTrack(id: string): Promise<void> {
-    const track = await clientCatalog.resolveSnapshot(id);
-    return request<void>(
-      `/v1/me/library/tracks/${encodeURIComponent(id)}`,
-      { method: "PUT", ...(track ? { body: JSON.stringify({ track, trackSnapshot: track }) } : {}) },
-    );
+    return trackPendingWrite((async () => {
+      const track = await clientCatalog.resolveSnapshot(id);
+      return request<void>(
+        `/v1/me/library/tracks/${encodeURIComponent(id)}`,
+        { method: "PUT", ...(track ? { body: JSON.stringify({ track, trackSnapshot: track }) } : {}) },
+      );
+    })());
   },
 
   /** like a track whose metadata is already known (imports): no extra lookup */
@@ -1119,7 +1168,7 @@ export const api = {
       res = await fetch(
         localPreview
           ? `/__lane/lyrics/${encodeURIComponent(id)}${hintParams ? `?${hintParams}` : ""}`
-          : `${getApiBaseUrl()}${path}`,
+          : `${getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend)}${path}`,
         {
           signal: signal ? AbortSignal.any([signal, connect.signal]) : connect.signal,
           headers: {

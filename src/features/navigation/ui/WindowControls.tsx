@@ -47,6 +47,7 @@ export default function WindowControls({
   const { isFullScreen: isWindowFullScreen, isMaximized: isWindowMaximized } = useWindowState();
 
   const isHyprland = window.linerElectron?.isHyprland ?? false;
+  if (window.linerElectron?.platform === "darwin") return null;
 
   const handleMinimize = () => {
     // macos fullscreen spaces and hyprland tiling wm prohibit/ignore minimizing

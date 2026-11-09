@@ -14,12 +14,16 @@ export interface PublicUser {
 
 export type AuthUser = PublicUser;
 
+export type AuthBackend = "liner" | "hyprr";
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   accessTokenExpiresAt: string;
   user: PublicUser;
   expiresAt?: number;
+  /** Selects which account service owns this session. Missing means legacy Liner. */
+  authBackend?: AuthBackend;
 }
 
 export interface AuthResult {

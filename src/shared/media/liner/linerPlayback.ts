@@ -1,5 +1,5 @@
 import { getAuthSession, getValidAccessToken } from "@/shared/api/auth-session";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { getApiBaseUrlForAuthBackend } from "@/shared/api/baseUrl";
 import { signApiRequest } from "@/shared/api/requestSigner";
 import { syncServerTime } from "@/shared/api/serverTime";
 import { isAbortError } from "@/shared/utils/abort";
@@ -36,7 +36,7 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
     const path = `/v1/tracks/${encodeURIComponent(videoId)}/playback`;
     const requestBody = "{}";
     const signedHeaders = await signApiRequest("POST", path, requestBody);
-    const res = await fetch(`${getApiBaseUrl()}${path}`, {
+    const res = await fetch(`${getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend)}${path}`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...signedHeaders },
       body: requestBody,

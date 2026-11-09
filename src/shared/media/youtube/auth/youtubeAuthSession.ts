@@ -10,6 +10,7 @@ import {
   YoutubeAuthError,
   type YoutubeAuthTokens,
 } from "./tvTokens";
+import { getAuthSession } from "@/shared/api/auth-session";
 
 const STORAGE_KEY = "liner_youtube_tv_session";
 const AUTH_REVISION_KEY = "liner_youtube_auth_revision";
@@ -28,14 +29,38 @@ type MainYoutubeAuthBridge = NonNullable<
 let session: YoutubeAuthTokens | null | undefined;
 let pageId: string | null | undefined;
 let pendingRefresh: Promise<YoutubeAuthTokens | null> | null = null;
+let activeOwner = "";
+
+function ownerKey(): string {
+  const auth = getAuthSession();
+  return auth?.user?.id ? `${auth.authBackend ?? "legacy"}:${auth.user.id}` : "guest";
+}
+
+function scopedKey(key: string): string { return `${key}:${encodeURIComponent(activeOwner || ownerKey())}`; }
+
+function ensureOwner(): void {
+  const next = ownerKey();
+  if (activeOwner === next) return;
+  activeOwner = next;
+  session = undefined;
+  pageId = undefined;
+  pendingRefresh = null;
+  notifyChanged();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("auth:changed", () => ensureOwner());
+}
 
 function readAuthRevision(): number {
-  try { return Number(globalThis.localStorage?.getItem(AUTH_REVISION_KEY) || 0) || 0; }
+  ensureOwner();
+  try { return Number(globalThis.localStorage?.getItem(scopedKey(AUTH_REVISION_KEY)) || 0) || 0; }
   catch { return 0; }
 }
 
 function writeAuthRevision(revision: number): void {
-  try { globalThis.localStorage?.setItem(AUTH_REVISION_KEY, String(revision)); }
+  ensureOwner();
+  try { globalThis.localStorage?.setItem(scopedKey(AUTH_REVISION_KEY), String(revision)); }
   catch {}
 }
 
@@ -61,8 +86,9 @@ function mainBridge(): MainYoutubeAuthBridge | null {
 }
 
 function readLocal(): YoutubeAuthTokens | null {
+  ensureOwner();
   try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
+    const raw = globalThis.localStorage?.getItem(scopedKey(STORAGE_KEY));
     return raw ? (JSON.parse(raw) as YoutubeAuthTokens) : null;
   } catch {
     return null;
@@ -74,51 +100,41 @@ function notifyChanged(): void {
 }
 
 function dropLocal(): void {
+  ensureOwner();
   try {
-    globalThis.localStorage?.removeItem(STORAGE_KEY);
+    globalThis.localStorage?.removeItem(scopedKey(STORAGE_KEY));
   } catch {}
 }
 
 function load(): YoutubeAuthTokens | null {
+  ensureOwner();
   const bridge = mainBridge();
   if (!bridge) return readLocal();
   let stored: YoutubeAuthTokens | null = null;
   try {
-    stored = bridge.get() as YoutubeAuthTokens | null;
+    stored = bridge.get(activeOwner || ownerKey()) as YoutubeAuthTokens | null;
   } catch (err) {
     console.error("[YouTube] reading the stored session failed:", err);
-  }
-  // older builds kept the tokens in plain localStorage: move them to main once
-  const legacy = readLocal();
-  if (legacy) {
-    dropLocal();
-    if (!stored && legacy.refreshToken) {
-      void bridge
-        .set({ ...legacy })
-        .catch((err) =>
-          console.error("[YouTube] saving the session failed:", err),
-        );
-      stored = legacy;
-    }
   }
   return stored;
 }
 
 function save(next: YoutubeAuthTokens | null): void {
+  ensureOwner();
   session = next;
   const bridge = mainBridge();
   if (bridge) {
     dropLocal();
     void bridge
-      .set(next ? { ...next } : null)
+      .set(activeOwner || ownerKey(), next ? { ...next } : null)
       .catch((err) =>
         console.error("[YouTube] saving the session failed:", err),
       );
   } else {
     try {
       if (next)
-        globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(next));
-      else globalThis.localStorage?.removeItem(STORAGE_KEY);
+        globalThis.localStorage?.setItem(scopedKey(STORAGE_KEY), JSON.stringify(next));
+      else globalThis.localStorage?.removeItem(scopedKey(STORAGE_KEY));
     } catch {
       return;
     }
@@ -127,19 +143,21 @@ function save(next: YoutubeAuthTokens | null): void {
 }
 
 function storePageId(next: string | null): void {
+  ensureOwner();
   pageId = next;
   try {
-    if (next) globalThis.localStorage?.setItem(PAGE_ID_STORAGE_KEY, next);
-    else globalThis.localStorage?.removeItem(PAGE_ID_STORAGE_KEY);
+    if (next) globalThis.localStorage?.setItem(scopedKey(PAGE_ID_STORAGE_KEY), next);
+    else globalThis.localStorage?.removeItem(scopedKey(PAGE_ID_STORAGE_KEY));
   } catch {
     return;
   }
 }
 
 export function getYoutubePageId(): string | null {
+  ensureOwner();
   if (pageId === undefined) {
     try {
-      pageId = globalThis.localStorage?.getItem(PAGE_ID_STORAGE_KEY) ?? null;
+      pageId = globalThis.localStorage?.getItem(scopedKey(PAGE_ID_STORAGE_KEY)) ?? null;
     } catch {
       pageId = null;
     }
@@ -160,6 +178,7 @@ export function getYoutubeSessionKey(): string | null {
 }
 
 export function getYoutubeAuthTokens(): YoutubeAuthTokens | null {
+  ensureOwner();
   if (session === undefined) session = load();
   return session;
 }
