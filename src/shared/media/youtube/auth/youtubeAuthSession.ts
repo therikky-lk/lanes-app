@@ -12,6 +12,7 @@ import {
 } from "./tvTokens";
 
 const STORAGE_KEY = "liner_youtube_tv_session";
+const AUTH_REVISION_KEY = "liner_youtube_auth_revision";
 const PAGE_ID_STORAGE_KEY = "liner_youtube_page_id";
 const REVOKE_URL = "https://www.youtube.com/o/oauth2/revoke";
 const REFRESH_MARGIN_MS = 60_000;
@@ -27,6 +28,32 @@ type MainYoutubeAuthBridge = NonNullable<
 let session: YoutubeAuthTokens | null | undefined;
 let pageId: string | null | undefined;
 let pendingRefresh: Promise<YoutubeAuthTokens | null> | null = null;
+
+function readAuthRevision(): number {
+  try { return Number(globalThis.localStorage?.getItem(AUTH_REVISION_KEY) || 0) || 0; }
+  catch { return 0; }
+}
+
+function writeAuthRevision(revision: number): void {
+  try { globalThis.localStorage?.setItem(AUTH_REVISION_KEY, String(revision)); }
+  catch {}
+}
+
+async function fetchAuthRevision(): Promise<number> {
+  const { api } = await import("@/shared/api");
+  const result = await api.getYoutubeAuthRevision();
+  return Number(result.revision) || 0;
+}
+
+/** Drop a device-local YouTube session when another signed-in device signs out. */
+export async function syncYoutubeAuthState(): Promise<void> {
+  const revision = await fetchAuthRevision();
+  if (revision > readAuthRevision()) {
+    writeAuthRevision(revision);
+    if (getYoutubeAuthTokens()) save(null);
+    else notifyChanged();
+  }
+}
 
 function mainBridge(): MainYoutubeAuthBridge | null {
   if (typeof window === "undefined") return null;
@@ -158,6 +185,8 @@ export async function completeYoutubeTvSignIn(
     code,
     signal,
   );
+  try { writeAuthRevision(await fetchAuthRevision()); }
+  catch { /* keep the last known revision when the API is temporarily offline */ }
   storePageId(null);
   save(tokens);
   return tokens;
@@ -201,6 +230,13 @@ export async function getYoutubeAuthorization(
 
 export async function signOutYoutube(): Promise<void> {
   const current = getYoutubeAuthTokens();
+  try {
+    const { api } = await import("@/shared/api");
+    const result = await api.revokeYoutubeAuthOnOtherDevices();
+    writeAuthRevision(Number(result.revision) || 0);
+  } catch (error) {
+    console.warn("[YouTube] could not sync sign-out to other devices:", error);
+  }
   storePageId(null);
   save(null);
   if (!current) return;

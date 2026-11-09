@@ -17,6 +17,7 @@ export type AuthState = {
   status: AuthStatus;
   user: AuthUser | null;
   initialize: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (
     email: string,
@@ -91,6 +92,19 @@ export const useAuthStore = create<AuthState>((set) => ({
           set({ status: "anonymous", user: null });
         }
       }
+    }
+  },
+  refreshProfile: async () => {
+    const current = getAuthSession();
+    if (!current) return;
+    try {
+      const user = await api.getMe();
+      const active = getAuthSession();
+      if (!active || active.user.id !== user.id) return;
+      setAuthSession({ ...active, user });
+      set({ status: "authenticated", user });
+    } catch {
+      // Keep the last known profile if the network is temporarily unavailable.
     }
   },
   login: async (email, password) => {

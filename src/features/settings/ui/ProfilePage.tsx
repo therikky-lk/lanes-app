@@ -112,7 +112,9 @@ export default function ProfilePage() {
       if (!uploaded.avatarUrl) throw new Error("invalid avatar response");
       const freshAvatarUrl = new URL(uploaded.avatarUrl, LANE_LINK_ORIGIN);
       freshAvatarUrl.searchParams.set("v", String(Date.now()));
-      useAuthStore.getState().setAvatarUrl(freshAvatarUrl.toString());
+      // Store the returned CDN URL on the profile too; relying on the upload
+      // response only updated this device's cached auth session.
+      await useAuthStore.getState().updateProfile({ avatarUrl: freshAvatarUrl.toString() });
       removeLocalAvatar(user.id);
       setCropImage(null);
     } catch {
