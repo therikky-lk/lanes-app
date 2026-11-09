@@ -155,6 +155,8 @@ class PlaybackTelemetryTracker {
   private loopCount = 0;
   private hasSeekBackward = false;
   private context?: PlaybackContext;
+  private lastProgressReportAt = 0;
+  private progressReportInFlight = false;
   private readonly SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
   private getOrCreateListeningSession(): string {
@@ -226,6 +228,55 @@ class PlaybackTelemetryTracker {
     } else {
       this.lastTickTime = null;
     }
+
+    // Persist a checkpoint during long tracks. In background playback the app
+    // may be suspended before the next track transition, which used to be the
+    // only time we sent this session to the server.
+    if (isPlaying && this.playedDurationMs >= 30_000 && now - this.lastProgressReportAt >= 30_000) {
+      void this.reportProgress();
+    }
+  }
+
+  private async reportProgress(): Promise<void> {
+    if (!this.activeTrackId || !this.activeTrack || this.progressReportInFlight || this.playedDurationMs < 3_000) return;
+    this.progressReportInFlight = true;
+    this.lastProgressReportAt = Date.now();
+    try {
+      await this.sendEvent(this.buildPayload(false));
+    } finally {
+      this.progressReportInFlight = false;
+    }
+  }
+
+  private buildPayload(completed: boolean): RecordPlaybackEventRequest {
+    const snap = this.activeTrack!;
+    const durationMs = this.trackDurationMs > 0 ? this.trackDurationMs : this.playedDurationMs;
+    const artistsList = snap.artistList?.length
+      ? snap.artistList.map((a) => ({ id: a.id || "unknown", name: a.name }))
+      : (snap.artists
+          ? snap.artists.split(",").map((name) => ({ id: snap.artistId || "unknown", name: name.trim() }))
+          : [{ id: "unknown", name: "Unknown Artist" }]);
+    return {
+      playbackSessionId: this.playbackSessionId,
+      listeningSessionId: this.getOrCreateListeningSession(),
+      trackId: this.activeTrackId!,
+      trackSnapshot: {
+        id: snap.id,
+        title: snap.title || "Unknown Track",
+        artists: artistsList,
+        album: snap.album ? { id: snap.album.id || "", title: snap.album.title || "" } : undefined,
+        cover: snap.coverUrl ? { url: snap.coverUrl, width: 512, height: 512 } : undefined,
+        durationMs: snap.durationMs || this.trackDurationMs,
+      },
+      playedDurationMs: Math.round(this.playedDurationMs),
+      trackDurationMs: this.trackDurationMs > 0 ? this.trackDurationMs : undefined,
+      completionRate: Number(Math.min(1, Math.max(0, this.playedDurationMs / durationMs)).toFixed(4)),
+      completed,
+      skipped: !completed && this.playedDurationMs < 30_000,
+      loopCount: this.loopCount,
+      hasSeekBackward: this.hasSeekBackward,
+      context: this.context,
+    };
   }
 
   public recordSeekBackward() {
@@ -253,40 +304,9 @@ class PlaybackTelemetryTracker {
     this.onPausedOrStopped();
     let reported: Promise<void> = Promise.resolve();
 
-    const durationMs = this.trackDurationMs > 0 ? this.trackDurationMs : this.playedDurationMs;
-    const rawRate = durationMs > 0 ? this.playedDurationMs / durationMs : this.completed ? 1.0 : 0.0;
-    const completionRate = Math.min(1.0, Math.max(0.0, rawRate));
-    const isSkipped = !this.completed && this.playedDurationMs < 30000;
-
     if (this.playedDurationMs >= 3000 || this.completed) {
-      const snap = this.activeTrack;
-      const artistsList = snap?.artistList?.length
-        ? snap.artistList.map((a) => ({ id: a.id || "unknown", name: a.name }))
-        : (snap?.artists
-            ? snap.artists.split(",").map((name) => ({ id: snap?.artistId || "unknown", name: name.trim() }))
-            : [{ id: "unknown", name: "Unknown Artist" }]);
-
-      reported = this.sendEvent({
-        playbackSessionId: this.playbackSessionId,
-        listeningSessionId: this.getOrCreateListeningSession(),
-        trackId: this.activeTrackId,
-        trackSnapshot: snap ? {
-          id: snap.id,
-          title: snap.title || "Unknown Track",
-          artists: artistsList,
-          album: snap.album ? { id: snap.album.id || "", title: snap.album.title || "" } : undefined,
-          cover: snap.coverUrl ? { url: snap.coverUrl, width: 512, height: 512 } : undefined,
-          durationMs: snap.durationMs || this.trackDurationMs,
-        } : undefined,
-        playedDurationMs: Math.round(this.playedDurationMs),
-        trackDurationMs: this.trackDurationMs > 0 ? this.trackDurationMs : undefined,
-        completionRate: Number(completionRate.toFixed(4)),
-        completed: this.completed,
-        skipped: isSkipped,
-        loopCount: this.loopCount,
-        hasSeekBackward: this.hasSeekBackward,
-        context: this.context,
-      });
+      // Finalize using the same session ID as background checkpoints.
+      reported = this.sendEvent(this.buildPayload(this.completed));
     }
 
     this.activeTrackId = null;
@@ -297,6 +317,7 @@ class PlaybackTelemetryTracker {
     this.completed = false;
     this.loopCount = 0;
     this.hasSeekBackward = false;
+    this.lastProgressReportAt = 0;
     return reported;
   }
 
