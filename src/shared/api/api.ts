@@ -720,6 +720,14 @@ export const api = {
     return request<AuthUser>("/v1/me");
   },
 
+  getYoutubeAuthRevision(): Promise<{ revision: number }> {
+    return request<{ revision: number }>("/v1/me/youtube-auth-state");
+  },
+
+  revokeYoutubeAuthOnOtherDevices(): Promise<{ revision: number }> {
+    return request<{ revision: number }>("/v1/me/youtube-auth/sign-out", { method: "POST" });
+  },
+
   updateProfile(data: UpdateProfileInput): Promise<PublicUser> {
     return request<PublicUser>("/v1/me", {
       method: "PATCH",
