@@ -45,6 +45,17 @@ async function authenticatedUser(request, env) {
   if (!user || typeof user.id !== "string" || !user.id || user.id.length > 200) error(502, "ACCOUNT_SERVICE_UNAVAILABLE", "Invalid account response.");
   return { user, authorization };
 }
+async function youtubeAuthState(request, env, signOut = false) {
+  const { user } = await authenticatedUser(request, env);
+  const db = requireDatabase(env);
+  if (signOut) {
+    const row = await db.prepare("INSERT INTO youtube_auth_state(user_id,revision) VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET revision=youtube_auth_state.revision+1 RETURNING revision")
+      .bind(user.id).first();
+    return json({ revision: Number(row?.revision) || 0 });
+  }
+  const row = await db.prepare("SELECT revision FROM youtube_auth_state WHERE user_id=?").bind(user.id).first();
+  return json({ revision: Number(row?.revision) || 0 });
+}
 function requireDatabase(env) {
   if (!env.DB) error(503, "DATABASE_NOT_CONFIGURED", "Bind the Lane D1 database first.");
   return env.DB;
@@ -173,7 +184,7 @@ async function handle(request, env) {
     await initializeDatabase(env);
     return json({ service: "lane-share", database: true });
   }
-  if (url.pathname === "/v1/shares" || /^\/(?:s|thumb|v1\/public\/(?:shares|playlists))\//.test(url.pathname)) await initializeDatabase(env);
+  if (url.pathname === "/v1/shares" || /^\/(?:s|thumb|v1\/public\/(?:shares|playlists))\//.test(url.pathname) || url.pathname === "/v1/me/youtube-auth-state" || url.pathname === "/v1/me/youtube-auth/sign-out") await initializeDatabase(env);
   if (url.pathname === "/.well-known/assetlinks.json" && ["GET", "HEAD"].includes(request.method)) {
     const fingerprints = (env.ANDROID_SHA256_FINGERPRINTS || "").split(",").map(value => value.trim()).filter(Boolean);
     if (!fingerprints.length || fingerprints.some(value => !/^(?:[A-Fa-f0-9]{2}:){31}[A-Fa-f0-9]{2}$/.test(value))) return new Response("Android certificate fingerprint is not configured", { status: 503 });
@@ -182,6 +193,8 @@ async function handle(request, env) {
   if (url.pathname === "/" && ["GET", "HEAD"].includes(request.method)) return new Response(request.method === "HEAD" ? null : '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lane — музыка рядом</title><style>body{background:#0d0d10;color:#eee;font:18px system-ui;display:grid;place-items:center;min-height:90vh;padding:24px}main{max-width:500px}a{color:#d6b4ff;line-height:2}p{color:#aaa;line-height:1.6}</style><main><h1>Lane</h1><p>Слушайте музыку и делитесь любимыми треками, альбомами, исполнителями и плейлистами.</p><a href="https://github.com/therikky-lk/lanes-app/releases/latest">Скачать Lane →</a></main></html>', { headers: { "content-type": "text/html; charset=utf-8" } });
   if (url.pathname === "/v1/shares" && request.method === "POST") return createShare(request, env);
   if (url.pathname === "/v1/shares") return json({ code: "METHOD_NOT_ALLOWED" }, 405);
+  if (url.pathname === "/v1/me/youtube-auth-state") return request.method === "GET" ? youtubeAuthState(request, env) : json({ code: "METHOD_NOT_ALLOWED" }, 405);
+  if (url.pathname === "/v1/me/youtube-auth/sign-out") return request.method === "POST" ? youtubeAuthState(request, env, true) : json({ code: "METHOD_NOT_ALLOWED" }, 405);
   const thumbnailMatch = url.pathname.match(/^\/thumb\/([A-Za-z0-9_-]{22})\.jpg$/);
   if (thumbnailMatch && ["GET", "HEAD"].includes(request.method)) return readThumbnail(request, env, thumbnailMatch[1]);
   const match = url.pathname.match(/^\/(s|v1\/public\/shares)\/([A-Za-z0-9_-]{22})$/);

@@ -7,4 +7,5 @@ export const schemaStatements = [
   )`,
   "CREATE INDEX IF NOT EXISTS shared_links_sender_created ON shared_links(sender_id,created_at)",
   "CREATE TABLE IF NOT EXISTS public_playlists (id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,document_json TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS youtube_auth_state (user_id TEXT PRIMARY KEY,revision INTEGER NOT NULL DEFAULT 0)",
 ];
