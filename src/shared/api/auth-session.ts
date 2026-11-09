@@ -2,10 +2,11 @@ import { usesLocalAppTransport } from "./localAppTransport";
 import type { AuthTokens, AuthUser } from "../contracts";
 import { syncServerTime } from "./serverTime";
 import { signApiRequest } from "./requestSigner";
+import { waitForPendingWrites } from "./pendingWrites";
 
 export type { AuthTokens, AuthUser };
 
-import { getApiBaseUrl } from "./baseUrl";
+import { getApiBaseUrl, getApiBaseUrlForAuthBackend } from "./baseUrl";
  
 const STORAGE_KEY = "liner_auth_session";
 const DEAD_REFRESH_CODES = new Set(["INVALID_REFRESH_TOKEN", "REFRESH_SESSION_EXPIRED"]);
@@ -200,7 +201,7 @@ export function refreshAuthSession(): Promise<AuthTokens | null> {
 
 async function refreshInMain(bridge: MainAuthBridge, current: AuthTokens): Promise<AuthTokens | null> {
   const result = await bridge.refresh({
-    apiBaseUrl: getApiBaseUrl(),
+    apiBaseUrl: getApiBaseUrlForAuthBackend(current.authBackend),
     refreshToken: current.refreshToken,
   });
   adopt(result.session as AuthTokens | null);
@@ -217,7 +218,11 @@ async function refreshInMain(bridge: MainAuthBridge, current: AuthTokens): Promi
 async function refreshHere(current: AuthTokens): Promise<AuthTokens | null> {
   let reason = "";
   for (let attempt = 0; attempt < REFRESH_ATTEMPTS; attempt++) {
-    const response = await postRefresh(current.refreshToken);
+    const response = await postRefresh(
+      current.refreshToken,
+      getApiBaseUrlForAuthBackend(current.authBackend),
+      current.authBackend,
+    );
 
     if (response.ok) {
       const next = (await response.json()) as AuthTokens;
@@ -252,10 +257,10 @@ async function refreshHere(current: AuthTokens): Promise<AuthTokens | null> {
   return null;
 }
 
-async function postRefresh(refreshToken: string): Promise<Response> {
+async function postRefresh(refreshToken: string, apiBaseUrl: string, authBackend?: AuthTokens["authBackend"]): Promise<Response> {
   const body = JSON.stringify({ refreshToken });
   const signedHeaders = await signApiRequest("POST", "/v1/auth/refresh", body);
-  const response = await fetch(usesLocalAppTransport() ? "/__lane/auth/refresh" : `${getApiBaseUrl()}/v1/auth/refresh`, {
+  const response = await fetch(usesLocalAppTransport() && authBackend !== "hyprr" ? "/__lane/auth/refresh" : `${apiBaseUrl}/v1/auth/refresh`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -290,16 +295,20 @@ async function rejectionCode(response: Response): Promise<string> {
 }
 
 export async function clearAuthSession(): Promise<void> {
+  // Let optimistic authenticated writes (likes, playlist edits, etc.) finish
+  // before removing the token they need to reach the server.
+  await waitForPendingWrites();
   let current = getAuthSession();
   const expiryMs = getSessionExpiryMs(current);
   if (current && expiryMs !== null && expiryMs <= Date.now()) {
     current = (await refreshAuthSession()) ?? current;
   }
+  const apiBaseUrl = current ? getApiBaseUrlForAuthBackend(current.authBackend) : getApiBaseUrl();
   setAuthSession(null);
   if (!current?.refreshToken) return;
   const body = JSON.stringify({ refreshToken: current.refreshToken });
   const signedHeaders = await signApiRequest("POST", "/v1/auth/logout", body);
-  const response = await fetch(`${getApiBaseUrl()}/v1/auth/logout`, {
+  const response = await fetch(`${apiBaseUrl}/v1/auth/logout`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

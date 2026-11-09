@@ -245,7 +245,7 @@ export default function LoginPage() {
         isEdgeToEdge ? "border-0" : "border border-border-primary"
       } bg-[#18181a] backdrop-blur-[18px]`}
     >
-      {!isNativeApp() && <WindowControls variant="glass" />}
+      {!isNativeApp() && window.linerElectron?.platform !== "darwin" && <WindowControls variant="glass" />}
 
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-[12%] -top-[32%] h-[140%] w-[38%] rotate-[28deg] bg-white/[0.025]" />

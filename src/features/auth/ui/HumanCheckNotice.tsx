@@ -25,7 +25,7 @@ export default function HumanCheckNotice() {
     const id = `human-check-${++nativeAttemptId}`;
     void nativeHumanCheck.verify({
       id,
-      url: humanCheckPageUrl(request.action),
+      url: humanCheckPageUrl(request.action, request.apiBaseUrl),
       action: request.action,
       userAgent: humanCheckUserAgent(),
       title: t("human_check.title"),
@@ -78,7 +78,7 @@ export default function HumanCheckNotice() {
             <p className="mt-1 text-[13px] leading-[1.4] text-white/65">
               {phase === "expired" ? t("human_check.expired") : failed ? t("human_check.failed") : t("human_check.description")}
             </p>
-            {!nativeApp && <div className="mt-3"><HumanCheckFrame action={request.action} attempt={attempt} /></div>}
+            {!nativeApp && <div className="mt-3"><HumanCheckFrame action={request.action} attempt={attempt} apiBaseUrl={request.apiBaseUrl} /></div>}
             <div className="mt-2 flex gap-2">
               <Button className="flex-1" disabled={!failed} onClick={failed ? retry : undefined}>
                 {failed ? t("human_check.retry") : t("human_check.waiting")}

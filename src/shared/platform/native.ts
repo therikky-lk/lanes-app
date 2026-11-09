@@ -1,7 +1,7 @@
 import { appApiUserAgent } from "@/shared/api/appIdentity";
 import { registerPlugin } from "@capacitor/core";
 import { diag, diagThrottled } from "./diag";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { getApiBaseUrl, getNewAccountApiBaseUrl } from "@/shared/api/baseUrl";
 import { signApiRequest } from "@/shared/api/requestSigner";
 import { syncServerTime } from "@/shared/api/serverTime";
 // Lane on Android runs the same renderer inside Capacitor. Things Electron's
@@ -81,6 +81,7 @@ function isNativeServiceUrl(url: string): boolean {
   if (!host) return false;
   const serviceHosts = new Set([
     hostOf(getApiBaseUrl()),
+    hostOf(getNewAccountApiBaseUrl()),
     "covers.tryliner.fun",
     "link.tryliner.fun",
     "music.yandex.ru",
@@ -210,11 +211,14 @@ export function installNativeFetchHeaders(): void {
 
     const headers = new Headers(input instanceof Request ? input.headers : undefined);
     if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    const isApi = host === hostOf(getApiBaseUrl());
-    const isAuth = isApi && new URL(url).origin === new URL(getApiBaseUrl()).origin && new URL(url).pathname.startsWith("/v1/auth/");
+    const requestOrigin = new URL(url).origin;
+    const newAccountApi = getNewAccountApiBaseUrl();
+    const isLegacyApi = requestOrigin === new URL(getApiBaseUrl()).origin;
+    const isApi = isLegacyApi || (!!newAccountApi && requestOrigin === new URL(newAccountApi).origin);
+    const isAuth = isApi && new URL(url).pathname.startsWith("/v1/auth/");
     // The official API rejects a plain WebView identity before login/register.
     // Apply the same app identity to challenge, auth and subsequent API calls.
-    if (isApi) {
+    if (isLegacyApi) {
       const userAgent = headers.get("User-Agent") || navigator.userAgent;
       headers.set("User-Agent", ["https://api.tryliner.fun", "https://lane-app.site"].includes(new URL(url).origin)
         ? appApiUserAgent(userAgent)
@@ -243,7 +247,7 @@ export function installNativeFetchHeaders(): void {
         if (buf.byteLength) body = bytesToBase64(new Uint8Array(buf));
       }
       const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
-      const withCookies = isAuth || (init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin")) === "include";
+      const withCookies = (isAuth && isLegacyApi) || (init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin")) === "include";
       const transport = isAuth ? "java" : "auto";
       const response = await nativeHttpFetch(
         url,

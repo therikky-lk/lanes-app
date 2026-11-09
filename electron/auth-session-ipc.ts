@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, net, safeStorage, type IpcMainEvent, type IpcMainInvokeEvent } from "electron";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { AuthSessionStore } from "./auth-session-store.js";
 import { syncServerTime } from "./crypto.js";
 import { isAppUrl, isTrustedSender } from "./ipc-guard.js";
@@ -25,11 +26,20 @@ export function registerAuthSessionIpc(): AuthSessionStore {
     cipher,
     deps,
   );
-  const youtubeStore = new AuthSessionStore(
-    path.join(app.getPath("userData"), "auth", "youtube-session.json"),
-    cipher,
-    deps,
-  );
+  const youtubeStores = new Map<string, AuthSessionStore>();
+  const youtubeStoreFor = (ownerKey: string): AuthSessionStore => {
+    let ownerStore = youtubeStores.get(ownerKey);
+    if (!ownerStore) {
+      const id = createHash("sha256").update(ownerKey).digest("hex");
+      ownerStore = new AuthSessionStore(
+        path.join(app.getPath("userData"), "auth", `youtube-session-${id}.json`),
+        cipher,
+        deps,
+      );
+      youtubeStores.set(ownerKey, ownerStore);
+    }
+    return ownerStore;
+  };
 
   store.onChange((session, origin) => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -59,12 +69,13 @@ export function registerAuthSessionIpc(): AuthSessionStore {
     },
   );
 
-  ipcMain.on("youtube-auth:get-session", (event) => {
-    event.returnValue = fromApp(event) ? youtubeStore.get() : null;
+  ipcMain.on("youtube-auth:get-session", (event, ownerKey: unknown) => {
+    event.returnValue = fromApp(event) && typeof ownerKey === "string" && ownerKey.length <= 256
+      ? youtubeStoreFor(ownerKey).get() : null;
   });
-  ipcMain.handle("youtube-auth:set-session", (event, next: unknown) => {
-    if (!fromApp(event)) return null;
-    return youtubeStore.set(next);
+  ipcMain.handle("youtube-auth:set-session", (event, input: { ownerKey?: unknown; next?: unknown } | undefined) => {
+    if (!fromApp(event) || typeof input?.ownerKey !== "string" || input.ownerKey.length > 256) return null;
+    return youtubeStoreFor(input.ownerKey).set(input.next);
   });
 
   return store;

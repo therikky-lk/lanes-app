@@ -109,6 +109,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   login: async (email, password) => {
     const result = await api.login(email, password);
+    queryCache.clear();
     set({ status: "authenticated", user: result.user });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("library:changed"));
@@ -116,6 +117,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   register: async (email, password, username, displayName) => {
     const result = await api.register(email, password, username, displayName);
+    queryCache.clear();
     set({ status: "authenticated", user: result.user });
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("library:changed"));
@@ -182,7 +184,7 @@ export function getAuthErrorCode(error: unknown): string {
   if (error.code === "CLOUDFLARE_BLOCKED") return "cloudflare_blocked";
   // 5xx and cloudflare 52x: the server is down, not the user's input or connection
   if (error.status >= 500) return "server_error";
-  if (error.code === "INVALID_CREDENTIALS") return "invalid_credentials";
+  if (error.code === "INVALID_CREDENTIALS" || error.code === "ACCOUNT_NOT_FOUND") return "invalid_credentials";
   if (error.code === "EMAIL_ALREADY_USED") return "email_already_used";
   if (error.code === "USERNAME_TAKEN") return "username_taken";
   if (error.code === "INVALID_USERNAME") return "invalid_username";
@@ -193,7 +195,7 @@ export function getAuthErrorCode(error: unknown): string {
 
 export function authErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return "Unable to reach the server.";
-  if (error.code === "INVALID_CREDENTIALS")
+  if (error.code === "INVALID_CREDENTIALS" || error.code === "ACCOUNT_NOT_FOUND")
     return "Email or password is incorrect.";
   if (error.code === "EMAIL_ALREADY_USED")
     return "This email is already in use.";

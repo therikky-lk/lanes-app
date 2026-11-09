@@ -4,13 +4,14 @@ import type { Track } from "@/shared/types";
 import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@/shared/media/local/localTracks";
 import { loadLocalLikes } from "@/features/local/localLikesSync";
 import { localEntryToTrack } from "@/features/local/localPlaylistTracks";
-import { linerDb, type CachedTrackRecord } from "@/shared/storage/linerDb";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
 let cache: LikedData = EMPTY;
 let loaded = false;
 let request: Promise<void> | null = null;
+let activeOwner = "";
+let loadGeneration = 0;
 const listeners = new Set<() => void>();
 let view = { data: cache, isLoading: true };
 
@@ -87,32 +88,28 @@ function snapshot() {
 
 const SERVER_SNAPSHOT = { data: EMPTY, isLoading: true };
 
-function cachedTrackToClient(record: CachedTrackRecord): Track {
-  return {
-    id: record.id,
-    title: record.title,
-    artists: record.artists,
-    coverUrl: record.coverUrl ?? "",
-    durationMs: record.durationMs,
-    playCount: 0,
-    ...(record.likedAt !== undefined ? { likedAt: record.likedAt } : {}),
-    ...(record.albumTitle
-      ? { album: { id: record.albumId ?? `cached_${record.id}`, title: record.albumTitle } }
-      : {}),
-  };
+function ownerKey(): string {
+  const session = getAuthSession();
+  return session?.user?.id ? `${session.authBackend ?? "legacy"}:${session.user.id}` : "guest";
 }
 
-async function restoreCachedLibrary(): Promise<boolean> {
-  const records = await linerDb.listTracks().catch(() => []);
-  if (records.length === 0) return false;
-  const tracks = uniqueTracks(records.map(cachedTrackToClient));
-  cache = { tracks, total: tracks.length };
-  loaded = true;
-  emit(false);
-  return true;
+function resetForOwner(nextOwner: string): void {
+  if (activeOwner === nextOwner) return;
+  activeOwner = nextOwner;
+  loadGeneration++;
+  request = null;
+  reloadQueued = false;
+  cache = EMPTY;
+  loaded = false;
+  optimisticOverrides.clear();
+  optimisticTracks.clear();
+  overrideAt.clear();
+  remoteLocalLiked = [];
+  emit(true);
 }
 
 function load(force = false): Promise<void> {
+  resetForOwner(ownerKey());
   if (request) {
     // a reload asked for while one is running (a like / unlike just went
     // through): the running one may predate it, so run once more afterwards
@@ -131,6 +128,7 @@ function load(force = false): Promise<void> {
   if (!loaded) emit(true);
 
   const startedAt = Date.now();
+  const generation = loadGeneration;
   request = (async () => {
     // Keep the loading skeleton visible until the server's complete, current
     // list is ready; otherwise stale cache rows and counts flash on entry.
@@ -139,6 +137,7 @@ function load(force = false): Promise<void> {
     const remoteLocal = loadLocalLikes();
     do {
       const page = await api.listLikedTracks(100, cursor);
+      if (generation !== loadGeneration) return;
       tracks.push(
         ...page.items.map(({ track, likedAt }) => ({
           ...toClientTrack(track),
@@ -149,10 +148,11 @@ function load(force = false): Promise<void> {
     } while (cursor);
     // Keep the API artwork; bulk cover searches made opening a large library
     // issue thousands of unrelated requests.
+    if (generation !== loadGeneration) return;
     const currentTracks = uniqueTracks(tracks);
     cache = { tracks: currentTracks, total: currentTracks.length };
-    void Promise.all(currentTracks.map((track) => linerDb.putTrack(track).catch(() => undefined)));
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
+    if (generation !== loadGeneration) return;
     loaded = true;
     // keep the optimistic state the server doesn't show yet: overrides made
     // after this reload started, or that it doesn't agree with yet
@@ -167,14 +167,11 @@ function load(force = false): Promise<void> {
     }
     emit(false);
   })()
-    .catch(async () => {
-      if (!loaded) {
-        // Offline fallback is only shown after the current request fails.
-        const restored = await restoreCachedLibrary();
-        if (!restored) loaded = true;
-      }
+    .catch(() => {
+      if (generation === loadGeneration && !loaded) loaded = true;
     })
     .finally(() => {
+      if (generation !== loadGeneration) return;
       request = null;
       emit(false);
       if (reloadQueued) {
@@ -212,6 +209,7 @@ export function applyOptimisticUnlike(trackId: string): () => void {
 
 if (typeof window !== "undefined") {
   const handleRefresh = () => {
+    resetForOwner(ownerKey());
     const session = getAuthSession();
     if (!session?.accessToken) {
       cache = EMPTY;

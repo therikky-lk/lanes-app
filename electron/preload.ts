@@ -85,8 +85,8 @@ export interface LinerElectronApi {
     onChange: (cb: (session: StoredAuthSession | null) => void) => () => void;
   };
   youtubeAuthSession?: {
-    get: () => StoredAuthSession | null;
-    set: (next: StoredAuthSession | null) => Promise<StoredAuthSession | null>;
+    get: (ownerKey: string) => StoredAuthSession | null;
+    set: (ownerKey: string, next: StoredAuthSession | null) => Promise<StoredAuthSession | null>;
   };
   onDeeplink: (cb: (target: DeeplinkTarget) => void) => () => void;
   diagnoseNetwork: (hosts: string[]) => Promise<MainNetResult>;
@@ -231,8 +231,8 @@ const api: LinerElectronApi = {
     },
   },
   youtubeAuthSession: {
-    get: () => ipcRenderer.sendSync("youtube-auth:get-session") ?? null,
-    set: (next) => ipcRenderer.invoke("youtube-auth:set-session", next),
+    get: (ownerKey) => ipcRenderer.sendSync("youtube-auth:get-session", ownerKey) ?? null,
+    set: (ownerKey, next) => ipcRenderer.invoke("youtube-auth:set-session", { ownerKey, next }),
   },
   diagnoseNetwork: (hosts) => ipcRenderer.invoke("net:diagnose", hosts),
   openDownloads: (customPath) => ipcRenderer.invoke("shell:open-downloads", customPath),
