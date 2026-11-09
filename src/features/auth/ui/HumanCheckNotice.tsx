@@ -3,8 +3,13 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import { useTranslation } from "@/languages";
+import { humanCheckPageUrl } from "@/shared/api";
+import { isNativeApp } from "@/shared/platform/native";
+import { humanCheckUserAgent, nativeHumanCheck } from "@/shared/platform/nativeHumanCheck";
 import { useHumanCheckStore } from "../store/humanCheckStore";
 import HumanCheckFrame from "./HumanCheckFrame";
+
+let nativeAttemptId = 0;
 
 export default function HumanCheckNotice() {
   const { t } = useTranslation();
@@ -15,7 +20,31 @@ export default function HumanCheckNotice() {
   const cancel = useHumanCheckStore((state) => state.cancel);
 
   useEffect(() => {
-    if (!request) return;
+    if (!request || !isNativeApp()) return;
+    let active = true;
+    const id = `human-check-${++nativeAttemptId}`;
+    void nativeHumanCheck.verify({
+      id,
+      url: humanCheckPageUrl(request.action),
+      action: request.action,
+      userAgent: humanCheckUserAgent(),
+      title: t("human_check.title"),
+      cancel: t("human_check.cancel"),
+    }).then((result) => {
+      if (!active) return;
+      if (result.token) useHumanCheckStore.getState().solve(result.token);
+      else useHumanCheckStore.getState().cancel();
+    }).catch(() => {
+      if (active) useHumanCheckStore.getState().setPhase("error");
+    });
+    return () => {
+      active = false;
+      void nativeHumanCheck.close({ id }).catch(() => undefined);
+    };
+  }, [request, attempt, t]);
+
+  useEffect(() => {
+    if (!request || isNativeApp()) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") cancel();
     };
@@ -25,6 +54,8 @@ export default function HumanCheckNotice() {
 
   if (typeof document === "undefined") return null;
   const failed = phase === "error" || phase === "expired";
+  const nativeApp = isNativeApp();
+  if (nativeApp && !failed) return null;
 
   return createPortal(
     <AnimatePresence>
@@ -47,7 +78,7 @@ export default function HumanCheckNotice() {
             <p className="mt-1 text-[13px] leading-[1.4] text-white/65">
               {phase === "expired" ? t("human_check.expired") : failed ? t("human_check.failed") : t("human_check.description")}
             </p>
-            <div className="mt-3"><HumanCheckFrame action={request.action} attempt={attempt} /></div>
+            {!nativeApp && <div className="mt-3"><HumanCheckFrame action={request.action} attempt={attempt} /></div>}
             <div className="mt-2 flex gap-2">
               <Button className="flex-1" disabled={!failed} onClick={failed ? retry : undefined}>
                 {failed ? t("human_check.retry") : t("human_check.waiting")}
