@@ -1,15 +1,15 @@
 import { registerPlugin } from "@capacitor/core";
-import { appApiUserAgent } from "@/shared/api/appIdentity";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
 
 export const nativeHumanCheck = registerPlugin<{
   verify(options: { id: string; url: string; action: string; userAgent: string; title: string; cancel: string }): Promise<{ token?: string }>;
   close(options: { id: string }): Promise<void>;
 }>("LaneHumanCheck");
 
-/** Use the same browser identity as the challenge and login requests. */
+/**
+ * Turnstile runs in Android System WebView and must see its real browser
+ * identity. API requests keep the app-specific UA in native.ts; adding an
+ * Electron suffix to WebView itself makes Cloudflare reject the widget.
+ */
 export function humanCheckUserAgent(): string {
-  return ["https://api.tryliner.fun", "https://lane-app.site"].includes(new URL(getApiBaseUrl()).origin)
-    ? appApiUserAgent(navigator.userAgent)
-    : navigator.userAgent;
+  return navigator.userAgent;
 }
