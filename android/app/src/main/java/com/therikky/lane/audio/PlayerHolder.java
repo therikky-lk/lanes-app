@@ -410,6 +410,11 @@ public final class PlayerHolder {
         if (count > index + 1) player.removeMediaItems(index + 1, count);
     }
 
+    public void updateArtwork(String trackId, String artwork) {
+        if (trackId == null || trackId.isEmpty() || artwork == null || !artwork.startsWith("http")) return;
+        loadArtwork(artwork, loadGeneration, trackId);
+    }
+
     private void appendQueue(java.util.List<NextSpec> queue) {
         int index = player.getCurrentMediaItemIndex();
         int count = player.getMediaItemCount();

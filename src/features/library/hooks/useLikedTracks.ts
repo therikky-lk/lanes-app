@@ -4,6 +4,8 @@ import type { Track } from "@/shared/types";
 import { listLikedLocalTracks, localRecordToTrack, onLocalTracksChange } from "@/shared/media/local/localTracks";
 import { loadLocalLikes } from "@/features/local/localLikesSync";
 import { localEntryToTrack } from "@/features/local/localPlaylistTracks";
+import { isNativeApp } from "@/shared/platform/native";
+import { diag } from "@/shared/platform/diag";
 
 type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
@@ -14,6 +16,9 @@ let activeOwner = "";
 let loadGeneration = 0;
 const listeners = new Set<() => void>();
 let view = { data: cache, isLoading: true };
+const progressListeners = new Set<() => void>();
+let progressCache = cache;
+let progressView = { data: cache, isLoading: true };
 
 const optimisticOverrides = new Map<string, boolean>();
 /** what a just-liked track looks like, so it shows in the list right away */
@@ -26,6 +31,7 @@ let reloadQueued = false;
 // temporarily stale server snapshot while the request is settling.
 const LIKE_SYNC_MIN_AGE_MS = 5 * 60_000;
 const LIKE_SYNC_POLL_MS = 60_000;
+let lastRefresh = 0;
 
 // liked uploads live on this device and are shown first
 let localLiked: Track[] = [];
@@ -41,14 +47,14 @@ function uniqueTracks(tracks: Track[]): Track[] {
   });
 }
 
-function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } {
+function buildView(isLoading: boolean, base = cache): { data: LikedData; isLoading: boolean } {
   if (optimisticOverrides.size === 0 && localLiked.length === 0 && remoteLocalLiked.length === 0) {
-    return { data: cache, isLoading };
+    return { data: base, isLoading };
   }
 
   const here = new Set(localLiked.map((t) => t.id));
   const elsewhere = remoteLocalLiked.filter((t) => !here.has(t.id));
-  let tracks = uniqueTracks([...localLiked, ...elsewhere, ...cache.tracks]).filter(
+  let tracks = uniqueTracks([...localLiked, ...elsewhere, ...base.tracks]).filter(
     (t) => optimisticOverrides.get(t.id) !== false
   );
   for (const [id, liked] of optimisticOverrides) {
@@ -75,6 +81,14 @@ function buildView(isLoading: boolean): { data: LikedData; isLoading: boolean } 
 function emit(isLoading = false) {
   view = buildView(isLoading);
   listeners.forEach((l) => l());
+  progressView = buildView(isLoading, progressCache);
+  progressListeners.forEach((l) => l());
+}
+
+function emitProgress(isLoading: boolean, base = progressCache) {
+  progressCache = base;
+  progressView = buildView(isLoading, base);
+  progressListeners.forEach((l) => l());
 }
 
 function subscribe(listener: () => void) {
@@ -84,6 +98,15 @@ function subscribe(listener: () => void) {
 
 function snapshot() {
   return view;
+}
+
+function subscribeProgress(listener: () => void) {
+  progressListeners.add(listener);
+  return () => progressListeners.delete(listener);
+}
+
+function progressSnapshot() {
+  return progressView;
 }
 
 const SERVER_SNAPSHOT = { data: EMPTY, isLoading: true };
@@ -100,6 +123,7 @@ function resetForOwner(nextOwner: string): void {
   request = null;
   reloadQueued = false;
   cache = EMPTY;
+  progressCache = EMPTY;
   loaded = false;
   optimisticOverrides.clear();
   optimisticTracks.clear();
@@ -128,16 +152,23 @@ function load(force = false): Promise<void> {
   if (!loaded) emit(true);
 
   const startedAt = Date.now();
+  lastRefresh = startedAt;
+  const diagnosticStartedAt = performance.now();
   const generation = loadGeneration;
+  const showPagesAsTheyArrive = !loaded;
   request = (async () => {
     // Keep the loading skeleton visible until the server's complete, current
     // list is ready; otherwise stale cache rows and counts flash on entry.
     const tracks: Track[] = [];
     let cursor: string | undefined;
+    let pages = 0;
+    let lastHomeBatch = 0;
     const remoteLocal = loadLocalLikes();
     do {
+      const pageStartedAt = performance.now();
       const page = await api.listLikedTracks(100, cursor);
       if (generation !== loadGeneration) return;
+      pages++;
       tracks.push(
         ...page.items.map(({ track, likedAt }) => ({
           ...toClientTrack(track),
@@ -145,6 +176,18 @@ function load(force = false): Promise<void> {
         })),
       );
       cursor = page.nextCursor ?? undefined;
+      if (isNativeApp()) diag(`favorites page ${pages}: received=${page.items.length} elapsed=${Math.round(performance.now() - pageStartedAt)}ms`);
+      if (showPagesAsTheyArrive) {
+        const partial = uniqueTracks(tracks);
+        emitProgress(false, { tracks: partial, total: partial.length });
+        // Home only needs occasional snapshots. Publishing every 100-track
+        // page made its large sections recalculate repeatedly during loading.
+        if (partial.length - lastHomeBatch >= 300) {
+          lastHomeBatch = partial.length;
+          view = { data: buildView(true, { tracks: partial, total: partial.length }).data, isLoading: true };
+          listeners.forEach((listener) => listener());
+        }
+      }
     } while (cursor);
     // Keep the API artwork; bulk cover searches made opening a large library
     // issue thousands of unrelated requests.
@@ -154,6 +197,9 @@ function load(force = false): Promise<void> {
     remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
     if (generation !== loadGeneration) return;
     loaded = true;
+    progressCache = cache;
+    lastRefresh = Date.now();
+    if (isNativeApp()) diag(`favorites load: pages=${pages} tracks=${currentTracks.length} elapsed=${Math.round(performance.now() - diagnosticStartedAt)}ms`);
     // keep the optimistic state the server doesn't show yet: overrides made
     // after this reload started, or that it doesn't agree with yet
     const serverIds = new Set(currentTracks.map((t) => t.id));
@@ -167,7 +213,8 @@ function load(force = false): Promise<void> {
     }
     emit(false);
   })()
-    .catch(() => {
+    .catch((error) => {
+      if (isNativeApp()) diag(`favorites load: failed after ${Math.round(performance.now() - diagnosticStartedAt)}ms (${error instanceof Error ? error.message.slice(0, 100) : String(error).slice(0, 100)})`);
       if (generation === loadGeneration && !loaded) loaded = true;
     })
     .finally(() => {
@@ -209,15 +256,21 @@ export function applyOptimisticUnlike(trackId: string): () => void {
 
 if (typeof window !== "undefined") {
   const handleRefresh = () => {
-    resetForOwner(ownerKey());
+    const nextOwner = ownerKey();
+    const ownerChanged = activeOwner !== nextOwner;
+    resetForOwner(nextOwner);
     const session = getAuthSession();
     if (!session?.accessToken) {
       cache = EMPTY;
+      progressCache = EMPTY;
       loaded = false;
       optimisticOverrides.clear();
       overrideAt.clear();
       emit(false);
-    } else {
+    } else if (ownerChanged || Date.now() - lastRefresh >= LIKE_SYNC_MIN_AGE_MS) {
+      // library:changed also fires for playlist edits, covers and imports.
+      // Those changes used to restart every page of a 1k+ likes response.
+      lastRefresh = Date.now();
       void load(true);
     }
   };
@@ -226,7 +279,6 @@ if (typeof window !== "undefined") {
 
   // Likes made on another device: refresh when this app returns to the
   // foreground if the snapshot is stale, then poll while it remains visible.
-  let lastRefresh = Date.now();
   const refreshIfStale = (minAgeMs: number) => {
     if (!loaded || document.visibilityState !== "visible" || Date.now() - lastRefresh < minAgeMs) return;
     lastRefresh = Date.now();
@@ -241,6 +293,16 @@ if (typeof window !== "undefined") {
 
 export function useLikedTracks() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
+  useEffect(() => {
+    void load();
+  }, []);
+  return state;
+}
+
+/** Used only by the likes page so its rows can appear per API page without
+ * forcing unrelated screens such as Home to rerender on each response. */
+export function useLikedTracksProgressively() {
+  const state = useSyncExternalStore(subscribeProgress, progressSnapshot, () => SERVER_SNAPSHOT);
   useEffect(() => {
     void load();
   }, []);

@@ -51,7 +51,7 @@ export async function getCoverWithoutToken(
         .map(normalize)
         .filter(Boolean);
       const candidates = Array.isArray(data.tracks?.items) ? data.tracks.items : [];
-      const track = candidates
+      const ranked = candidates
         .map((candidate: any) => {
           const candidateTitle = normalize(String(candidate.title ?? ""));
           const candidateArtists = Array.isArray(candidate.artists)
@@ -67,7 +67,11 @@ export async function getCoverWithoutToken(
           }
           return { candidate, score };
         })
-        .sort((a: { score: number }, b: { score: number }) => b.score - a.score)[0]?.candidate;
+        .sort((a: { score: number }, b: { score: number }) => b.score - a.score);
+      // Require both a close title and at least one matching artist. A weak
+      // title token match used to assign unrelated album art to tracks.
+      const best = ranked[0];
+      const track = best && best.score >= 140 ? best.candidate : undefined;
       const rawUri = track?.coverUri || track?.albums?.[0]?.coverUri;
       return rawUri ? `https://${String(rawUri).replace("%%", "500x500")}` : null;
     } catch {

@@ -4,6 +4,8 @@ import { resolveSoundCloudStream, toSoundCloudTrackId } from "@/shared/media/sou
 import { resolveLinerStream } from "@/shared/media/liner/linerPlayback";
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
+import { isNativeApp } from "@/shared/platform/native";
+import { diag } from "@/shared/platform/diag";
 import {
   fromInnertubeStream,
   fromLinerStream,
@@ -78,12 +80,18 @@ async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal
   const directController = new AbortController();
   const serverSignal = signal ? AbortSignal.any([signal, serverController.signal]) : serverController.signal;
   const directSignal = signal ? AbortSignal.any([signal, directController.signal]) : directController.signal;
+  const startedAt = performance.now();
   let directError: unknown;
   // Neither a slow catalog probe nor a missing server copy should delay YouTube.
   const server = resolveLinerStream(videoId, serverSignal).then(liner => {
-    if (!liner) throw new Error("No server audio");
+    if (!liner) {
+      if (isNativeApp()) diag(`stream source: server miss in ${Math.round(performance.now() - startedAt)}ms`);
+      throw new Error("No server audio");
+    }
+    if (isNativeApp()) diag(`stream source: server hit in ${Math.round(performance.now() - startedAt)}ms`);
     return fromLinerStream(liner, track);
   });
+  const directStartedAt = startedAt;
   const direct = withSoundCloudFallback(track, async () => {
     if (isYoutubeSignedIn() && prefersAccountPlayback()) {
       const profiles: readonly InnertubeProfile[] = [TV_ACCOUNT_PROFILE, ...PLAYBACK_PROFILES];
@@ -95,7 +103,14 @@ async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal
       }
     }
     return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: directSignal, ...audioOptions(quality) }));
-  }, directSignal).catch(error => { directError = error; throw error; });
+  }, directSignal).then(stream => {
+    if (isNativeApp()) diag(`stream source: direct resolved in ${Math.round(performance.now() - directStartedAt)}ms`);
+    return stream;
+  }).catch(error => {
+    directError = error;
+    if (isNativeApp() && !isAbortError(error, directSignal)) diag(`stream source: direct failed after ${Math.round(performance.now() - directStartedAt)}ms (${String(error).slice(0, 100)})`);
+    throw error;
+  });
   try {
     const stream = await Promise.any([server, direct]);
     signal?.throwIfAborted();

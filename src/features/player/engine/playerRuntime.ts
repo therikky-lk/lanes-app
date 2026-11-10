@@ -43,6 +43,7 @@ export class PlayerRuntime {
   private fadeTimer: ReturnType<typeof setTimeout> | null = null;
   private stallStartTime: number | null = null;
   private loadStartTime = 0;
+  private diagnosedPlayingEpoch = -1;
   private ttfbMs = 0;
   private activePlayPromise: Promise<void> | null = null;
   private activeBlobUrl: string | null = null;
@@ -390,6 +391,10 @@ export class PlayerRuntime {
     audioEl.addEventListener("playing", () => {
       if (this.isResetting || audioEl !== this.audio) return;
       log("green", "audio", "playing");
+      if (isNativeApp() && this.diagnosedPlayingEpoch !== this.loadEpoch && this.currentTrackId) {
+        this.diagnosedPlayingEpoch = this.loadEpoch;
+        diag(`audio timing: native playing event after ${Math.round(performance.now() - this.loadStartTime)}ms track=${this.currentTrackId}`);
+      }
       if (this.recoveryHoldUntilMs === null) this.recoveryAttempts = 0;
       this.applyPlaybackRateAndPitch();
 
@@ -679,7 +684,10 @@ export class PlayerRuntime {
     // Resolve a small window concurrently; hand it over in playback order.
     // streams resolved for the previous look-ahead are reused: after a track
     // change the list only moves on by one, so only the new last one is fetched
-    const wanted = new Set(tracks.map((t) => t.id));
+    // Keep the active selection too. On a manual Next, the store changes the
+    // current track before loadAndPlay consumes its prefetched URL; pruning to
+    // only the future queue here discarded exactly the stream we needed.
+    const wanted = new Set([afterTrackId, ...tracks.map((t) => t.id)]);
     for (const id of this.nativeStreams.keys()) if (!wanted.has(id)) this.nativeStreams.delete(id);
     void (async () => {
       const ready: NativeNextItem[] = [];
@@ -703,11 +711,15 @@ export class PlayerRuntime {
         const reusable = this.nativeStreams.get(track.id);
         if (cached?.blob?.size) return { blob: cached.blob, expiresAtMs: null };
         if (reusable && (reusable.expiresAtMs == null || reusable.expiresAtMs > Date.now() + startTimes[index] + NATIVE_STREAM_MARGIN_MS)) {
+          diag(`queue ahead: reused resolved stream for ${track.id}`);
           return reusable;
         }
         const resolved = await resolvePlaybackStream(track, controller.signal, quality);
         controller.signal.throwIfAborted();
-        if (!resolved.blob) this.nativeStreams.set(track.id, resolved);
+        if (!resolved.blob) {
+          this.nativeStreams.set(track.id, resolved);
+          diag(`queue ahead: resolved stream ready for ${track.id} expiry=${resolved.expiresAtMs ?? "none"}`);
+        }
         return resolved;
       };
       for await (const { item: track, result } of prefetchInOrder(tracks, 3, resolveAhead, controller.signal)) {
@@ -818,6 +830,7 @@ export class PlayerRuntime {
     }
     this.currentTrackId = track.id;
     this.loadStartTime = performance.now();
+    this.diagnosedPlayingEpoch = -1;
     this.updateMediaSessionMetadata(track);
 
     store.setStatus("loading", null);
@@ -826,11 +839,13 @@ export class PlayerRuntime {
     this.pauseForTransition();
 
     try {
+      const cacheCheckStartedAt = performance.now();
       const [downloaded, temporaryAudio] = await Promise.all([
         downloadsDb.get(track.id).catch(() => undefined),
         bypassCache ? Promise.resolve(null) : linerDb.getAudio(track.id).catch(() => null),
       ]);
       const cachedAudio = downloaded?.blob?.size ? downloaded : temporaryAudio;
+      const cacheCheckMs = Math.round(performance.now() - cacheCheckStartedAt);
       if (epoch !== this.loadEpoch || controller.signal.aborted) {
         return;
       }
@@ -846,6 +861,7 @@ export class PlayerRuntime {
       }
 
       if (cachedAudio && isValidCachedBlob) {
+        if (isNativeApp()) diag(`audio timing: cache-check=${cacheCheckMs}ms hit=1 bytes=${cachedAudio.byteSize}`);
         this.currentSessionExpiresAt = null;
         void linerDb.putTrack(track);
         const blobUrl = URL.createObjectURL(cachedAudio.blob);
@@ -898,15 +914,21 @@ export class PlayerRuntime {
           "playback",
           `started (cached): ${track.title} in ${audioStartLatencyMs}ms`,
         );
+        if (isNativeApp()) diag(`audio timing: cache-start-command=${audioStartLatencyMs}ms total=${Math.round(performance.now() - this.loadStartTime)}ms`);
         return;
       }
 
+      if (isNativeApp()) diag(`audio timing: cache-check=${cacheCheckMs}ms hit=0`);
+
       const prepared = this.nativeStreams.get(track.id);
       this.nativeStreams.delete(track.id);
-      const stream = prepared && (prepared.expiresAtMs == null || prepared.expiresAtMs > Date.now() + NATIVE_STREAM_MARGIN_MS)
-        ? prepared
+      const preparedValid = Boolean(prepared && (prepared.expiresAtMs == null || prepared.expiresAtMs > Date.now() + NATIVE_STREAM_MARGIN_MS));
+      const resolveStartedAt = performance.now();
+      const stream = preparedValid
+        ? prepared!
         : await resolvePlaybackStream(track, controller.signal, usePlayerStore.getState().audioQuality);
       this.ttfbMs = Math.round(performance.now() - this.loadStartTime);
+      if (isNativeApp()) diag(`audio timing: stream-resolve=${Math.round(performance.now() - resolveStartedAt)}ms prepared=${preparedValid ? 1 : 0}`);
 
       if (epoch !== this.loadEpoch || controller.signal.aborted) {
         log("yellow", "playback", `superseded before stream ready (${track.title})`);
@@ -975,6 +997,7 @@ export class PlayerRuntime {
         "playback",
         `started: ${track.title} in ${audioStartLatencyMs}ms`,
       );
+      if (isNativeApp()) diag(`audio timing: stream-start-command=${audioStartLatencyMs}ms total=${Math.round(performance.now() - this.loadStartTime)}ms`);
 
       telemetry.trackPlaybackHealth("INIT_LATENCY", {
         trackId: track.id,
@@ -1004,6 +1027,7 @@ export class PlayerRuntime {
           : error instanceof Error
             ? error.message
             : "Playback failed to start.";
+      if (isNativeApp()) diag(`audio timing: failed after ${Math.round(performance.now() - this.loadStartTime)}ms (${message.slice(0, 120)})`);
       if (isBotCheckError(error) && !isYoutubeSignedIn() && !isYoutubeSignInDeclined() && prefersSignInPrompt()) {
         usePlayerStore.getState().setStatus("paused");
         requestYoutubeSignIn();

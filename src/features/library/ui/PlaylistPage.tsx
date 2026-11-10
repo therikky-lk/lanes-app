@@ -33,7 +33,7 @@ import CoverImage from "@/features/covers/ui/CoverImage";
 import { useModalStore } from "../store/modalStore";
 import {
   usePlaylist,
-  useLikedTracks,
+  useLikedTracksProgressively,
   useReorderPlaylistTracks,
 } from "../hooks";
 import { useListReorder } from "@/shared/hooks";
@@ -223,7 +223,7 @@ function LibraryPlaylistContent() {
     error: playlistError,
   } = usePlaylist(isLikesMode ? null : decodedId);
 
-  const { data: likesData, isLoading: likesLoading } = useLikedTracks();
+  const { data: likesData, isLoading: likesLoading } = useLikedTracksProgressively();
 
   const isLoading = isLikesMode ? likesLoading : playlistLoading;
 

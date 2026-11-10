@@ -10,6 +10,7 @@ export {
 } from "./useExternalItems";
 export {
   useLikedTracks,
+  useLikedTracksProgressively,
   useLikedTrackCount,
   applyOptimisticLike,
   applyOptimisticUnlike,

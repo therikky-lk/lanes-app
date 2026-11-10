@@ -150,16 +150,27 @@ function isVideoResult(item: SearchResult): boolean {
 async function searchTracksAndMixed(query: string, includeMixed: boolean, signal?: AbortSignal): Promise<SearchResult[]> {
   if (isBrowserRuntime()) return searchRaw(query, "track", signal);
   // songs only: music videos, clips and uploads are not searched for at all
-  const settled = await Promise.allSettled([searchRaw(query, undefined, signal), searchRaw(query, "track", signal)]);
+  const settled = await Promise.allSettled([
+    searchRaw(query, undefined, signal),
+    searchRaw(query, "track", signal),
+    includeMixed ? searchRaw(query, "artist", signal) : Promise.resolve([] as SearchResult[]),
+  ]);
   throwIfAllFailed(settled);
   const mixed = settledOrEmpty(settled[0]).filter((item) => !isVideoResult(item));
   // the "Songs" filter only returns songs; the mixed results also carry clips
   const tracks = onlyTracks(settledOrEmpty(settled[1]));
+  const artists = settledOrEmpty(settled[2]).filter(
+    (item) => item.type === "artist" && matchesQueryWell(query, item.name),
+  );
   const enrichment = new Map(tracks.map((track) => [track.id, track] as const));
   const { results, add } = createCollector(enrichment);
   const topResult = mixed[0];
 
-  if (includeMixed && topResult && topResult.type !== "track") add(topResult);
+  if (
+    includeMixed && topResult && topResult.type !== "track" &&
+    (topResult.type !== "artist" || matchesQueryWell(query, topResult.name))
+  ) add(topResult);
+  if (includeMixed) artists.forEach(add);
   tracks.filter((track) => matches(query, track)).forEach(add);
   if (includeMixed) {
     mixed.forEach(add);
@@ -176,7 +187,11 @@ async function searchTyped(query: string, type: Exclude<SearchType, "all" | "tra
   const mixed = settledOrEmpty(settled[0]);
   const typed = settledOrEmpty(settled[1]).filter((item) => item.type === type);
   const { results, add } = createCollector(new Map());
-  if (mixed[0]?.type === type) add(mixed[0]);
+  // The unfiltered YouTube Music result can be a semantically related but
+  // differently named artist (e.g. "Artik & Asti" for "Джиган"). In an
+  // explicitly typed artist search, trust the artist-filtered shelf instead
+  // of prepending that mixed-search guess.
+  if (type !== "artist" && mixed[0]?.type === type) add(mixed[0]);
   typed.forEach(add);
   return results;
 }

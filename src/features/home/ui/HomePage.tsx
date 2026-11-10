@@ -38,7 +38,7 @@ export default function HomePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
-  const { data: likedData } = useLikedTracks();
+  const { data: likedData, isLoading: likedLoading } = useLikedTracks();
 
   const { data: popularItems } = usePopular(100);
   const { data: popularTracksOnly } =
@@ -123,7 +123,9 @@ export default function HomePage() {
                       </span>
                     ),
                     title: t("library.liked_songs"),
-                    sub: `${likedData.total} ${likedData.total === 1 ? t("library.song") : t("library.songs")}`,
+                    sub: likedLoading
+                      ? `${t("common.loading")} · ${t("common.songs", { count: likedData.total })}`
+                      : `${likedData.total} ${likedData.total === 1 ? t("library.song") : t("library.songs")}`,
                     thumbs: likedData.tracks
                       .filter((tr) => Boolean(tr.coverUrl))
                       .slice(0, 3)
@@ -161,6 +163,11 @@ export default function HomePage() {
                       <RightLine size={16} className="shrink-0 text-text-tertiary" />
                     </span>
                     <span className="block truncate text-[12.5px] text-text-tertiary">{item.sub}</span>
+                    {item.key === "liked" && likedLoading && (
+                      <span className="mt-[3px] block h-[2px] w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10" aria-label={t("common.loading")}>
+                        <span className="block h-full w-1/3 animate-pulse rounded-full bg-current text-text-secondary" />
+                      </span>
+                    )}
                   </span>
                   {item.thumbs.length > 0 && (
                     <span className="flex h-[48px] shrink-0 items-center justify-end md:h-[52px]">
