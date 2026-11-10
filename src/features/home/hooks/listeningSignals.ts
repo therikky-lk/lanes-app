@@ -6,6 +6,9 @@ import { api, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
 
 const PAGE = 100;
+const SIGNAL_CACHE_TTL_MS = 5 * 60_000;
+let cachedSignals: { liked: Track[]; history: Track[]; loadedAt: number } | null = null;
+let signalRequest: Promise<{ liked: Track[]; history: Track[] }> | null = null;
 
 type Entry = { track?: unknown };
 type Page = { items?: Entry[]; nextCursor?: string | null };
@@ -30,9 +33,21 @@ async function collect(fetchPage: (cursor?: string) => Promise<Page>, max: numbe
 }
 
 export async function loadListeningSignals(maxLiked = 300, maxHistory = 200): Promise<{ liked: Track[]; history: Track[] }> {
-  const [liked, history] = await Promise.all([
-    collect((cursor) => api.listLikedTracks(PAGE, cursor) as Promise<Page>, maxLiked),
-    collect((cursor) => api.getHistory(cursor, PAGE) as Promise<Page>, maxHistory),
-  ]);
-  return { liked, history };
+  if (
+    maxLiked === 300 && maxHistory === 200 && cachedSignals &&
+    Date.now() - cachedSignals.loadedAt < SIGNAL_CACHE_TTL_MS
+  ) return { liked: cachedSignals.liked, history: cachedSignals.history };
+
+  if (!signalRequest) {
+    signalRequest = (async () => {
+      const [liked, history] = await Promise.all([
+        collect((cursor) => api.listLikedTracks(PAGE, cursor) as Promise<Page>, 300),
+        collect((cursor) => api.getHistory(cursor, PAGE) as Promise<Page>, 200),
+      ]);
+      cachedSignals = { liked, history, loadedAt: Date.now() };
+      return { liked, history };
+    })().finally(() => { signalRequest = null; });
+  }
+  const signals = await signalRequest;
+  return { liked: signals.liked.slice(0, maxLiked), history: signals.history.slice(0, maxHistory) };
 }

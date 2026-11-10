@@ -51,6 +51,7 @@ interface LaneAudioPlugin {
   setRate(options: { rate: number }): Promise<void>;
   setLiked(options: { liked: boolean }): Promise<void>;
   setRepeat(options: { mode: number }): Promise<void>;
+  getCacheFile(options: { name: string; size: number }): Promise<{ url?: string }>;
   writeCacheFile(options: { name: string; base64: string }): Promise<{ url: string }>;
   queueNext(options: {
     afterTrackId: string;
@@ -64,6 +65,7 @@ interface LaneAudioPlugin {
       artwork?: string;
     }[];
   }): Promise<void>;
+  updateArtwork(options: { trackId: string; artwork: string }): Promise<void>;
   clearNext(): Promise<void>;
   addListener(event: "advanced", cb: (a: { trackId: string }) => void): Promise<PluginListenerHandle>;
   addListener(event: "state", cb: (s: NativeState) => void): Promise<PluginListenerHandle>;
@@ -85,6 +87,10 @@ let nowPlaying: NowPlayingMeta = {};
 /** what the notification / lock screen should show for the next load */
 export function setNativeNowPlaying(meta: NowPlayingMeta): void {
   nowPlaying = meta;
+}
+
+export function updateNativeArtwork(trackId: string, artwork: string): Promise<void> {
+  return LaneAudio.updateArtwork({ trackId, artwork }).catch(() => undefined);
 }
 
 let headersForUrl: (url: string) => Record<string, string> = () => ({});
@@ -128,13 +134,27 @@ export interface NativeNextItem {
 const nextFiles = new Map<string, Promise<string>>();
 const NEXT_FILES_KEPT = 12;
 
-function nextFileFor(trackId: string, blob: Blob): Promise<string> {
-  const key = `${trackId}:${blob.size}`;
+function nativeFileFor(trackId: string, blob: Blob, prefix: "next" | "track"): Promise<string> {
+  const key = `${prefix}:${trackId}:${blob.size}`;
   let file = nextFiles.get(key);
   if (!file) {
     const ext = (blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
-    file = (async () =>
-      (await LaneAudio.writeCacheFile({ name: `next-${trackId.replace(/[^a-z0-9]/gi, "")}.${ext}`, base64: await blobToBase64(blob) })).url)();
+    const name = `${prefix}-${trackId.replace(/[^a-z0-9]/gi, "")}-${blob.size}.${ext}`;
+    file = (async () => {
+      const checkStartedAt = performance.now();
+      const cached = await LaneAudio.getCacheFile({ name, size: blob.size });
+      if (cached.url) {
+        if (prefix === "track") diag(`native audio file: reused ${blob.size} bytes in ${Math.round(performance.now() - checkStartedAt)}ms`);
+        return cached.url;
+      }
+      const encodeStartedAt = performance.now();
+      const base64 = await blobToBase64(blob);
+      const encodeMs = Math.round(performance.now() - encodeStartedAt);
+      const writeStartedAt = performance.now();
+      const written = await LaneAudio.writeCacheFile({ name, base64 });
+      if (prefix === "track") diag(`native audio file: created ${blob.size} bytes; lookup=${Math.round(encodeStartedAt - checkStartedAt)}ms encode=${encodeMs}ms write=${Math.round(performance.now() - writeStartedAt)}ms`);
+      return written.url;
+    })();
     file.catch(() => nextFiles.delete(key));
     nextFiles.set(key, file);
     // the native side keeps a bounded number of files: forget the oldest here too
@@ -152,7 +172,7 @@ export async function queueNativeNext(afterTrackId: string, items: NativeNextIte
   const out: Parameters<LaneAudioPlugin["queueNext"]>[0]["items"] = [];
   for (const item of items) {
     let url = item.source.url ?? "";
-    if (item.source.blob) url = await nextFileFor(item.trackId, item.source.blob);
+    if (item.source.blob) url = await nativeFileFor(item.trackId, item.source.blob, "next");
     if (!url) continue;
     out.push({ trackId: item.trackId, url, headers: url.startsWith("http") ? headersForUrl(url) : {}, ...item.meta });
   }
@@ -374,12 +394,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
     try {
       if (src.startsWith("blob:")) {
         const blob: Blob = blobsByUrl.get(src) ?? (await fetch(src).then((r) => r.blob()));
-        const ext = (blob.type.split("/")[1] || "bin").replace(/[^a-z0-9]/gi, "");
-        const written = await LaneAudio.writeCacheFile({
-          name: `track-${Date.now()}.${ext}`,
-          base64: await blobToBase64(blob),
-        });
-        url = written.url;
+        url = await nativeFileFor(nowPlaying.trackId ?? "audio", blob, "track");
       }
       if (token !== loadToken) return;
       const startPositionMs = startAtMs;
@@ -388,6 +403,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
         diag(`load: starting at ${Math.round(startPositionMs / 1000)}s`);
         positionMs = startPositionMs;
       }
+      const nativeLoadStartedAt = performance.now();
       await LaneAudio.load({
         url,
         headers: url.startsWith("http") ? headersForUrl(url) : {},
@@ -395,6 +411,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
         startPositionMs: Math.round(startPositionMs),
         autoplay: wantPlay,
       });
+      diag(`native player load command: ${Math.round(performance.now() - nativeLoadStartedAt)}ms`);
     } catch (e) {
       if (token !== loadToken) return;
       error = new NativeMediaError(4, e instanceof Error ? e.message : String(e));
@@ -463,7 +480,9 @@ export function createNativeAudioElement(): HTMLAudioElement {
     let loading: Promise<void>;
     do { loading = pendingLoad; await loading; } while (loading !== pendingLoad);
     if (!wantPlay) return;
+    const nativePlayStartedAt = performance.now();
     await LaneAudio.play();
+    diag(`native player play command: ${Math.round(performance.now() - nativePlayStartedAt)}ms`);
   };
   (el as unknown as { pause: () => void }).pause = () => {
     wantPlay = false;

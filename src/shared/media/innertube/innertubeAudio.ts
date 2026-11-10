@@ -6,6 +6,8 @@ import { log } from "@/shared/utils/logger";
 import { getWebPlayer, resetWebRemixSession, resolveWebRemixAudioStream } from "./webRemixAudio";
 import { resolveInvidiousAudioStream } from "./invidiousFallback";
 import { isBrowserRuntime } from "@/shared/platform/browser";
+import { isNativeApp } from "@/shared/platform/native";
+import { diag } from "@/shared/platform/diag";
 import {
   extractAudioFormats,
   playabilityError,
@@ -106,6 +108,7 @@ async function resolveViaWebRemix(
   failures: string[],
 ): Promise<ResolvedAudioStream | null> {
   for (let attempt = 0; attempt < WEB_REMIX_ATTEMPTS; attempt += 1) {
+    const attemptStartedAt = performance.now();
     try {
       const stream = await resolveWebRemixAudioStream(videoId, options);
       // the stream is tied to the client that asked for it: the WebView's own UA
@@ -117,6 +120,7 @@ async function resolveViaWebRemix(
       stream.url = await assertStreamReachable(stream.url, stream.contentLength, options.signal);
       rememberStreamUserAgent(stream.url, ua);
       webRemixFailures = 0;
+      if (isNativeApp()) diag(`stream resolve: WEB_REMIX succeeded in ${Math.round(performance.now() - attemptStartedAt)}ms`);
       return stream;
     } catch (error) {
       if (options.signal?.aborted) throw error;
@@ -125,6 +129,11 @@ async function resolveViaWebRemix(
       lastWebRemixError = message;
       failures.push(`WEB_REMIX: ${message}`);
       log("yellow", "playback", `WEB_REMIX attempt ${attempt + 1} failed: ${message}`);
+      if (isNativeApp()) diag(`stream resolve: WEB_REMIX attempt ${attempt + 1} failed in ${Math.round(performance.now() - attemptStartedAt)}ms (${message.slice(0, 90)})`);
+      // A 4xx playability result (age gate, unavailable/private video, etc.)
+      // is about this video, not a transient request failure. Repeating the
+      // same WEB_REMIX request only adds latency before trying other clients.
+      if (error instanceof InnertubeError && error.status >= 400 && error.status < 500) break;
     }
   }
   webRemixFailures += 1;
@@ -203,13 +212,17 @@ export async function resolveDirectAudioStream(
   // Explicit profile lists are ordered by the caller (for example, signed-in
   // YouTube TV first); only the default public list follows the last good client.
   for (const profile of options.profiles ?? orderedProfiles(PLAYBACK_PROFILES)) {
+    const profileStartedAt = performance.now();
     try {
       const stream = await resolveWithProfile(videoId, profile, options);
       lastWorkingProfile = profile;
+      if (isNativeApp()) diag(`stream resolve: ${profile.clientName} succeeded in ${Math.round(performance.now() - profileStartedAt)}ms`);
       return stream;
     } catch (error) {
       if (options.signal?.aborted) throw error;
-      failures.push(`${profile.clientName}: ${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(`${profile.clientName}: ${message}`);
+      if (isNativeApp()) diag(`stream resolve: ${profile.clientName} failed in ${Math.round(performance.now() - profileStartedAt)}ms (${message.slice(0, 90)})`);
     }
   }
   try {

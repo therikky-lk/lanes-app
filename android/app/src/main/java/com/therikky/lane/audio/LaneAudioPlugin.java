@@ -199,6 +199,16 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     }
 
     @PluginMethod
+    public void updateArtwork(PluginCall call) {
+        String trackId = call.getString("trackId", "");
+        String artwork = call.getString("artwork", "");
+        main.post(() -> {
+            PlayerHolder.get(getContext()).updateArtwork(trackId, artwork);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
     public void load(PluginCall call) {
         String url = call.getString("url");
         if (url == null) {
@@ -302,6 +312,22 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
             PlayerHolder.get(getContext()).setLiked(liked);
             call.resolve();
         });
+    }
+
+    /** blobs (uploaded files, cached audio) can't be streamed natively: park them in the cache */
+    @PluginMethod
+    public void getCacheFile(PluginCall call) {
+        String name = call.getString("name", "audio.bin").replaceAll("[^A-Za-z0-9._-]", "_");
+        long size = call.getLong("size", -1L);
+        File file = new File(new File(getContext().getCacheDir(), "lane-audio"), name);
+        JSObject result = new JSObject();
+        if (file.isFile() && file.length() == size) {
+            // Keep a reused track near the newest end of the bounded cache.
+            //noinspection ResultOfMethodCallIgnored
+            file.setLastModified(System.currentTimeMillis());
+            result.put("url", "file://" + file.getAbsolutePath());
+        }
+        call.resolve(result);
     }
 
     /** blobs (uploaded files, cached audio) can't be streamed natively: park them in the cache */

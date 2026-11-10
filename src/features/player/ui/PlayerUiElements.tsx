@@ -24,7 +24,7 @@ import { isRadioContext, nextRepeatMode } from "../engine/radioMode";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { ArtistLink } from "@/features/artist";
-import { useCoverReady, CoverImage } from "@/features/covers";
+import { useCoverReady, CoverImage, preloadCoverArt } from "@/features/covers";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
 import SourceBadge from "@/shared/ui/SourceBadge";
 import { VolumePicker } from "./VolumePicker";
@@ -108,6 +108,12 @@ export const PlayerUiElements = memo(function PlayerUiElements({
   }, [track, isLiked, likeMutation, unlikeMutation]);
 
   const isCoverLoaded = useCoverReady(coverUrl);
+  const previousCoverUrl = player.queue[player.currentIndex - 1]?.coverUrl;
+  const nextCoverUrl = player.queue[player.currentIndex + 1]?.coverUrl;
+  useEffect(() => {
+    void preloadCoverArt(previousCoverUrl);
+    void preloadCoverArt(nextCoverUrl);
+  }, [previousCoverUrl, nextCoverUrl]);
 
   // phones: no hover, so a tap on the cover shows the heart for a moment and a
   // double tap likes the track (with a burst)

@@ -8,6 +8,8 @@ import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPla
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
 import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
+import { isNativeApp } from "@/shared/platform/native";
+import { diag } from "@/shared/platform/diag";
 
 export interface LibraryPlaylistSummary {
   id: string;
@@ -337,9 +339,13 @@ export function usePlaylist(id: string | null) {
 
     const fetchDetail = async (isBackground = false) => {
       if (!isBackground && !queryCache.get(cacheKey)) setIsLoading(true);
+      const requestStartedAt = performance.now();
+      let apiMs = 0;
       try {
+        const apiStartedAt = performance.now();
         let response = await api.getUserPlaylist(id);
         response = await migrateLocalPlaylistEntries(id, response);
+        apiMs = Math.round(performance.now() - apiStartedAt);
         if (!active) return;
 
         const covers = extractCovers(response.items);
@@ -366,7 +372,9 @@ export function usePlaylist(id: string | null) {
         };
         writeCoverCache(coverCache);
 
+        const coversStartedAt = performance.now();
         const remoteTracks = await replaceTrackCoversWithYandex(response.items.map(toTrack));
+        const coversMs = Math.round(performance.now() - coversStartedAt);
         const itemIds = new Set(response.items.map((item) => item.track.id));
         const localTracks = readLocalEntries(response.playlist.description).filter((entry) => !itemIds.has(entry.id)).map(localEntryToTrack);
         const detail: LibraryPlaylistDetail = {
@@ -382,7 +390,9 @@ export function usePlaylist(id: string | null) {
         };
         queryCache.set(cacheKey, detail);
         setData(detail);
+        if (isNativeApp()) diag(`playlist load: tracks=${detail.trackCount} cache=${initial ? 1 : 0} api=${apiMs}ms covers=${coversMs}ms total=${Math.round(performance.now() - requestStartedAt)}ms`);
       } catch (err) {
+        if (isNativeApp()) diag(`playlist load: failed after ${Math.round(performance.now() - requestStartedAt)}ms (${err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100)})`);
         if (active) setError(err);
       } finally {
         if (active) setIsLoading(false);
