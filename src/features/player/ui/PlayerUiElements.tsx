@@ -117,7 +117,6 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
   // phones: no hover, so a tap on the cover shows the heart for a moment and a
   // double tap likes the track (with a burst)
-  const [heartShown, setHeartShown] = useState(false);
   const [burst, setBurst] = useState(0);
   const coverDragX = useMotionValue(0);
   const coverStep = useRef(1);
@@ -137,15 +136,6 @@ export const PlayerUiElements = memo(function PlayerUiElements({
   useEffect(() => () => { coverAnimation.current?.stop(); setArtworkInteracting(false); }, []);
   const lastTapRef = useRef(0);
   const coverPointerStartRef = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showHeart = useCallback(() => {
-    setHeartShown(true);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setHeartShown(false), 2500);
-  }, []);
-  useEffect(() => () => {
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-  }, []);
   const onCoverPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isMobile || (e.target as HTMLElement).closest("button")) return;
     if (swipePending.current || !e.isPrimary) return;
@@ -196,14 +186,12 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           togglingRef.current = true;
           likeMutation.mutate(track.id, { onSettled: () => (togglingRef.current = false) });
         }
-        showHeart();
         return;
       }
       lastTapRef.current = now;
-      showHeart();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [track, player.currentIndex, isLiked, likeMutation, showHeart, isMobile, coverDragX],
+    [track, player.currentIndex, isLiked, likeMutation, isMobile, coverDragX],
   );
 
   const { t } = useTranslation();
@@ -227,7 +215,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           const dx = event.clientX - start.x, dy = event.clientY - start.y;
           if (!start.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 8) {
             start.axis = Math.abs(dx) > Math.abs(dy) * 1.25 ? "x" : "y";
-            if (start.axis === "x") { setHeartShown(false); setArtworkInteracting(true); }
+            if (start.axis === "x") setArtworkInteracting(true);
           }
           if (start.axis !== "x") return;
           if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
@@ -275,19 +263,15 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             </motion.div>
           )}
         </AnimatePresence>
-        {/* like button: centred on the cover; desktop shows it on hover, phones after a tap */}
+        {/* Keep the like control visible on the cover without requiring a tap first. */}
         {<button
           type="button"
           aria-label={isLiked ? t("common.unlike") : t("common.like")}
-          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 inline-flex h-[72px] w-[72px] items-center justify-center rounded-full ${
-            isMobile ? (heartShown && burst === 0 ? "opacity-100" : "opacity-0 pointer-events-none") : "opacity-0 group-hover/cover:opacity-100"
-          } focus-visible:opacity-100 transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] bg-black/55 backdrop-blur-[2px] border-none hover:bg-black/65 ${
+          aria-pressed={isLiked}
+          className={`absolute right-3 top-3 z-20 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full opacity-95 transition-[opacity,transform,background-color] duration-200 ease-out hover:opacity-100 active:scale-[0.92] bg-black/55 backdrop-blur-[2px] border-none hover:bg-black/65 ${
             isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"
           }`}
-          onClick={() => {
-            handleLikeToggle();
-            if (isMobile) showHeart();
-          }}
+          onClick={handleLikeToggle}
           style={{ cursor: "pointer" }}
         >
           {/* subtle crossfade: outline heart out, filled heart in with a slight scale */}
@@ -297,7 +281,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <HeartLine size={34} />
+            <HeartLine size={24} />
           </motion.div>
           <motion.div
             initial={false}
@@ -309,7 +293,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             }
             className="absolute inset-0 flex items-center justify-center"
           >
-            <HeartFill size={34} />
+            <HeartFill size={24} />
           </motion.div>
         </button>}
       </div>
