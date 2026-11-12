@@ -935,6 +935,7 @@ export class PlayerRuntime {
         return;
       }
 
+      const nativePlayback = isNativeApp();
       const streamCodec = stream.codec;
       const streamBitrate = stream.bitrate;
       this.currentSessionExpiresAt = stream.expiresAtMs;
@@ -943,7 +944,7 @@ export class PlayerRuntime {
       const url = playable.blob ? URL.createObjectURL(playable.blob) : playable.url!;
       // Android: the native player starts right at the position (a reload
       // after a seek used to start the track over)
-      if (isNativeApp()) {
+      if (nativePlayback) {
         const startAt = this.pendingStartPositionMs > 0 ? this.pendingStartPositionMs : startPositionMs;
         (this.audio as unknown as { laneStartAt: number }).laneStartAt = startAt;
       }
@@ -963,7 +964,9 @@ export class PlayerRuntime {
         `stream attached: ${streamCodec} ${streamBitrate} bps (${track.title})`,
       );
 
-      if (this.audio.readyState < 3) {
+      // Media3 starts buffering and applies play intent itself. Its synthetic
+      // canplay event depends on duration metadata and may arrive much later.
+      if (!nativePlayback && this.audio.readyState < 3) {
         await new Promise<void>((resolve) => {
           const timeout = setTimeout(resolve, 3000);
           const onCanPlay = () => {
@@ -988,14 +991,21 @@ export class PlayerRuntime {
       );
 
       if (epoch === this.loadEpoch) {
-        usePlayerStore.getState().setStatus("playing");
+        if (!nativePlayback) usePlayerStore.getState().setStatus("playing");
         this.fadeVolume(usePlayerStore.getState().volume, 180);
-        this.cacheAudioInBackground(track, stream, bgCacheController.signal);
+        const cache = () => this.cacheAudioInBackground(track, stream, bgCacheController.signal);
+        if (nativePlayback && this.diagnosedPlayingEpoch !== epoch) {
+          // The download uses the same stream as Media3. Let the first buffer
+          // fill before a second request starts competing for it.
+          this.audio.addEventListener("playing", cache, { once: true, signal: bgCacheController.signal });
+        } else {
+          cache();
+        }
       }
       log(
         "green",
         "playback",
-        `started: ${track.title} in ${audioStartLatencyMs}ms`,
+        `${nativePlayback ? "play requested" : "started"}: ${track.title} in ${audioStartLatencyMs}ms`,
       );
       if (isNativeApp()) diag(`audio timing: stream-start-command=${audioStartLatencyMs}ms total=${Math.round(performance.now() - this.loadStartTime)}ms`);
 
