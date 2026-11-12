@@ -7,6 +7,7 @@ import { notifyLibraryChanged } from "../../../../hooks/usePlaylists";
 import { importedPlaylistDescription, readPlaylistSource } from "../../../playlistCoverMarker";
 import { matchWithRetry } from "../../manager/clientImportManager";
 import { appendImportedPlaylistTracks, finalizeImportedPlaylist } from "../../manager/finalizeImport";
+import { delay } from "../../shared/http";
 import { loadYandexLikedTracks } from "./yandexMusicSource";
 
 type ImportErrorCode = "lane_sign_in" | "account_changed" | "busy" | "matching_unavailable";
@@ -116,11 +117,12 @@ async function forEachTrack<T>(tracks: T[], work: (track: T, index: number) => P
   if (failed) throw failure;
 }
 
-async function getLikedTracks(owner: string): Promise<Track[]> {
+async function getLikedTracks(owner: string, signal?: AbortSignal): Promise<Track[]> {
   const tracks: Track[] = [];
   const cursors = new Set<string>();
   let cursor: string | undefined;
   do {
+    signal?.throwIfAborted();
     checkAccount(owner);
     const page = await api.listLikedTracks(100, cursor);
     for (const { track } of page.items) tracks.push(canonicalSnapshot(track));
@@ -133,9 +135,10 @@ async function getLikedTracks(owner: string): Promise<Track[]> {
   return tracks;
 }
 
-async function copyToLikes(owner: string, tracks: Track[]): Promise<YandexLikesResult> {
+async function copyToLikes(owner: string, tracks: Track[], signal?: AbortSignal): Promise<YandexLikesResult> {
   const result = { added: 0, failed: 0 };
-  const liked = new TrackIndex(await getLikedTracks(owner));
+  const liked = new TrackIndex(await getLikedTracks(owner, signal));
+  signal?.throwIfAborted();
   checkAccount(owner);
   const missing = tracks.filter((track) => {
     if (!track?.id || track.id.startsWith("local:") || liked.has(track)) return false;
@@ -147,6 +150,7 @@ async function copyToLikes(owner: string, tracks: Track[]): Promise<YandexLikesR
   try {
     await forEachTrack(missing, async (track) => {
       for (let attempt = 0; !rateLimited; attempt++) {
+        signal?.throwIfAborted();
         checkAccount(owner);
         try {
           await api.likeTrackSnapshot(track.id, track);
@@ -158,11 +162,12 @@ async function copyToLikes(owner: string, tracks: Track[]): Promise<YandexLikesR
             rateLimited = true;
             break;
           }
-          await new Promise((resolve) => setTimeout(resolve, 1_500 * 2 ** attempt));
+          await delay(1_500 * 2 ** attempt, signal);
         }
       }
       result.failed++;
     });
+    signal?.throwIfAborted();
     return result;
   } finally {
     if (result.added > 0 && accountKey() === owner) {
@@ -186,43 +191,51 @@ export async function importYandexMusic(
   title: string,
   alsoLike: boolean,
   onProgress: (progress: YandexImportProgress) => void,
+  signal?: AbortSignal,
 ): Promise<YandexImportResult> {
+  signal?.throwIfAborted();
   if (importing) throw new YandexImportError("busy");
   const owner = requireAccount();
   importing = true;
   try {
     onProgress({ phase: "loading", done: 0, total: 0 });
-    const { total, tracks } = await loadYandexLikedTracks(token);
+    const { total, tracks } = await loadYandexLikedTracks(token, signal);
+    signal?.throwIfAborted();
     checkAccount(owner);
     if (tracks.length === 0) return { added: 0, skipped: total };
 
     const { items: playlists } = await api.listPlaylists();
+    signal?.throwIfAborted();
     const existing = playlists.find((playlist) => readPlaylistSource(playlist.description) === "yandex");
     const currentTracks = existing
       ? (await api.getUserPlaylist(existing.id)).items.map(({ track }) => canonicalSnapshot(track))
       : [];
+    signal?.throwIfAborted();
     const current = new TrackIndex(currentTracks);
     const matches: (Track | undefined)[] = [];
     let done = 0;
     let lookupErrors = 0;
     onProgress({ phase: "matching", done, total: tracks.length });
     await forEachTrack(tracks, async (track, index) => {
+      signal?.throwIfAborted();
       checkAccount(owner);
       const known = current.matchingTrack(track);
       if (known) {
         matches[index] = known;
       } else {
         try {
-          const match = await matchWithRetry(track);
+          const match = await matchWithRetry(track, signal);
           if (match.status === "approved") matches[index] = match.track;
           else if (match.reason === "catalog_lookup_failed") lookupErrors++;
         } catch (error) {
-          if (isRateLimit(error)) throw error;
+          if (signal?.aborted || isRateLimit(error)) throw error;
           lookupErrors++;
         }
       }
+      signal?.throwIfAborted();
       onProgress({ phase: "matching", done: ++done, total: tracks.length });
     });
+    signal?.throwIfAborted();
     checkAccount(owner);
     const matched = matches.filter((track): track is Track => Boolean(track));
     if (matched.length === 0 && lookupErrors > 0) throw new YandexImportError("matching_unavailable");
@@ -232,6 +245,7 @@ export async function importYandexMusic(
     // Read the current playlist again before appending. An edit made while
     // catalog matching was running should be reflected in the duplicate check.
     const latest = existing ? await api.getUserPlaylist(existing.id) : null;
+    signal?.throwIfAborted();
     checkAccount(owner);
     const contents = new TrackIndex(latest?.items.map(({ track }) => canonicalSnapshot(track)));
     const missing = matched.filter((track) => {
@@ -244,22 +258,24 @@ export async function importYandexMusic(
     let added = 0;
     try {
       if (!playlistId) {
-        const saved = await trackPendingWrite(finalizeImportedPlaylist(title, importedPlaylistDescription("yandex"), missing));
+        const saved = await trackPendingWrite(finalizeImportedPlaylist(title, importedPlaylistDescription("yandex"), missing, signal));
         playlistId = saved.playlistId;
         added = saved.saved;
       } else if (missing.length > 0) {
-        added = await trackPendingWrite(appendImportedPlaylistTracks(playlistId, missing));
+        added = await trackPendingWrite(appendImportedPlaylistTracks(playlistId, missing, signal));
       }
     } finally {
       if (accountKey() === owner) notifyLibraryChanged();
     }
+    signal?.throwIfAborted();
     checkAccount(owner);
     if (!alsoLike) return { playlistId, added, skipped };
 
     try {
-      const likes = await trackPendingWrite(copyToLikes(owner, matched));
+      const likes = await trackPendingWrite(copyToLikes(owner, matched, signal));
       return { playlistId, added, skipped, likes };
     } catch {
+      signal?.throwIfAborted();
       return { playlistId, added, skipped, likesUnavailable: true };
     }
   } finally {

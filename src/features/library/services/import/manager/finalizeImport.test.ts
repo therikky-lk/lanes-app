@@ -80,4 +80,18 @@ describe("finalizeImportedPlaylist", () => {
     await expect(finalizeImportedPlaylist("Playlist", undefined, input)).rejects.toThrow("Could not save");
     expect(apiMock.deletePlaylist).toHaveBeenCalledWith("new-playlist");
   });
+
+  it("keeps the saved chunk and sends no further writes after cancellation", async () => {
+    const controller = new AbortController();
+    apiMock.addPlaylistTrackSnapshots.mockImplementationOnce(async (_playlistId: string, chunk: Track[]) => {
+      controller.abort();
+      return fullResult(chunk);
+    });
+
+    await expect(finalizeImportedPlaylist("Playlist", undefined, tracks(231), controller.signal))
+      .rejects.toMatchObject({ name: "AbortError" });
+    expect(apiMock.addPlaylistTrackSnapshots).toHaveBeenCalledTimes(1);
+    expect(apiMock.addPlaylistTrack).not.toHaveBeenCalled();
+    expect(apiMock.deletePlaylist).not.toHaveBeenCalled();
+  });
 });

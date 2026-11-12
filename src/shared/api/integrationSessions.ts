@@ -31,7 +31,9 @@ async function request<T>(provider: keyof Sessions, owner: string, init?: Reques
     cache: "no-store",
     credentials: "omit",
     redirect: "error",
-    signal: AbortSignal.timeout(15_000),
+    signal: init?.signal
+      ? AbortSignal.any([init.signal, AbortSignal.timeout(15_000)])
+      : AbortSignal.timeout(15_000),
   });
   if (!response.ok) throw new IntegrationSessionError(response.status);
   const result = await response.json() as T;
@@ -39,8 +41,8 @@ async function request<T>(provider: keyof Sessions, owner: string, init?: Reques
   return result;
 }
 
-export function readIntegration<P extends keyof Sessions>(provider: P, owner: string, knownRevision = 0) {
-  return request<IntegrationSession<Sessions[P]>>(provider, owner, undefined, knownRevision ? `?revision=${knownRevision}` : "");
+export function readIntegration<P extends keyof Sessions>(provider: P, owner: string, knownRevision = 0, signal?: AbortSignal) {
+  return request<IntegrationSession<Sessions[P]>>(provider, owner, { signal }, knownRevision ? `?revision=${knownRevision}` : "");
 }
 
 export function writeIntegration<P extends keyof Sessions>(
