@@ -42,6 +42,7 @@ import { playerEngine, usePlayerStore } from "@/features/player";
 import type { Track } from "@/shared/types";
 import { useTranslation } from "@/languages";
 import { api } from "@/shared/api";
+import type { Track as TrackSnapshot } from "@/shared/contracts";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { isLocalPlaylistItemId, withLocalAvailability } from "@/features/local/localPlaylistTracks";
@@ -134,6 +135,19 @@ function formatLikedDateRelative(value: Track["likedAt"]): string | undefined {
               ? ["minute", 60]
               : ["second", 1];
   return new Intl.RelativeTimeFormat(navigator.language, { numeric: "auto" }).format(Math.round(seconds / divisor), unit);
+}
+
+function selectionSnapshot(track: Track): TrackSnapshot {
+  return {
+    id: track.id,
+    title: track.title,
+    artists: track.artistList?.map(({ id, name }) => ({ id: id ?? "", name }))
+      ?? [{ id: track.artistId ?? "", name: track.artists }],
+    durationMs: track.durationMs,
+    ...(track.coverUrl ? { cover: { url: track.coverUrl, width: 480, height: 480 } } : {}),
+    ...(track.album ? { album: track.album } : {}),
+    ...(track.explicit !== undefined ? { explicit: track.explicit } : {}),
+  };
 }
 
 const TrackItem = memo(function TrackItem({
@@ -237,6 +251,15 @@ function LibraryPlaylistContent() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isPlaylistEditMode, setIsPlaylistEditMode] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectionDrag = useRef<{ pointerId: number; index: number; checked: boolean } | null>(null);
+
+  const stopSelecting = () => {
+    selectionDrag.current = null;
+    setSelectedIds(new Set());
+    setSelecting(false);
+  };
   const [showScrollToolbar, setShowScrollToolbar] = useState(false);
   const trackFiltersRef = useRef<HTMLDivElement>(null);
   const reorderTracks = useReorderPlaylistTracks();
@@ -341,6 +364,7 @@ function LibraryPlaylistContent() {
 
   useEffect(() => {
     setIsPlaylistEditMode(false);
+    stopSelecting();
     setShowScrollToolbar(false);
   }, [decodedId]);
 
@@ -376,6 +400,40 @@ function LibraryPlaylistContent() {
     () => search.matches ?? currentTracks.map((track, index) => ({ track, index })),
     [search.matches, currentTracks],
   );
+
+  const canSelectTracks = useMemo(() => allTracks.some((track) => !track.onlyOnDevice), [allTracks]);
+  const selectedTracks = useMemo(() => {
+    if (!selectedIds.size) return [];
+    return [...new Map(allTracks.filter((track) => selectedIds.has(track.id) && !track.onlyOnDevice).map((track) => [track.id, track])).values()];
+  }, [allTracks, selectedIds]);
+
+  const setSelectionRange = (start: number, end: number, checked: boolean) => {
+    const ids = visibleTracks.slice(Math.min(start, end), Math.max(start, end) + 1)
+      .filter(({ track }) => !track.onlyOnDevice).map(({ track }) => track.id);
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const moveSelection = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = selectionDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const row = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-selection-index]");
+    if (!row || !event.currentTarget.contains(row)) return;
+    const index = Number(row.dataset.selectionIndex);
+    if (index === drag.index) return;
+    setSelectionRange(drag.index, index, drag.checked);
+    drag.index = index;
+  };
+
+  const endSelectionDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (selectionDrag.current?.pointerId === event.pointerId) selectionDrag.current = null;
+  };
 
   // the grid mounts tiles a screenful at a time: hundreds of tiles with a
   // menu each at once froze the page on big liked lists
@@ -1087,7 +1145,7 @@ function LibraryPlaylistContent() {
                                 id: "edit-order",
                                 icon: <LuPencil size={15} />,
                                 label: t("playlist.edit_order"),
-                                onClick: () => setIsPlaylistEditMode(true),
+                                onClick: () => { stopSelecting(); setIsPlaylistEditMode(true); },
                               },
                               {
                                 id: "rename",
@@ -1228,7 +1286,27 @@ function LibraryPlaylistContent() {
                   })}
                 </div>
               )}
-              {isLikesMode && !isMobile && trackView === "list" && currentTracks.length > 0 && (
+              {canSelectTracks && !isPlaylistEditMode && (
+                <div className={selecting
+                  ? "sticky top-0 z-[5] mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-bg-elevated px-2 py-2"
+                  : "mb-2 flex items-center px-2"
+                }>
+                  {selecting ? (
+                    <>
+                      <span className="mr-auto text-[13px] text-text-secondary">{t("common.tracks", { count: selectedTracks.length })}</span>
+                      <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
+                      <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
+                        useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(selectionSnapshot));
+                      }}>{t("common.add_to_playlist")}</Button>
+                    </>
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setSelecting(true)}>
+                      {t("playlist.select_tracks")}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {isLikesMode && !selecting && !isMobile && trackView === "list" && currentTracks.length > 0 && (
                 <div
                   className="grid h-[38px] items-center px-[8px] text-[12px] text-text-tertiary md:grid-cols-[minmax(0,1fr)_minmax(120px,30%)_140px_76px]"
                   style={{ fontFamily: "var(--font-inter), sans-serif" }}
@@ -1259,7 +1337,7 @@ function LibraryPlaylistContent() {
                 </div>
               ) : search.matches && search.matches.length === 0 ? (
                 <TrackSearchEmpty query={search.activeQuery} onClear={() => search.setQuery("")} />
-              ) : trackView === "grid" && !isMobile ? (
+              ) : trackView === "grid" && !isMobile && !selecting ? (
                 <div
                   className="grid gap-x-[16px] gap-y-[18px] px-[8px] pb-[8px]"
                   style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}
@@ -1294,6 +1372,10 @@ function LibraryPlaylistContent() {
               ) : (
               <div
                 ref={trackListContainerRef}
+                onPointerMove={selecting ? moveSelection : undefined}
+                onPointerUp={selecting ? endSelectionDrag : undefined}
+                onPointerCancel={selecting ? endSelectionDrag : undefined}
+                onLostPointerCapture={selecting ? endSelectionDrag : undefined}
                 className="relative"
                 style={{
                   height: `${rowVirtualizer.getTotalSize()}px`,
@@ -1323,6 +1405,49 @@ function LibraryPlaylistContent() {
                   if (!entry) return null;
                   // original position; equals the row index whenever not filtering
                   const { track, index } = entry;
+
+                  if (selecting) {
+                    const row = virtualRow.index;
+                    const checked = selectedIds.has(track.id);
+                    const disabled = Boolean(track.onlyOnDevice);
+                    return (
+                      <button
+                        key={virtualRow.key}
+                        type="button"
+                        disabled={disabled}
+                        aria-pressed={checked}
+                        data-selection-index={row}
+                        className="absolute left-0 top-0 flex w-full items-center gap-3 rounded-xl border-0 bg-transparent px-1 text-left text-text-primary hover:bg-border-alpha-14 disabled:opacity-45"
+                        style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start - listScrollMargin}px)` }}
+                        onClick={(event) => {
+                          if (event.detail !== 0 && (event.target as Element).closest("[data-selection-handle]")) return;
+                          setSelectionRange(row, row, !checked);
+                        }}
+                      >
+                        <span
+                          data-selection-handle
+                          className="grid h-full w-11 shrink-0 touch-none place-items-center"
+                          onPointerDown={(event) => {
+                            if (disabled || !event.isPrimary || event.button !== 0) return;
+                            event.currentTarget.setPointerCapture(event.pointerId);
+                            selectionDrag.current = { pointerId: event.pointerId, index: row, checked: !checked };
+                            setSelectionRange(row, row, !checked);
+                          }}
+                        >
+                          <span aria-hidden="true" className={`grid size-5 place-items-center rounded-md border ${checked ? "border-text-primary bg-text-primary text-bg-primary" : "border-text-tertiary"}`}>
+                            {checked && <CheckLine size={15} />}
+                          </span>
+                        </span>
+                        <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-bg-elevated">
+                          <CoverImage src={track.coverUrl || viewData.coverUrl} alt="" fill sizes="40px" placeholder="empty" className="object-cover" />
+                        </span>
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-[14px]">{track.title}</span>
+                          <span className="truncate text-[13px] text-text-secondary">{track.artists}</span>
+                        </span>
+                      </button>
+                    );
+                  }
 
                   const isThisDragged = isDragging && index === dragIndex;
 

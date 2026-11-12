@@ -1,3 +1,4 @@
+import { addPlaylistSelection } from "../../services/addPlaylistSelection";
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
@@ -48,6 +49,7 @@ export default function CreatePlaylistModal() {
   const open = useModalStore((state) => state.createPlaylistOpen);
   const initialUrl = useModalStore((state) => state.createPlaylistInitialUrl);
   const pendingTrack = useModalStore((state) => state.createPlaylistPendingTrack);
+  const pendingSelection = useModalStore((state) => state.createPlaylistPendingSelection);
   const close = useModalStore((state) => state.closeCreatePlaylist);
 
   const [tab, setTab] = useState<Tab>("create");
@@ -56,6 +58,7 @@ export default function CreatePlaylistModal() {
   const [cover, setCover] = useState<string | null>(null);
   const [importUrl, setImportUrl] = useState("");
 
+  const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [createError, setCreateError] = useState("");
   const [importError, setImportError] = useState("");
@@ -67,7 +70,7 @@ export default function CreatePlaylistModal() {
   const addTrack = useAddPlaylistTracks();
 
   const detectedSource = detectSourceLabel(importUrl);
-  const isCreate = tab === "create";
+  const isCreate = tab === "create" || pendingSelection.length > 0;
 
   useEffect(() => {
     if (open) {
@@ -85,13 +88,14 @@ export default function CreatePlaylistModal() {
   }, [open, initialUrl]);
 
   async function handleCreate() {
-    if (createPlaylist.isPending) return;
+    if (saving) return;
     const trimmed = title.trim();
     if (!trimmed) {
       setCreateError(t("common.name_required"));
       return;
     }
     setCreateError("");
+    setSaving(true);
     try {
       const playlist = await createPlaylist.mutateAsync({
         title: trimmed.slice(0, TITLE_MAX),
@@ -114,9 +118,13 @@ export default function CreatePlaylistModal() {
       }
       notifyLibraryChanged();
 
-      if (pendingTrack) {
+      if (pendingTrack || pendingSelection.length) {
         try {
-          await addTrack.mutateAsync({ playlistId: playlist.id, trackId: pendingTrack.id, trackSnapshot: pendingTrack.trackSnapshot });
+          if (pendingTrack) {
+            await addTrack.mutateAsync({ playlistId: playlist.id, trackId: pendingTrack.id, trackSnapshot: pendingTrack.trackSnapshot });
+          } else {
+            await addPlaylistSelection(playlist.id, pendingSelection);
+          }
           toast(t("common.added_to_playlist"), "checkmark", {
             description: playlist.title || trimmed,
           });
@@ -128,6 +136,8 @@ export default function CreatePlaylistModal() {
       close();
     } catch {
       setCreateError(t("common.failed_create_playlist"));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -174,7 +184,7 @@ export default function CreatePlaylistModal() {
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => (!next ? close() : undefined)}
+      onOpenChange={(next) => { if (!next && !saving) close(); }}
       maxWidth={440}
       animateLayout
       className="!rounded-[20px] !border-border-primary/40 !bg-bg-elevated/90 pt-[18px] shadow-[0_24px_80px_rgba(0,0,0,0.38)] backdrop-blur-2xl"
@@ -186,12 +196,13 @@ export default function CreatePlaylistModal() {
               {isCreate ? t("library.create_playlist") : t("common.import_playlist")}
             </h2>
             <p className="m-0 mt-[2px] text-[13px] text-text-tertiary" style={font}>
-              {isCreate ? t("common.create_empty_playlist") : t("common.import_playlist_description")}
+              {pendingSelection.length ? t("common.tracks", { count: pendingSelection.length }) : isCreate ? t("common.create_empty_playlist") : t("common.import_playlist_description")}
             </p>
           </div>
           <button
             type="button"
             aria-label={t("common.close")}
+            disabled={saving}
             onClick={close}
             className="inline-flex h-[32px] w-[32px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-text-secondary transition-colors duration-150 hover:text-text-primary"
           >
@@ -199,35 +210,37 @@ export default function CreatePlaylistModal() {
           </button>
         </div>
 
-        <div className="relative flex w-full items-center gap-[4px] rounded-[12px] border border-border-primary/25 bg-bg-primary/70 p-[4px]">
-          <motion.div
-            aria-hidden="true"
-            className="pointer-events-none absolute top-[4px] bottom-[4px] left-[4px] rounded-[9px] bg-bg-elevated shadow-sm"
-            animate={{ left: tab === "create" ? "4px" : "calc(50% - 2px)" }}
-            transition={{ type: "spring", stiffness: 450, damping: 35 }}
-            style={{ width: "calc((100% - 12px) / 2)" }}
-          />
-          {(
-            [
-              { id: "create", label: t("library.create_playlist") },
-              { id: "import", label: t("common.import") },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={`relative inline-flex flex-1 cursor-pointer select-none items-center justify-center rounded-[9px] border-0 bg-transparent px-[16px] py-[8px] text-[13px] leading-none transition-colors duration-150 active:scale-[0.98] ${
-                tab === item.id
-                  ? "text-text-primary"
-                  : "bg-transparent text-text-secondary hover:text-text-primary"
-              }`}
-              style={{ ...font, fontWeight: tab === item.id ? 500 : 400 }}
-            >
-              <span className="relative z-10">{item.label}</span>
-            </button>
-          ))}
-        </div>
+        {pendingSelection.length === 0 && (
+          <div className="relative flex w-full items-center gap-[4px] rounded-[12px] border border-border-primary/25 bg-bg-primary/70 p-[4px]">
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-[4px] bottom-[4px] left-[4px] rounded-[9px] bg-bg-elevated shadow-sm"
+              animate={{ left: tab === "create" ? "4px" : "calc(50% - 2px)" }}
+              transition={{ type: "spring", stiffness: 450, damping: 35 }}
+              style={{ width: "calc((100% - 12px) / 2)" }}
+            />
+            {(
+              [
+                { id: "create", label: t("library.create_playlist") },
+                { id: "import", label: t("common.import") },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={`relative inline-flex flex-1 cursor-pointer select-none items-center justify-center rounded-[9px] border-0 bg-transparent px-[16px] py-[8px] text-[13px] leading-none transition-colors duration-150 active:scale-[0.98] ${
+                  tab === item.id
+                    ? "text-text-primary"
+                    : "bg-transparent text-text-secondary hover:text-text-primary"
+                }`}
+                style={{ ...font, fontWeight: tab === item.id ? 500 : 400 }}
+              >
+                <span className="relative z-10">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {isCreate ? (
           <form
@@ -280,7 +293,7 @@ export default function CreatePlaylistModal() {
                 setTitle(e.target.value);
                 if (createError) setCreateError("");
               }}
-              disabled={createPlaylist.isPending}
+              disabled={saving}
               className="!h-[44px] !rounded-[12px] !border-border-primary/35 !bg-bg-primary/60 focus-within:!border-border-primary/70 [&_input]:cursor-text"
               rightSlot={
                 <span className="text-[11px] text-text-tertiary tabular-nums" style={font}>
@@ -293,7 +306,7 @@ export default function CreatePlaylistModal() {
               value={description}
               maxLength={300}
               rows={2}
-              disabled={createPlaylist.isPending}
+              disabled={saving}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full resize-none rounded-[12px] border border-border-primary/35 bg-bg-primary/60 px-[14px] py-[11px] text-[14px] font-[400] text-text-primary placeholder:text-text-tertiary outline-none transition-[border-color,background-color] duration-150 hover:border-border-primary/55 focus:border-border-primary/75 focus:bg-bg-primary/80 focus:ring-0 disabled:opacity-50"
               style={font}
@@ -304,8 +317,8 @@ export default function CreatePlaylistModal() {
               </span>
             )}
             <div className="flex items-center justify-end gap-[8px] mt-[2px]">
-              <Button type="submit" variant="primary" size="sm" disabled={createPlaylist.isPending}>
-                {createPlaylist.isPending ? t("common.adding") : t("common.create")}
+              <Button type="submit" variant="primary" size="sm" disabled={saving}>
+                {saving ? t("common.adding") : t("common.create")}
               </Button>
             </div>
           </form>

@@ -594,6 +594,7 @@
     "reorder_track": "Reordenar faixa"
   },
   "playlist": {
+    "select_tracks": "Selecionar faixas",
     "playlist": "Lista de reprodução",
     "liked_songs": "Curtidas",
     "untitled_playlist": "Playlist sem título",

@@ -39,6 +39,16 @@ export async function buildLocalPlaylistEntry(trackId: string): Promise<LocalPla
   };
 }
 
+export function localEntrySnapshot(entry: LocalPlaylistEntry) {
+  return {
+    id: entry.id,
+    title: entry.title,
+    artists: entry.artists ? entry.artists.split(/\s*,\s*/).filter(Boolean).map((name) => ({ id: "", name })) : [],
+    durationMs: entry.durationMs,
+    album: { id: `${DEVICE_ALBUM_PREFIX}${entry.deviceId}`, title: entry.deviceName },
+  };
+}
+
 export function localEntryToTrack(entry: LocalPlaylistEntry): Track {
   return {
     id: entry.id,

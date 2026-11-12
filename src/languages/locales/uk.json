@@ -594,6 +594,7 @@
     "reorder_track": "Перетягнути трек"
   },
   "playlist": {
+    "select_tracks": "Вибрати треки",
     "playlist": "Плейліст",
     "liked_songs": "Вподобані",
     "untitled_playlist": "Плейліст без назви",
