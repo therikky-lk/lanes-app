@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AddLine, DeleteLine } from "@mingcute/react";
 
 const ACTION_WIDTH = 76;
+const SWIPE_TRANSITION = "320ms cubic-bezier(.22,1,.36,1)";
 
 /** Phone swipe action: reveal an action or commit a long swipe. */
 export default function SwipeToDelete({ children, label, onDelete, onAddToQueue }: { children: ReactNode; label: string; onDelete?: () => void; onAddToQueue?: () => void }) {
@@ -74,21 +75,29 @@ export default function SwipeToDelete({ children, label, onDelete, onAddToQueue 
         if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; }
       }}
     >
-      <button
-        type="button"
-        data-swipe-action
-        disabled={departing}
-        aria-label={label}
-        aria-hidden={offset === 0}
-        tabIndex={offset === 0 ? -1 : 0}
-        onClick={(event) => { event.stopPropagation(); if (onAddToQueue) { setOffset(0); onAddToQueue(); } else onDelete?.(); }}
-        className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-[3px] border-0 px-[12px] text-white"
-        style={{ width: Math.max(ACTION_WIDTH, -offset), backgroundColor: onAddToQueue ? (armed ? "#15803d" : "#22c55e") : (armed ? "#dc2626" : "#ef4444"), visibility: offset === 0 ? "hidden" : "visible" }}
+      <div
+        className="absolute inset-0"
+        style={{
+          clipPath: `inset(0 0 0 calc(100% + ${offset}px))`,
+          transition: dragging ? "none" : `clip-path ${SWIPE_TRANSITION}`,
+        }}
       >
-        {onAddToQueue ? <AddLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} /> : <DeleteLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} />}
-        <span className="text-[11px] font-medium">{label}</span>
-      </button>
-      <div style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 320ms cubic-bezier(.22,1,.36,1)" }}>
+        <button
+          type="button"
+          data-swipe-action
+          disabled={departing || offset === 0}
+          aria-label={label}
+          aria-hidden={offset === 0}
+          tabIndex={offset === 0 ? -1 : 0}
+          onClick={(event) => { event.stopPropagation(); if (onAddToQueue) { setOffset(0); onAddToQueue(); } else onDelete?.(); }}
+          className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-[3px] border-0 px-[12px] text-white"
+          style={{ width: Math.max(ACTION_WIDTH, -offset), backgroundColor: onAddToQueue ? (armed ? "#15803d" : "#22c55e") : (armed ? "#dc2626" : "#ef4444") }}
+        >
+          {onAddToQueue ? <AddLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} /> : <DeleteLine size={22} style={{ transform: armed ? "scale(1.15)" : undefined, transition: "transform 120ms" }} />}
+          <span className="text-[11px] font-medium">{label}</span>
+        </button>
+      </div>
+      <div className="overflow-clip" style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : `transform ${SWIPE_TRANSITION}` }}>
         {children}
       </div>
     </div>

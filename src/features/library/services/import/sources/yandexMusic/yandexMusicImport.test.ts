@@ -67,7 +67,7 @@ it("reuses the saved playlist, skips duplicate recordings and preserves a live v
   const result = await importYandexMusic("token", "Music from Yandex", false, () => {});
   expect(result).toEqual({ playlistId: playlist.id, added: 1, skipped: 0 });
   expect(mocks.matchWithRetry).toHaveBeenCalledTimes(1);
-  expect(mocks.appendImportedPlaylistTracks).toHaveBeenCalledWith(playlist.id, [live]);
+  expect(mocks.appendImportedPlaylistTracks).toHaveBeenCalledWith(playlist.id, [live], undefined);
   expect(mocks.finalizeImportedPlaylist).not.toHaveBeenCalled();
   expect(mocks.api.likeTrackSnapshot).not.toHaveBeenCalled();
 });
@@ -76,7 +76,7 @@ it("creates a marked playlist and optionally likes the imported track immediatel
   prepareSource(live);
   mocks.api.listPlaylists.mockResolvedValue({ items: [] });
   const result = await importYandexMusic("token", "Music from Yandex", true, () => {});
-  expect(mocks.finalizeImportedPlaylist).toHaveBeenCalledWith("Music from Yandex", description, [live]);
+  expect(mocks.finalizeImportedPlaylist).toHaveBeenCalledWith("Music from Yandex", description, [live], undefined);
   expect(mocks.api.likeTrackSnapshot).toHaveBeenCalledWith(live.id, live);
   expect(result.likes).toEqual({ added: 1, failed: 0 });
 
@@ -92,4 +92,20 @@ it("copies playlist tracks to favorites without re-adding duplicates from later 
     .mockResolvedValueOnce({ items: [{ track: original }], nextCursor: null });
   expect(await addYandexPlaylistToLikes(playlist.id)).toEqual({ added: 1, failed: 0 });
   expect(mocks.api.likeTrackSnapshot).toHaveBeenCalledExactlyOnceWith(live.id, live);
+});
+
+it("stops catalog matching on cancellation without writing playlist tracks or likes", async () => {
+  prepareSource(live, track("second", "Second"), track("third", "Third"));
+  const controller = new AbortController();
+  mocks.matchWithRetry.mockImplementationOnce(async (_track, signal: AbortSignal) => {
+    expect(signal).toBe(controller.signal);
+    controller.abort();
+    signal.throwIfAborted();
+  });
+  await expect(importYandexMusic("token", "Music from Yandex", true, () => {}, controller.signal))
+    .rejects.toMatchObject({ name: "AbortError" });
+  expect(mocks.matchWithRetry).toHaveBeenCalledTimes(1);
+  expect(mocks.appendImportedPlaylistTracks).not.toHaveBeenCalled();
+  expect(mocks.finalizeImportedPlaylist).not.toHaveBeenCalled();
+  expect(mocks.api.likeTrackSnapshot).not.toHaveBeenCalled();
 });

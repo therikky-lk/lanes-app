@@ -72,12 +72,12 @@ export default function SidebarPins() {
 
   return (
     <>
-      <div className="mx-auto h-px w-[36px] shrink-0 bg-border-primary" role="separator" />
+      <div className="mx-auto mb-[12px] h-px w-[36px] shrink-0 bg-border-primary" role="separator" />
       <Reorder.Group
         axis="y"
         values={order}
         onReorder={setLocalOrder}
-        className="flex min-h-0 w-full flex-1 flex-col items-center gap-[10px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 px-0 pt-[12px] pb-[4px]"
+        className="flex min-h-0 w-full flex-1 flex-col items-center gap-[10px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 px-0 pb-[4px]"
       >
         {order.map((pin) => {
           const active = samePlace(pin.href, pathname, search);
