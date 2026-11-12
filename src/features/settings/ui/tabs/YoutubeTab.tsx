@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { PlayCircleLine, Playlist2Line, UserQuestionLine, YoutubeFill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
-import { ToggleSwitch } from "@/shared/ui";
+import { ToggleSwitch, useToast } from "@/shared/ui";
 import { signOutYoutube, useYoutubePreferences } from "@/shared/media/youtube";
 import { useYoutubeAccount, useYoutubeSignInStore } from "@/features/youtube-auth";
 import { SettingRow, SettingSection } from "../controls";
 
 export function YoutubeTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { signedIn, account, loading } = useYoutubeAccount();
   const showSignIn = useYoutubeSignInStore((state) => state.show);
   const [signingOut, setSigningOut] = useState(false);
@@ -39,7 +40,9 @@ export function YoutubeTab({ searchQuery }: { searchQuery?: string }) {
               disabled={signingOut}
               onClick={() => {
                 setSigningOut(true);
-                void signOutYoutube().finally(() => setSigningOut(false));
+                void signOutYoutube()
+                  .catch(() => toast(t("common.error_network"), "error"))
+                  .finally(() => setSigningOut(false));
               }}
               className="h-[42px] shrink-0 rounded-[12px] border-0 bg-text-primary px-[20px] text-[14px] font-[500] text-bg-primary disabled:opacity-60"
             >
