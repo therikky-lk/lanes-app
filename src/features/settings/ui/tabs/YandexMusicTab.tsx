@@ -17,28 +17,43 @@ import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { SettingRow, SettingSection } from "../controls";
 
-const useImportStatus = create<{ progress: YandexImportProgress | { phase: "signing_in" } | null }>(() => ({ progress: null }));
+const useImportStatus = create<{
+  progress: YandexImportProgress | null;
+  controller: AbortController | null;
+  cancelling: boolean;
+  accountAction: "connecting" | "disconnecting" | null;
+  connectedOwner: string | null;
+}>(() => ({ progress: null, controller: null, cancelling: false, accountAction: null, connectedOwner: null }));
+
+function setConnectedOwner(connectedOwner: string | null) {
+  useImportStatus.setState({ connectedOwner });
+}
+
+function isBusy() {
+  const { controller, accountAction } = useImportStatus.getState();
+  return Boolean(controller || accountAction);
+}
 
 export function YandexMusicTab() {
   const { t, locale } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const progress = useImportStatus((state) => state.progress);
+  const { progress, controller, cancelling, accountAction, connectedOwner } = useImportStatus();
+  const busy = Boolean(controller || accountAction);
   const [alsoLike, setAlsoLike] = useState(false);
   const [result, setResult] = useState<YandexImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [connectedOwner, setConnectedOwner] = useState<string | null>(null);
   const owner = integrationOwner();
   const connected = owner !== null && connectedOwner === owner;
   const playlistId = result?.playlistId;
 
   useEffect(() => {
-    if (!owner || isBrowserRuntime()) return;
+    if (!owner || busy || isBrowserRuntime()) return;
     let active = true;
     const refresh = () => {
-      if (document.visibilityState === "hidden" || useImportStatus.getState().progress) return;
+      if (document.visibilityState === "hidden" || isBusy()) return;
       void readYandexConnection(owner).then(({ connected }) => {
-        if (active && !useImportStatus.getState().progress) setConnectedOwner(connected ? owner : null);
+        if (active && !isBusy()) setConnectedOwner(connected ? owner : null);
       }).catch(() => undefined);
     };
     refresh();
@@ -49,14 +64,37 @@ export function YandexMusicTab() {
       window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
     };
-  }, [owner]);
+  }, [busy, owner]);
 
   if (isBrowserRuntime()) return <p className="text-[14px] text-text-secondary">{t("settings.yandex_music.native_only")}</p>;
 
-  const disconnect = async () => {
-    if (!owner || useImportStatus.getState().progress) return;
-    useImportStatus.setState({ progress: { phase: "saving", done: 0, total: 0 } });
+  const connect = async () => {
+    if (!owner || isBusy()) return;
     setError(null);
+    useImportStatus.setState({ accountAction: "connecting" });
+    try {
+      const remote = await readIntegration("yandex", owner);
+      if (!remote.session) {
+        const login = await signInToYandexMusic();
+        if (login.status === "cancelled") return;
+        if (login.status !== "success") {
+          setError(t("settings.yandex_music.error_sign_in"));
+          return;
+        }
+        await writeIntegration("yandex", owner, { revision: remote.revision, session: { accessToken: login.token } });
+      }
+      setConnectedOwner(owner);
+    } catch {
+      setError(t("common.error_network"));
+    } finally {
+      useImportStatus.setState({ accountAction: null });
+    }
+  };
+
+  const disconnect = async () => {
+    if (!owner || isBusy()) return;
+    setError(null);
+    useImportStatus.setState({ accountAction: "disconnecting" });
     try {
       const { revision } = await readIntegration("yandex", owner);
       await writeIntegration("yandex", owner, { revision, session: null });
@@ -65,56 +103,37 @@ export function YandexMusicTab() {
     } catch {
       setError(t("common.error_network"));
     } finally {
-      useImportStatus.setState({ progress: null });
+      useImportStatus.setState({ accountAction: null });
     }
   };
 
   const startImport = async () => {
-    if (useImportStatus.getState().progress) return;
+    if (!owner || !connected || isBusy()) return;
+    const operation = new AbortController();
+    const { signal } = operation;
     setResult(null);
     setError(null);
-    useImportStatus.setState({ progress: { phase: "loading", done: 0, total: 0 } });
+    useImportStatus.setState({ controller: operation, progress: { phase: "loading", done: 0, total: 0 } });
     let revision: number | undefined;
     try {
-      if (!owner) throw new YandexImportError("lane_sign_in");
-      const remote = await readIntegration("yandex", owner).catch((failure) => {
-        if (failure instanceof IntegrationSessionError && failure.status === 404) return null;
-        throw failure;
-      });
-      revision = remote?.revision;
-      let token = remote?.session?.accessToken;
-      let shared = Boolean(token);
-      if (!token) {
+      const remote = await readIntegration("yandex", owner, 0, signal);
+      signal.throwIfAborted();
+      if (!remote.session) {
         setConnectedOwner(null);
-        useImportStatus.setState({ progress: { phase: "signing_in" } });
-        const login = await signInToYandexMusic();
-        if (login.status === "cancelled") return;
-        if (login.status !== "success") {
-          setError(t("settings.yandex_music.error_sign_in"));
-          return;
-        }
-        token = login.token;
-        if (revision !== undefined) {
-          const saved = await writeIntegration("yandex", owner, { revision, session: { accessToken: token } }).catch((failure) => {
-            if (failure instanceof IntegrationSessionError && failure.status === 503) return null;
-            throw failure;
-          });
-          revision = saved?.revision;
-          shared = Boolean(saved);
-        }
-        if (!shared) toast(t("common.error_network"), "info");
+        setError(t("settings.yandex_music.error_access"));
+        return;
       }
-      if (integrationOwner() !== owner) throw new YandexImportError("account_changed");
-      setConnectedOwner(shared ? owner : null);
-      const imported = await importYandexMusic(token, t("settings.yandex_music.playlist_title"), alsoLike, (progress) => {
+      revision = remote.revision;
+      const imported = await importYandexMusic(remote.session.accessToken, t("settings.yandex_music.playlist_title"), alsoLike, (progress) => {
         useImportStatus.setState({ progress });
-      });
+      }, signal);
       setResult(imported);
       toast(imported.playlistId
         ? t("settings.yandex_music.complete", { added: imported.added, skipped: imported.skipped })
         : t("settings.yandex_music.empty"), imported.playlistId ? "checkmark" : "info");
       if (imported.likesUnavailable || imported.likes?.failed) toast(t("settings.yandex_music.likes_failed"), "error");
     } catch (failure) {
+      if (signal.aborted) return;
       let message = t("settings.yandex_music.error_import");
       if (isRateLimit(failure) || (failure instanceof YandexSourceError && failure.code === "rate_limited")) {
         message = t("settings.yandex_music.error_rate");
@@ -129,23 +148,28 @@ export function YandexMusicTab() {
           : t("settings.yandex_music.error_access");
       } else if (failure instanceof YandexImportError && (failure.code === "lane_sign_in" || failure.code === "account_changed")) {
         message = t("settings.yandex_music.error_lane_account");
-      } else if (failure instanceof IntegrationSessionError || useImportStatus.getState().progress?.phase === "signing_in") {
+      } else if (failure instanceof IntegrationSessionError) {
         message = t("common.error_network");
       }
       setError(message);
       toast(message, "error");
     } finally {
-      useImportStatus.setState({ progress: null });
+      useImportStatus.setState({ progress: null, controller: null, cancelling: false });
     }
   };
 
-  const progressText = progress?.phase === "signing_in"
-    ? t("settings.yandex_music.progress_sign_in")
-    : progress?.phase === "matching"
-      ? t("settings.yandex_music.progress_matching", { done: progress.done, total: progress.total })
-      : progress?.phase === "saving"
-        ? t("settings.yandex_music.progress_saving")
-        : t("settings.yandex_music.progress_loading");
+  const cancelImport = () => {
+    const operation = useImportStatus.getState().controller;
+    if (!operation || operation.signal.aborted) return;
+    useImportStatus.setState({ cancelling: true });
+    operation.abort();
+  };
+
+  const progressText = progress?.phase === "matching"
+    ? t("settings.yandex_music.progress_matching", { done: progress.done, total: progress.total })
+    : progress?.phase === "saving"
+      ? t("settings.yandex_music.progress_saving")
+      : t("settings.yandex_music.progress_loading");
   const matching = progress?.phase === "matching" ? progress : null;
   const completion = matching && matching.total > 0 ? Math.min(100, matching.done * 100 / matching.total) : 0;
   const percentage = new Intl.NumberFormat(locale, { style: "percent" }).format(Math.floor(completion) / 100);
@@ -153,30 +177,39 @@ export function YandexMusicTab() {
   return (
     <div className="flex flex-col gap-[28px]">
       <div className="lane-setting-status rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
-        <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-[16px] gap-y-[12px] max-sm:grid-cols-[64px_minmax(0,1fr)]">
-          <div className="flex size-[64px] items-center justify-center rounded-[14px] bg-white dark:bg-[#171717]">
-            <YandexMusicIcon size={32} />
+        <div className="flex items-center gap-[14px]">
+          <div className="flex size-[56px] shrink-0 items-center justify-center rounded-[14px] bg-white dark:bg-[#171717]">
+            <YandexMusicIcon size={28} />
           </div>
           <div className="min-w-0">
             <div className="text-[15px] font-[600] text-text-primary">{t("settings.yandex_music.title")}</div>
-            <p className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">{t(connected ? "settings.youtube.signed_in" : "settings.yandex_music.sign_in_help")}</p>
+            <p role="status" className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">
+              {t(accountAction === "connecting" ? "settings.yandex_music.progress_sign_in" : connected ? "settings.youtube.signed_in" : "settings.youtube.signed_out_title")}
+            </p>
           </div>
-          <Button
-            type="button"
-            disabled={Boolean(progress)}
-            onClick={() => void startImport()}
-            className="!h-auto min-h-[42px] max-w-[250px] !rounded-[12px] !px-[16px] max-sm:col-start-2 max-sm:justify-self-start"
-          >
-            {t(connected ? "common.import" : "settings.yandex_music.import")}
-          </Button>
         </div>
-        {connected && (
-          <div className="mt-[12px] flex justify-end">
-            <Button type="button" variant="outline" size="sm" disabled={Boolean(progress)} onClick={() => void disconnect()}>
-              {t("settings.youtube.sign_out")}
+        <div className="mt-[12px] flex flex-wrap items-center gap-2">
+          {connected ? (
+            <>
+              <Button type="button" size="sm" disabled={busy} onClick={() => void startImport()}>
+                {t("common.import")}
+              </Button>
+              {controller ? (
+                <Button type="button" size="sm" variant="outline" disabled={cancelling} onClick={cancelImport}>
+                  {t("common.cancel")}
+                </Button>
+              ) : (
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void disconnect()}>
+                  {t("settings.youtube.sign_out")}
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button type="button" size="sm" disabled={!owner || busy} onClick={() => void connect()}>
+              {t("settings.youtube.sign_in")}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
         {progress && (
           <div role={matching ? undefined : "status"} className="mt-[14px] flex flex-col gap-2 text-[13px] text-text-secondary">
             <div className="flex items-baseline justify-between gap-3">
@@ -186,7 +219,7 @@ export function YandexMusicTab() {
             {matching && (
               <div
                 role="progressbar"
-                aria-label={t("settings.yandex_music.import")}
+                aria-label={t("common.import")}
                 aria-valuemin={0}
                 aria-valuemax={matching.total}
                 aria-valuenow={matching.done}
@@ -225,7 +258,7 @@ export function YandexMusicTab() {
           title={t("settings.yandex_music.also_like")}
           description={t("settings.yandex_music.also_like_description")}
           icon={<HeartLine size={20} />}
-          control={<ToggleSwitch checked={alsoLike} onChange={setAlsoLike} disabled={Boolean(progress)} ariaLabel={t("settings.yandex_music.also_like")} />}
+          control={<ToggleSwitch checked={alsoLike} onChange={setAlsoLike} disabled={busy} ariaLabel={t("settings.yandex_music.also_like")} />}
         />
       </SettingSection>
     </div>
