@@ -2,6 +2,10 @@
 // user playlists, so a compact data-image travels in the playlist description.
 import { getImportedPlaylistMeta } from "./import/importedPlaylistMeta";
 import { diag } from "@/shared/platform/diag";
+import { readPlaylistSource } from "./playlistCoverMarker";
+import yandexMusicCover from "@/assets/branding/yandex-music/playlist-cover.svg?inline";
+
+export { yandexMusicCover };
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 512;
@@ -34,9 +38,10 @@ export function rememberServerCover(playlistId: string, coverUrl: string | undef
   else serverCovers.delete(playlistId);
 }
 
-export function getPlaylistCover(playlistId: string | null | undefined): string | undefined {
+export function getPlaylistCover(playlistId: string | null | undefined, description?: string): string | undefined {
   if (!playlistId) return undefined;
-  return readAll()[playlistId] ?? getImportedPlaylistMeta(playlistId)?.coverUrl ?? serverCovers.get(playlistId);
+  return readAll()[playlistId] ?? getImportedPlaylistMeta(playlistId)?.coverUrl ?? serverCovers.get(playlistId)
+    ?? (readPlaylistSource(description) === "yandex" ? yandexMusicCover : undefined);
 }
 
 export function hasCustomPlaylistCover(playlistId: string | null | undefined): boolean {

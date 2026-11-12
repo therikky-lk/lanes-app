@@ -197,7 +197,7 @@ function load(force = false): Promise<void> {
       }
     }
     for (const playlist of playlists) {
-      const importedCover = getPlaylistCover(playlist.id);
+      const importedCover = getPlaylistCover(playlist.id, playlist.description);
       if (importedCover) {
         playlist.coverUrl = importedCover;
         playlist.coverUrls = [importedCover];
@@ -351,7 +351,7 @@ export function usePlaylist(id: string | null) {
         const covers = extractCovers(response.items);
         const syncedCover = readCoverMarker(response.playlist.description);
         rememberServerCover(id, syncedCover);
-        const playlistCover = getPlaylistCover(id);
+        const playlistCover = getPlaylistCover(id, response.playlist.description);
         const localCover = getCustomPlaylistCover(id) ?? getImportedPlaylistMeta(id)?.coverUrl;
         if (localCover && localCover !== syncedCover) {
           void compactPlaylistCover(localCover)

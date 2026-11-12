@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { HeartLine } from "@mingcute/react";
 import { useNavigate } from "react-router-dom";
 import { create } from "zustand";
 import { useTranslation } from "@/languages";
@@ -12,13 +13,14 @@ import { IntegrationSessionError, integrationOwner, readIntegration, readYandexC
 import { isRateLimit } from "@/shared/media/matching";
 import { isBrowserRuntime } from "@/shared/platform/browser";
 import Button from "@/shared/ui/Button";
+import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { SettingRow, SettingSection } from "../controls";
 
 const useImportStatus = create<{ progress: YandexImportProgress | { phase: "signing_in" } | null }>(() => ({ progress: null }));
 
 export function YandexMusicTab() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
   const progress = useImportStatus((state) => state.progress);
@@ -140,55 +142,92 @@ export function YandexMusicTab() {
   const progressText = progress?.phase === "signing_in"
     ? t("settings.yandex_music.progress_sign_in")
     : progress?.phase === "matching"
-    ? t("settings.yandex_music.progress_matching", { done: progress.done, total: progress.total })
-    : progress?.phase === "saving"
-      ? t("settings.yandex_music.progress_saving")
-      : t("settings.yandex_music.progress_loading");
+      ? t("settings.yandex_music.progress_matching", { done: progress.done, total: progress.total })
+      : progress?.phase === "saving"
+        ? t("settings.yandex_music.progress_saving")
+        : t("settings.yandex_music.progress_loading");
+  const matching = progress?.phase === "matching" ? progress : null;
+  const completion = matching && matching.total > 0 ? Math.min(100, matching.done * 100 / matching.total) : 0;
+  const percentage = new Intl.NumberFormat(locale, { style: "percent" }).format(Math.floor(completion) / 100);
 
   return (
-    <div className="flex max-w-[560px] flex-col gap-4">
-      <p className="m-0 text-[13px] text-text-secondary">{t(connected ? "settings.youtube.signed_in" : "settings.yandex_music.sign_in_help")}</p>
-      <SettingSection>
+    <div className="flex flex-col gap-[28px]">
+      <div className="lane-setting-status rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
+        <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-[16px] gap-y-[12px] max-sm:grid-cols-[64px_minmax(0,1fr)]">
+          <div className="flex size-[64px] items-center justify-center rounded-[14px] bg-white dark:bg-[#171717]">
+            <YandexMusicIcon size={32} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[15px] font-[600] text-text-primary">{t("settings.yandex_music.title")}</div>
+            <p className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">{t(connected ? "settings.youtube.signed_in" : "settings.yandex_music.sign_in_help")}</p>
+          </div>
+          <Button
+            type="button"
+            disabled={Boolean(progress)}
+            onClick={() => void startImport()}
+            className="!h-auto min-h-[42px] max-w-[250px] !rounded-[12px] !px-[16px] max-sm:col-start-2 max-sm:justify-self-start"
+          >
+            {t(connected ? "common.import" : "settings.yandex_music.import")}
+          </Button>
+        </div>
+        {connected && (
+          <div className="mt-[12px] flex justify-end">
+            <Button type="button" variant="outline" size="sm" disabled={Boolean(progress)} onClick={() => void disconnect()}>
+              {t("settings.youtube.sign_out")}
+            </Button>
+          </div>
+        )}
+        {progress && (
+          <div role={matching ? undefined : "status"} className="mt-[14px] flex flex-col gap-2 text-[13px] text-text-secondary">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="min-w-0 tabular-nums">{progressText}</span>
+              {matching && <span aria-hidden="true" className="shrink-0 font-medium tabular-nums text-text-primary">{percentage}</span>}
+            </div>
+            {matching && (
+              <div
+                role="progressbar"
+                aria-label={t("settings.yandex_music.import")}
+                aria-valuemin={0}
+                aria-valuemax={matching.total}
+                aria-valuenow={matching.done}
+                aria-valuetext={progressText}
+                className="h-[6px] overflow-hidden rounded-full bg-border-alpha-14"
+              >
+                <div
+                  className="h-full rounded-full bg-text-primary transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                  style={{ width: `${completion}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        {error && <p role="alert" className="m-0 mt-[14px] text-[13px] text-red-500">{error}</p>}
+        {result && (
+          <div className="mt-[14px] flex flex-wrap items-center justify-between gap-2">
+            <div role="status" className="min-w-0 text-[13px] text-text-secondary">
+              {playlistId ? t("settings.yandex_music.complete", { added: result.added, skipped: result.skipped }) : t("settings.yandex_music.empty")}
+              {result.likes && <div>{t("settings.yandex_music.likes_complete", { added: result.likes.added, failed: result.likes.failed })}</div>}
+              {result.likesUnavailable && <div>{t("settings.yandex_music.likes_failed")}</div>}
+            </div>
+            {playlistId && (
+              <Button type="button" variant="outline" size="sm" onClick={() => {
+                useModalStore.getState().closeSettings();
+                navigate(`/library/playlist?id=${encodeURIComponent(playlistId)}`);
+              }}>
+                {t("settings.yandex_music.open_playlist")}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+      <SettingSection label={t("common.import")}>
         <SettingRow
           title={t("settings.yandex_music.also_like")}
           description={t("settings.yandex_music.also_like_description")}
+          icon={<HeartLine size={20} />}
           control={<ToggleSwitch checked={alsoLike} onChange={setAlsoLike} disabled={Boolean(progress)} ariaLabel={t("settings.yandex_music.also_like")} />}
         />
       </SettingSection>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={Boolean(progress)} onClick={() => void startImport()}>
-          {t(connected ? "common.import" : "settings.yandex_music.import")}
-        </Button>
-        {connected && (
-          <Button type="button" variant="outline" disabled={Boolean(progress)} onClick={() => void disconnect()}>
-            {t("settings.youtube.sign_out")}
-          </Button>
-        )}
-        {playlistId && (
-          <Button type="button" variant="secondary" onClick={() => {
-            useModalStore.getState().closeSettings();
-            navigate(`/library/playlist?id=${encodeURIComponent(playlistId)}`);
-          }}>
-            {t("settings.yandex_music.open_playlist")}
-          </Button>
-        )}
-      </div>
-      {progress && (
-        <div role="status" className="flex flex-col gap-2 text-[13px] text-text-secondary">
-          <span>{progressText}</span>
-          {progress.phase === "matching" && (
-            <progress aria-label={t("settings.yandex_music.import")} className="w-full accent-current" max={progress.total} value={progress.done} />
-          )}
-        </div>
-      )}
-      {error && <p role="alert" className="m-0 text-[13px] text-red-500">{error}</p>}
-      {result && (
-        <div role="status" className="text-[13px] text-text-secondary">
-          {result.playlistId ? t("settings.yandex_music.complete", { added: result.added, skipped: result.skipped }) : t("settings.yandex_music.empty")}
-          {result.likes && <div>{t("settings.yandex_music.likes_complete", { added: result.likes.added, failed: result.likes.failed })}</div>}
-          {result.likesUnavailable && <div>{t("settings.yandex_music.likes_failed")}</div>}
-        </div>
-      )}
     </div>
   );
 }
