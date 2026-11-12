@@ -53,7 +53,8 @@ export interface CachedArtistRecord {
 }
 
 const DB_NAME = "liner_db_v1";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
+type CacheStore = "tracks" | "audio" | "lyrics" | "artists" | "likedSnapshots";
 
 const MEM_AUDIO_LIMIT = 3;
 
@@ -118,6 +119,10 @@ class LinerDb {
           } catch {}
         }
 
+        if (!db.objectStoreNames.contains("likedSnapshots")) {
+          db.createObjectStore("likedSnapshots");
+        }
+
         if (!db.objectStoreNames.contains("artists")) {
           const artistStore = db.createObjectStore("artists", { keyPath: "id" });
           artistStore.createIndex("lastCheckedAt", "lastCheckedAt", { unique: false });
@@ -148,6 +153,7 @@ class LinerDb {
 
       request.onblocked = () => {
         this.dbPromise = null;
+        reject(new Error("IndexedDB upgrade blocked"));
       };
     });
 
@@ -156,7 +162,7 @@ class LinerDb {
 
   // executes indexeddb transaction with one auto-reconnect retry and zero unhandled rejections
   private async runTransaction<T>(
-    storeName: "tracks" | "audio" | "lyrics" | "artists",
+    storeName: CacheStore,
     mode: IDBTransactionMode,
     operation: (store: IDBObjectStore) => Promise<T>,
   ): Promise<T | null> {
@@ -185,6 +191,24 @@ class LinerDb {
       }
     }
     return null;
+  }
+
+  async getLikedSnapshot(owner: string): Promise<Track[] | null> {
+    return this.runTransaction("likedSnapshots", "readonly", store =>
+      new Promise<Track[] | null>((resolve, reject) => {
+        const request = store.get(owner);
+        request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : null);
+        request.onerror = () => reject(request.error);
+      }));
+  }
+
+  async putLikedSnapshot(owner: string, tracks: Track[]): Promise<void> {
+    await this.runTransaction("likedSnapshots", "readwrite", store =>
+      new Promise<void>((resolve, reject) => {
+        const request = store.put(tracks, owner);
+        request.onerror = () => reject(request.error);
+        store.transaction.oncomplete = () => resolve();
+      }));
   }
 
   async getTrack(id: string): Promise<CachedTrackRecord | null> {
@@ -318,7 +342,7 @@ class LinerDb {
     return total;
   }
 
-  async getStoreCount(storeName: "tracks" | "audio" | "lyrics" | "artists"): Promise<number> {
+  async getStoreCount(storeName: CacheStore): Promise<number> {
     const result = await this.runTransaction(storeName, "readonly", (store) => {
       return new Promise<number>((resolve) => {
         const req = store.count();
@@ -724,7 +748,7 @@ class LinerDb {
     return total;
   }
 
-  async clearStore(storeName: "tracks" | "audio" | "lyrics" | "artists"): Promise<void> {
+  async clearStore(storeName: CacheStore): Promise<void> {
     const db = await this.open();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(storeName, "readwrite");
@@ -758,6 +782,7 @@ class LinerDb {
     await this.clearStore("tracks");
     await this.clearStore("lyrics");
     await this.clearStore("artists");
+    await this.clearStore("likedSnapshots");
   }
 }
 

@@ -117,6 +117,14 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     }
 
     @Override
+    public void onDiagnostic(String message) {
+        if (!foreground) return;
+        JSObject data = new JSObject();
+        data.put("message", message);
+        notifyListeners("diagnostic", data);
+    }
+
+    @Override
     public void onRemote(String action, long positionMs) {
         JSObject data = new JSObject();
         data.put("action", action);

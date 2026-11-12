@@ -7,6 +7,9 @@ import com.google.android.gms.net.CronetProviderInstaller;
 
 import org.chromium.net.CronetEngine;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -49,6 +52,37 @@ public final class Net {
     /** null until Cronet is ready (or when it isn't available at all) */
     public static CronetEngine engine() {
         return engine;
+    }
+
+    public static boolean isConnectionLoss(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            String message = String.valueOf(cause.getMessage()).toLowerCase(Locale.ROOT);
+            if (message.contains("err_network_changed") || message.contains("err_connection_closed")
+                || message.contains("err_connection_reset") || message.contains("connection reset")
+                || message.contains("connection closed") || message.contains("network changed")) return true;
+            if (cause.getCause() == cause) break;
+        }
+        return false;
+    }
+
+    public static long retryAfterMs(String value, long fallback) {
+        if (value == null) return fallback;
+        String input = value.trim();
+        if (input.matches("[0-9]+")) {
+            try {
+                long seconds = Long.parseLong(input);
+                return seconds <= Long.MAX_VALUE / 1000 ? seconds * 1000 : fallback;
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        try {
+            SimpleDateFormat format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US);
+            format.setLenient(false);
+            return Math.max(0, format.parse(input).getTime() - System.currentTimeMillis());
+        } catch (ParseException ignored) {
+            return fallback;
+        }
     }
 
     public static ExecutorService executor() {

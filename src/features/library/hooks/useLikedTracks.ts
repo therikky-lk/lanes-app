@@ -1,3 +1,4 @@
+import { linerDb } from "@/shared/storage/linerDb";
 import { useEffect, useSyncExternalStore } from "react";
 import { api, getAuthSession, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
@@ -158,10 +159,22 @@ function load(force = false): Promise<void> {
   lastRefresh = startedAt;
   const diagnosticStartedAt = performance.now();
   const generation = loadGeneration;
-  const showPagesAsTheyArrive = !loaded;
+  const owner = activeOwner;
   request = (async () => {
-    // Keep the loading skeleton visible until the server's complete, current
-    // list is ready; otherwise stale cache rows and counts flash on entry.
+    if (!loaded) {
+      const saved = await linerDb.getLikedSnapshot(owner);
+      if (generation !== loadGeneration) return;
+      if (saved) {
+        cache = { tracks: saved, total: saved.length };
+        progressCache = cache;
+        loaded = true;
+        complete = true;
+        emit(false);
+      }
+    }
+    // The last complete snapshot stays visible until the refresh finishes.
+    // With no snapshot, keep showing pages as they arrive.
+    const showPagesAsTheyArrive = !loaded;
     const tracks: Track[] = [];
     const ids = new Set<string>();
     let cursor: string | undefined;
@@ -205,6 +218,7 @@ function load(force = false): Promise<void> {
     complete = true;
     progressCache = cache;
     lastRefresh = Date.now();
+    void linerDb.putLikedSnapshot(owner, currentTracks);
     if (isNativeApp()) diag(`favorites load: pages=${pages} tracks=${currentTracks.length} elapsed=${Math.round(performance.now() - diagnosticStartedAt)}ms`);
     // keep the optimistic state the server doesn't show yet: overrides made
     // after this reload started, or that it doesn't agree with yet
@@ -298,6 +312,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("library:changed", () => (lastRefresh = Date.now()));
   const refreshOnReturn = () => refreshIfStale(LIKE_SYNC_MIN_AGE_MS);
   window.addEventListener("focus", refreshOnReturn);
+  window.addEventListener("online", () => refreshIfStale(5_000));
   document.addEventListener("visibilitychange", refreshOnReturn);
   setInterval(() => refreshIfStale(LIKE_SYNC_MIN_AGE_MS), LIKE_SYNC_POLL_MS);
 }
