@@ -11,6 +11,7 @@ import {
   type YoutubeAuthTokens,
 } from "./tvTokens";
 import { getAuthSession } from "@/shared/api/auth-session";
+import { integrationOwner, readIntegration, writeIntegration, IntegrationSessionError } from "@/shared/api/integrationSessions";
 
 const STORAGE_KEY = "liner_youtube_tv_session";
 const AUTH_REVISION_KEY = "liner_youtube_auth_revision";
@@ -30,6 +31,9 @@ let session: YoutubeAuthTokens | null | undefined;
 let pageId: string | null | undefined;
 let pendingRefresh: Promise<YoutubeAuthTokens | null> | null = null;
 let activeOwner = "";
+let pendingSync: Promise<void> | null = null;
+let revision = 0;
+let generation = 0;
 
 function ownerKey(): string {
   const auth = getAuthSession();
@@ -45,6 +49,9 @@ function ensureOwner(): void {
   session = undefined;
   pageId = undefined;
   pendingRefresh = null;
+  pendingSync = null;
+  revision = 0;
+  generation++;
   notifyChanged();
 }
 
@@ -70,13 +77,66 @@ async function fetchAuthRevision(): Promise<number> {
   return Number(result.revision) || 0;
 }
 
-/** Drop a device-local YouTube session when another signed-in device signs out. */
-export async function syncYoutubeAuthState(): Promise<void> {
-  const revision = await fetchAuthRevision();
-  if (revision > readAuthRevision()) {
-    writeAuthRevision(revision);
-    if (getYoutubeAuthTokens()) save(null);
-    else notifyChanged();
+export function syncYoutubeAuthState(): Promise<void> {
+  ensureOwner();
+  const owner = integrationOwner();
+  if (!owner) return Promise.resolve();
+  if (pendingSync) return pendingSync;
+  const started = generation;
+  const task = (async () => {
+    let remote;
+    try {
+      remote = await readIntegration("youtube", owner, revision);
+    } catch (error) {
+      // Older Workers only support propagating sign-out.
+      if (!(error instanceof IntegrationSessionError) || error.status !== 404 || !owner.startsWith("liner:")) throw error;
+      const legacy = await fetchAuthRevision();
+      if (generation === started && integrationOwner() === owner && legacy > readAuthRevision()) {
+        writeAuthRevision(legacy);
+        storePageId(null);
+        save(null);
+      }
+      return;
+    }
+    if (generation !== started || integrationOwner() !== owner || remote.revision < revision) return;
+    if (remote.revision === 0) {
+      const local = getYoutubeAuthTokens();
+      if (!local) return;
+      if (owner.startsWith("liner:")) {
+        const legacy = await fetchAuthRevision();
+        if (generation !== started || integrationOwner() !== owner) return;
+        if (legacy > readAuthRevision()) {
+          writeAuthRevision(legacy);
+          storePageId(null);
+          save(null);
+          return;
+        }
+      }
+      await publishSession(owner, 0, local, getYoutubePageId());
+      return;
+    }
+    if (remote.revision === revision) return;
+    applySharedSession(remote.revision, remote.session, remote.session?.pageId ?? null);
+  })().finally(() => {
+    if (pendingSync === task) pendingSync = null;
+  });
+  pendingSync = task;
+  return task;
+}
+
+function applySharedSession(nextRevision: number, tokens: YoutubeAuthTokens | null, channel: string | null) {
+  revision = nextRevision;
+  generation++;
+  storePageId(channel);
+  save(tokens);
+}
+
+async function publishSession(owner: string, expected: number, tokens: YoutubeAuthTokens | null, channel: string | null) {
+  const result = await writeIntegration("youtube", owner, {
+    revision: expected, session: tokens ? { ...tokens, pageId: channel } : null,
+  });
+  if (integrationOwner() === owner && result.revision >= revision) {
+    applySharedSession(result.revision, tokens, channel);
   }
 }
 
@@ -167,8 +227,14 @@ export function getYoutubePageId(): string | null {
 
 export function selectYoutubePageId(next: string | null): void {
   if (next === getYoutubePageId()) return;
-  storePageId(next);
-  notifyChanged();
+  const owner = integrationOwner();
+  const tokens = getYoutubeAuthTokens();
+  if (!owner || !tokens || !revision) {
+    storePageId(next);
+    notifyChanged();
+    return;
+  }
+  void publishSession(owner, revision, tokens, next).catch(() => syncYoutubeAuthState().catch(() => undefined));
 }
 
 export function getYoutubeSessionKey(): string | null {
@@ -199,15 +265,29 @@ export async function completeYoutubeTvSignIn(
   code: TvDeviceCode,
   signal?: AbortSignal,
 ): Promise<YoutubeAuthTokens> {
-  const tokens = await pollTvDeviceToken(
-    await getTvOauthClient(signal),
-    code,
-    signal,
-  );
-  try { writeAuthRevision(await fetchAuthRevision()); }
-  catch { /* keep the last known revision when the API is temporarily offline */ }
-  storePageId(null);
-  save(tokens);
+  const owner = integrationOwner();
+  const remote = owner ? await readIntegration("youtube", owner).catch((error) => {
+    if (error instanceof IntegrationSessionError && error.status === 404) return null;
+    throw error;
+  }) : null;
+  const tokens = await pollTvDeviceToken(await getTvOauthClient(signal), code, signal);
+  signal?.throwIfAborted();
+  if (integrationOwner() !== owner) throw new YoutubeAuthError("account_changed");
+  if (owner && remote) {
+    try {
+      await publishSession(owner, remote.revision, tokens, null);
+      return tokens;
+    } catch (error) {
+      if (!(error instanceof IntegrationSessionError) || error.status !== 503) throw error;
+      // Keep existing local sign-in usable until the Worker key is configured.
+    }
+  }
+  if (owner?.startsWith("liner:")) {
+    const legacy = await fetchAuthRevision().catch(() => null);
+    if (integrationOwner() !== owner) throw new YoutubeAuthError("account_changed");
+    if (legacy !== null) writeAuthRevision(legacy);
+  }
+  applySharedSession(0, tokens, null);
   return tokens;
 }
 
@@ -215,20 +295,27 @@ async function refresh(
   current: YoutubeAuthTokens,
   signal?: AbortSignal,
 ): Promise<YoutubeAuthTokens | null> {
+  const owner = integrationOwner();
+  const started = generation;
+  const expected = revision;
   try {
-    const next = await refreshTvTokens(
-      await getTvOauthClient(signal),
-      current.refreshToken,
-      signal,
-    );
-    save(next);
+    const next = await refreshTvTokens(await getTvOauthClient(signal), current.refreshToken, signal);
+    if (generation !== started || integrationOwner() !== owner) return null;
+    if (owner && expected && next.refreshToken !== current.refreshToken) {
+      await publishSession(owner, expected, next, getYoutubePageId());
+    } else {
+      save(next);
+    }
     return next;
   } catch (error) {
-    if (
-      error instanceof YoutubeAuthError &&
-      TERMINAL_REFRESH_ERRORS.has(error.code)
-    )
-      save(null);
+    if (error instanceof YoutubeAuthError && TERMINAL_REFRESH_ERRORS.has(error.code)
+        && generation === started && integrationOwner() === owner) {
+      if (owner && expected) {
+        await publishSession(owner, expected, null, null).catch(() => syncYoutubeAuthState().catch(() => undefined));
+      } else {
+        applySharedSession(0, null, null);
+      }
+    }
     throw error;
   }
 }
@@ -240,24 +327,41 @@ export async function getYoutubeAuthorization(
   if (!current) return null;
   if (current.expiresAt - REFRESH_MARGIN_MS > Date.now())
     return toAuthorizationHeader(current);
-  pendingRefresh ??= refresh(current, signal).finally(() => {
-    pendingRefresh = null;
-  });
+  if (!pendingRefresh) {
+    const task = refresh(current, signal).finally(() => {
+      if (pendingRefresh === task) pendingRefresh = null;
+    });
+    pendingRefresh = task;
+  }
   const next = await pendingRefresh;
   return next ? toAuthorizationHeader(next) : null;
 }
 
 export async function signOutYoutube(): Promise<void> {
+  const owner = integrationOwner();
   const current = getYoutubeAuthTokens();
-  try {
-    const { api } = await import("@/shared/api");
-    const result = await api.revokeYoutubeAuthOnOtherDevices();
-    writeAuthRevision(Number(result.revision) || 0);
-  } catch (error) {
-    console.warn("[YouTube] could not sync sign-out to other devices:", error);
+  let clearedShared = false;
+  if (owner) {
+    const remote = await readIntegration("youtube", owner).catch((error) => {
+      if (error instanceof IntegrationSessionError && error.status === 404) return null;
+      throw error;
+    });
+    if (remote) {
+      if (remote.session && remote.session.refreshToken !== current?.refreshToken) {
+        await syncYoutubeAuthState();
+        return;
+      }
+      await publishSession(owner, remote.revision, null, null);
+      clearedShared = true;
+    } else if (owner.startsWith("liner:")) {
+      const { api } = await import("@/shared/api");
+      const result = await api.revokeYoutubeAuthOnOtherDevices();
+      if (integrationOwner() !== owner) return;
+      writeAuthRevision(Number(result.revision) || 0);
+    }
   }
-  storePageId(null);
-  save(null);
+  if (integrationOwner() !== owner) return;
+  if (!clearedShared) applySharedSession(revision, null, null);
   if (!current) return;
   await fetch(
     `${REVOKE_URL}?token=${encodeURIComponent(current.refreshToken)}`,
