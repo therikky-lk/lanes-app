@@ -24,7 +24,8 @@ import { FaSpotify } from "react-icons/fa";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
-import { canSyncCoverMarker, readCoverMarker, stripCoverMarker, withCoverMarker, withDescriptionText } from "../services/playlistCoverMarker";
+import { addYandexPlaylistToLikes } from "../services/import/sources/yandexMusic/yandexMusicImport";
+import { canSyncCoverMarker, readCoverMarker, readPlaylistSource, stripCoverMarker, withCoverMarker, withDescriptionText } from "../services/playlistCoverMarker";
 import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
@@ -68,6 +69,31 @@ interface TrackItemProps {
   isCurrent?: boolean;
   showLikedDate?: boolean;
   showLikedDateInMenu?: boolean;
+}
+
+function YandexPlaylistLikesButton({ id, disabled }: { id: string; disabled: boolean }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const addToLikes = async () => {
+    setBusy(true);
+    try {
+      const { added, failed } = await addYandexPlaylistToLikes(id);
+      toast(t("settings.yandex_music.likes_complete", { added, failed }), failed ? "error" : "checkmark");
+    } catch {
+      toast(t("settings.yandex_music.likes_failed"), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Button type="button" variant="secondary" size="sm" disabled={disabled || busy} onClick={() => void addToLikes()}>
+      <HeartFill size={15} />
+      {busy ? t("settings.yandex_music.progress_saving") : t("settings.yandex_music.add_to_likes")}
+    </Button>
+  );
 }
 
 function albumTitleOf(track: Track): string {
@@ -936,6 +962,9 @@ function LibraryPlaylistContent() {
                           <FaSpotify size={12} className="shrink-0" />
                           <span>{importMeta.owner ? `Spotify · ${importMeta.owner}` : "Spotify"}</span>
                         </button>
+                      )}
+                      {decodedId && readPlaylistSource(playlistDetail?.description) === "yandex" && (
+                        <YandexPlaylistLikesButton key={decodedId} id={decodedId} disabled={allTracks.length === 0} />
                       )}
                       {isLikesMode && (
                         <div

@@ -136,6 +136,10 @@ export function useTouchBarSync() {
   }, [currentTrack, isLiked, likeMutation, unlikeMutation, navigate, location.pathname]);
 
   useEffect(() => {
+    // The same state IPC also drives desktop sleep and Windows taskbar controls.
+    // Only the native Mac Touch Bar needs frame-by-frame lyric tracking.
+    if (window.linerElectron?.platform !== "darwin") return;
+
     let rafId: number;
     let lastCalculatedIdx = -1;
 

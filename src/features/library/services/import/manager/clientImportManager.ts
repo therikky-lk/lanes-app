@@ -72,7 +72,7 @@ function reviewItem(sourceTrack: ClientImportedTrack, position: number, outcome:
 }
 
 /** big imports (Liked Songs) hit YouTube's rate limit: back off and retry */
-async function matchWithRetry(track: ClientImportedTrack, signal?: AbortSignal) {
+export async function matchWithRetry(track: ClientImportedTrack, signal?: AbortSignal) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await findCatalogMatch(track, signal);

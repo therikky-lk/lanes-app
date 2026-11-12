@@ -86,6 +86,10 @@ async function addTracks(playlistId: string, tracks: Track[]): Promise<number> {
   return saved;
 }
 
+export function appendImportedPlaylistTracks(playlistId: string, tracks: Track[]): Promise<number> {
+  return addTracks(playlistId, uniqueTracks(tracks));
+}
+
 export async function finalizeImportedPlaylist(
   title: string,
   description: string | undefined,

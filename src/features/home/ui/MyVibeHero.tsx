@@ -1,5 +1,6 @@
 import { isNativeApp } from "@/shared/platform/native";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
+import { isWindowVisible, onWindowVisibilityChange } from "@/shared/utils/windowVisibility";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
@@ -148,10 +149,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   const fullscreenOpen = usePlayerStore((s) => s.fullscreen);
   live.current.covered = !!fullscreenOpen || settingsOpen;
   const resumeRef = useRef<() => void>(() => {});
-  useEffect(() => { resumeRef.current(); }, [status, vibeActive]);
-  useEffect(() => {
-    if (!fullscreenOpen && !settingsOpen) resumeRef.current();
-  }, [fullscreenOpen, settingsOpen]);
+  useEffect(() => { resumeRef.current(); }, [status, vibeActive, fullscreenOpen, settingsOpen]);
 
   // Colours follow the mood or cover; an empty player cycles through the spectrum.
   const cover = useCoverSrc(currentTrack?.coverUrl);
@@ -240,10 +238,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     ro.observe(glowCanvas);
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
-      if (visible && !raf) {
-        last = performance.now();
-        raf = requestAnimationFrame(frame);
-      }
+      syncAnimation();
     });
     io.observe(wrap);
 
@@ -297,7 +292,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
 
     function frame(now: number) {
       raf = 0;
-      if (!visible || document.hidden || scrolling || live.current.covered) return;
+      if (!canAnimate()) return;
       if (frameMs && now - lastDraw < frameMs) {
         raf = requestAnimationFrame(frame);
         return;
@@ -404,41 +399,43 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       raf = requestAnimationFrame(frame);
     }
 
-    const onVis = () => {
-      if (!document.hidden && visible && !scrolling && !live.current.covered && !raf) {
+    function canAnimate() {
+      return visible && isWindowVisible() && !scrolling && !live.current.covered;
+    }
+
+    function syncAnimation() {
+      if (!canAnimate()) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
         last = performance.now();
         raf = requestAnimationFrame(frame);
       }
-    };
-    resumeRef.current = onVis;
+    }
+
+    resumeRef.current = syncAnimation;
     const onScroll = () => {
       scrolling = true;
-      if (raf) {
-        cancelAnimationFrame(raf);
-        raf = 0;
-      }
+      syncAnimation();
       if (scrollResumeTimer) clearTimeout(scrollResumeTimer);
       scrollResumeTimer = setTimeout(() => {
         scrollResumeTimer = null;
         scrolling = false;
-        if (!document.hidden && visible && !raf) {
-          last = performance.now();
-          raf = requestAnimationFrame(frame);
-        }
+        syncAnimation();
       }, 180);
     };
-    document.addEventListener("visibilitychange", onVis);
+    const stopWatchingVisibility = onWindowVisibilityChange(syncAnimation);
     // Give touch scrolling the GPU while the page is moving. The hero resumes
     // its ambient animation shortly after the user's finger lifts.
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
-    raf = requestAnimationFrame(frame);
+    syncAnimation();
     return () => {
       cancelAnimationFrame(raf);
       if (scrollResumeTimer) clearTimeout(scrollResumeTimer);
       ro.disconnect();
       io.disconnect();
       resumeRef.current = () => {};
-      document.removeEventListener("visibilitychange", onVis);
+      stopWatchingVisibility();
       window.removeEventListener("scroll", onScroll, true);
     };
   }, []);

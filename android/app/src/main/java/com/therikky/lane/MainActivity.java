@@ -22,6 +22,7 @@ import com.therikky.lane.audio.LaneAudioPlugin;
 import com.therikky.lane.potoken.LanePoTokenPlugin;
 import com.therikky.lane.http.LaneHttpPlugin;
 import com.therikky.lane.spotify.LaneSpotifyPlugin;
+import com.therikky.lane.yandex.LaneYandexMusicPlugin;
 import com.therikky.lane.power.LaneKeepAwakePlugin;
 
 import java.util.Locale;
@@ -38,6 +39,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LanePoTokenPlugin.class);
         registerPlugin(LaneHttpPlugin.class);
         registerPlugin(LaneSpotifyPlugin.class);
+        registerPlugin(LaneYandexMusicPlugin.class);
         registerPlugin(LaneKeepAwakePlugin.class);
         registerPlugin(LaneSharePlugin.class);
         super.onCreate(savedInstanceState);

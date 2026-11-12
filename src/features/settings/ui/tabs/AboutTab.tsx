@@ -161,11 +161,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
     <div className="flex w-full flex-col items-center py-[8px]">
       <div
         className="relative flex min-h-[340px] w-full max-w-[604px] flex-col justify-between overflow-hidden rounded-[20px] bg-white/[0.08] p-[28px] text-left"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(58deg, transparent 0 70px, rgba(255,255,255,.018) 70px 140px, transparent 140px 220px)",
-          fontFamily: "var(--font-inter), sans-serif",
-        }}
+        style={{ fontFamily: "var(--font-inter), sans-serif" }}
       >
         <div className="flex items-start justify-between gap-[16px]">
           <div className="flex flex-col items-start">

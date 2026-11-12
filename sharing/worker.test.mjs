@@ -108,7 +108,7 @@ test("rejects malformed and oversized bodies, local files and personal mixes", a
 test("only supported entities and safe public image URLs are accepted", () => {
   for (const [type, id] of [["track", "dQw4w9WgXcQ"], ["track", "sc:123"], ["track", "au:abc123"], ["album", "MPREb_abcd"], ["artist", "UC" + "a".repeat(22)], ["playlist", "PL" + "a".repeat(20)]]) assert.ok(validEntity(type, id));
   assert.equal(snapshotOf({ coverUrl: "javascript:alert(1)" }).coverUrl, "");
-  assert.equal(publicPlaylistSnapshot({ title: "Title", description: "Hello⁣lane-local:secret" }).subtitle, "Hello");
+  assert.equal(publicPlaylistSnapshot({ title: "Title", description: "Hello⁣lane-local:secret⁣lane-source:yandex" }).subtitle, "Hello");
 });
 test("proxies existing account requests to their fixed service with the body intact", async t => {
   const { env, state } = fixture(t);
