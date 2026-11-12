@@ -2,6 +2,7 @@ import { confineToApp, handleTrusted, isAppUrl, onTrusted } from "./ipc-guard.js
 import { keepsOwnCors, needsOpenCors, withOpenCors } from "./cors.js";
 import { registerConnectRelay } from "./connect-relay";
 import { registerSpotifyAccount } from "./spotify-account";
+import { registerYandexMusicAccount } from "./yandex-music-account";
 import { app, BaseWindow, BrowserWindow, globalShortcut, shell, screen, dialog, session, nativeImage, powerSaveBlocker } from "electron";
 import type { Display, Rectangle } from "electron";
 import { autoUpdater } from "electron-updater";
@@ -809,6 +810,7 @@ if (!gotTheLock) {
     });
 
     registerSpotifyAccount(() => mainWindow);
+    registerYandexMusicAccount(() => mainWindow);
     // long jobs (importing thousands of liked songs) keep running with the
     // window hidden or the laptop idle: the system must not suspend the app
     let jobBlockerId: number | null = null;

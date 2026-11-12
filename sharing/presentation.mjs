@@ -18,7 +18,7 @@ export function snapshotOf(value) {
 export function publicPlaylistSnapshot(row) {
   const description = row.description || "";
   const coverUrl = description.match(/⁣lane-cover:([^\s⁣]+)/)?.[1];
-  return snapshotOf({ title: row.title, subtitle: description.replace(/\s*⁣lane-(cover|local):([^\s⁣]+)/g, "").trim(), coverUrl });
+  return snapshotOf({ title: row.title, subtitle: description.replace(/\s*⁣lane-(cover|local|source):([^\s⁣]+)/g, "").trim(), coverUrl });
 }
 const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export function renderSharePage(share, origin) {

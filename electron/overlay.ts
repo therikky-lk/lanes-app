@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, globalShortcut, app, shell } from "electron";
+import { BrowserWindow, screen, globalShortcut, app, shell, type Point, type Rectangle } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { confineToApp, handleTrusted, isAppUrl, onTrusted } from "./ipc-guard.js";
@@ -56,6 +56,7 @@ const CRASH_WINDOW_MS = 60_000;
 const MAX_CRASHES_PER_WINDOW = 3;
 const PRIME_PAINT_WAIT_MS = 600;
 const PRIME_SETTLE_MS = 50;
+const POSITION_SAVE_DELAY_MS = 250;
 
 function waitForFrame(win: BrowserWindow, timeoutMs: number): Promise<void> {
   const painted = win.webContents
@@ -74,6 +75,9 @@ export class OverlayManager {
 
   private enabled = true;
   private position: OverlayPosition = "top-center";
+  private customPosition: Point | null = null;
+  private lastWindowPosition: Point | null = null;
+  private positionSaveTimer: NodeJS.Timeout | null = null;
   private shortcut = "Alt+Shift+O";
   private likeShortcut = "Alt+Shift+L";
   private shortcutsPaused = false;
@@ -87,7 +91,6 @@ export class OverlayManager {
   private disposed = false;
 
   private moveAnimationTimer: NodeJS.Timeout | null = null;
-  private currentAnimatedX: number | null = null;
   private closeTimeout: NodeJS.Timeout | null = null;
   private rendererAuthenticated = false;
   private authSource: (() => boolean) | null = null;
@@ -134,6 +137,10 @@ export class OverlayManager {
         ) {
           this.position = data.position;
         }
+        const point = data.customPosition;
+        if (Number.isSafeInteger(point?.x) && Number.isSafeInteger(point?.y)) {
+          this.customPosition = { x: point.x, y: point.y };
+        }
         if (typeof data.shortcut === "string" && data.shortcut.trim()) {
           this.shortcut = data.shortcut.trim();
         }
@@ -153,16 +160,21 @@ export class OverlayManager {
   }
 
   private savePersistedSettings() {
+    if (this.positionSaveTimer) {
+      clearTimeout(this.positionSaveTimer);
+      this.positionSaveTimer = null;
+    }
     try {
       const filePath = this.getSettingsFilePath();
       if (!filePath) return;
-      const data: OverlaySettings = {
+      const data: OverlaySettings & { customPosition?: Point } = {
         enabled: this.enabled,
         position: this.position,
         shortcut: this.shortcut,
         likeShortcut: this.likeShortcut,
         autoShowOnMinimize: this.autoShowOnMinimize,
         alwaysOnTop: this.alwaysOnTop,
+        customPosition: this.customPosition ?? undefined,
       };
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
     } catch (e) {
@@ -204,7 +216,9 @@ export class OverlayManager {
   }
 
   public destroy() {
+    if (this.positionSaveTimer) this.savePersistedSettings();
     this.stopMoveAnimation();
+    this.wantVisible = false;
     if (this.closeTimeout) {
       clearTimeout(this.closeTimeout);
       this.closeTimeout = null;
@@ -339,6 +353,18 @@ export class OverlayManager {
   }
 
   private getWindowBounds(width = 320, height?: number) {
+    const finalHeight = height ?? this.getTargetHeight();
+    if (this.customPosition) {
+      const { x, y } = this.customPosition;
+      const { workArea } = screen.getDisplayMatching({ x, y, width, height: finalHeight });
+      return {
+        x: Math.max(workArea.x, Math.min(x, workArea.x + workArea.width - width)),
+        y: Math.max(workArea.y, Math.min(y, workArea.y + workArea.height - finalHeight)),
+        width,
+        height: finalHeight,
+      };
+    }
+
     let targetDisplay = screen.getPrimaryDisplay();
     try {
       if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
@@ -352,7 +378,6 @@ export class OverlayManager {
 
     const { workArea } = targetDisplay;
     const padding = 20;
-    const finalHeight = height ?? this.getTargetHeight();
 
     let x: number;
     const y = Math.round(workArea.y + padding);
@@ -380,15 +405,19 @@ export class OverlayManager {
     }
   }
 
-  private animateWindowBounds(targetBounds: { x: number; y: number; width: number; height: number }, durationMs = 140) {
-    if (!this.overlayWindow || this.overlayWindow.isDestroyed()) return;
+  private setWindowBounds(win: BrowserWindow, bounds: Rectangle) {
+    // Some window managers also emit "move" for changes made by the app.
+    this.lastWindowPosition = bounds;
+    win.setBounds(bounds);
+  }
 
+  private animateWindowBounds(win: BrowserWindow, targetBounds: Rectangle, durationMs = 140) {
     this.stopMoveAnimation();
 
-    const startX = this.currentAnimatedX ?? this.overlayWindow.getBounds().x;
+    const { x: startX, y: startY } = win.getBounds();
 
-    if (startX === targetBounds.x) {
-      this.currentAnimatedX = null;
+    if (startX === targetBounds.x && startY === targetBounds.y) {
+      this.setWindowBounds(win, targetBounds);
       return;
     }
 
@@ -398,9 +427,8 @@ export class OverlayManager {
     const interval = 8;
 
     this.moveAnimationTimer = setInterval(() => {
-      if (!this.overlayWindow || this.overlayWindow.isDestroyed()) {
+      if (this.overlayWindow !== win || win.isDestroyed()) {
         this.stopMoveAnimation();
-        this.currentAnimatedX = null;
         return;
       }
 
@@ -408,21 +436,13 @@ export class OverlayManager {
       const progress = Math.min(1, elapsed / durationMs);
       const eased = easeOutCubic(progress);
 
-      const currentX = Math.round(startX + (targetBounds.x - startX) * eased);
-      this.currentAnimatedX = currentX;
-
-      this.overlayWindow.setBounds({
-        x: currentX,
-        y: targetBounds.y,
-        width: targetBounds.width,
-        height: targetBounds.height,
+      this.setWindowBounds(win, {
+        ...targetBounds,
+        x: Math.round(startX + (targetBounds.x - startX) * eased),
+        y: Math.round(startY + (targetBounds.y - startY) * eased),
       });
 
-      if (progress >= 1) {
-        this.stopMoveAnimation();
-        this.currentAnimatedX = null;
-        this.overlayWindow.setBounds(targetBounds);
-      }
+      if (progress >= 1) this.stopMoveAnimation();
     }, interval);
   }
 
@@ -582,7 +602,7 @@ export class OverlayManager {
       currentBounds.width !== bounds.width ||
       currentBounds.height !== bounds.height
     ) {
-      win.setBounds(bounds);
+      this.setWindowBounds(win, bounds);
     }
     if (this.latestState) {
       win.webContents.send("overlay:state", this.latestState);
@@ -697,6 +717,8 @@ export class OverlayManager {
   }
 
   public closeOverlay() {
+    if (this.positionSaveTimer) this.savePersistedSettings();
+    this.stopMoveAnimation();
     this.wasAutoOpened = false;
     this.pendingShow = false;
     this.wantVisible = false;
@@ -809,6 +831,17 @@ export class OverlayManager {
 
     const win = this.overlayWindow;
     if (!win) return;
+    this.lastWindowPosition = win.getBounds();
+    win.on("move", () => {
+      if (this.overlayWindow !== win || !this.wantVisible || !win.isVisible()) return;
+      const { x, y } = win.getBounds();
+      if (x === this.lastWindowPosition?.x && y === this.lastWindowPosition.y) return;
+      this.stopMoveAnimation();
+      this.lastWindowPosition = { x, y };
+      this.customPosition = { x, y };
+      if (this.positionSaveTimer) clearTimeout(this.positionSaveTimer);
+      this.positionSaveTimer = setTimeout(() => this.savePersistedSettings(), POSITION_SAVE_DELAY_MS);
+    });
     confineToApp(
       win.webContents,
       (url) => { void shell.openExternal(url); },
@@ -918,7 +951,7 @@ export class OverlayManager {
       this.pauseShortcuts(Boolean(paused));
     });
 
-    onTrusted("overlay:update-settings", (_event, settings: Partial<OverlaySettings>) => {
+    onTrusted("overlay:update-settings", (_event, settings: Partial<OverlaySettings> & { resetCustomPosition?: boolean }) => {
       if (!settings || typeof settings !== "object") return;
 
       if (typeof settings.enabled === "boolean") {
@@ -932,17 +965,16 @@ export class OverlayManager {
         }
       }
 
-      let shouldAnimate = false;
+      let positionChanged = false;
       if (
         settings.position === "top-left" ||
         settings.position === "top-center" ||
         settings.position === "top-right"
       ) {
-        const changed = this.position !== settings.position;
+        positionChanged = this.position !== settings.position ||
+          (settings.resetCustomPosition === true && this.customPosition !== null);
         this.position = settings.position;
-        if (changed && this.overlayWindow && !this.overlayWindow.isDestroyed() && this.overlayWindow.isVisible()) {
-          shouldAnimate = true;
-        }
+        if (positionChanged) this.customPosition = null;
       }
 
       if (typeof settings.shortcut === "string" && settings.shortcut.trim()) {
@@ -972,12 +1004,11 @@ export class OverlayManager {
         this.applyAlwaysOnTop();
       }
 
-      if (shouldAnimate) {
-        const targetBounds = this.getWindowBounds();
-        this.animateWindowBounds(targetBounds);
-      } else if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+      const win = this.getWindow();
+      if (positionChanged && win) {
         const bounds = this.getWindowBounds();
-        this.overlayWindow.setBounds(bounds);
+        if (this.wantVisible && win.isVisible()) this.animateWindowBounds(win, bounds);
+        else this.setWindowBounds(win, bounds);
       }
 
       this.savePersistedSettings();

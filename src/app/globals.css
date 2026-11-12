@@ -538,24 +538,20 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-mobile.lane-settings-shell { box-sizing: border-box; }
 .lane-settings-backdrop {
   background: rgba(0,0,0,.22) !important;
-  -webkit-backdrop-filter: blur(10px) saturate(135%) !important;
-  backdrop-filter: blur(10px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
 }
 .lane-settings-shell {
   border-radius: 24px !important;
   border: 1px solid color-mix(in srgb, var(--text-primary) 5%, transparent) !important;
-  background:
-    radial-gradient(75% 75% at 0% 70%, color-mix(in srgb, var(--accent-primary) 8%, transparent), transparent 72%),
-    color-mix(in srgb, var(--bg-primary) 50%, transparent) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(150%);
-  backdrop-filter: blur(28px) saturate(150%);
+  background: color-mix(in srgb, var(--bg-primary) 50%, transparent) !important;
+  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(28px);
   box-shadow: 0 28px 90px rgba(0,0,0,.48);
 }
 .lane-settings-content {
   border: 0;
   background: color-mix(in srgb, var(--bg-primary) 34%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
-  backdrop-filter: blur(20px) saturate(145%);
 }
 .lane-settings-shell .lane-setting-row {
   background: transparent;
@@ -568,8 +564,6 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-nav-items {
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   border-radius: 14px;
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  backdrop-filter: blur(18px) saturate(140%);
 }
 .lane-settings-shell .lane-shortcut-card { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
 .lane-settings-shell .lane-shortcuts-search,

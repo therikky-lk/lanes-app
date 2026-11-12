@@ -187,7 +187,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
           />
         </div>
 
-        <nav className="relative shrink-0 flex flex-col items-center gap-[12px] pt-[12px] pb-[4px]">
+        <nav className="relative shrink-0 flex flex-col items-center gap-[12px] pt-[12px] pb-[12px]">
           {renderNavItems()}
         </nav>
 

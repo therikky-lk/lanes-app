@@ -14,7 +14,7 @@ const OPEN_CORS_DOMAINS = [
   "spotify.com", "spotifycdn.com", "spotify.link", "scdn.co", "deezer.com",
   "dzcdn.net", "music.apple.com", "mzstatic.com", "genius.com",
   "r2.cloudflarestorage.com", "fonts.googleapis.com", "fonts.gstatic.com",
-  "audius.co", "lrclib.net", "yandex.ru", "ntfy.sh", "ntfy.envs.net",
+  "audius.co", "lrclib.net", "yandex.ru", "api.music.yandex.net", "ntfy.sh", "ntfy.envs.net",
   "marketingtools.apple.com", "lane-app.site", "yt.chocolatemoo53.com",
 ];
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);

@@ -3,7 +3,7 @@ import SettingsPageFrame from "./SettingsPageFrame";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill, RightLine } from "@mingcute/react";
+import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, Music2Fill, YoutubeFill, RightLine } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
@@ -32,9 +32,10 @@ import {
   OverlayTab,
   DiscordTab,
   YoutubeTab,
+  YandexMusicTab,
 } from "./tabs";
 
-type TabId = "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
+type TabId = "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Playback: Play,
@@ -43,6 +44,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Overlay: Widget5,
   Discord: DiscordFill,
   Youtube: YoutubeFill,
+  YandexMusic: Music2Fill,
   Appearance: Palette,
   Customization: Gallery,
   Audio: HeadphonesRound,
@@ -55,7 +57,7 @@ const DESKTOP_ONLY_TABS = new Set<TabId>(["Shortcuts", "Overlay", "Discord"]);
 const TAB_GROUPS: { labelKey: "player" | "interface" | "integrations" | "application"; ids: TabId[] }[] = [
   { labelKey: "player", ids: ["Playback", "Audio", "Shortcuts"] },
   { labelKey: "interface", ids: ["Appearance", "Overlay"] },
-  { labelKey: "integrations", ids: ["Youtube", "Connect", "Discord"] },
+  { labelKey: "integrations", ids: ["Youtube", "YandexMusic", "Connect", "Discord"] },
   { labelKey: "application", ids: ["Storage", "About"] },
 ].map((group) => ({
   ...group,
@@ -111,6 +113,7 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Youtube", titleKey: "settings.youtube.account_playback.title", descKey: "settings.youtube.account_playback.description" },
   { tabId: "Youtube", titleKey: "settings.youtube.prompt_sign_in.title", descKey: "settings.youtube.prompt_sign_in.description" },
   { tabId: "Youtube", titleKey: "settings.youtube.sync_library.title", descKey: "settings.youtube.sync_library.description" },
+  { tabId: "YandexMusic", titleKey: "settings.yandex_music.import", descKey: "settings.yandex_music.also_like_description" },
 
   // Appearance
   { tabId: "Appearance", titleKey: "settings.language.label", descKey: "settings.language.description" },
@@ -172,6 +175,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     Overlay: t("settings.tabs.overlay") || "Overlay",
     Discord: t("settings.tabs.discord") || "Discord RPC",
     Youtube: t("settings.tabs.youtube") || "YouTube",
+    YandexMusic: t("settings.yandex_music.title"),
     Appearance: t("settings.tabs.appearance"),
     Customization: t("settings.tabs.customization") || "Customization",
     Audio: t("settings.tabs.audio"),
@@ -186,6 +190,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     Overlay: t("settings.overlay.description") || "Desktop overlay behavior, position and lyrics display.",
     Discord: t("settings.discord.description") || "Show what you're listening to on Discord with artwork, artist badge and progress bar.",
     Youtube: t("settings.youtube.description") || "Sign in to your YouTube account to prevent playback errors.",
+    YandexMusic: t("settings.yandex_music.description"),
     Appearance: t("settings.theme.description"),
     Customization: t("settings.customization.description") || "Window background wallpaper, transparency and block blur effects.",
     Audio: t("settings.audio.description"),
@@ -205,6 +210,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
       Overlay: "settings.tabs.overlay",
       Discord: "settings.tabs.discord",
       Youtube: "settings.tabs.youtube",
+      YandexMusic: "settings.yandex_music.title",
       Appearance: "settings.theme.title",
       Customization: "settings.tabs.customization",
       Audio: "settings.tabs.audio",
@@ -219,6 +225,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
       Overlay: "settings.overlay.description",
       Discord: "settings.discord.description",
       Youtube: "settings.youtube.description",
+      YandexMusic: "settings.yandex_music.description",
       Appearance: "settings.theme.description",
       Customization: "settings.customization.description",
       Audio: "settings.audio.description",
@@ -467,6 +474,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             {activeTab === "Overlay" && <OverlayTab searchQuery={searchQuery} />}
             {activeTab === "Discord" && <DiscordTab searchQuery={searchQuery} />}
             {activeTab === "Youtube" && <YoutubeTab searchQuery={searchQuery} />}
+            {activeTab === "YandexMusic" && <YandexMusicTab />}
             {(activeTab === "Appearance" || activeTab === "Customization") && (
               <div className="flex flex-col gap-[28px]">
                 <AppearanceTab searchQuery={searchQuery} />

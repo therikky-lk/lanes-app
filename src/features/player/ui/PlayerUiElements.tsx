@@ -115,8 +115,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
     void preloadCoverArt(nextCoverUrl);
   }, [previousCoverUrl, nextCoverUrl]);
 
-  // phones: no hover, so a tap on the cover shows the heart for a moment and a
-  // double tap likes the track (with a burst)
+  // On phones, double-tapping the cover likes the track and shows a burst.
   const [burst, setBurst] = useState(0);
   const coverDragX = useMotionValue(0);
   const coverStep = useRef(1);
@@ -198,6 +197,43 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
   const S = isMobile ? "min(84vw, 44vh)" : "clamp(300px, min(36vw, 52vh), 460px)";
   const controlsWidth = `min(calc(${S} + 72px), 92vw)`;
+  const heartLayerClass = `absolute inset-0 flex items-center ${isMobile ? "justify-end" : "justify-center"}`;
+  const heartSize = isMobile ? 24 : 30;
+  const likeButton = (
+    <button
+      type="button"
+      aria-label={isLiked ? t("common.unlike") : t("common.like")}
+      aria-pressed={isLiked}
+      disabled={!track}
+      className={`inline-flex shrink-0 rounded-full border-none cursor-pointer transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] ${
+        isMobile
+          ? "relative h-[44px] w-[44px] bg-transparent opacity-95 disabled:opacity-40"
+          : "pointer-events-none absolute inset-0 z-10 m-auto h-[72px] w-[72px] bg-black/55 opacity-0 backdrop-blur-[2px] hover:bg-black/65 group-hover/cover:pointer-events-auto group-hover/cover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+      } ${isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"}`}
+      onClick={handleLikeToggle}
+    >
+      <motion.span
+        initial={false}
+        animate={{ scale: isLiked ? 0.85 : 1, opacity: isLiked ? 0 : 1 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        className={heartLayerClass}
+      >
+        <HeartLine size={heartSize} />
+      </motion.span>
+      <motion.span
+        initial={false}
+        animate={{ scale: isLiked ? 1 : 0.75, opacity: isLiked ? 1 : 0 }}
+        transition={
+          isLiked
+            ? { type: "spring", stiffness: 500, damping: 30, mass: 0.6 }
+            : { duration: 0.16, ease: "easeOut" }
+        }
+        className={heartLayerClass}
+      >
+        <HeartFill size={heartSize} />
+      </motion.span>
+    </button>
+  );
 
   return (
     <>
@@ -249,6 +285,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             </motion.div>;
           })}
         </motion.div>
+        {!isMobile && track && likeButton}
         {/* double-tap burst (phones) */}
         <AnimatePresence>
           {burst > 0 && (
@@ -267,8 +304,8 @@ export const PlayerUiElements = memo(function PlayerUiElements({
       </div>
 
       {/* Track info */}
-      <div style={{ width: controlsWidth }} className="mt-[4px] flex min-w-0 items-center gap-3">
-        <div className="flex min-w-0 flex-1 flex-col gap-[2px] text-left">
+      <div style={{ width: isMobile ? S : controlsWidth }} className="mt-[4px] flex min-w-0 items-center gap-3">
+        <div className={`flex min-w-0 flex-1 flex-col gap-[2px] ${isMobile ? "text-left" : "items-center text-center"}`}>
           <p
             className="m-0 text-[22px] leading-[1.2] font-[650] text-white flex items-center gap-[6px] max-w-full"
             style={{ letterSpacing: "-0.03em" }}
@@ -294,39 +331,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             )}
           </p>
         </div>
-        <button
-          type="button"
-          aria-label={isLiked ? t("common.unlike") : t("common.like")}
-          aria-pressed={isLiked}
-          disabled={!track}
-          className={`relative shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full opacity-95 disabled:opacity-40 transition-[opacity,transform,background-color] duration-200 ease-out hover:opacity-100 active:scale-[0.92] bg-black/55 backdrop-blur-[2px] border-none hover:bg-black/65 ${
-            isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"
-          }`}
-          onClick={handleLikeToggle}
-          style={{ cursor: "pointer" }}
-        >
-          {/* subtle crossfade: outline heart out, filled heart in with a slight scale */}
-          <motion.div
-            initial={false}
-            animate={{ scale: isLiked ? 0.85 : 1, opacity: isLiked ? 0 : 1 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <HeartLine size={24} />
-          </motion.div>
-          <motion.div
-            initial={false}
-            animate={{ scale: isLiked ? 1 : 0.75, opacity: isLiked ? 1 : 0 }}
-            transition={
-              isLiked
-                ? { type: "spring", stiffness: 500, damping: 30, mass: 0.6 }
-                : { duration: 0.16, ease: "easeOut" }
-            }
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <HeartFill size={24} />
-          </motion.div>
-        </button>
+        {isMobile && likeButton}
       </div>
 
       {/* Timeline (Compact, with smooth spring pill, no thumb) */}

@@ -19,7 +19,7 @@ const DEFAULT_SETTINGS: OverlaySettings = {
   alwaysOnTop: true,
 };
 
-function notifyElectron(patch: Partial<OverlaySettings>) {
+function notifyElectron(patch: Partial<OverlaySettings> & { resetCustomPosition?: boolean }) {
   if (typeof window !== "undefined" && window.linerElectron?.updateOverlaySettings) {
     window.linerElectron.updateOverlaySettings(patch);
   }
@@ -35,7 +35,7 @@ export const useOverlaySettingsStore = create<OverlaySettingsState>()(
       },
       setPosition: (position) => {
         set({ position });
-        notifyElectron({ position });
+        notifyElectron({ position, resetCustomPosition: true });
       },
       setShortcut: (rawShortcut) => {
         const shortcut = normalizeShortcutToEnglish(rawShortcut) || DEFAULT_SETTINGS.shortcut;

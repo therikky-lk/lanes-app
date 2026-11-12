@@ -4,13 +4,14 @@
 //   ⁣lane-cover:<url>      an imported or user-selected playlist cover
 //   ⁣lane-local:<base64>   the user's own audio files added to the playlist
 //                          (the audio stays on the device that has it)
+//   ⁣lane-source:<name>   the integration that owns the imported playlist
 const SEP = "⁣";
 // The production API currently rejects descriptions above 2,000 characters.
 // Keep margin for its validation/normalization and never truncate user text.
 export const MAX_PLAYLIST_DESCRIPTION_LENGTH = 2_000;
-const ANY_MARK = /\s*⁣lane-(cover|local):([^\s⁣]+)/g;
+const ANY_MARK = /\s*⁣lane-(cover|local|source):([^\s⁣]+)/g;
 
-function readMarker(description: string | null | undefined, kind: "cover" | "local"): string | undefined {
+function readMarker(description: string | null | undefined, kind: "cover" | "local" | "source"): string | undefined {
   if (!description) return undefined;
   for (const match of description.matchAll(ANY_MARK)) {
     if (match[1] === kind) return match[2];
@@ -18,9 +19,10 @@ function readMarker(description: string | null | undefined, kind: "cover" | "loc
   return undefined;
 }
 
-function build(text: string, local: string | undefined, cover: string | undefined): string {
+function build(text: string, local: string | undefined, cover: string | undefined, source: string | undefined): string {
   const localMark = local ? `${SEP}lane-local:${local}` : "";
-  let coverMark = cover ? `${SEP}lane-cover:${cover}` : "";
+  const coverMark = cover ? `${SEP}lane-cover:${cover}` : "";
+  const sourceMark = source ? `${SEP}lane-source:${source}` : "";
   const separator = text ? "\n\n" : "";
 
   // Local entries are user data and must stay intact. Covers are optional
@@ -31,11 +33,11 @@ function build(text: string, local: string | undefined, cover: string | undefine
   if (text.length + separator.length + localMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
     throw new Error("Описание и локальные треки превышают лимит сервера. Данные сохранены без изменений.");
   }
-  if (text.length + separator.length + localMark.length + coverMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
+  if (text.length + separator.length + localMark.length + coverMark.length + sourceMark.length > MAX_PLAYLIST_DESCRIPTION_LENGTH) {
     throw new Error("Описание плейлиста превышает лимит сервера. Данные сохранены без изменений.");
   }
 
-  const marks = `${localMark}${coverMark}`;
+  const marks = `${localMark}${coverMark}${sourceMark}`;
   if (!marks) return text;
   return `${text}${text ? "\n\n" : ""}${marks}`;
 }
@@ -51,11 +53,19 @@ export function stripCoverMarker(description: string | null | undefined): string
   return (description ?? "").replace(ANY_MARK, "").trim();
 }
 
+export function readPlaylistSource(description: string | null | undefined): string | undefined {
+  return readMarker(description, "source");
+}
+
+export function importedPlaylistDescription(source: "yandex"): string {
+  return build("", undefined, undefined, source);
+}
+
 export function withCoverMarker(description: string | null | undefined, coverUrl: string | undefined): string {
   const original = description ?? "";
   let next: string;
   try {
-    next = build(stripCoverMarker(original), readMarker(original, "local"), coverUrl);
+    next = build(stripCoverMarker(original), readMarker(original, "local"), coverUrl, readPlaylistSource(original));
   } catch (error) {
     if (coverUrl) return original;
     throw error;
@@ -65,9 +75,9 @@ export function withCoverMarker(description: string | null | undefined, coverUrl
   return next;
 }
 
-/** Replace visible description text while preserving both hidden metadata markers. */
+/** Replace visible description text while preserving playlist metadata. */
 export function withDescriptionText(description: string | null | undefined, text: string): string {
-  return build(text, readMarker(description, "local"), readCoverMarker(description));
+  return build(text, readMarker(description, "local"), readCoverMarker(description), readPlaylistSource(description));
 }
 
 export function hasCoverMarker(description: string | null | undefined, coverUrl: string | undefined): boolean {
@@ -144,5 +154,5 @@ export function withLocalEntries(description: string | null | undefined, entries
     e.addedAt,
   ]);
   const local = packed.length > 0 ? toBase64Url(JSON.stringify(packed)) : undefined;
-  return build(stripCoverMarker(description), local, readCoverMarker(description));
+  return build(stripCoverMarker(description), local, readCoverMarker(description), readPlaylistSource(description));
 }

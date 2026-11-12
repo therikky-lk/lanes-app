@@ -1,6 +1,14 @@
 const pendingWrites = new Map<string, string>();
+let flushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function cancelScheduledFlush() {
+  if (flushTimer === undefined) return;
+  clearTimeout(flushTimer);
+  flushTimer = undefined;
+}
 
 function flushPendingWrites() {
+  cancelScheduledFlush();
   if (typeof localStorage === "undefined" || pendingWrites.size === 0) return;
   for (const [name, value] of pendingWrites.entries()) {
     try {
@@ -11,8 +19,6 @@ function flushPendingWrites() {
 }
 
 if (typeof window !== "undefined") {
-  setInterval(flushPendingWrites, 1000);
-
   window.addEventListener("beforeunload", flushPendingWrites);
   window.addEventListener("pagehide", flushPendingWrites);
   if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => {
@@ -31,10 +37,12 @@ export const debouncedStorage = {
   setItem: (name: string, value: string) => {
     if (typeof window === "undefined") return;
     pendingWrites.set(name, value);
+    flushTimer ??= setTimeout(flushPendingWrites, 1000);
   },
   removeItem: (name: string) => {
     if (typeof window === "undefined") return;
     pendingWrites.delete(name);
+    if (pendingWrites.size === 0) cancelScheduledFlush();
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(name);
     }

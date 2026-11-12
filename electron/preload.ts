@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { AuthRefreshResult, StoredAuthSession } from "./auth-session-store";
 import { startPoTokenWorker } from "./potoken-preload";
 import type { MainNetResult } from "./netdiag";
+import type { YandexMusicSignInResult } from "../src/shared/media/yandexMusicOAuth";
 
 export interface DeeplinkTarget {
   type: "artist" | "album" | "playlist" | "track" | "share" | "shortcut";
@@ -161,6 +162,7 @@ export interface LinerElectronApi {
   onConnectStatus?: (cb: (status: { relay: string; online: boolean; error?: string }) => void) => () => void;
   spotifyHasLogin?: () => Promise<boolean>;
   spotifyLogin?: () => Promise<boolean>;
+  yandexMusicSignIn?: () => Promise<YandexMusicSignInResult>;
   spotifyLogout?: () => Promise<boolean>;
   spotifyFetch?: (request: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ status: number; body: string }>;
   /** keep the app (not the screen) from being suspended while a long job runs */
@@ -420,6 +422,7 @@ const api: LinerElectronApi = {
   },
   spotifyHasLogin: () => ipcRenderer.invoke("spotify:has-login"),
   spotifyLogin: () => ipcRenderer.invoke("spotify:login"),
+  yandexMusicSignIn: () => ipcRenderer.invoke("yandex-music:sign-in"),
   spotifyLogout: () => ipcRenderer.invoke("spotify:logout"),
   spotifyFetch: (request) => ipcRenderer.invoke("spotify:fetch", request),
   keepAwake: (on) => ipcRenderer.invoke("power:keep-awake", on),
