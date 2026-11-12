@@ -45,7 +45,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Overlay: Widget5,
   Discord: DiscordFill,
   Youtube: YoutubeFill,
-  YandexMusic: YandexMusicIcon,
+  YandexMusic: (props) => <YandexMusicIcon {...props} monochrome />,
   Appearance: Palette,
   Customization: Gallery,
   Audio: HeadphonesRound,
@@ -114,7 +114,7 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Youtube", titleKey: "settings.youtube.account_playback.title", descKey: "settings.youtube.account_playback.description" },
   { tabId: "Youtube", titleKey: "settings.youtube.prompt_sign_in.title", descKey: "settings.youtube.prompt_sign_in.description" },
   { tabId: "Youtube", titleKey: "settings.youtube.sync_library.title", descKey: "settings.youtube.sync_library.description" },
-  { tabId: "YandexMusic", titleKey: "settings.yandex_music.import", descKey: "settings.yandex_music.also_like_description" },
+  { tabId: "YandexMusic", titleKey: "common.import", descKey: "settings.yandex_music.also_like_description" },
 
   // Appearance
   { tabId: "Appearance", titleKey: "settings.language.label", descKey: "settings.language.description" },
@@ -406,7 +406,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
                     <Icon
                       size={id === "YandexMusic" ? 16 : 18}
                       weight="Bold"
-                      className={`relative shrink-0 ${id === "YandexMusic" ? "my-px" : isActive ? "text-text-primary" : "text-text-tertiary"}`}
+                      className={`relative shrink-0 ${isActive ? "text-text-primary" : "text-text-tertiary"}`}
                     />
                     <span className="relative truncate leading-none">{tabLabels[id]}</span>
                     {isMobile && <RightLine size={16} className="ml-auto shrink-0 text-text-tertiary" />}

@@ -1,6 +1,7 @@
 import type { ImportResult, ImportReview, ImportSource, Track } from "@/shared/contracts";
 import { parseImportSource, type ClientImportedPlaylist, type ClientImportedTrack } from "../index";
 import { findCatalogMatch } from "@/shared/media/matching";
+import { delay } from "../shared/http";
 
 const SEARCH_CONCURRENCY = 4;
 const PROGRESS_THROTTLE_MS = 120;
@@ -80,7 +81,7 @@ export async function matchWithRetry(track: ClientImportedTrack, signal?: AbortS
       const status = (error as { status?: number })?.status;
       const limited = status === 429 || /\b429\b/.test(String((error as Error)?.message ?? ""));
       if (!limited || attempt >= 4 || signal?.aborted) throw error;
-      await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
+      await delay(1500 * 2 ** attempt, signal);
     }
   }
 }

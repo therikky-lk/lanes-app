@@ -2,6 +2,7 @@ import { CapacitorHttp } from "@capacitor/core";
 import { isNativeApp } from "@/shared/platform/native";
 import type { ImportedTrack } from "@/shared/contracts";
 import { isYandexMusicToken } from "@/shared/media/yandexMusicOAuth";
+import { delay } from "../../shared/http";
 
 const API = "https://api.music.yandex.net";
 const TRACK_BATCH_SIZE = 100;
@@ -31,13 +32,14 @@ function numericId(value: unknown): string | undefined {
   return /^\d+$/.test(id) ? id : undefined;
 }
 
-async function request<T>(path: string, token: string, form?: URLSearchParams): Promise<T> {
+async function request<T>(path: string, token: string, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
   const url = `${API}${path}`;
   const method = form ? "POST" : "GET";
   const headers: Record<string, string> = { Accept: "application/json", Authorization: `OAuth ${token}` };
   if (form) headers["Content-Type"] = "application/x-www-form-urlencoded";
 
   for (let attempt = 0; ; attempt++) {
+    signal?.throwIfAborted();
     let status: number;
     let retryAfter: string | null | undefined;
     let readBody: () => Promise<unknown>;
@@ -53,22 +55,24 @@ async function request<T>(path: string, token: string, form?: URLSearchParams): 
       } else {
         const response = await fetch(url, {
           method, headers, body: form, credentials: "omit", redirect: "error",
-          signal: AbortSignal.timeout(TIMEOUT_MS),
+          signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS),
         });
         status = response.status;
         retryAfter = response.headers.get("retry-after");
         readBody = () => response.json();
       }
     } catch {
+      signal?.throwIfAborted();
       throw new YandexSourceError("source_unavailable");
     }
 
+    signal?.throwIfAborted();
     if (status === 401 || status === 403) throw new YandexSourceError("access_denied");
     if (status === 429) {
       const headerDelay = /^\d+$/.test(retryAfter ?? "") ? Number(retryAfter) * 1_000 : Date.parse(retryAfter ?? "") - Date.now();
-      const delay = Math.max(1_500 * 2 ** attempt, Number.isFinite(headerDelay) ? headerDelay : 0);
-      if (attempt >= 3 || delay > 60_000) throw new YandexSourceError("rate_limited");
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      const retryDelay = Math.max(1_500 * 2 ** attempt, Number.isFinite(headerDelay) ? headerDelay : 0);
+      if (attempt >= 3 || retryDelay > 60_000) throw new YandexSourceError("rate_limited");
+      await delay(retryDelay, signal);
       continue;
     }
     if (status < 200 || status >= 300) throw new YandexSourceError("source_unavailable");
@@ -77,6 +81,7 @@ async function request<T>(path: string, token: string, form?: URLSearchParams): 
     try {
       body = await readBody() as typeof body;
     } catch {
+      signal?.throwIfAborted();
       throw new YandexSourceError("source_unavailable");
     }
     if (body?.result == null) throw new YandexSourceError("source_unavailable");
@@ -102,15 +107,15 @@ function mapTrack(track: YandexTrack): ImportedTrack | undefined {
   };
 }
 
-export async function loadYandexLikedTracks(rawToken: string): Promise<{ total: number; tracks: ImportedTrack[] }> {
+export async function loadYandexLikedTracks(rawToken: string, signal?: AbortSignal): Promise<{ total: number; tracks: ImportedTrack[] }> {
   const token = rawToken.trim().replace(/^OAuth\s+/i, "");
   if (!isYandexMusicToken(token)) throw new YandexSourceError("invalid_token");
 
-  const account = await request<{ account?: { uid?: string | number } }>("/account/status", token);
+  const account = await request<{ account?: { uid?: string | number } }>("/account/status", token, signal);
   const uid = numericId(account.account?.uid);
   if (!uid || uid === "0") throw new YandexSourceError("access_denied");
   const likes = await request<{ library?: { tracks?: { id?: string | number; albumId?: string | number }[] } }>(
-    `/users/${uid}/likes/tracks?if-modified-since-revision=0`, token,
+    `/users/${uid}/likes/tracks?if-modified-since-revision=0`, token, signal,
   );
   if (!Array.isArray(likes.library?.tracks)) throw new YandexSourceError("source_unavailable");
 
@@ -125,7 +130,7 @@ export async function loadYandexLikedTracks(rawToken: string): Promise<{ total: 
   const byId = new Map<string, ImportedTrack>();
   const trackIds = [...ids.values()];
   for (let i = 0; i < trackIds.length; i += TRACK_BATCH_SIZE) {
-    const details = await request<YandexTrack[]>("/tracks", token, new URLSearchParams({
+    const details = await request<YandexTrack[]>("/tracks", token, signal, new URLSearchParams({
       "track-ids": trackIds.slice(i, i + TRACK_BATCH_SIZE).join(","),
     }));
     if (!Array.isArray(details)) throw new YandexSourceError("source_unavailable");
