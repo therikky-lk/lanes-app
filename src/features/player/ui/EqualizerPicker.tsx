@@ -25,10 +25,10 @@ export function EqualizerPicker({ className = "" }: { className?: string }) {
         <p className="m-0 mt-1 text-[11px] text-text-tertiary">{t("player.equalizer_hint")}</p></div>
       <ToggleSwitch checked={enabled} onChange={value => playerEngine.setIsEqEnabled(value)} ariaLabel={t("player.equalizer")} />
     </div>
-    <div className="grid grid-cols-4 gap-1 rounded-[9px] bg-black/5 dark:bg-white/5 p-1" role="tablist" aria-label={t("player.equalizer")}>
+    <div className="flex gap-1 overflow-x-auto rounded-[9px] bg-black/5 dark:bg-white/5 p-1" role="tablist" aria-label={t("player.equalizer")}>
       {(["enhance", "genre", "accent", "custom"] as const).map(category => <button key={category} type="button" role="tab"
         id={`${id}-${category}`} aria-controls={`${id}-presets`} aria-selected={tab === category}
-        onClick={() => setTab(category)} className={`rounded-[6px] border-0 px-1 py-1.5 text-[11px] transition-colors ${tab === category ? "bg-black/10 dark:bg-white/10 text-text-primary" : "bg-transparent text-text-tertiary"}`}>
+        onClick={() => setTab(category)} className={`flex-1 whitespace-nowrap rounded-[6px] border-0 px-1.5 py-1.5 text-[11px] transition-colors ${tab === category ? "bg-black/10 dark:bg-white/10 text-text-primary" : "bg-transparent text-text-tertiary"}`}>
         {t(`player.eq_tab_${category}`)}</button>)}
     </div>
     <div id={`${id}-presets`} role="tabpanel" aria-labelledby={`${id}-${tab}`} className="grid grid-cols-3 gap-1">

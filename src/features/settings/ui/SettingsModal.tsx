@@ -372,7 +372,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
               >
                 {t(`settings.groups.${group.labelKey}`)}
               </p>
-              <div className="lane-settings-nav-items flex flex-col gap-[2px] rounded-xl p-[4px]">
+              <div className="lane-settings-nav-items flex flex-col gap-[2px]">
               {group.ids.map((id) => {
                 const isActive = id === activeTab;
                 const Icon = TAB_ICONS[id];
@@ -386,7 +386,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
                       setActiveTab(id);
                       setMobilePage(true);
                     }}
-                    className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] rounded-[8px] border-0 cursor-pointer text-left transition-colors ${
+                    className={`w-full flex items-center gap-[10px] px-[10px] py-[8px] border-0 cursor-pointer text-left transition-colors ${
                       isActive && !isMobile
                         ? "relative text-text-primary"
                         : "bg-transparent text-text-secondary"
@@ -395,9 +395,10 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
                   >
                     {isActive && !isMobile && (
                       <motion.span
+                        layout="position"
                         layoutId="settings-nav-active"
                         transition={{ type: "spring", stiffness: 520, damping: 40 }}
-                        className="absolute inset-0 rounded-[8px] bg-black/[0.07] dark:bg-white/[0.12]"
+                        className="absolute inset-0 rounded-[inherit] bg-black/[0.07] dark:bg-white/[0.12]"
                         aria-hidden="true"
                       />
                     )}

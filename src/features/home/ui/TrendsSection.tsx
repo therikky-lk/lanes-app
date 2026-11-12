@@ -1,7 +1,6 @@
 import Button from "@/shared/ui/Button";
-import { useEffect, useRef, useState } from "react";
-import SegmentedTabs from "@/shared/ui/SegmentedTabs";
-import { FireFill, HeartFill, HeartLine } from "@mingcute/react";
+import { useEffect, useId, useRef, useState } from "react";
+import { DownLine, FireFill, HeartFill, HeartLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import CoverImage from "@/features/covers/ui/CoverImage";
@@ -127,6 +126,7 @@ function TrendRow({
 
 export default function TrendsSection() {
   const { t } = useTranslation();
+  const chartId = useId();
   const isMobile = useIsMobile();
   const sectionRef = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
@@ -247,7 +247,7 @@ export default function TrendsSection() {
       </div>
 
       {entries?.some((entry) => entry.song.stale) && <p className="px-8 text-xs text-text-secondary">Сохранённый чарт: источник временно недоступен.</p>}
-      <div className="mt-[10px] grid w-full grid-cols-1 gap-x-[16px] px-[32px] md:grid-cols-2">
+      <div id={chartId} className="mt-[10px] grid w-full grid-cols-1 gap-x-[16px] px-[32px] md:grid-cols-2">
         {entries === null
           ? Array.from({ length: 6 }, (_, i) => (
               <div key={i} className="grid h-[60px] min-w-0 grid-cols-[26px_44px_minmax(0,1fr)_44px] items-center gap-[12px] px-[8px]">
@@ -263,13 +263,15 @@ export default function TrendsSection() {
       </div>
 
       {entries && entries.length > PREVIEW && (
-        <div className="mt-[6px] px-8">
-          <Button variant="secondary"
+        <div className="mt-[6px] flex justify-center">
+          <Button variant="secondary" size="icon"
             type="button"
+            aria-controls={chartId}
+            aria-expanded={all}
+            aria-label={all ? t("trends.less") : t("trends.all", { n: entries.length })}
             onClick={() => setAll((v) => !v)}
-            className="!h-[34px]"
           >
-            {all ? t("trends.less") : t("trends.all", { n: entries.length })}
+            <DownLine size={20} aria-hidden="true" className={all ? "rotate-180" : undefined} />
           </Button>
         </div>
       )}

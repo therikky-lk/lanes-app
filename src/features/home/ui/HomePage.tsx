@@ -170,24 +170,16 @@ export default function HomePage() {
                     )}
                   </span>
                   {item.thumbs.length > 0 && (
-                    <span className="flex h-[48px] shrink-0 items-center justify-end md:h-[52px]">
-                      {item.thumbs.map((thumb, index) => {
-                        const size = 44;
-                        return (
-                          <span
-                            key={`${item.key}-thumb-${index}`}
-                            className="relative shrink-0 overflow-hidden rounded-[12px] border-2 border-[#e6e6eb] bg-[#e6e6eb] dark:border-[#161616] dark:bg-[#161616]"
-                            style={{
-                              width: `${size}px`,
-                              height: `${size}px`,
-                              marginLeft: index === 0 ? 0 : -30,
-                              zIndex: item.thumbs.length - index,
-                            }}
-                          >
-                            <CoverImage src={thumb} alt="" fill sizes="44px" className="object-cover" />
-                          </span>
-                        );
-                      })}
+                    <span className="flex shrink-0 items-center justify-end">
+                      {item.thumbs.map((thumb, index) => (
+                        <span
+                          key={`${item.key}-thumb-${index}`}
+                          className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[10px] bg-bg-elevated ring-2 ring-[#e6e6eb] not-first:-ml-[30px] dark:ring-[#161616] md:h-[52px] md:w-[52px] md:not-first:-ml-[34px]"
+                          style={{ zIndex: item.thumbs.length - index }}
+                        >
+                          <CoverImage src={thumb} alt="" fill sizes="(min-width: 768px) 52px, 44px" className="object-cover" />
+                        </span>
+                      ))}
                     </span>
                   )}
                 </button>
@@ -202,7 +194,7 @@ export default function HomePage() {
               />
             )}
 
-          {/* Trending: top 50 for Russia / worldwide */}
+          {/* Trending: Russia / worldwide */}
           <TrendsSection />
 
           {/* Listening Right Now (Trending Chart) */}
