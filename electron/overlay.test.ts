@@ -107,3 +107,77 @@ it("remembers a drag through hide, restart and settings sync, and lets a preset 
     rmSync(mocks.userData, { recursive: true, force: true });
   }
 });
+
+it("loads on demand, drops hidden windows and restores the latest playback state", () => {
+  vi.useFakeTimers();
+  mocks.userData = mkdtempSync(join(tmpdir(), "lane-overlay-"));
+  const manager = new OverlayManager("preload.cjs", "/renderer");
+  const update = (state: object) => mocks.handlers.get("overlay:update-state")?.({}, state);
+  const open = () => {
+    manager.showOverlay();
+    const win = manager.getWindow()!;
+    mocks.handlers.get("overlay:ready")?.({ sender: win.webContents });
+    return win;
+  };
+
+  try {
+    manager.setAuthenticated(true);
+    vi.advanceTimersByTime(1000);
+    expect(manager.getWindow()).toBeNull();
+
+    update({ positionMs: 100 });
+    const first = open();
+    expect(first.webContents.send).toHaveBeenCalledWith("overlay:state", { positionMs: 100 });
+
+    manager.closeOverlay();
+    vi.advanceTimersByTime(100);
+    update({ positionMs: 200 });
+    expect(first.webContents.send).not.toHaveBeenCalledWith("overlay:state", { positionMs: 200 });
+
+    vi.advanceTimersByTime(60_000);
+    expect(open()).toBe(first);
+    vi.advanceTimersByTime(120_000);
+    expect(first.isDestroyed()).toBe(false);
+
+    manager.closeOverlay();
+    vi.advanceTimersByTime(121_000);
+    expect(first.isDestroyed()).toBe(true);
+    expect(manager.getWindow()).toBeNull();
+
+    update({ positionMs: 300 });
+    const next = open();
+    expect(next).not.toBe(first);
+    expect(next.webContents.send).toHaveBeenCalledWith("overlay:state", { positionMs: 300 });
+    manager.setAuthenticated(false);
+    expect(next.isDestroyed()).toBe(true);
+  } finally {
+    manager.destroy();
+    vi.useRealTimers();
+    rmSync(mocks.userData, { recursive: true, force: true });
+  }
+});
+
+it("keeps native minimize prewarming temporary", () => {
+  vi.useFakeTimers();
+  mocks.userData = mkdtempSync(join(tmpdir(), "lane-overlay-"));
+  const manager = new OverlayManager("preload.cjs", "/renderer");
+  try {
+    manager.enablePrewarm();
+    vi.advanceTimersByTime(1000);
+    expect(manager.getWindow()).toBeNull();
+
+    manager.setAuthenticated(true);
+    vi.advanceTimersByTime(1000);
+    const warmed = manager.getWindow();
+    expect(warmed?.isVisible()).toBe(false);
+    vi.advanceTimersByTime(121_000);
+    expect(warmed?.isDestroyed()).toBe(true);
+
+    vi.advanceTimersByTime(1000);
+    expect(manager.getWindow()).toBeNull();
+  } finally {
+    manager.dispose();
+    vi.useRealTimers();
+    rmSync(mocks.userData, { recursive: true, force: true });
+  }
+});
