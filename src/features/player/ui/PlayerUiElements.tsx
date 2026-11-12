@@ -197,6 +197,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
   const { t } = useTranslation();
 
   const S = isMobile ? "min(84vw, 44vh)" : "clamp(300px, min(36vw, 52vh), 460px)";
+  const controlsWidth = `min(calc(${S} + 72px), 92vw)`;
 
   return (
     <>
@@ -263,12 +264,42 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             </motion.div>
           )}
         </AnimatePresence>
-        {/* Keep the like control visible on the cover without requiring a tap first. */}
-        {<button
+      </div>
+
+      {/* Track info */}
+      <div style={{ width: controlsWidth }} className="mt-[4px] flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-[2px] text-left">
+          <p
+            className="m-0 text-[22px] leading-[1.2] font-[650] text-white flex items-center gap-[6px] max-w-full"
+            style={{ letterSpacing: "-0.03em" }}
+          >
+            <span className="min-w-0 truncate">{trackTitle}</span>
+          </p>
+          <p className="m-0 mt-[2px] flex items-center gap-[5px] text-[15px] text-white/65 leading-snug max-w-full overflow-hidden">
+            {track && <SourceBadge trackId={track.id} size={15} />}
+            <ArtistAvatars name={trackArtists} artistId={track?.artistId} artistList={track?.artistList} />
+            <ArtistLink
+              name={trackArtists}
+              artistId={track?.artistId}
+              artistList={track?.artistList}
+              onNavigate={() => {
+                if (location.pathname !== "/player") {
+                  onClose?.();
+                }
+              }}
+              className="text-white/60"
+            />
+            {track?.explicit && (
+              <ExplicitBadge className="!bg-white/60 !text-black !pb-0 !leading-none shrink-0" />
+            )}
+          </p>
+        </div>
+        <button
           type="button"
           aria-label={isLiked ? t("common.unlike") : t("common.like")}
           aria-pressed={isLiked}
-          className={`absolute right-3 top-3 z-20 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full opacity-95 transition-[opacity,transform,background-color] duration-200 ease-out hover:opacity-100 active:scale-[0.92] bg-black/55 backdrop-blur-[2px] border-none hover:bg-black/65 ${
+          disabled={!track}
+          className={`relative shrink-0 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full opacity-95 disabled:opacity-40 transition-[opacity,transform,background-color] duration-200 ease-out hover:opacity-100 active:scale-[0.92] bg-black/55 backdrop-blur-[2px] border-none hover:bg-black/65 ${
             isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"
           }`}
           onClick={handleLikeToggle}
@@ -295,41 +326,11 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           >
             <HeartFill size={24} />
           </motion.div>
-        </button>}
-      </div>
-
-      {/* Track info */}
-      <div style={{ width: S }} className="flex items-start justify-center min-w-0 mt-[4px]">
-        <div className="flex flex-col gap-[2px] min-w-0 text-center">
-          <p
-            className="m-0 text-[22px] leading-[1.2] font-[650] text-white flex items-center justify-center gap-[6px] max-w-full"
-            style={{ letterSpacing: "-0.03em" }}
-          >
-            <span className="min-w-0 truncate">{trackTitle}</span>
-          </p>
-          <p className="m-0 mt-[2px] flex items-center justify-center gap-[5px] text-[15px] text-white/65 leading-snug max-w-full overflow-hidden">
-            {track && <SourceBadge trackId={track.id} size={15} />}
-            <ArtistAvatars name={trackArtists} artistId={track?.artistId} artistList={track?.artistList} />
-            <ArtistLink
-              name={trackArtists}
-              artistId={track?.artistId}
-              artistList={track?.artistList}
-              onNavigate={() => {
-                if (location.pathname !== "/player") {
-                  onClose?.();
-                }
-              }}
-              className="text-white/60"
-            />
-            {track?.explicit && (
-              <ExplicitBadge className="!bg-white/60 !text-black !pb-0 !leading-none shrink-0" />
-            )}
-          </p>
-        </div>
+        </button>
       </div>
 
       {/* Timeline (Compact, with smooth spring pill, no thumb) */}
-      <PlaybackTimeline width={`min(calc(${S} + 72px), 92vw)`} />
+      <PlaybackTimeline width={controlsWidth} />
 
       {/* Primary Playback Controls */}
       <div className={`flex items-center ${isMobile ? "gap-[clamp(8px,3.5vw,16px)]" : "gap-[26px]"}`}>

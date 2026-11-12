@@ -1,11 +1,9 @@
 /**
  * Shared cover-art loader.
  *
- * Every cover is fetched exactly once, as a CORS request, and its readiness is
- * tracked in a module-level registry. All UI that renders the same cover URL
- * (mini player, fullscreen cover, blurred background, the Kawarp WebGL layer)
- * therefore hits a single browser/service-worker cache entry instead of racing
- * each other with mismatched request modes.
+ * The registry shares cover readiness and resolved proxy URLs between surfaces.
+ * List images use the browser's lazy loading. Playback surfaces can explicitly
+ * preload artwork and reuse the browser or service-worker cache.
  *
  * Standardizing on `crossOrigin = "anonymous"` is deliberate: the WebGL
  * background needs a non-tainted texture and the mini player samples pixels for
@@ -30,11 +28,53 @@ interface CoverEntry {
   effectiveUrl?: string;
   /** Resolves once the load settles (loaded or errored); never rejects. */
   promise: Promise<void>;
-  element?: HTMLImageElement;
+  element?: WeakRef<HTMLImageElement>;
 }
 
 const entries = new Map<string, CoverEntry>();
 const listeners = new Map<string, Set<() => void>>();
+const MAX_SETTLED_ENTRIES = 512;
+// Keep a small working set for color sampling and the player's WebGL texture.
+// List rows own their rendered images, so the registry never pins their DOM.
+const PRELOAD_PIXEL_BUDGET = 4 * 1024 * 1024;
+const preloaded = new Map<string, { image: HTMLImageElement; pixels: number }>();
+let preloadedPixels = 0;
+
+function dropPreload(url: string): void {
+  const entry = preloaded.get(url);
+  if (!entry) return;
+  preloadedPixels -= entry.pixels;
+  preloaded.delete(url);
+}
+
+function retainPreload(url: string, image: HTMLImageElement): void {
+  dropPreload(url);
+  const pixels = image.naturalWidth * image.naturalHeight;
+  if (pixels <= 0 || pixels > PRELOAD_PIXEL_BUDGET) return;
+  while (preloadedPixels + pixels > PRELOAD_PIXEL_BUDGET) {
+    const oldest = preloaded.keys().next().value;
+    if (oldest === undefined) break;
+    dropPreload(oldest);
+  }
+  preloaded.set(url, { image, pixels });
+  preloadedPixels += pixels;
+}
+
+function touchSettled(url: string, entry: CoverEntry): void {
+  entries.delete(url);
+  entries.set(url, entry);
+  if (entries.size <= MAX_SETTLED_ENTRIES) return;
+  for (const [key, item] of entries) {
+    if (key === url || listeners.has(key) || item.status === "loading") continue;
+    entries.delete(key);
+    dropPreload(key);
+    if (entries.size <= MAX_SETTLED_ENTRIES) break;
+  }
+}
+
+function imageFor(url: string, entry: CoverEntry): HTMLImageElement | undefined {
+  return entry.element?.deref() ?? preloaded.get(url)?.image;
+}
 
 function notify(url: string): void {
   const set = listeners.get(url);
@@ -62,6 +102,8 @@ export function isCoverReady(url: string | undefined): boolean {
 /** Clears the in-memory cover entries registry and notifies all subscribers. */
 export function clearCoverRegistry(): void {
   entries.clear();
+  preloaded.clear();
+  preloadedPixels = 0;
   for (const set of listeners.values()) {
     for (const listener of set) listener();
   }
@@ -70,11 +112,12 @@ export function clearCoverRegistry(): void {
 export function getCoverElement(url: string | undefined): HTMLImageElement | undefined {
   if (!url) return undefined;
   const entry = entries.get(url);
-  if (entry?.status === "loaded" && entry.element) return entry.element;
-  for (const item of entries.values()) {
-    if (item.status === "loaded" && item.element && (item.effectiveUrl === url || item.element.src === url)) {
-      return item.element;
-    }
+  const direct = entry?.status === "loaded" ? imageFor(url, entry) : undefined;
+  if (direct) return direct;
+  for (const [key, item] of entries) {
+    if (item.status !== "loaded") continue;
+    const image = imageFor(key, item);
+    if (image && (item.effectiveUrl === url || image.src === url)) return image;
   }
   return undefined;
 }
@@ -99,21 +142,14 @@ function isCoverSettled(url: string | undefined): boolean {
 export function markCoverReady(url: string | undefined, effectiveUrl?: string, element?: HTMLImageElement): void {
   if (!url) return;
   const resolved = effectiveUrl ?? url;
-  const entry = entries.get(url);
-  if (entry) {
-    const prevElement = entry.element;
-    const prevStatus = entry.status;
-    const prevEffective = entry.effectiveUrl;
-    entry.effectiveUrl = resolved;
-    if (element) entry.element = element;
-    entry.status = "loaded";
-    if (prevStatus !== "loaded" || prevEffective !== resolved || (!prevElement && element)) {
-      notify(url);
-    }
-    return;
-  }
-  entries.set(url, { status: "loaded", effectiveUrl: resolved, element, promise: Promise.resolve() });
-  notify(url);
+  const entry = entries.get(url) ?? { status: "loading", promise: Promise.resolve() };
+  const previousImage = imageFor(url, entry);
+  const changed = entry.status !== "loaded" || entry.effectiveUrl !== resolved || (!previousImage && !!element);
+  entry.effectiveUrl = resolved;
+  if (element && typeof WeakRef !== "undefined") entry.element = new WeakRef(element);
+  entry.status = "loaded";
+  touchSettled(url, entry);
+  if (changed) notify(url);
 }
 
 /**
@@ -136,6 +172,7 @@ export function preloadCoverArt(url: string | undefined): Promise<void> {
       // Evict stale failure to allow fresh retry on next navigation/mount
       entries.delete(url);
     } else {
+      if (existing.status === "loaded") touchSettled(url, existing);
       return existing.promise;
     }
   }
@@ -145,19 +182,22 @@ export function preloadCoverArt(url: string | undefined): Promise<void> {
   img.crossOrigin = "anonymous";
   img.decoding = "async";
 
-  // mint and sign proxy fallback in parallel with direct cdn load
-  void prepareCoverFallback(source);
-
+  let entry: CoverEntry;
   const promise = new Promise<void>((resolve) => {
     let triedFallback = false;
     const settle = (status: CoverStatus, effectiveUrl?: string) => {
-      const entry = entries.get(url);
-      if (entry) {
-        entry.status = status;
-        if (effectiveUrl) entry.effectiveUrl = effectiveUrl;
-        if (status === "loaded") entry.element = img;
+      img.onload = null;
+      img.onerror = null;
+      if (entries.get(url) === entry) {
+        if (status === "loaded") {
+          retainPreload(url, img);
+          markCoverReady(url, effectiveUrl, img);
+        } else if (entry.status === "loading") {
+          entry.status = "error";
+          touchSettled(url, entry);
+          notify(url);
+        }
       }
-      notify(url);
       resolve();
     };
     img.onload = () => settle("loaded", img.src);
@@ -169,16 +209,17 @@ export function preloadCoverArt(url: string | undefined): Promise<void> {
       if (!triedFallback) {
         triedFallback = true;
         void prepareCoverFallback(source).then((fallback) => {
-          if (fallback) img.src = fallback;
+          if (fallback && entries.get(url) === entry && entry.status === "loading") img.src = fallback;
           else settle("error");
-        });
+        }).catch(() => settle("error"));
         return;
       }
       settle("error");
     };
   });
 
-  entries.set(url, { status: "loading", promise, effectiveUrl: source });
+  entry = { status: "loading", promise, effectiveUrl: source };
+  entries.set(url, entry);
   img.src = source;
   return promise;
 }
@@ -223,14 +264,14 @@ function effectiveCoverSrc(url: string | undefined): string | undefined {
  * to have failed. Shares the single registry/loader, so it costs no extra
  * request beyond what `CoverImage`/`useCoverReady` already issue for the cover.
  */
-export function useCoverSrc(url: string | undefined): string | undefined {
+export function useCoverSrc(url: string | undefined, preload = true): string | undefined {
   const subscribeToUrl = useCallback(
     (onChange: () => void) => {
       if (!url) return () => {};
-      void preloadCoverArt(url);
+      if (preload) void preloadCoverArt(url);
       return subscribe(url, onChange);
     },
-    [url],
+    [url, preload],
   );
 
   return useSyncExternalStore(
