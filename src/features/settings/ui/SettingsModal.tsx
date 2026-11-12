@@ -3,7 +3,7 @@ import SettingsPageFrame from "./SettingsPageFrame";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, Music2Fill, YoutubeFill, RightLine } from "@mingcute/react";
+import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill, RightLine } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
@@ -15,6 +15,7 @@ import {
   Widget5,
 } from "@solar-icons/react";
 import Dialog from "@/shared/ui/Dialog";
+import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { isNativeApp } from "@/shared/platform/native";
 import { ArrowLeftLine } from "@mingcute/react";
@@ -44,7 +45,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Overlay: Widget5,
   Discord: DiscordFill,
   Youtube: YoutubeFill,
-  YandexMusic: Music2Fill,
+  YandexMusic: YandexMusicIcon,
   Appearance: Palette,
   Customization: Gallery,
   Audio: HeadphonesRound,
@@ -403,9 +404,9 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
                       />
                     )}
                     <Icon
-                      size={18}
+                      size={id === "YandexMusic" ? 16 : 18}
                       weight="Bold"
-                      className={`relative shrink-0 ${isActive ? "text-text-primary" : "text-text-tertiary"}`}
+                      className={`relative shrink-0 ${id === "YandexMusic" ? "my-px" : isActive ? "text-text-primary" : "text-text-tertiary"}`}
                     />
                     <span className="relative truncate leading-none">{tabLabels[id]}</span>
                     {isMobile && <RightLine size={16} className="ml-auto shrink-0 text-text-tertiary" />}
