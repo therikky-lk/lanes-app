@@ -1,3 +1,4 @@
+import { recordPlaybackRateLimit } from "@/shared/media/playbackRateLimit";
 import { diag } from "@/shared/platform/diag";
 import { Innertube, Platform } from "youtubei.js/web";
 import { registerPlugin } from "@capacitor/core";
@@ -49,7 +50,11 @@ async function createSession(visitorData: string): Promise<WebRemixSession> {
     user_agent: navigator.userAgent,
     generate_session_locally: true,
     retrieve_player: true,
-    fetch: (input, init) => (isNativeApp() ? nativeFetch(input, init) : fetch(input, init)),
+    fetch: async (input, init) => {
+      const response = await (isNativeApp() ? nativeFetch(input, init) : fetch(input, init));
+      if (response.status === 429) throw recordPlaybackRateLimit(response, "youtube");
+      return response;
+    },
   });
   return { visitorData, innertube };
 }

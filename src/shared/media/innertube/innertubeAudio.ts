@@ -1,3 +1,5 @@
+import { recordTvPlaybackFailure, resetTvPlaybackBackoff, tvPlaybackDelay } from "./tvPlaybackBackoff";
+import { PlaybackRateLimitError, recordPlaybackRateLimit, requirePlaybackProvider } from "@/shared/media/playbackRateLimit";
 import { rememberStreamUserAgent, setStreamUserAgent } from "@/shared/platform/native";
 import { InnertubeError, postInnertube, type InnertubeProfile } from "./innertubeClient";
 import { PLAYBACK_PROFILES } from "./playbackProfiles";
@@ -25,6 +27,7 @@ let lastWorkingProfile: InnertubeProfile | null = null;
 
 export function resetPlaybackProfilePreference(): void {
   lastWorkingProfile = null;
+  resetTvPlaybackBackoff();
   webRemixRetryAt = 0;
   webRemixFailures = 0;
 }
@@ -82,6 +85,7 @@ async function probeStream(url: string, contentLength: number | undefined, signa
   probe.searchParams.set("range", `${offset}-${offset}`);
   const response = await fetch(probe.toString(), { signal });
   await response.body?.cancel().catch(() => undefined);
+  if (response.status === 429) throw recordPlaybackRateLimit(response, "youtube");
   if (!response.ok) throw new InnertubeError(`stream url rejected with ${response.status}`, response.status);
 }
 
@@ -93,7 +97,7 @@ async function assertStreamReachable(url: string, contentLength: number | undefi
       await probeStream(candidate, contentLength, signal);
       return candidate;
     } catch (error) {
-      if (signal?.aborted) throw error;
+      if (signal?.aborted || error instanceof PlaybackRateLimitError) throw error;
       lastError = error;
       // a 403 means the URL itself is refused: other nodes won't change that
       if (error instanceof InnertubeError && error.status === 403) throw error;
@@ -123,7 +127,7 @@ async function resolveViaWebRemix(
       if (isNativeApp()) diag(`stream resolve: WEB_REMIX succeeded in ${Math.round(performance.now() - attemptStartedAt)}ms`);
       return stream;
     } catch (error) {
-      if (options.signal?.aborted) throw error;
+      if (options.signal?.aborted || error instanceof PlaybackRateLimitError) throw error;
       resetWebRemixSession();
       const message = error instanceof Error ? error.message : String(error);
       lastWebRemixError = message;
@@ -197,6 +201,7 @@ export async function resolveDirectAudioStream(
   trackId: string,
   options: ResolveAudioOptions = {},
 ): Promise<ResolvedAudioStream> {
+  requirePlaybackProvider("youtube");
   const videoId = toVideoId(trackId);
   if (!videoId) throw new InnertubeError(`Track ${trackId} is not a YouTube video.`, 400);
   if (isBrowserRuntime() && !options.profiles) {
@@ -212,14 +217,20 @@ export async function resolveDirectAudioStream(
   // Explicit profile lists are ordered by the caller (for example, signed-in
   // YouTube TV first); only the default public list follows the last good client.
   for (const profile of options.profiles ?? orderedProfiles(PLAYBACK_PROFILES)) {
+    const isTv = profile.clientName === "TVHTML5";
+    if (isTv && tvPlaybackDelay() > 0) continue;
     const profileStartedAt = performance.now();
     try {
       const stream = await resolveWithProfile(videoId, profile, options);
+      if (isTv) resetTvPlaybackBackoff();
       lastWorkingProfile = profile;
       if (isNativeApp()) diag(`stream resolve: ${profile.clientName} succeeded in ${Math.round(performance.now() - profileStartedAt)}ms`);
       return stream;
     } catch (error) {
-      if (options.signal?.aborted) throw error;
+      if (options.signal?.aborted || error instanceof PlaybackRateLimitError) throw error;
+      if (isTv && recordTvPlaybackFailure(error) && isNativeApp()) {
+        diag("stream resolve: TVHTML5 paused for 5 min after repeated reload errors; trying VISIONOS");
+      }
       const message = error instanceof Error ? error.message : String(error);
       failures.push(`${profile.clientName}: ${message}`);
       if (isNativeApp()) diag(`stream resolve: ${profile.clientName} failed in ${Math.round(performance.now() - profileStartedAt)}ms (${message.slice(0, 90)})`);
@@ -228,7 +239,7 @@ export async function resolveDirectAudioStream(
   try {
     return await resolveInvidiousAudioStream(videoId, options.signal, options);
   } catch (error) {
-    if (options.signal?.aborted) throw error;
+    if (options.signal?.aborted || error instanceof PlaybackRateLimitError) throw error;
     failures.push(`Invidious: ${error instanceof Error ? error.message : String(error)}`);
   }
   throw new InnertubeError(`Direct audio resolution failed (${failures.join("; ")}).`, 502);

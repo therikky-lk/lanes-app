@@ -1,3 +1,4 @@
+import { playbackPrefetchDelay, PlaybackRateLimitError } from "@/shared/media/playbackRateLimit";
 import { prefetchInOrder } from "@/shared/utils/prefetchInOrder";
 import { downloadsDb } from "@/shared/storage/downloadsDb";
 import { FLAT_EQ, isEqActive } from "./equalizer";
@@ -44,6 +45,7 @@ export class PlayerRuntime {
   private stallStartTime: number | null = null;
   private loadStartTime = 0;
   private diagnosedPlayingEpoch = -1;
+  private nativePlayingTrackId: string | null = null;
   private ttfbMs = 0;
   private activePlayPromise: Promise<void> | null = null;
   private activeBlobUrl: string | null = null;
@@ -55,6 +57,7 @@ export class PlayerRuntime {
   private nativeQueued: { afterTrackId: string; ids: string; expiry: Map<string, number | null> } | null = null;
   private nativeQueuePending: string | null = null;
   private nativeQueueAbort: AbortController | null = null;
+  private nativeQueueRetry: ReturnType<typeof setTimeout> | null = null;
   /** stream links resolved for the native look-ahead, by track id */
   private nativeStreams = new Map<string, PlaybackStream>();
   private backgroundCacheAbortController: AbortController | null = null;
@@ -96,6 +99,7 @@ export class PlayerRuntime {
         this.backgroundCacheAbortController = cacheController;
         this.nativeQueued = null;
         this.currentTrackId = trackId;
+        this.nativePlayingTrackId = snapshot.playing ? trackId : null;
         this.attachedTrackId = trackId;
         this.currentSessionExpiresAt = queued?.expiry.get(trackId) ?? null;
         this.recoveryAttempts = 0;
@@ -349,6 +353,7 @@ export class PlayerRuntime {
 
     audioEl.addEventListener("waiting", () => {
       if (this.isResetting || audioEl !== this.audio) return;
+      this.nativePlayingTrackId = null;
       log("yellow", "audio", "buffering (waiting)");
       this.stallStartTime = performance.now();
       if (this.waitingTimer) clearTimeout(this.waitingTimer);
@@ -390,6 +395,7 @@ export class PlayerRuntime {
 
     audioEl.addEventListener("playing", () => {
       if (this.isResetting || audioEl !== this.audio) return;
+      this.nativePlayingTrackId = isNativeApp() ? this.currentTrackId : null;
       log("green", "audio", "playing");
       if (isNativeApp() && this.diagnosedPlayingEpoch !== this.loadEpoch && this.currentTrackId) {
         this.diagnosedPlayingEpoch = this.loadEpoch;
@@ -418,6 +424,7 @@ export class PlayerRuntime {
 
     audioEl.addEventListener("pause", () => {
       if (this.isResetting || audioEl !== this.audio) return;
+      this.nativePlayingTrackId = null;
       log("cyan", "audio", "paused");
       const st = usePlayerStore.getState().status;
       if (st === "playing") {
@@ -464,6 +471,7 @@ export class PlayerRuntime {
       if (
         currentTrack &&
         currentTrack.id === this.currentTrackId &&
+        !/HTTP 429\b/.test(message) &&
         this.recoveryAttempts < 1
       ) {
         this.recoveryAttempts++;
@@ -659,6 +667,12 @@ export class PlayerRuntime {
   public queueNextNatively(afterTrackId: string, tracks: Track[]): void {
     if (!isNativeApp()) return;
     const ids = tracks.map((t) => t.id).join(",");
+    const pendingKey = `${afterTrackId}:${ids}`;
+    if (tracks.length && this.nativeQueuePending === pendingKey) return;
+    if (this.nativeQueueRetry !== null) {
+      clearTimeout(this.nativeQueueRetry);
+      this.nativeQueueRetry = null;
+    }
     if (tracks.length === 0) {
       this.nativeQueueAbort?.abort();
       this.nativeQueueAbort = null;
@@ -667,10 +681,19 @@ export class PlayerRuntime {
       this.nativeQueued = null;
       return;
     }
-    const pendingKey = `${afterTrackId}:${ids}`;
-    if (this.nativeQueuePending === pendingKey) return;
+    const defer = () => {
+      const delay = playbackPrefetchDelay();
+      if (!delay) return false;
+      this.nativeQueueRetry = setTimeout(() => {
+        this.nativeQueueRetry = null;
+        if (usePlayerStore.getState().currentTrack?.id === afterTrackId) this.queueNextNatively(afterTrackId, tracks);
+      }, Math.min(delay, 2_147_483_647));
+      return true;
+    };
     if (this.nativeQueued?.afterTrackId === afterTrackId && this.nativeQueued.ids === ids) return;
     this.nativeQueueAbort?.abort();
+    this.nativeQueuePending = null;
+    if (defer()) return;
     // Remove the previously handed-off native track before preparing a new
     // queue snapshot. Otherwise a manual Next can advance to stale audio while
     // the React player has already moved to the newly selected queue item.
@@ -681,7 +704,7 @@ export class PlayerRuntime {
     const controller = new AbortController();
     this.nativeQueueAbort = controller;
     this.nativeQueuePending = pendingKey;
-    // Resolve a small window concurrently; hand it over in playback order.
+    // Resolve one item at a time and hand the nearest tracks over first.
     // streams resolved for the previous look-ahead are reused: after a track
     // change the list only moves on by one, so only the new last one is fetched
     // Keep the active selection too. On a manual Next, the store changes the
@@ -702,6 +725,7 @@ export class PlayerRuntime {
       const quality = usePlayerStore.getState().audioQuality;
       const resolveAhead = async (track: Track, index: number) => {
         controller.signal.throwIfAborted();
+        if (index >= 3) await this.waitForActivePlayback(afterTrackId, controller.signal);
         const [downloaded, cachedAudio] = await Promise.all([
           downloadsDb.get(track.id).catch(() => undefined),
           linerDb.getAudio(track.id).catch(() => null),
@@ -714,6 +738,8 @@ export class PlayerRuntime {
           diag(`queue ahead: reused resolved stream for ${track.id}`);
           return reusable;
         }
+        const delay = playbackPrefetchDelay();
+        if (delay > 0) throw new PlaybackRateLimitError(Date.now() + delay);
         const resolved = await resolvePlaybackStream(track, controller.signal, quality);
         controller.signal.throwIfAborted();
         if (!resolved.blob) {
@@ -722,7 +748,7 @@ export class PlayerRuntime {
         }
         return resolved;
       };
-      for await (const { item: track, result } of prefetchInOrder(tracks, 3, resolveAhead, controller.signal)) {
+      for await (const { item: track, result } of prefetchInOrder(tracks, 1, resolveAhead, controller.signal)) {
         try {
           if (result.status === "rejected") throw result.reason;
           const stream = result.value;
@@ -743,6 +769,12 @@ export class PlayerRuntime {
           this.nativeQueued = { afterTrackId, ids: ready.map((r) => r.trackId).join(","), expiry };
         } catch (error) {
           if (controller.signal.aborted) return;
+          if (error instanceof PlaybackRateLimitError) {
+            controller.abort();
+            this.nativeQueuePending = null;
+            defer();
+            return;
+          }
           diag(`queue ahead: "${track.title}" failed (${String(error).slice(0, 80)})`);
           // a track YouTube won't play at all is skipped when its turn comes
           // anyway: leave it out and keep the rest of the look-ahead
@@ -758,6 +790,29 @@ export class PlayerRuntime {
       }
     })().finally(() => {
       if (this.nativeQueueAbort === controller) this.nativeQueuePending = null;
+    });
+  }
+
+  private waitForActivePlayback(trackId: string, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted();
+    const isPlaying = (state: ReturnType<typeof usePlayerStore.getState>) =>
+      this.nativePlayingTrackId === trackId && state.currentTrack?.id === trackId && state.status === "playing";
+    if (isPlaying(usePlayerStore.getState())) return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      const finish = () => {
+        unsubscribe();
+        signal.removeEventListener("abort", onAbort);
+      };
+      const onAbort = () => {
+        finish();
+        reject(signal.reason);
+      };
+      const unsubscribe = usePlayerStore.subscribe(state => {
+        if (!isPlaying(state)) return;
+        finish();
+        resolve();
+      });
+      signal.addEventListener("abort", onAbort, { once: true });
     });
   }
 
@@ -829,6 +884,7 @@ export class PlayerRuntime {
       store.resetSpeedAndPitch();
     }
     this.currentTrackId = track.id;
+    this.nativePlayingTrackId = null;
     this.loadStartTime = performance.now();
     this.diagnosedPlayingEpoch = -1;
     this.updateMediaSessionMetadata(track);

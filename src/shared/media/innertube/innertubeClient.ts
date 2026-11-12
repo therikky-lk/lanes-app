@@ -1,3 +1,5 @@
+import { recordPlaybackRateLimit, requirePlaybackProvider } from "@/shared/media/playbackRateLimit";
+import { isConnectionLoss } from "@/shared/utils/networkRetry";
 import { getClientVisitorData } from "@/shared/api/visitorSession";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { getYoutubeAuthorization, getYoutubePageId } from "../youtube/auth/youtubeAuthSession";
@@ -77,6 +79,7 @@ export async function postInnertube(
   body: Record<string, unknown>,
   options: InnertubeRequestOptions = {},
 ): Promise<unknown> {
+  if (endpoint === "player") requirePlaybackProvider("youtube");
   const profile = options.profile ?? WEB_REMIX_PROFILE;
   const visitorData = await getClientVisitorData().catch(() => "");
   const authorization = profile.acceptsOAuth
@@ -105,19 +108,30 @@ export async function postInnertube(
     },
   };
 
+  const request = () => fetch(requestUrl, {
+    method: "POST",
+    headers: browserTransport && !authorization
+      ? { "content-type": "application/json", accept: "application/json" }
+      : buildHeaders(profile, visitorData, authorization),
+    body: JSON.stringify(payload),
+    signal: options.signal,
+  });
   let response: Response;
   try {
-    response = await fetch(requestUrl, {
-      method: "POST",
-      headers: browserTransport && !authorization
-        ? { "content-type": "application/json", accept: "application/json" }
-        : buildHeaders(profile, visitorData, authorization),
-      body: JSON.stringify(payload),
-      signal: options.signal,
+    response = await request().catch(async error => {
+      if (options.signal?.aborted || endpoint !== "player" || !isConnectionLoss(error)) throw error;
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
+      options.signal?.throwIfAborted();
+      return request();
     });
   } catch (error) {
     if (options.signal?.aborted) throw error;
     throw new InnertubeError("YouTube Music is unreachable.", 0);
+  }
+
+  if (endpoint === "player" && response.status === 429) {
+    await response.body?.cancel().catch(() => undefined);
+    throw recordPlaybackRateLimit(response, "youtube");
   }
 
   if (!response.ok) {

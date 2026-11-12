@@ -2,6 +2,7 @@ import { usesLocalAppTransport } from "./localAppTransport";
 import type { AuthTokens, AuthUser } from "../contracts";
 import { syncServerTime } from "./serverTime";
 import { signApiRequest } from "./requestSigner";
+import { isConnectionLoss, retryAfterMs } from "../utils/networkRetry";
 import { waitForPendingWrites } from "./pendingWrites";
 
 export type { AuthTokens, AuthUser };
@@ -17,6 +18,8 @@ type MainAuthBridge = NonNullable<NonNullable<Window["linerElectron"]>["authSess
 let session: AuthTokens | null = null;
 let loadedFromMain = false;
 let unsubscribeMain: (() => void) | null = null;
+let refreshNotBefore = 0;
+let refreshCooldownOwner: string | undefined;
 let refreshPromise: Promise<AuthTokens | null> | null = null;
 
 function mainBridge(): MainAuthBridge | null {
@@ -99,6 +102,10 @@ if (typeof window !== "undefined") {
 }
 
 export function setAuthSession(next: AuthTokens | null): void {
+  if (next?.refreshToken !== refreshCooldownOwner) {
+    refreshCooldownOwner = undefined;
+    refreshNotBefore = 0;
+  }
   session = next;
   const bridge = mainBridge();
   if (bridge) {
@@ -154,7 +161,10 @@ export async function getValidAccessToken(): Promise<string | null> {
   // If a refresh is ALREADY in flight, await it to prevent concurrent requests from using stale tokens
   if (refreshPromise) {
     const refreshed = await refreshPromise;
-    return refreshed?.accessToken ?? getAuthSession()?.accessToken ?? null;
+    if (refreshed?.accessToken) return refreshed.accessToken;
+    const current = getAuthSession();
+    const expiry = getSessionExpiryMs(current);
+    return current && (expiry === null || expiry > Date.now()) ? current.accessToken : null;
   }
 
   const current = getAuthSession();
@@ -184,6 +194,10 @@ export function refreshAuthSession(): Promise<AuthTokens | null> {
     return Promise.resolve(null);
   }
 
+  if (refreshCooldownOwner === current.refreshToken && Date.now() < refreshNotBefore) {
+    return Promise.resolve(null);
+  }
+
   refreshPromise = (async () => {
     try {
       const bridge = mainBridge();
@@ -204,7 +218,7 @@ async function refreshInMain(bridge: MainAuthBridge, current: AuthTokens): Promi
     apiBaseUrl: getApiBaseUrlForAuthBackend(current.authBackend),
     refreshToken: current.refreshToken,
   });
-  adopt(result.session as AuthTokens | null);
+  if (result.outcome !== "transient" || result.session) adopt(result.session as AuthTokens | null);
   if (result.outcome === "signed_out") {
     console.warn(`[Auth] signed out: refresh token rejected (${result.reason ?? "unknown"})`);
   } else if (result.outcome === "transient") {
@@ -217,12 +231,35 @@ async function refreshInMain(bridge: MainAuthBridge, current: AuthTokens): Promi
 
 async function refreshHere(current: AuthTokens): Promise<AuthTokens | null> {
   let reason = "";
+  let ambiguous = false;
   for (let attempt = 0; attempt < REFRESH_ATTEMPTS; attempt++) {
-    const response = await postRefresh(
-      current.refreshToken,
-      getApiBaseUrlForAuthBackend(current.authBackend),
-      current.authBackend,
-    );
+    if (getAuthSession()?.refreshToken !== current.refreshToken) return getAuthSession();
+    let response: Response;
+    try {
+      response = await postRefresh(
+        current.refreshToken,
+        getApiBaseUrlForAuthBackend(current.authBackend),
+        current.authBackend,
+      );
+    } catch (error) {
+      if (!isConnectionLoss(error)) throw error;
+      if (attempt + 1 >= REFRESH_ATTEMPTS) {
+        refreshCooldownOwner = current.refreshToken;
+        refreshNotBefore = Date.now() + 2_000;
+        return null;
+      }
+      // A lost response may have rotated the token on the server. Re-sign the
+      // retry, and keep the session if the retry reports an already-used token.
+      ambiguous = true;
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
+      continue;
+    }
+    if (getAuthSession()?.refreshToken !== current.refreshToken) return getAuthSession();
+    if (response.status === 429) {
+      refreshCooldownOwner = current.refreshToken;
+      refreshNotBefore = Date.now() + retryAfterMs(response.headers.get("retry-after"), 30_000);
+      return null;
+    }
 
     if (response.ok) {
       const next = (await response.json()) as AuthTokens;
@@ -231,6 +268,8 @@ async function refreshHere(current: AuthTokens): Promise<AuthTokens | null> {
         ...next,
         user: next.user || current.user,
       };
+      if (getAuthSession()?.refreshToken !== current.refreshToken) return getAuthSession();
+      if (!next.accessToken || !merged.refreshToken) return null;
       setAuthSession(merged);
       return merged;
     }
@@ -246,6 +285,11 @@ async function refreshHere(current: AuthTokens): Promise<AuthTokens | null> {
     const code = await rejectionCode(response);
     reason = [String(response.status), code].filter(Boolean).join(" ");
     if (DEAD_REFRESH_CODES.has(code)) {
+      if (ambiguous) {
+        refreshCooldownOwner = current.refreshToken;
+        refreshNotBefore = Date.now() + 30_000;
+        return null;
+      }
       console.warn(`[Auth] signed out: refresh token rejected (${reason})`);
       if (getAuthSession()?.refreshToken === current.refreshToken) {
         setAuthSession(null);

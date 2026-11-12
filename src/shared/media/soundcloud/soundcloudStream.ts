@@ -1,3 +1,4 @@
+import { PlaybackRateLimitError, recordPlaybackRateLimit, requirePlaybackProvider } from "@/shared/media/playbackRateLimit";
 import { fetchSoundCloudApi, type SoundCloudRequestOptions } from "./soundcloudApi";
 import { downloadHlsAudio } from "./soundcloudHls";
 import { parseSoundCloudTrack, toSoundCloudTrackId, type SoundCloudTrackInfo, type SoundCloudTranscoding } from "./soundcloudTrack";
@@ -34,6 +35,7 @@ async function lookupTrack(soundCloudId: string, options: SoundCloudRequestOptio
   const response = await fetchSoundCloudApi(`/tracks/${soundCloudId}`, {}, options);
   if (response.status === 404 || response.status === 410) throw new SoundCloudUnavailableError("not_found");
   if (response.status === 403) throw new SoundCloudUnavailableError("blocked");
+  if (response.status === 429) throw recordPlaybackRateLimit(response, "soundcloud");
   if (!response.ok) throw new Error(`SoundCloud track lookup returned HTTP ${response.status}`);
   const track = parseSoundCloudTrack(await response.json());
   if (!track) throw new SoundCloudUnavailableError("not_found");
@@ -47,6 +49,7 @@ async function transcodingMediaUrl(
 ): Promise<string> {
   const params: Record<string, string> = track.trackAuthorization ? { track_authorization: track.trackAuthorization } : {};
   const response = await fetchSoundCloudApi(transcoding.url, params, options);
+  if (response.status === 429) throw recordPlaybackRateLimit(response, "soundcloud");
   if (!response.ok) throw new Error(`SoundCloud stream url returned HTTP ${response.status}`);
   const body: unknown = await response.json();
   const url = typeof body === "object" && body !== null && "url" in body ? body.url : undefined;
@@ -81,6 +84,7 @@ export async function resolveSoundCloudStream(
   trackId: string,
   options: SoundCloudRequestOptions = {},
 ): Promise<ResolvedSoundCloudStream> {
+  requirePlaybackProvider("soundcloud");
   const soundCloudId = toSoundCloudTrackId(trackId);
   if (!soundCloudId) throw new SoundCloudUnavailableError("not_found");
   const track = await lookupTrack(soundCloudId, options);
@@ -89,7 +93,7 @@ export async function resolveSoundCloudStream(
     try {
       return await openTranscoding(track, transcoding, options);
     } catch (error) {
-      if (options.signal?.aborted) throw error;
+      if (options.signal?.aborted || error instanceof PlaybackRateLimitError) throw error;
       lastError = error;
     }
   }
