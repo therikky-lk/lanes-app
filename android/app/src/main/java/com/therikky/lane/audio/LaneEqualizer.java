@@ -54,6 +54,10 @@ final class LaneEqualizer extends BaseAudioProcessor {
 
     @Override
     public void queueInput(ByteBuffer input) {
+        // Media3 may pass its shared EMPTY_BUFFER, which the base class also
+        // uses as the initial output. A zero-byte put would copy it into itself.
+        if (!input.hasRemaining()) return;
+
         float[] currentGains = gains;
         if (currentGains != appliedGains) applyGains(currentGains);
         ByteBuffer output = replaceOutputBuffer(input.remaining());

@@ -162,12 +162,14 @@ export default function DropdownMenu({
               await item.onClick();
             }}
             className={`${mobileSheet ? "min-h-[52px] gap-4 rounded-xl px-4 py-3 text-[16px]" : "min-h-[34px] gap-2.5 rounded-lg px-2.5 py-2 text-[13px]"} group flex w-full items-center font-normal tracking-tight transition-colors border-none bg-transparent text-left cursor-pointer select-none outline-none ${
-              item.danger ? "text-red-400 hover:bg-red-500/10 hover:text-red-400" : "text-text-primary hover:bg-border-alpha-14"
+              item.danger
+                ? mobileSheet ? "text-red-700 hover:bg-red-500/10 dark:text-red-400" : "text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                : "text-text-primary hover:bg-border-alpha-14"
             } disabled:pointer-events-none disabled:opacity-40`}
             style={{ fontFamily: "var(--font-inter), sans-serif", opacity: item.info ? 1 : undefined }}
           >
             {item.icon && (
-              <span className={`shrink-0 flex items-center justify-center ${mobileSheet ? "text-[20px]" : "text-[15px]"} ${item.danger ? "text-red-400" : "text-text-secondary group-hover:text-text-primary"} transition-colors`}>
+              <span className={`shrink-0 flex items-center justify-center ${mobileSheet ? "text-[20px]" : "text-[15px]"} ${item.danger ? "text-current" : "text-text-secondary group-hover:text-text-primary"} transition-colors`}>
                 {item.icon}
               </span>
             )}
@@ -200,7 +202,7 @@ export default function DropdownMenu({
             role="dialog"
             aria-modal="true"
             data-dropdown-menu="true"
-            className="lane-frost-sheet relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t border-white/[0.08] p-[18px] pb-[calc(var(--lane-safe-bottom,0px)+16px)]"
+            className="lane-frost-sheet lane-track-actions-sheet relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t border-border-primary p-[18px] pb-[calc(var(--lane-safe-bottom,0px)+16px)]"
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             style={{ maxHeight: "min(88dvh, calc(100dvh - var(--lane-safe-top, 0px) - 16px))", touchAction: "pan-y", willChange: "transform" }}
@@ -223,7 +225,7 @@ export default function DropdownMenu({
               onClick={() => setOpen(false)}
               className="mx-auto mb-[14px] flex h-[22px] w-[72px] shrink-0 touch-none items-center justify-center rounded-full border-0 bg-transparent p-0"
             >
-              <span className="h-[4px] w-[36px] rounded-full bg-white/35" aria-hidden="true" />
+              <span className="h-[4px] w-[36px] rounded-full bg-border-alpha-33" aria-hidden="true" />
             </button>
             <div className="shrink-0">{mobileSheetHeader}</div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-[12px]">
