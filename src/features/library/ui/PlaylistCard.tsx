@@ -6,6 +6,7 @@ import DropdownMenu from "@/shared/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import type { PlaylistVariant } from "../types";
 import CoverImage from "@/features/covers/ui/CoverImage";
+import { yandexMusicCover } from "../services/playlistCovers";
 
 export interface PlaylistCardProps {
   title: string;
@@ -126,7 +127,7 @@ function PlaylistCard({
               alt={title}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
-              className="object-cover transition-all duration-300 group-hover:brightness-[1.15]"
+              className={effectiveUrls[0] === yandexMusicCover ? "object-cover" : "object-cover transition-all duration-300 group-hover:brightness-[1.15]"}
               draggable={false}
               unoptimized
             />
