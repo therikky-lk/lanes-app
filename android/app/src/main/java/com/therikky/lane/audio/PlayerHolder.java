@@ -6,6 +6,7 @@ import android.util.Log;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
@@ -22,6 +23,9 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.datasource.DataSpec;
+import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.HttpDataSource;
+import androidx.media3.datasource.TransferListener;
 import androidx.media3.datasource.ResolvingDataSource;
 import androidx.media3.datasource.cronet.CronetDataSource;
 import com.therikky.lane.net.Net;
@@ -29,6 +33,8 @@ import org.chromium.net.CronetEngine;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy;
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -57,6 +63,7 @@ public final class PlayerHolder {
                      long positionMs, long durationMs, String error);
 
         void onRemote(String action, long positionMs);
+        void onDiagnostic(String message);
 
         /** the player moved on to the queued next track by itself */
         void onAdvanced(String trackId);
@@ -95,6 +102,7 @@ public final class PlayerHolder {
     private String lastError;
     private final ExecutorService artworkLoader = Executors.newSingleThreadExecutor();
     private volatile int loadGeneration;
+    private long playbackRequestedAt;
     private static final int ARTWORK_SIDE = 512;
     private boolean liked;
     private Equalizer equalizer;
@@ -140,7 +148,10 @@ public final class PlayerHolder {
 
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
-                if (isPlaying) releaseHandoff();
+                if (isPlaying) {
+                    releaseHandoff();
+                    reportPlayerState("PLAYING");
+                }
                 main.removeCallbacks(ticker);
                 if (isPlaying) main.post(ticker);
                 else emit();
@@ -152,6 +163,9 @@ public final class PlayerHolder {
                 // off the page could not load the next track until the phone
                 // woke up. Keep it awake while the page hands over.
                 if (state == Player.STATE_ENDED) holdHandoff();
+                reportPlayerState(state == Player.STATE_BUFFERING ? "BUFFERING"
+                    : state == Player.STATE_READY ? "READY"
+                    : state == Player.STATE_IDLE ? "IDLE" : "ENDED");
                 emit();
             }
 
@@ -197,6 +211,7 @@ public final class PlayerHolder {
                 if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
                     && reason != Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) return;
                 String id = mediaItem.mediaId;
+                playbackRequestedAt = SystemClock.elapsedRealtime();
                 lastError = null;
                 pendingQueue = null;
                 pendingAfter = null;
@@ -377,8 +392,68 @@ public final class PlayerHolder {
         if (url.contains(".googlevideo.com/")) {
             upstream = new ResolvingDataSource.Factory(http, PlayerHolder::withRangeParam);
         }
-        return new ProgressiveMediaSource.Factory(new DefaultDataSource.Factory(context, upstream))
-            .createMediaSource(item);
+        DefaultDataSource.Factory dataSource = new DefaultDataSource.Factory(context, upstream)
+            .setTransferListener(firstBytesListener(item.mediaId));
+        return new ProgressiveMediaSource.Factory(dataSource)
+            .setLoadErrorHandlingPolicy(new DefaultLoadErrorHandlingPolicy() {
+                @Override public long getRetryDelayMsFor(LoadErrorHandlingPolicy.LoadErrorInfo error) {
+                    long delay;
+                    if (error.exception instanceof HttpDataSource.InvalidResponseCodeException
+                            && ((HttpDataSource.InvalidResponseCodeException) error.exception).responseCode == 429) {
+                        if (error.errorCount > 1) return C.TIME_UNSET;
+                        HttpDataSource.InvalidResponseCodeException response =
+                            (HttpDataSource.InvalidResponseCodeException) error.exception;
+                        String retryAfter = null;
+                        for (Map.Entry<String, java.util.List<String>> header : response.headerFields.entrySet()) {
+                            if ("retry-after".equalsIgnoreCase(header.getKey()) && !header.getValue().isEmpty()) {
+                                retryAfter = header.getValue().get(0);
+                                break;
+                            }
+                        }
+                        delay = Net.retryAfterMs(retryAfter, 30_000);
+                    } else if (Net.isConnectionLoss(error.exception)) {
+                        if (error.errorCount > 3) return C.TIME_UNSET;
+                        delay = 250L << (error.errorCount - 1);
+                    } else {
+                        return super.getRetryDelayMsFor(error);
+                    }
+                    main.post(() -> diagnostic("media3 retry track=" + item.mediaId
+                        + " attempt=" + error.errorCount + " delay=" + delay + "ms"));
+                    return delay;
+                }
+            }).createMediaSource(item);
+    }
+
+    private void diagnostic(String message) {
+        Log.i("LaneAudio", message);
+        if (events != null) events.onDiagnostic(message);
+    }
+
+    private void reportPlayerState(String state) {
+        long elapsed = playbackRequestedAt > 0 ? SystemClock.elapsedRealtime() - playbackRequestedAt : 0;
+        diagnostic("media3 " + state + " track=" + currentTrackId() + " elapsed=" + elapsed
+            + "ms position=" + player.getCurrentPosition() + "ms bufferedPosition="
+            + player.getBufferedPosition() + "ms");
+    }
+
+    private TransferListener firstBytesListener(String trackId) {
+        return new TransferListener() {
+            private long started;
+            private boolean reported;
+
+            @Override public void onTransferInitializing(DataSource source, DataSpec spec, boolean network) {
+                started = SystemClock.elapsedRealtime();
+            }
+            @Override public void onTransferStart(DataSource source, DataSpec spec, boolean network) {}
+            @Override public void onTransferEnd(DataSource source, DataSpec spec, boolean network) {}
+            @Override public void onBytesTransferred(DataSource source, DataSpec spec, boolean network, int bytes) {
+                if (reported || bytes <= 0) return;
+                reported = true;
+                long elapsed = SystemClock.elapsedRealtime() - started;
+                main.post(() -> diagnostic("media3 first bytes track=" + trackId + " transfer=" + elapsed
+                    + "ms bytes=" + bytes + " network=" + network));
+            }
+        };
     }
 
     /** load a stream (http/https/file) with the request headers its client needs */
@@ -387,6 +462,7 @@ public final class PlayerHolder {
         lastError = null;
         holdHandoff();
         final int generation = ++loadGeneration;
+        playbackRequestedAt = SystemClock.elapsedRealtime();
         MediaSource source = buildSource(trackId, url, headers, metadata(title, artist, album, artwork).build());
 
         player.setMediaSource(source, Math.max(0, startPositionMs));

@@ -1,6 +1,7 @@
 package com.therikky.lane.http;
 
 import android.util.Base64;
+import android.os.SystemClock;
 import android.webkit.CookieManager;
 
 import com.getcapacitor.JSObject;
@@ -66,6 +67,8 @@ public class LaneHttpPlugin extends Plugin {
         final Map<String, String> headers = new LinkedHashMap<>();
         byte[] body = new byte[0];
         String via;
+        long headersMs;
+        long bodyMs;
     }
 
     @PluginMethod
@@ -99,28 +102,12 @@ public class LaneHttpPlugin extends Plugin {
             }
         }
         (isRelayUrl(url) ? relayPool : pool).execute(() -> {
-            Result result = null;
-            String cronetError = null;
-            CronetEngine engine = Net.engine();
-            if (engine != null && !"java".equals(transport)) {
-                try {
-                    result = viaCronet(engine, url, method, requestHeaders, body, withCookies);
-                } catch (Exception e) {
-                    cronetError = e.getMessage();
-                    if (isRelayUrl(url)) {
-                        call.reject("relay: " + e.getClass().getSimpleName() + ": " + cronetError);
-                        return;
-                    }
-                }
-            }
-            if (result == null) {
-                try {
-                    result = viaJava(url, method, requestHeaders, body, 0, withCookies);
-                } catch (Exception e) {
-                    String message = e.getClass().getSimpleName() + ": " + e.getMessage();
-                    call.reject(cronetError != null ? "cronet: " + cronetError + "; java: " + message : message);
-                    return;
-                }
+            Result result;
+            try {
+                result = requestWithRecovery(url, method, requestHeaders, body, transport, withCookies);
+            } catch (Exception error) {
+                call.reject(error.getClass().getSimpleName() + ": " + error.getMessage());
+                return;
             }
             JSObject resHeaders = new JSObject();
             for (Map.Entry<String, String> e : result.headers.entrySet()) resHeaders.put(e.getKey(), e.getValue());
@@ -129,14 +116,50 @@ public class LaneHttpPlugin extends Plugin {
             res.put("url", result.url);
             res.put("headers", resHeaders);
             res.put("via", result.via);
+            res.put("headersMs", result.headersMs);
+            res.put("bodyMs", result.bodyMs);
             res.put("body", Base64.encodeToString(result.body, Base64.NO_WRAP));
             call.resolve(res);
         });
     }
 
+    private Result requestWithRecovery(String url, String method, Map<String, String> headers,
+                                       byte[] body, String transport, boolean withCookies) throws Exception {
+        boolean replayable = "GET".equals(method) || "HEAD".equals(method);
+        boolean useCronet = Net.engine() != null && !"java".equals(transport);
+        try {
+            if (useCronet) return viaCronet(Net.engine(), url, method, headers, body, withCookies);
+            return viaJava(url, method, headers, body, 0, withCookies);
+        } catch (Exception initial) {
+            // Mutating or signed POST requests are retried only by their owner,
+            // which knows whether replay is safe and can generate new headers.
+            if (!replayable || initial instanceof InterruptedException) throw initial;
+            if (Net.isConnectionLoss(initial)) {
+                Thread.sleep(250);
+                try {
+                    if (useCronet) return viaCronet(Net.engine(), url, method, headers, body, withCookies);
+                    return viaJava(url, method, freshConnection(headers), body, 0, withCookies);
+                } catch (Exception retry) {
+                    if (!useCronet || isRelayUrl(url) || !Net.isConnectionLoss(retry)) throw retry;
+                    Thread.sleep(750);
+                }
+            } else if (!useCronet || isRelayUrl(url)) {
+                throw initial;
+            }
+            return viaJava(url, method, freshConnection(headers), body, 0, withCookies);
+        }
+    }
+
+    private static Map<String, String> freshConnection(Map<String, String> headers) {
+        Map<String, String> fresh = new LinkedHashMap<>(headers);
+        fresh.put("Connection", "close");
+        return fresh;
+    }
+
     private Result viaCronet(CronetEngine engine, String url, String method, Map<String, String> headers, byte[] body, boolean withCookies) throws Exception {
         Result result = new Result();
         result.via = "cronet";
+        long started = SystemClock.elapsedRealtime();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         CountDownLatch done = new CountDownLatch(1);
         final Exception[] failure = new Exception[1];
@@ -159,6 +182,7 @@ public class LaneHttpPlugin extends Plugin {
 
             @Override
             public void onResponseStarted(UrlRequest request, UrlResponseInfo info) {
+                result.headersMs = SystemClock.elapsedRealtime() - started;
                 result.status = info.getHttpStatusCode();
                 result.url = info.getUrl();
                 for (Map.Entry<String, List<String>> e : info.getAllHeaders().entrySet()) {
@@ -187,6 +211,7 @@ public class LaneHttpPlugin extends Plugin {
 
             @Override
             public void onSucceeded(UrlRequest request, UrlResponseInfo info) {
+                result.bodyMs = SystemClock.elapsedRealtime() - started - result.headersMs;
                 done.countDown();
             }
 
@@ -262,6 +287,7 @@ public class LaneHttpPlugin extends Plugin {
     private Result viaJava(String url, String method, Map<String, String> headers, byte[] body, int redirects, boolean withCookies) throws Exception {
         Result result = new Result();
         result.via = "java";
+        long started = SystemClock.elapsedRealtime();
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         try {
             conn.setRequestMethod(method);
@@ -281,6 +307,7 @@ public class LaneHttpPlugin extends Plugin {
                 }
             }
             result.status = conn.getResponseCode();
+            result.headersMs = SystemClock.elapsedRealtime() - started;
             if (cookies && result.status >= 300 && result.status < 400 && conn.getHeaderField("Location") != null) {
                 String next = new URL(conn.getURL(), conn.getHeaderField("Location")).toString();
                 boolean toGet = result.status == 303 || ((result.status == 301 || result.status == 302) && "POST".equals(method));
@@ -302,6 +329,7 @@ public class LaneHttpPlugin extends Plugin {
                     result.body = out.toByteArray();
                 }
             }
+            result.bodyMs = SystemClock.elapsedRealtime() - started - result.headersMs;
             for (Map.Entry<String, List<String>> e : conn.getHeaderFields().entrySet()) {
                 if (e.getKey() == null || e.getValue() == null || e.getValue().isEmpty()) continue;
                 if (withCookies && "set-cookie".equalsIgnoreCase(e.getKey())) storeCookies(result.url, e.getValue());
@@ -318,6 +346,7 @@ public class LaneHttpPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         pool.shutdownNow();
+        relayPool.shutdownNow();
         super.handleOnDestroy();
     }
 }

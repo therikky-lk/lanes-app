@@ -68,6 +68,7 @@ interface LaneAudioPlugin {
   updateArtwork(options: { trackId: string; artwork: string }): Promise<void>;
   clearNext(): Promise<void>;
   addListener(event: "advanced", cb: (a: { trackId: string }) => void): Promise<PluginListenerHandle>;
+  addListener(event: "diagnostic", cb: (event: { message: string }) => void): Promise<PluginListenerHandle>;
   addListener(event: "state", cb: (s: NativeState) => void): Promise<PluginListenerHandle>;
   addListener(event: "remote", cb: (r: { action: string; positionMs: number }) => void): Promise<PluginListenerHandle>;
 }
@@ -362,6 +363,7 @@ export function createNativeAudioElement(): HTMLAudioElement {
       snapshotPending = false;
     } else void syncLatestState();
   });
+  void LaneAudio.addListener("diagnostic", ({ message }) => diag(message));
   void LaneAudio.addListener("remote", (r) => {
     if (r.action === "seeked") {
       diag(`native: seek landed at ${Math.round(r.positionMs / 1000)}s`);

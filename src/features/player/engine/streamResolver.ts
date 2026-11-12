@@ -1,3 +1,5 @@
+import { PlaybackRateLimitError } from "@/shared/media/playbackRateLimit";
+import { getAuthSession } from "@/shared/api/auth-session";
 import { resolveDirectAudioStream, toVideoId, type InnertubeProfile } from "@/shared/media/innertube";
 import { prefersAccountPlayback, isYoutubeSignedIn, TV_ACCOUNT_PROFILE, PLAYBACK_PROFILES } from "@/shared/media/youtube";
 import { resolveSoundCloudStream, toSoundCloudTrackId } from "@/shared/media/soundcloud";
@@ -39,7 +41,7 @@ async function resolveSoundCloud(track: PlayableTrack, signal?: AbortSignal): Pr
   try {
     return fromSoundCloudStream(await resolveSoundCloudStream(track.id, { signal }));
   } catch (soundCloudError) {
-    if (isAbortError(soundCloudError, signal)) throw soundCloudError;
+    if (soundCloudError instanceof PlaybackRateLimitError || isAbortError(soundCloudError, signal)) throw soundCloudError;
     log("yellow", "playback", `soundcloud resolution failed, searching youtube: ${String(soundCloudError)}`);
     try {
       return await resolveYoutubeStandIn(track, signal);
@@ -59,7 +61,7 @@ async function withSoundCloudFallback(
   try {
     return await primary();
   } catch (youtubeError) {
-    if (isAbortError(youtubeError, signal)) throw youtubeError;
+    if (youtubeError instanceof PlaybackRateLimitError || isAbortError(youtubeError, signal)) throw youtubeError;
     try {
       const scId = await findSoundCloudStandIn(track, signal);
       if (scId) {
@@ -98,7 +100,7 @@ async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal
       try {
         return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal: directSignal, profiles, ...audioOptions(quality) }));
       } catch (error) {
-        if (isAbortError(error, directSignal)) throw error;
+        if (error instanceof PlaybackRateLimitError || isAbortError(error, directSignal)) throw error;
         log("yellow", "playback", `YouTube account playback failed, using public playback: ${String(error)}`);
       }
     }
@@ -124,7 +126,7 @@ async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal
   }
 }
 
-export async function resolvePlaybackStream(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
+async function resolveStream(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
   if (isLocalTrackId(track.id)) {
     // the user's own file: play the stored Blob, never look for a stand-in
     const record = await getLocalTrack(track.id);
@@ -140,4 +142,39 @@ export async function resolvePlaybackStream(track: PlayableTrack, signal?: Abort
   const videoId = toVideoId(track.id);
   if (videoId) return resolveYoutubeTrack(track, videoId, signal, quality);
   return withSoundCloudFallback(track, () => resolveYoutubeStandIn(track, signal, quality), signal);
+}
+
+
+// A manual Next and look-ahead can ask for the same stream at the same time.
+// A caller may stop waiting without cancelling the lookup for the other one.
+const resolvingStreams = new Map<string, Promise<PlaybackStream>>();
+
+export async function resolvePlaybackStream(
+  track: PlayableTrack,
+  signal?: AbortSignal,
+  quality: AudioQuality = "high",
+): Promise<PlaybackStream> {
+  signal?.throwIfAborted();
+  const session = getAuthSession();
+  const key = JSON.stringify([
+    track.id, quality, session?.authBackend, session?.user?.id,
+    isYoutubeSignedIn(), prefersAccountPlayback(),
+  ]);
+  let request = resolvingStreams.get(key);
+  if (!request) {
+    request = resolveStream(track, undefined, quality).finally(() => resolvingStreams.delete(key));
+    resolvingStreams.set(key, request);
+  }
+  if (!signal) return request;
+  let onAbort!: () => void;
+  const cancelled = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
+  try {
+    return await Promise.race([request, cancelled]);
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+  }
 }
