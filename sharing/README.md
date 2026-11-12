@@ -88,3 +88,14 @@ npx wrangler deploy --dry-run
 Локальный запуск: `npm run dev`. Wrangler создаёт локальную D1, а Worker инициализирует таблицы сам.
 
 Документация: [автоматическое создание D1](https://developers.cloudflare.com/changelog/post/2025-10-24-automatic-resource-provisioning/), [Git-интеграция Workers](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/), [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
+
+## Синхронизация YouTube и Яндекс Музыки
+
+Для синхронизации установите в Worker `lane-share` постоянный секрет `INTEGRATION_SESSION_KEY`. Сгенерируйте 32 случайных байта в Base64 и передайте их Wrangler из каталога `sharing`:
+
+```sh
+openssl rand -base64 32 | npx wrangler secret put INTEGRATION_SESSION_KEY
+npm run deploy
+```
+
+При следующих публикациях сохраняйте этот ключ: он нужен для расшифровки уже подключённых интеграций. D1 хранит токены интеграций в зашифрованном виде и разделяет сессии по аккаунту Lane и провайдеру. Токены входа в Lane используются для проверки доступа к API.

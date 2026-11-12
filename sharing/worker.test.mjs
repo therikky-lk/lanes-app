@@ -94,7 +94,10 @@ test("HTML escapes titles and includes metadata; HEAD and CORS work", async t =>
   const response = await create({ ...input, snapshot: { title: '<script>alert("x")</script>' } }); const link = await response.json();
   const page = await worker.fetch(request(`/s/${link.id}`), env);
   assert.equal(page.headers.get("cache-control"), "no-store"); assert.match(page.headers.get("content-security-policy"), /frame-ancestors 'none'/);
-  const html = await page.text(); assert.ok(!html.includes("<script>")); assert.ok(html.includes("&lt;script&gt;")); assert.ok(html.includes('property="og:title"'));
+  const html = await page.text();
+  assert.ok(!html.includes('<script>alert("x")</script>'));
+  assert.ok(html.includes("&lt;script&gt;"));
+  assert.ok(html.includes('property="og:title"'));
   assert.equal(await (await worker.fetch(request(`/s/${link.id}`, { method: "HEAD" }), env)).text(), "");
   const cors = await worker.fetch(request("/v1/shares", { method: "OPTIONS" }), env);
   assert.equal(cors.status, 204); assert.equal(cors.headers.get("access-control-allow-origin"), "*");
@@ -132,4 +135,68 @@ test("the bundled app signer emits fresh account signatures", () => {
   const sign = createSigner(module);
   const first = sign("GET", "/v1/me"); const second = sign("GET", "/v1/me");
   assert.ok(first["x-liner-signature"]); assert.match(first["x-liner-nonce"], /^[a-f0-9]{16}$/); assert.notEqual(first["x-liner-nonce"], second["x-liner-nonce"]);
+});
+
+test("integration connections are encrypted, account scoped and protected against stale writes", async t => {
+  const { env, state } = fixture(t);
+  env.INTEGRATION_SESSION_KEY = Buffer.alloc(32, 5).toString("base64");
+  const session = { accessToken: "yandex-test-token" };
+  const call = (provider, method = "GET", body, authorization = "Bearer account-token") =>
+    worker.fetch(request(`/v1/me/integration-sessions/liner/${provider}`, {
+      method, headers: { authorization }, body: body === undefined ? undefined : JSON.stringify(body),
+    }), env);
+
+  assert.equal((await call("yandex", "GET", undefined, "")).status, 401);
+  assert.deepEqual(await (await call("yandex")).json(), { revision: 0, session: null });
+  assert.deepEqual(await (await call("yandex", "PUT", { revision: 0, session })).json(), { revision: 1 });
+  const stored = await env.DB.prepare("SELECT payload FROM integration_sessions").first();
+  assert.ok(stored.payload);
+  assert.ok(!stored.payload.includes(session.accessToken));
+
+  const response = await call("yandex");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), { revision: 1, session });
+  assert.deepEqual(await (await call("yandex?status")).json(), { connected: true });
+  assert.deepEqual(await (await call("yandex?revision=1")).json(), { revision: 1, session: null });
+  assert.deepEqual(await (await call("youtube")).json(), { revision: 0, session: null });
+  state.authorized = false;
+  assert.equal((await call("yandex")).status, 401);
+  state.authorized = true;
+
+  const clear = await call("yandex", "PUT", { revision: 1, session: null });
+  assert.deepEqual(await clear.json(), { revision: 2 });
+  assert.equal((await call("yandex", "PUT", { revision: 1, session })).status, 409);
+  assert.deepEqual(await (await call("yandex")).json(), { revision: 2, session: null });
+});
+
+test("same provider session is scoped by verified Lane user and auth backend", async t => {
+  const { env } = fixture(t);
+  globalThis.fetch.mock.mockImplementation(async (url, init) => {
+    const id = init.headers.get("authorization").endsWith("other") ? "other-id" : "owner-id";
+    assert.match(String(url), /^https:\/\/(api\.tryliner\.fun|lane-account-api\.nidenseekn\.workers\.dev)\/v1\/me$/);
+    return Response.json({ id });
+  });
+  const session = {
+    accessToken: "youtube-access-token", refreshToken: "youtube-refresh-token",
+    tokenType: "Bearer", expiresAt: 5000, pageId: "12345",
+  };
+  const url = backend => `/v1/me/integration-sessions/${backend}/youtube`;
+  const call = (backend, owner, body) => worker.fetch(request(url(backend), {
+    method: body ? "PUT" : "GET",
+    headers: { authorization: `Bearer ${owner}` },
+    body: body && JSON.stringify(body),
+  }), env);
+
+  assert.equal((await call("liner", "primary", { revision: 0, session })).status, 503);
+  env.INTEGRATION_SESSION_KEY = Buffer.alloc(32, 8).toString("base64");
+  assert.equal((await call("liner", "primary", { revision: 0, session })).status, 200);
+  assert.deepEqual(await (await call("liner", "other")).json(), { revision: 0, session: null });
+  assert.deepEqual(await (await call("hyprr", "primary")).json(), { revision: 0, session: null });
+  assert.equal((await call("hyprr", "primary", { revision: 0, session })).status, 200);
+  const signOut = await worker.fetch(request("/v1/me/youtube-auth/sign-out", {
+    method: "POST", headers: { authorization: "Bearer primary" },
+  }), env);
+  assert.equal(signOut.status, 200);
+  assert.deepEqual(await (await call("liner", "primary")).json(), { revision: 2, session: null });
+  assert.deepEqual(await (await call("hyprr", "primary")).json(), { revision: 1, session });
 });

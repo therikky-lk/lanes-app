@@ -1,8 +1,10 @@
+import { integrationSession } from "./integration-sessions.mjs";
 import { schemaStatements } from "./schema.mjs";
 import { isUserPlaylist, publicPlaylistSnapshot, renderSharePage, snapshotOf, validEntity, safeImage } from "./presentation.mjs";
 import identity from "./app-identity.json" with { type: "json" };
 
 const PUBLIC_ORIGIN = "https://lane-app.site";
+const NEW_ACCOUNT_ORIGIN = "https://lane-account-api.nidenseekn.workers.dev";
 const ACCOUNT_ORIGIN = "https://api.tryliner.fun";
 const initializedDatabases = new WeakMap();
 async function initializeDatabase(env) {
@@ -26,22 +28,22 @@ function accountOrigin(env) {
   if (origin.protocol !== "https:" || origin.username || origin.password || origin.pathname !== "/" || origin.hostname === "lane-app.site") error(503, "CONFIGURATION_ERROR", "Invalid account service configuration.");
   return origin;
 }
-async function accountRequest(env, path, authorization) {
+async function accountRequest(env, path, authorization, origin = accountOrigin(env)) {
   const headers = new Headers({ accept: "application/json", "user-agent": identity.userAgent });
   if (authorization) headers.set("authorization", authorization);
   if (!env.signRequest) error(503, "CONFIGURATION_ERROR", "Account signer is unavailable.");
   for (const [key, value] of Object.entries(env.signRequest("GET", path, ""))) headers.set(key, value);
-  const response = await fetch(new URL(path, accountOrigin(env)), { headers, redirect: "manual", signal: AbortSignal.timeout(15000) });
+  const response = await fetch(new URL(path, origin), { headers, redirect: "manual", signal: AbortSignal.timeout(15000) });
   if (!response.ok) {
     if ([401, 403, 404].includes(response.status)) error(response.status, "ACCOUNT_ACCESS_DENIED", "Account or playlist is unavailable.");
     error(502, "ACCOUNT_SERVICE_UNAVAILABLE", "Account service is temporarily unavailable.");
   }
   return response.json();
 }
-async function authenticatedUser(request, env) {
+async function authenticatedUser(request, env, backend = "liner") {
   const authorization = request.headers.get("authorization");
   if (!authorization?.match(/^Bearer\s+\S+$/i)) error(401, "UNAUTHORIZED", "Sign in to share.");
-  const user = await accountRequest(env, "/v1/me", authorization);
+  const user = await accountRequest(env, "/v1/me", authorization, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env));
   if (!user || typeof user.id !== "string" || !user.id || user.id.length > 200) error(502, "ACCOUNT_SERVICE_UNAVAILABLE", "Invalid account response.");
   return { user, authorization };
 }
@@ -49,9 +51,11 @@ async function youtubeAuthState(request, env, signOut = false) {
   const { user } = await authenticatedUser(request, env);
   const db = requireDatabase(env);
   if (signOut) {
-    const row = await db.prepare("INSERT INTO youtube_auth_state(user_id,revision) VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET revision=youtube_auth_state.revision+1 RETURNING revision")
-      .bind(user.id).first();
-    return json({ revision: Number(row?.revision) || 0 });
+    const [legacy] = await db.batch([
+      db.prepare("INSERT INTO youtube_auth_state(user_id,revision) VALUES(?,1) ON CONFLICT(user_id) DO UPDATE SET revision=youtube_auth_state.revision+1 RETURNING revision").bind(user.id),
+      db.prepare("INSERT INTO integration_sessions(owner,provider,revision,payload) VALUES(?,'youtube',1,NULL) ON CONFLICT(owner,provider) DO UPDATE SET revision=integration_sessions.revision+1,payload=NULL").bind(JSON.stringify(["liner", user.id])),
+    ]);
+    return json({ revision: Number(legacy.results?.[0]?.revision) || 0 });
   }
   const row = await db.prepare("SELECT revision FROM youtube_auth_state WHERE user_id=?").bind(user.id).first();
   return json({ revision: Number(row?.revision) || 0 });
@@ -180,6 +184,14 @@ async function readThumbnail(request, env, id) {
 async function handle(request, env) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  const integration = url.pathname.match(/^\/v1\/me\/integration-sessions\/(liner|hyprr)\/(youtube|yandex)$/);
+  if (integration) {
+    const [, backend, provider] = integration;
+    const { user } = await authenticatedUser(request, env, backend);
+    await initializeDatabase(env);
+    return integrationSession(request, env, { owner: JSON.stringify([backend, user.id]), provider, readBody, json });
+  }
+  if (url.pathname.startsWith("/v1/me/integration-sessions")) return json({ code: "NOT_FOUND" }, 404);
   if (url.pathname === "/health") {
     await initializeDatabase(env);
     return json({ service: "lane-share", database: true });
