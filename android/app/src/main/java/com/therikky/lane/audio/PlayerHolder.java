@@ -33,7 +33,9 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -92,7 +94,8 @@ public final class PlayerHolder {
     private Events events;
     private String lastError;
     private final ExecutorService artworkLoader = Executors.newSingleThreadExecutor();
-    private int loadGeneration;
+    private volatile int loadGeneration;
+    private static final int ARTWORK_SIDE = 512;
     private boolean liked;
     private Equalizer equalizer;
     private int equalizerSession;
@@ -282,6 +285,10 @@ public final class PlayerHolder {
         this.events = events;
     }
 
+    public void clearEvents(Events listener) {
+        if (events == listener) events = null;
+    }
+
     public boolean isLiked() {
         return liked;
     }
@@ -435,35 +442,78 @@ public final class PlayerHolder {
         }
     }
 
+    private static HttpURLConnection openArtwork(String url) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        connection.setConnectTimeout(10_000);
+        connection.setReadTimeout(10_000);
+        connection.setInstanceFollowRedirects(true);
+        return connection;
+    }
+
+    private static Bitmap decodeArtwork(String url) throws IOException {
+        HttpURLConnection connection = openArtwork(url);
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        try {
+            if (connection.getResponseCode() / 100 != 2) return null;
+            try (BufferedInputStream input = new BufferedInputStream(connection.getInputStream())) {
+                input.mark(256 * 1024);
+                options.inJustDecodeBounds = true;
+                BitmapFactory.decodeStream(input, null, options);
+                int side = Math.max(options.outWidth, options.outHeight);
+                if (side <= 0) return null;
+                options.inJustDecodeBounds = false;
+                options.inSampleSize = 1;
+                while (side / options.inSampleSize >= ARTWORK_SIDE * 2) options.inSampleSize *= 2;
+                try {
+                    input.reset();
+                    return BitmapFactory.decodeStream(input, null, options);
+                } catch (IOException largeHeader) {
+                    // A large metadata header can exceed the mark buffer.
+                    // Reopen that response instead of decoding at full size.
+                }
+            }
+        } finally {
+            connection.disconnect();
+        }
+
+        HttpURLConnection retry = openArtwork(url);
+        try {
+            if (retry.getResponseCode() / 100 != 2) return null;
+            try (InputStream input = retry.getInputStream()) {
+                return BitmapFactory.decodeStream(input, null, options);
+            }
+        } finally {
+            retry.disconnect();
+        }
+    }
+
     private void loadArtwork(String url, int generation, String trackId) {
         artworkLoader.execute(() -> {
-            byte[] png = null;
+            if (generation != loadGeneration) return;
+            final byte[] data;
             try {
-                HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-                conn.setConnectTimeout(10_000);
-                conn.setReadTimeout(10_000);
-                conn.setInstanceFollowRedirects(true);
-                if (conn.getResponseCode() / 100 == 2) {
-                    try (InputStream in = conn.getInputStream()) {
-                        Bitmap bitmap = BitmapFactory.decodeStream(in);
-                        if (bitmap != null) {
-                            int max = Math.max(bitmap.getWidth(), bitmap.getHeight());
-                            if (max > 512) {
-                                float k = 512f / max;
-                                bitmap = Bitmap.createScaledBitmap(bitmap,
-                                    Math.round(bitmap.getWidth() * k), Math.round(bitmap.getHeight() * k), true);
-                            }
-                            ByteArrayOutputStream out = new ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-                            png = out.toByteArray();
-                        }
+                Bitmap decoded = decodeArtwork(url);
+                if (decoded == null) return;
+                Bitmap artwork = decoded;
+                try {
+                    if (generation != loadGeneration) return;
+                    int side = Math.max(decoded.getWidth(), decoded.getHeight());
+                    if (side > ARTWORK_SIDE) {
+                        float scale = (float) ARTWORK_SIDE / side;
+                        artwork = Bitmap.createScaledBitmap(decoded,
+                            Math.max(1, Math.round(decoded.getWidth() * scale)),
+                            Math.max(1, Math.round(decoded.getHeight() * scale)), true);
                     }
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    if (!artwork.compress(Bitmap.CompressFormat.JPEG, 90, out)) return;
+                    data = out.toByteArray();
+                } finally {
+                    if (artwork != decoded) artwork.recycle();
+                    decoded.recycle();
                 }
-                conn.disconnect();
             } catch (Exception ignored) {
+                return;
             }
-            if (png == null) return;
-            final byte[] data = png;
             main.post(() -> {
                 if (generation != loadGeneration || player.getMediaItemCount() == 0) return;
                 // the item may be the current one or the queued next one

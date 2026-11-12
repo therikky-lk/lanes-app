@@ -5,6 +5,8 @@ interface CacheRecord<T> {
   gcTimeMs: number;
 }
 
+const MAX_CACHED_QUERIES = 48;
+
 class QueryCacheStore {
   private store = new Map<string, CacheRecord<any>>();
   private listeners = new Map<string, Set<(data: any) => void>>();
@@ -17,6 +19,8 @@ class QueryCacheStore {
       this.store.delete(key);
       return undefined;
     }
+    this.store.delete(key);
+    this.store.set(key, record);
     return record.data as T;
   }
 
@@ -32,17 +36,27 @@ class QueryCacheStore {
     staleTimeMs: number = 5 * 60 * 1000,
     gcTimeMs: number = 30 * 60 * 1000,
   ): void {
+    const timestamp = Date.now();
+    for (const [cachedKey, record] of this.store) {
+      if (timestamp - record.timestamp > record.gcTimeMs) this.store.delete(cachedKey);
+    }
+    this.store.delete(key);
     this.store.set(key, {
       data,
-      timestamp: Date.now(),
+      timestamp,
       staleTimeMs,
       gcTimeMs,
     });
+    if (this.store.size > MAX_CACHED_QUERIES) {
+      const oldest = this.store.keys().next().value;
+      if (oldest !== undefined) this.store.delete(oldest);
+    }
     this.notify(key, data);
   }
 
   public delete(key: string): void {
     this.store.delete(key);
+    this.inFlight.delete(key);
   }
 
   public clear(): void {
@@ -101,46 +115,31 @@ class QueryCacheStore {
 
     if (cached !== undefined && !options.force) {
       if (this.isStale(key)) {
-        void this.revalidate(key, fetcher, staleTimeMs, gcTimeMs);
+        void this.fetch(key, fetcher, staleTimeMs, gcTimeMs).catch(() => undefined);
       }
       return { data: cached, fromCache: true };
     }
 
-    let promise = this.inFlight.get(key);
-    if (!promise) {
-      promise = (async () => {
-        try {
-          const freshData = await fetcher();
-          this.set(key, freshData, staleTimeMs, gcTimeMs);
-          return freshData;
-        } finally {
-          this.inFlight.delete(key);
-        }
-      })();
-      this.inFlight.set(key, promise);
-    }
-
-    const data = await promise;
+    const data = await this.fetch(key, fetcher, staleTimeMs, gcTimeMs);
     return { data, fromCache: false };
   }
 
-  private async revalidate<T>(
+  private fetch<T>(
     key: string,
     fetcher: () => Promise<T>,
     staleTimeMs: number,
     gcTimeMs: number,
-  ): Promise<void> {
-    if (this.inFlight.has(key)) return;
-    const promise = (async () => {
-      try {
-        const freshData = await fetcher();
-        this.set(key, freshData, staleTimeMs, gcTimeMs);
-      } catch {
-      } finally {
-        this.inFlight.delete(key);
-      }
-    })();
+  ): Promise<T> {
+    const existing = this.inFlight.get(key);
+    if (existing) return existing;
+    const promise = Promise.resolve().then(fetcher).then((data) => {
+      if (this.inFlight.get(key) === promise) this.set(key, data, staleTimeMs, gcTimeMs);
+      return data;
+    }).finally(() => {
+      if (this.inFlight.get(key) === promise) this.inFlight.delete(key);
+    });
     this.inFlight.set(key, promise);
+    return promise;
   }
 }
 

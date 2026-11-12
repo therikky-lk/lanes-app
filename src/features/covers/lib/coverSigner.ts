@@ -17,6 +17,7 @@ const COVER_PROXY_HOSTS: ReadonlySet<string> = new Set([
 ]);
 
 // Raw cover URL -> resolved fallback URL (or undefined when not proxyable).
+const MAX_RESOLVED_COVERS = 512;
 const resolved = new Map<string, string | undefined>();
 const inflight = new Map<string, Promise<string | undefined>>();
 
@@ -90,6 +91,10 @@ export function prepareCoverFallback(coverUrl: string | undefined): Promise<stri
 
   const promise = computeFallback(coverUrl).then((result) => {
     resolved.set(coverUrl, result);
+    if (resolved.size > MAX_RESOLVED_COVERS) {
+      const oldest = resolved.keys().next().value;
+      if (oldest !== undefined) resolved.delete(oldest);
+    }
     inflight.delete(coverUrl);
     return result;
   });

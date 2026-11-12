@@ -3,7 +3,6 @@ import { fullscreenChromeMask } from "./fullscreenChromeMask";
 import { VisualQualityPicker } from "./VisualQualityPicker";
 import { useVisualQualityStore, visualEffects } from "../store/visualQualityStore";
 import { usePlayerStore } from "../store/playerStore";
-import { HeartFill, HeartLine } from "@mingcute/react";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
@@ -729,7 +728,7 @@ export function FullscreenPlayer({
       >
         <DownLine size={18} />
       </button>
-      {/* top-right group: phones get like + lyrics + devices together; on the
+      {/* top-right group: phones get lyrics + devices together; on the
           desktop the devices button sits right next to the window controls */}
       <div
         ref={toolbar}
