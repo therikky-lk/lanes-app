@@ -1,3 +1,4 @@
+import { isConnectionLoss } from "../src/shared/utils/networkRetry.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -121,11 +122,20 @@ export class AuthSessionStore {
     origin?: number,
   ): Promise<AuthRefreshResult> {
     let reason = "";
+    let ambiguous = false;
     for (let attempt = 0; attempt < REFRESH_ATTEMPTS; attempt++) {
+      if (this.get()?.refreshToken !== current.refreshToken) {
+        return { outcome: "rotated", session: this.get() };
+      }
       let response: Response;
       try {
         response = await this.postRefresh(apiBaseUrl, current.refreshToken);
       } catch (err) {
+        if (isConnectionLoss(err) && attempt + 1 < REFRESH_ATTEMPTS) {
+          ambiguous = true;
+          await new Promise<void>(resolve => setTimeout(resolve, 300));
+          continue;
+        }
         return { outcome: "transient", session: this.get(), reason: describeError(err) };
       }
 
@@ -155,6 +165,7 @@ export class AuthSessionStore {
       reason = [String(response.status), code].filter(Boolean).join(" ");
       if (response.status !== 401 && response.status !== 403) break;
       if (DEAD_REFRESH_CODES.has(code)) {
+        if (ambiguous) return { outcome: "transient", session: this.get(), reason };
         if (this.get()?.refreshToken === current.refreshToken) this.commit(null, origin);
         return { outcome: this.get() ? "rotated" : "signed_out", session: this.get(), reason };
       }

@@ -97,7 +97,16 @@ function isNativeServiceUrl(url: string): boolean {
  * requests carry the headers Electron's webRequest hook would add on desktop:
  * the real User-Agent of the client profile and a music.youtube.com origin.
  */
+type NativeHttpTiming = { headersMs: number; bodyMs: number };
+const nativeResponseTimings = new WeakMap<Response, NativeHttpTiming>();
+
+export function nativeResponseTiming(response: Response): NativeHttpTiming | undefined {
+  return nativeResponseTimings.get(response);
+}
+
 interface NativeHttpResponse {
+  headersMs?: number;
+  bodyMs?: number;
   status: number;
   url: string;
   headers: Record<string, string>;
@@ -193,6 +202,9 @@ async function nativeHttpFetch(url: string, method: string, headers: Headers, bo
     headers: Object.entries(res.headers).filter(([k]) => k !== "content-encoding" && k !== "content-length"),
   });
   Object.defineProperty(response, "url", { value: res.url });
+  if (typeof res.headersMs === "number" && typeof res.bodyMs === "number") {
+    nativeResponseTimings.set(response, { headersMs: res.headersMs, bodyMs: res.bodyMs });
+  }
   return response;
 }
 

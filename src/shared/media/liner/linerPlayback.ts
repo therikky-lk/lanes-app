@@ -1,3 +1,6 @@
+import { diag } from "@/shared/platform/diag";
+import { isNativeApp, nativeResponseTiming } from "@/shared/platform/native";
+import { recordPlaybackRateLimit } from "@/shared/media/playbackRateLimit";
 import { getAuthSession, getValidAccessToken } from "@/shared/api/auth-session";
 import { getApiBaseUrlForAuthBackend } from "@/shared/api/baseUrl";
 import { signApiRequest } from "@/shared/api/requestSigner";
@@ -29,19 +32,23 @@ function pause(ms: number, reason: string): void {
 export async function resolveLinerStream(videoId: string, signal?: AbortSignal): Promise<LinerAudioStream | null> {
   signal?.throwIfAborted();
   if (Date.now() < pausedUntil || Date.now() < (missingTracks.get(videoId) ?? 0) || !getAuthSession()?.accessToken) return null;
-  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const startedAt = performance.now();
   try {
     const token = await getValidAccessToken();
     if (!token || Date.now() < pausedUntil) return null;
     const path = `/v1/tracks/${encodeURIComponent(videoId)}/playback`;
     const requestBody = "{}";
+    const tokenReadyAt = performance.now();
     const signedHeaders = await signApiRequest("POST", path, requestBody);
+    const requestAt = performance.now();
+    const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
     const res = await fetch(`${getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend)}${path}`, {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...signedHeaders },
       body: requestBody,
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
+    const responseAt = performance.now();
     const dateHeader = res.headers.get("date");
     if (dateHeader) syncServerTime(dateHeader);
     if (res.status === 204) {
@@ -50,7 +57,20 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
     }
     if (res.ok) {
       consecutiveMisses = 0;
-      return (await res.json()) as LinerAudioStream;
+      const stream = (await res.json()) as LinerAudioStream;
+      if (isNativeApp()) {
+        const server = (res.headers.get("server-timing") ?? "").split(",")
+          .map(item => /^\s*([\w-]+)\s*;\s*dur=([\d.]+)/i.exec(item))
+          .filter(match => match && Number.isFinite(Number(match[2])))
+          .slice(0, 5).map(match => `${match![1]}:${match![2]}ms`).join(",");
+        const native = nativeResponseTiming(res);
+        const responseMs = Math.round(responseAt - requestAt);
+        const transport = native
+          ? `headers=${native.headersMs}ms body=${native.bodyMs}ms bridge+queue=${Math.max(0, responseMs - native.headersMs - native.bodyMs)}ms`
+          : `response=${responseMs}ms`;
+        diag(`server hit timings: token=${Math.round(tokenReadyAt - startedAt)}ms sign=${Math.round(requestAt - tokenReadyAt)}ms ${transport} urlParse=${Math.round(performance.now() - responseAt)}ms serverTiming=${server || "unavailable"}`);
+      }
+      return stream;
     }
 
     const body = (await res.json().catch(() => ({}))) as { code?: string; retryAfterSeconds?: number };
@@ -66,7 +86,10 @@ export async function resolveLinerStream(videoId: string, signal?: AbortSignal):
       }
       return null;
     }
-    if (res.status === 429) pause(Math.max(1, body.retryAfterSeconds ?? 60) * 1000, "rate limited");
+    if (res.status === 429) {
+      const limited = recordPlaybackRateLimit(res, "liner", Math.max(1, body.retryAfterSeconds ?? 60) * 1000);
+      pause(Math.max(0, limited.retryAt - Date.now()), "rate limited");
+    }
     else if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404 || res.status === 415 || res.status >= 500) pause(UNAVAILABLE_BACKOFF_MS, `api answered ${res.status}`);
     return null;
   } catch (error) {
