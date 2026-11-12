@@ -49,6 +49,7 @@ function normalizeShortcut(raw: string): string {
 }
 
 const WARM_DELAY_MS = 600;
+const HIDDEN_IDLE_MS = 120_000;
 const REVEAL_FALLBACK_MS = 2_500;
 const LEGACY_READY_FALLBACK_MS = 1_500;
 const TRANSITION_READY_WAIT_MS = 1_200;
@@ -97,6 +98,8 @@ export class OverlayManager {
   private contentReady = false;
   private pendingShow = false;
   private readyWaiters: Array<() => void> = [];
+  private prewarmEnabled = false;
+  private idleTimer: NodeJS.Timeout | null = null;
   private warmTimer: NodeJS.Timeout | null = null;
   private readyFallbackTimer: NodeJS.Timeout | null = null;
   private revealFallbackTimer: NodeJS.Timeout | null = null;
@@ -191,7 +194,7 @@ export class OverlayManager {
         // Small delay so the OS completes window minimization and activates
         // the underlying window (e.g. fullscreen browser) before overlay displays and elevates
         setTimeout(() => {
-          if (!this.isAuthenticated) return;
+          if (this.mainWindow !== win || !this.wasAutoOpened) return;
           this.showOverlay();
         }, 50);
       });
@@ -219,21 +222,9 @@ export class OverlayManager {
     if (this.positionSaveTimer) this.savePersistedSettings();
     this.stopMoveAnimation();
     this.wantVisible = false;
-    if (this.closeTimeout) {
-      clearTimeout(this.closeTimeout);
-      this.closeTimeout = null;
-    }
-    this.clearLifecycleTimers();
-    this.pendingShow = false;
-    this.resetContentReady();
+    this.releaseWindow();
     this.unregisterShortcut();
     this.unregisterLikeShortcut();
-    if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
-      try {
-        this.overlayWindow.destroy();
-      } catch {}
-    }
-    this.overlayWindow = null;
     this.mainWindow = null;
   }
 
@@ -465,11 +456,13 @@ export class OverlayManager {
       clearTimeout(this.closeTimeout);
       this.closeTimeout = null;
     }
+    this.cancelIdleRelease();
     const win = this.ensureWindow();
     if (!win) return null;
+    this.wantVisible = true;
     beforeShow(win);
     if (!this.contentReady) await this.waitForContent(TRANSITION_READY_WAIT_MS);
-    if (win.isDestroyed() || this.overlayWindow !== win) return null;
+    if (win.isDestroyed() || this.overlayWindow !== win || !this.wantVisible) return null;
     this.pendingShow = true;
     this.reveal();
     this.wasAutoOpened = true;
@@ -480,11 +473,8 @@ export class OverlayManager {
     this.wasAutoOpened = false;
   }
 
-  public prewarm() {
-    this.ensureWindow();
-  }
-
   public enablePrewarm() {
+    this.prewarmEnabled = true;
     this.scheduleWarm();
   }
 
@@ -499,12 +489,8 @@ export class OverlayManager {
   private syncBundle() {
     const win = this.overlayWindow;
     if (!win || win.isDestroyed() || process.env.VITE_DEV_SERVER_URL) return;
-    if (this.loadedIndexPath === this.currentIndexPath() || win.isVisible() || this.pendingShow) return;
-    this.overlayWindow = null;
-    this.resetContentReady();
-    try {
-      win.destroy();
-    } catch {}
+    if (this.loadedIndexPath === this.currentIndexPath() || this.wantVisible || this.pendingShow) return;
+    this.releaseWindow();
     this.scheduleWarm();
   }
 
@@ -527,8 +513,8 @@ export class OverlayManager {
         await waitForFrame(win, PRIME_PAINT_WAIT_MS);
         await new Promise<void>((resolve) => setTimeout(resolve, PRIME_SETTLE_MS));
       } catch {}
-      this.priming = false;
       if (win.isDestroyed() || this.overlayWindow !== win) return;
+      this.priming = false;
       if (!this.wantVisible) win.hide();
       win.setOpacity(1);
       this.primed = true;
@@ -567,6 +553,7 @@ export class OverlayManager {
       this.closeTimeout = null;
     }
 
+    this.cancelIdleRelease();
     this.pendingShow = true;
     if (!this.ensureWindow()) {
       this.pendingShow = false;
@@ -586,6 +573,7 @@ export class OverlayManager {
 
   private reveal() {
     if (!this.pendingShow) return;
+    this.cancelIdleRelease();
     this.pendingShow = false;
     if (this.revealFallbackTimer) {
       clearTimeout(this.revealFallbackTimer);
@@ -624,13 +612,41 @@ export class OverlayManager {
   }
 
   private scheduleWarm() {
-    if (this.disposed || !this.isAuthenticated || !this.enabled) return;
-    if (this.overlayWindow && !this.overlayWindow.isDestroyed()) return;
-    if (this.warmTimer) return;
+    if (!this.prewarmEnabled || !this.willShowOnMinimize() || this.getWindow() || this.warmTimer) return;
     this.warmTimer = setTimeout(() => {
       this.warmTimer = null;
-      this.ensureWindow();
+      if (this.willShowOnMinimize() && !this.getWindow() && this.ensureWindow()) {
+        this.scheduleIdleRelease();
+      }
     }, WARM_DELAY_MS);
+  }
+
+  private cancelIdleRelease() {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = null;
+  }
+
+  private scheduleIdleRelease() {
+    this.cancelIdleRelease();
+    const win = this.getWindow();
+    if (!win || this.pendingShow || this.wantVisible) return;
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = null;
+      if (this.getWindow() === win && !this.pendingShow && !this.wantVisible && !win.isVisible()) {
+        this.releaseWindow();
+      }
+    }, HIDDEN_IDLE_MS);
+    this.idleTimer.unref();
+  }
+
+  private releaseWindow() {
+    const win = this.getWindow();
+    this.clearLifecycleTimers();
+    this.pendingShow = false;
+    this.wantVisible = false;
+    this.overlayWindow = null;
+    this.resetContentReady();
+    win?.destroy();
   }
 
   private markContentReady() {
@@ -662,6 +678,7 @@ export class OverlayManager {
     return new Promise<void>((resolve) => {
       const done = () => {
         clearTimeout(timer);
+        this.readyWaiters = this.readyWaiters.filter((waiter) => waiter !== done);
         resolve();
       };
       const timer = setTimeout(done, timeoutMs);
@@ -670,9 +687,11 @@ export class OverlayManager {
   }
 
   private clearLifecycleTimers() {
-    for (const timer of [this.warmTimer, this.readyFallbackTimer, this.revealFallbackTimer]) {
+    this.cancelIdleRelease();
+    for (const timer of [this.warmTimer, this.readyFallbackTimer, this.revealFallbackTimer, this.closeTimeout]) {
       if (timer) clearTimeout(timer);
     }
+    this.closeTimeout = null;
     this.warmTimer = null;
     this.readyFallbackTimer = null;
     this.revealFallbackTimer = null;
@@ -680,12 +699,9 @@ export class OverlayManager {
 
   private handleRendererGone(win: BrowserWindow, reason: string) {
     if (this.overlayWindow !== win) return;
-    console.warn(`[overlay] renderer gone (${reason}), rebuilding the overlay`);
-    this.overlayWindow = null;
-    this.resetContentReady();
-    try {
-      win.destroy();
-    } catch {}
+    console.warn(`[overlay] renderer gone (${reason})`);
+    const reopen = this.pendingShow || this.wantVisible;
+    this.releaseWindow();
     const now = Date.now();
     this.crashTimes = this.crashTimes.filter((t) => now - t < CRASH_WINDOW_MS);
     this.crashTimes.push(now);
@@ -697,8 +713,7 @@ export class OverlayManager {
       this.clearLifecycleTimers();
       return;
     }
-    if (this.pendingShow) this.showOverlay();
-    else this.scheduleWarm();
+    if (reopen) this.showOverlay();
   }
 
   public toggleOverlay(): boolean {
@@ -734,14 +749,15 @@ export class OverlayManager {
     if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
       if (this.overlayWindow.isVisible()) {
         this.overlayWindow.webContents.send("overlay:visibility", false);
+        const win = this.overlayWindow;
         this.closeTimeout = setTimeout(() => {
-          if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
-            this.overlayWindow.hide();
-          }
           this.closeTimeout = null;
+          if (this.getWindow() !== win) return;
+          win.hide();
+          this.scheduleIdleRelease();
         }, 90);
       } else {
-        this.overlayWindow.hide();
+        this.scheduleIdleRelease();
       }
     }
   }
@@ -795,7 +811,9 @@ export class OverlayManager {
     const was = this.isAuthenticated;
     this.isAuthenticated = this.rendererAuthenticated || Boolean(this.authSource?.());
     if (!this.isAuthenticated) {
+      this.latestState = null;
       this.closeOverlay();
+      this.releaseWindow();
     } else if (!was) {
       this.scheduleWarm();
     }
@@ -825,7 +843,6 @@ export class OverlayManager {
         contextIsolation: true,
         sandbox: false,
         devTools: true,
-        backgroundThrottling: false,
       },
     });
 
@@ -869,16 +886,9 @@ export class OverlayManager {
       void win.loadFile(this.loadedIndexPath, { hash: "/overlay" });
     }
 
-    this.overlayWindow.webContents.on("did-finish-load", () => {
-      if (this.latestState && this.overlayWindow && !this.overlayWindow.isDestroyed()) {
-        this.overlayWindow.webContents.send("overlay:state", this.latestState);
-      }
-    });
-
     this.overlayWindow.on("closed", () => {
       if (this.overlayWindow !== win) return;
-      this.overlayWindow = null;
-      this.resetContentReady();
+      this.releaseWindow();
     });
   }
 
@@ -897,8 +907,8 @@ export class OverlayManager {
       if (!this.isAuthenticated) return;
       this.latestState = state;
 
-      if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
-        this.overlayWindow.webContents.send("overlay:state", state);
+      if (this.wantVisible && this.getWindow()?.isVisible()) {
+        this.overlayWindow?.webContents.send("overlay:state", state);
       }
     });
 
@@ -954,10 +964,16 @@ export class OverlayManager {
     onTrusted("overlay:update-settings", (_event, settings: Partial<OverlaySettings> & { resetCustomPosition?: boolean }) => {
       if (!settings || typeof settings !== "object") return;
 
-      if (typeof settings.enabled === "boolean") {
+      if (typeof settings.autoShowOnMinimize === "boolean") {
+        this.autoShowOnMinimize = settings.autoShowOnMinimize;
+        this.scheduleWarm();
+      }
+
+      if (typeof settings.enabled === "boolean" && this.enabled !== settings.enabled) {
         this.enabled = settings.enabled;
         if (!this.enabled) {
           this.closeOverlay();
+          this.releaseWindow();
           this.unregisterShortcut();
         } else {
           this.registerShortcut();
@@ -993,10 +1009,6 @@ export class OverlayManager {
           this.likeShortcut = nextLikeShortcut;
           this.registerLikeShortcut();
         }
-      }
-
-      if (typeof settings.autoShowOnMinimize === "boolean") {
-        this.autoShowOnMinimize = settings.autoShowOnMinimize;
       }
 
       if (typeof settings.alwaysOnTop === "boolean") {
