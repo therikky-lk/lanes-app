@@ -562,8 +562,14 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-settings-shell .lane-setting-block { background: transparent; border-radius: 14px; }
 .lane-settings-shell .lane-setting-status { background: color-mix(in srgb, var(--text-primary) 7%, transparent); border: 0; }
 .lane-settings-nav-items {
+  --nav-group-radius: 14px;
+  --nav-group-inset: 4px;
   background: color-mix(in srgb, var(--text-primary) 6%, transparent);
-  border-radius: 14px;
+  border-radius: var(--nav-group-radius);
+  padding: var(--nav-group-inset);
+}
+.lane-settings-nav-items > [role="tab"] {
+  border-radius: calc(var(--nav-group-radius) - var(--nav-group-inset));
 }
 .lane-settings-shell .lane-shortcut-card { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
 .lane-settings-shell .lane-shortcuts-search,
@@ -1052,6 +1058,9 @@ html[data-hover-reset] [data-window-controls] button:hover {
   -webkit-backdrop-filter: blur(28px) saturate(1.25);
   backdrop-filter: blur(28px) saturate(1.25);
   backface-visibility: hidden;
+}
+.lane-frost-sheet.lane-vibe-settings-sheet {
+  background: color-mix(in srgb, var(--bg-surface) 94%, transparent) !important;
 }
 
 .lane-settings-page .lane-settings-mobile {

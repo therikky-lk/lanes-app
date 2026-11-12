@@ -44,5 +44,4 @@ export function normalizeEqCustomPresets(value: unknown): EqCustomPreset[] {
   }).slice(0, EQ_MAX_CUSTOM_PRESETS);
 }
 export function isEqActive(enabled: boolean, gains: number[]) { return enabled && gains.some(gain => Math.abs(gain) > 0.01); }
-export function eqPreampDb(gains: number[]) { return -Math.max(0, ...normalizeEqGains(gains)); }
 export function formatEqFrequency(value: number) { return value >= 1000 ? `${value / 1000}k` : String(value); }

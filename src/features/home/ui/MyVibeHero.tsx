@@ -74,7 +74,7 @@ const MOOD_SWATCH: Record<VibeMood, string> = {
 const CHARACTER_ICON: Record<VibeCharacter, { Icon: typeof HeartFill; color: string }> = {
   favorite: { Icon: HeartFill, color: "#ff3b5c" },
   unfamiliar: { Icon: Sparkles2Fill, color: "#ffc531" },
-  popular: { Icon: LightningFill, color: "#e9edf5" },
+  popular: { Icon: LightningFill, color: "var(--text-primary)" },
 };
 
 export interface MyVibeHeroProps {
@@ -546,19 +546,19 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
           onClick={onMainClick}
           disabled={starting}
           aria-label={vibePlaying ? t("common.pause") : t("home.vibe.play")}
-          className="group inline-flex items-center gap-[12px] border-none bg-transparent p-0 text-white cursor-pointer disabled:opacity-70"
+          className="group inline-flex items-center gap-[12px] border-none bg-transparent p-0 text-text-primary cursor-pointer disabled:opacity-70"
           style={{ fontFamily: "var(--font-inter), sans-serif" }}
         >
           <span className="inline-flex h-[30px] w-[30px] items-center justify-center transition-transform duration-200 group-hover:scale-110 group-active:scale-95">
             {starting ? (
-              <span className="h-[22px] w-[22px] animate-spin rounded-full border-[2.5px] border-white/30 border-t-white" />
+              <span className="h-[22px] w-[22px] animate-spin rounded-full border-[2.5px] border-current/25 border-t-current" />
             ) : vibePlaying ? (
               <PauseFill size={30} />
             ) : (
               <PlayFill size={30} />
             )}
           </span>
-          <span className="text-[34px] font-[750] leading-none tracking-tight" style={{ textShadow: "0 2px 24px rgba(0,0,0,0.6)" }}>
+          <span className="text-[34px] font-[750] leading-none tracking-tight dark:[text-shadow:0_2px_24px_rgba(0,0,0,0.6)]">
             {t("home.vibe.title")}
           </span>
         </button>
@@ -568,7 +568,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             type="button"
             onClick={() => setSettingsOpen(true)}
             aria-label={t("home.vibe.settings")}
-            className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[12px] border-0 bg-white/[0.12] text-white/90 hover:bg-white/[0.2] active:scale-[0.97] transition-all cursor-pointer"
+            className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[12px] border-0 bg-bg-toolbox-active text-text-primary hover:bg-border-alpha-33 active:scale-[0.97] transition-all cursor-pointer"
           >
             <Settings6Line size={18} />
           </button>
@@ -578,7 +578,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
               onClick={onToggleExpanded}
               aria-label={expanded ? t("home.vibe.collapse") : t("home.vibe.expand")}
               title={expanded ? t("home.vibe.collapse") : t("home.vibe.expand")}
-              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[12px] border-0 bg-white/[0.12] text-white/90 hover:bg-white/[0.2] active:scale-[0.97] transition-all cursor-pointer"
+              className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-[12px] border-0 bg-bg-toolbox-active text-text-primary hover:bg-border-alpha-33 active:scale-[0.97] transition-all cursor-pointer"
             >
               {expanded ? <UpLine size={18} /> : <DownLine size={18} />}
             </button>
@@ -589,7 +589,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             {active.map((chip) => (
               <span
                 key={chip.key}
-                className="inline-flex h-[36px] items-center gap-[6px] rounded-[12px] border-0 bg-white/[0.1] pl-[14px] pr-[8px] text-[13.5px] font-[550] text-white shadow-[0_6px_24px_rgba(0,0,0,0.16)]"
+                className="inline-flex h-[36px] items-center gap-[6px] rounded-[12px] border-0 bg-bg-toolbox-active pl-[14px] pr-[8px] text-[13.5px] font-[550] text-text-primary shadow-[0_6px_24px_rgba(0,0,0,0.16)]"
                 style={{
                   backdropFilter: "blur(20px) saturate(1.4)",
                   WebkitBackdropFilter: "blur(20px) saturate(1.4)",
@@ -600,7 +600,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   type="button"
                   onClick={() => clear(chip.key)}
                   aria-label={t("common.remove") || "Remove"}
-                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-[8px] border-none bg-transparent text-white/70 hover:text-white cursor-pointer"
+                  className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-[8px] border-none bg-transparent text-text-secondary hover:text-text-primary cursor-pointer"
                 >
                   <CloseLine size={14} />
                 </button>
@@ -627,8 +627,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 aria-label={t("home.vibe.settings")}
                 className={
                   isMobile
-                    ? "lane-frost-sheet absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-[#1a1a1d] px-[16px] pt-[10px]"
-                    : "absolute right-[12px] top-[12px] bottom-[12px] w-[440px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-white/[0.06] bg-[#1a1a1d] px-[18px] pt-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                    ? "lane-frost-sheet lane-vibe-settings-sheet absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl px-[16px] pt-[10px]"
+                    : "absolute right-[12px] top-[12px] bottom-[12px] w-[440px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-border-alpha-14 bg-bg-surface dark:bg-[#1a1a1d] px-[18px] pt-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                 }
                 style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 20px)", fontFamily: "var(--font-inter), sans-serif" }}
                 initial={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}
@@ -644,9 +644,9 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   if (info.offset.y > 110 || info.velocity.y > 600) setSettingsOpen(false);
                 }}
               >
-                {isMobile && <div className="mx-auto mb-[10px] h-[4px] w-[38px] rounded-full bg-white/25" />}
+                {isMobile && <div className="mx-auto mb-[10px] h-[4px] w-[38px] rounded-full bg-border-alpha-33" />}
                 <div className="mb-[14px] flex items-center justify-between gap-[12px]">
-                  <h3 className="m-0 text-[20px] font-[700] tracking-tight text-white">{t("home.vibe.customize")}</h3>
+                  <h3 className="m-0 text-[20px] font-[700] tracking-tight text-text-primary">{t("home.vibe.customize")}</h3>
                   <div className="flex items-center gap-[8px]">
                     <button
                       type="button"
@@ -654,7 +654,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                       disabled={!settings.character && !settings.mood && !settings.language}
                       aria-label={t("home.vibe.reset")}
                       title={t("home.vibe.reset")}
-                      className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-white/[0.08] text-white/80 hover:bg-white/[0.14] disabled:opacity-35 cursor-pointer"
+                      className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-bg-toolbox text-text-primary hover:bg-bg-toolbox-active disabled:opacity-35 cursor-pointer"
                     >
                       <Refresh2Line size={17} />
                     </button>
@@ -664,7 +664,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                         type="button"
                         onClick={() => setSettingsOpen(false)}
                         aria-label={t("common.close") || "Close"}
-                        className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-white/[0.08] text-white/80 hover:bg-white/[0.14] cursor-pointer"
+                        className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-full border-none bg-bg-toolbox text-text-primary hover:bg-bg-toolbox-active cursor-pointer"
                       >
                         <CloseLine size={17} />
                       </button>
@@ -672,12 +672,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   </div>
                 </div>
 
-            <p className="m-0 mt-[6px] mb-[10px] text-[14px] font-[600] leading-[18px] text-white/60">{t("home.vibe.by_character")}</p>
+            <p className="m-0 mt-[6px] mb-[10px] text-[14px] font-[600] leading-[18px] text-text-secondary">{t("home.vibe.by_character")}</p>
             <LayoutGroup id="vibe-character-selector">
             <div className="relative grid w-full grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
               <motion.span
                 aria-hidden
-                className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-white/[0.09]"
+                className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-bg-surface dark:bg-bg-toolbox-active"
                 style={{ width: "calc((100% - 8px) / 3)" }}
                 animate={{
                   x: `${(settings.character ? Math.max(0, VIBE_CHARACTERS.indexOf(settings.character)) : lastCharacterIndex) * 100}%`,
@@ -701,22 +701,22 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     className="relative z-10 inline-flex h-[64px] min-w-0 flex-col items-center justify-center gap-[4px] rounded-lg border-0 bg-transparent px-[8px] cursor-pointer select-none active:scale-[0.97]"
                   >
                     <Icon className="relative z-10 shrink-0" size={22} style={{ color, filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.35))" }} />
-                    <span className="relative z-10 truncate text-[12px] font-[550] leading-[15px] text-white/90">{label.character(c)}</span>
+                    <span className="relative z-10 truncate text-[12px] font-[550] leading-[15px] text-text-primary">{label.character(c)}</span>
                   </button>
                 );
               })}
               <span
-                className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px transition-opacity duration-150"
-                style={{ backgroundColor: "#262626", opacity: settings.character === "favorite" || settings.character === "unfamiliar" ? 0 : 1 }}
+                className="pointer-events-none absolute bottom-[4px] left-1/3 top-[4px] z-20 w-px bg-border-alpha-33 transition-opacity duration-150"
+                style={{ opacity: settings.character === "favorite" || settings.character === "unfamiliar" ? 0 : 1 }}
               />
               <span
-                className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px transition-opacity duration-150"
-                style={{ backgroundColor: "#262626", opacity: settings.character === "unfamiliar" || settings.character === "popular" ? 0 : 1 }}
+                className="pointer-events-none absolute bottom-[4px] left-2/3 top-[4px] z-20 w-px bg-border-alpha-33 transition-opacity duration-150"
+                style={{ opacity: settings.character === "unfamiliar" || settings.character === "popular" ? 0 : 1 }}
               />
             </div>
             </LayoutGroup>
 
-            <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_mood")}</p>
+            <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-text-secondary">{t("home.vibe.by_mood")}</p>
             <div className="grid grid-cols-4 gap-[8px]">
               {VIBE_MOODS.map((m) => {
                 const on = settings.mood === m;
@@ -729,16 +729,16 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                     className="flex flex-col items-center gap-[8px] border-none bg-transparent p-0 cursor-pointer"
                   >
                     <span
-                      className={`h-[64px] w-[64px] rounded-full transition-all ${on ? "ring-[3px] ring-white ring-offset-[3px] ring-offset-[#121214] scale-105" : ""}`}
+                      className={`h-[64px] w-[64px] rounded-full transition-all ${on ? "ring-[3px] ring-text-primary ring-offset-[3px] ring-offset-bg-surface scale-105" : ""}`}
                       style={{ background: MOOD_SWATCH[m] }}
                     />
-                    <span className="text-[13.5px] font-[550] text-white">{label.mood(m)}</span>
+                    <span className="text-[13.5px] font-[550] text-text-primary">{label.mood(m)}</span>
                   </button>
                 );
               })}
             </div>
 
-            <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-white/55">{t("home.vibe.by_language")}</p>
+            <p className="m-0 mt-[24px] mb-[12px] text-[14px] font-[600] text-text-secondary">{t("home.vibe.by_language")}</p>
             {/* one switch for the language (tap the picked one again to clear it),
                 and "no vocals" on its own */}
             <LayoutGroup id="vibe-language-selector">
@@ -747,7 +747,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
               <div className="relative grid min-w-0 flex-1 grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
                 <motion.span
                   aria-hidden
-                  className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-white/[0.09]"
+                  className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-bg-surface dark:bg-bg-toolbox-active"
                   style={{ width: "calc((100% - 8px) / 3)" }}
                   animate={{
                     x: `${Math.max(0, (["russian", "ukrainian", "english"] as const).indexOf(settings.language as "russian" | "ukrainian" | "english")) * 100}%`,
@@ -775,12 +775,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                   );
                 })}
                 <span
-                  className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px transition-opacity duration-150"
-                  style={{ backgroundColor: "#262626", opacity: settings.language === "russian" || settings.language === "ukrainian" ? 0 : 1 }}
+                  className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px bg-border-alpha-33 transition-opacity duration-150"
+                  style={{ opacity: settings.language === "russian" || settings.language === "ukrainian" ? 0 : 1 }}
                 />
                 <span
-                  className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px transition-opacity duration-150"
-                  style={{ backgroundColor: "#262626", opacity: settings.language === "ukrainian" || settings.language === "english" ? 0 : 1 }}
+                  className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px bg-border-alpha-33 transition-opacity duration-150"
+                  style={{ opacity: settings.language === "ukrainian" || settings.language === "english" ? 0 : 1 }}
                 />
               </div>
               {/* "no vocals" on its own */}
@@ -792,7 +792,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 onClick={() => toggle("language", "instrumental")}
                 className={`inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl border-0 cursor-pointer transition-colors active:scale-[0.97] ${
                   settings.language === "instrumental"
-                    ? "bg-white text-black"
+                    ? "bg-btn-primary-bg text-btn-primary-text"
                     : "bg-bg-elevated text-text-secondary hover:text-text-primary"
                 }`}
               >

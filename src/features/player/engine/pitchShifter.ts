@@ -1,4 +1,4 @@
-import { EQ_BANDS, normalizeEqGains, eqPreampDb } from "./equalizer";
+import { EQ_BANDS, FLAT_EQ, normalizeEqGains } from "./equalizer";
 /**
  * Real-time Web Audio Effects Engine for independent pitch control and studio reverb.
  *
@@ -18,6 +18,20 @@ import { EQ_BANDS, normalizeEqGains, eqPreampDb } from "./equalizer";
 
 const GRAIN_PERIOD = 0.038; // 38ms grain window
 const NUM_TAPS = 4;
+
+// Scale the input so the wave shaper can process EQ peaks above full scale.
+const EQ_LIMITER_INPUT_RANGE = 4;
+const EQ_LIMITER_KNEE = 0.9;
+const EQ_LIMITER_CEILING = 0.99;
+const EQ_LIMITER_CURVE_SIZE = 4097;
+const EQ_LIMITER_CURVE = Float32Array.from({ length: EQ_LIMITER_CURVE_SIZE }, (_, i) => {
+  const sample = (2 * i / (EQ_LIMITER_CURVE_SIZE - 1) - 1) * EQ_LIMITER_INPUT_RANGE;
+  const magnitude = Math.abs(sample);
+  if (magnitude <= EQ_LIMITER_KNEE) return sample;
+
+  const headroom = EQ_LIMITER_CEILING - EQ_LIMITER_KNEE;
+  return Math.sign(sample) * (EQ_LIMITER_KNEE - headroom * Math.expm1(-(magnitude - EQ_LIMITER_KNEE) / headroom));
+});
 
 function createHannBuffer(context: AudioContext, period: number): AudioBuffer {
   const length = Math.max(1, Math.floor(period * context.sampleRate));
@@ -209,7 +223,10 @@ interface AudioEffectsGraph {
   masterDryGain: GainNode;
   masterOutputGain: GainNode;
   eqFilters: BiquadFilterNode[];
-  eqPreamp: GainNode;
+  eqLimiterInput: GainNode;
+  eqLimiter: WaveShaperNode;
+  eqLimiterGain: GainNode;
+  eqBypassGain: GainNode;
   reverbSendGain: GainNode;
   convolver: ConvolverNode;
   reverbHighpass: BiquadFilterNode;
@@ -281,9 +298,8 @@ export class PitchShifterController {
       }
 
       // Check if existing graph is valid and has all reverb + pitch nodes
-      const isCompleteGraph = (g: any): g is AudioEffectsGraph => {
+      const isCompleteGraph = (g: AudioEffectsGraph): boolean => {
         return Boolean(
-          g &&
           g.sourceNode === sourceNode &&
           g.convolver &&
           g.reverbWetGain &&
@@ -291,13 +307,14 @@ export class PitchShifterController {
           g.pitchStageOutput &&
           g.masterOutputGain &&
           g.masterDryGain &&
-          g.shifter && g.eqFilters?.length === EQ_BANDS.length
+          g.shifter && g.eqFilters?.length === EQ_BANDS.length &&
+          g.eqLimiterInput && g.eqLimiter && g.eqLimiterGain && g.eqBypassGain
         );
       };
 
       let graph = (audioObj.__liner_pitch_graph || win.__liner_pitch_graph) as AudioEffectsGraph | undefined;
 
-      if (!isCompleteGraph(graph)) {
+      if (!graph || !isCompleteGraph(graph)) {
         // Disconnect any legacy/stale nodes from the old graph
         if (graph) {
           try {
@@ -312,6 +329,10 @@ export class PitchShifterController {
             (graph as any).masterOutputGain?.disconnect();
             (graph as any).eqPreamp?.disconnect();
             for (const filter of (graph as any).eqFilters ?? []) filter.disconnect();
+            graph.eqLimiterInput?.disconnect();
+            graph.eqLimiter?.disconnect();
+            graph.eqLimiterGain?.disconnect();
+            graph.eqBypassGain?.disconnect();
             (graph as any).reverbSendGain?.disconnect();
             (graph as any).convolver?.disconnect();
             (graph as any).reverbHighpass?.disconnect();
@@ -375,7 +396,6 @@ export class PitchShifterController {
         reverbWetGain.connect(masterOutputGain);
 
         // Place EQ after the effects mix so pitch and reverb share the same curve.
-        const eqPreamp = ctx.createGain();
         const eqFilters = EQ_BANDS.map(frequency => {
           const filter = ctx.createBiquadFilter();
           filter.type = "peaking";
@@ -384,10 +404,19 @@ export class PitchShifterController {
           filter.gain.value = 0;
           return filter;
         });
-        masterOutputGain.connect(eqPreamp);
-        let tail: AudioNode = eqPreamp;
+        let tail: AudioNode = masterOutputGain;
         for (const filter of eqFilters) { tail.connect(filter); tail = filter; }
-        tail.connect(ctx.destination);
+
+        const eqLimiterInput = ctx.createGain();
+        eqLimiterInput.gain.value = 1 / EQ_LIMITER_INPUT_RANGE;
+        const eqLimiter = ctx.createWaveShaper();
+        eqLimiter.curve = EQ_LIMITER_CURVE;
+        const eqLimiterGain = ctx.createGain();
+        eqLimiterGain.gain.value = 0;
+        const eqBypassGain = ctx.createGain();
+
+        tail.connect(eqLimiterInput).connect(eqLimiter).connect(eqLimiterGain).connect(ctx.destination);
+        tail.connect(eqBypassGain).connect(ctx.destination);
 
         graph = {
           ctx,
@@ -398,8 +427,11 @@ export class PitchShifterController {
           shifter,
           masterDryGain,
           masterOutputGain,
-          eqPreamp,
           eqFilters,
+          eqLimiterInput,
+          eqLimiter,
+          eqLimiterGain,
+          eqBypassGain,
           reverbSendGain,
           convolver,
           reverbHighpass,
@@ -472,8 +504,10 @@ export class PitchShifterController {
     const now = this.context.currentTime;
 
     const eq = typeof arg1 === "object" && arg1.isEqEnabled
-      ? normalizeEqGains(arg1.eqGains) : EQ_BANDS.map(() => 0);
-    this.graph.eqPreamp.gain.setTargetAtTime(Math.pow(10, eqPreampDb(eq) / 20), now, 0.02);
+      ? normalizeEqGains(arg1.eqGains) : FLAT_EQ;
+    const hasBoost = eq.some(gain => gain > 0);
+    this.graph.eqLimiterGain.gain.setTargetAtTime(hasBoost ? 1 : 0, now, 0.02);
+    this.graph.eqBypassGain.gain.setTargetAtTime(hasBoost ? 0 : 1, now, 0.02);
     this.graph.eqFilters.forEach((filter, index) => filter.gain.setTargetAtTime(eq[index], now, 0.02));
 
     // Pitch shift routing

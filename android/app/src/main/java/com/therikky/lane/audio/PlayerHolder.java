@@ -1,7 +1,6 @@
 package com.therikky.lane.audio;
 
 import android.content.Context;
-import android.media.audiofx.Equalizer;
 import android.util.Log;
 import android.net.Uri;
 import android.os.Handler;
@@ -19,6 +18,7 @@ import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
+import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.DefaultHttpDataSource;
@@ -31,6 +31,9 @@ import androidx.media3.datasource.cronet.CronetDataSource;
 import com.therikky.lane.net.Net;
 import org.chromium.net.CronetEngine;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.exoplayer.audio.AudioSink;
+import androidx.media3.exoplayer.audio.DefaultAudioSink;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy;
@@ -105,12 +108,7 @@ public final class PlayerHolder {
     private long playbackRequestedAt;
     private static final int ARTWORK_SIDE = 512;
     private boolean liked;
-    private Equalizer equalizer;
-    private int equalizerSession;
-    private boolean equalizerEnabled;
-    private float[] equalizerGains = new float[10];
-    private float requestedVolume = 1f;
-    private static final double[] EQ_HZ = {32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000};
+    private final LaneEqualizer equalizer = new LaneEqualizer();
     private Runnable likedListener;
 
     private final Runnable ticker = new Runnable() {
@@ -128,7 +126,18 @@ public final class PlayerHolder {
 
     private PlayerHolder(Context context) {
         this.context = context;
-        player = new ExoPlayer.Builder(context)
+        DefaultRenderersFactory renderers = new DefaultRenderersFactory(context) {
+            @Override
+            protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput,
+                                               boolean enableAudioTrackPlaybackParams) {
+                // The EQ processes 16-bit PCM. Let the sink convert decoder output when needed.
+                return new DefaultAudioSink.Builder(context)
+                    .setAudioProcessors(new AudioProcessor[] { equalizer })
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .build();
+            }
+        };
+        player = new ExoPlayer.Builder(context, renderers)
             .setAudioAttributes(
                 new AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -140,12 +149,6 @@ public final class PlayerHolder {
             .build();
 
         player.addListener(new Player.Listener() {
-            @Override
-            public void onAudioSessionIdChanged(int audioSessionId) {
-                try { applyEqualizer(); }
-                catch (RuntimeException error) { Log.w("LaneAudio", "Equalizer unavailable for this session", error); }
-            }
-
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 if (isPlaying) {
@@ -656,62 +659,11 @@ public final class PlayerHolder {
     }
 
     public void setVolume(float volume) {
-        requestedVolume = Math.max(0f, Math.min(1f, volume));
-        updateEqualizerVolume();
+        player.setVolume(Math.max(0f, Math.min(1f, volume)));
     }
 
     public void setEqualizer(boolean enabled, float[] gains) {
-        equalizerEnabled = enabled;
-        for (int i = 0; i < equalizerGains.length; i++) {
-            float gain = i < gains.length ? gains[i] : 0f;
-            equalizerGains[i] = Float.isNaN(gain) || Float.isInfinite(gain) ? 0f : Math.max(-12f, Math.min(12f, gain));
-        }
-        applyEqualizer();
-    }
-
-    private void updateEqualizerVolume() {
-        float boost = 0f;
-        if (equalizerEnabled && equalizer != null) {
-            for (float gain : equalizerGains) boost = Math.max(boost, gain);
-        }
-        player.setVolume(requestedVolume * (float) Math.pow(10d, -boost / 20d));
-    }
-
-    private void applyEqualizer() {
-        int session = player.getAudioSessionId();
-        if (equalizer != null && (session != equalizerSession || !equalizerEnabled)) {
-            equalizer.release();
-            equalizer = null;
-        }
-        if (!equalizerEnabled || session <= 0) {
-            updateEqualizerVolume();
-            return;
-        }
-        try {
-            if (equalizer == null) {
-                equalizer = new Equalizer(0, session);
-                equalizerSession = session;
-            }
-            short[] range = equalizer.getBandLevelRange();
-            // Android devices expose different band counts. Sample our ten-band
-            // curve at each device band, interpolating on the logarithmic Hz axis.
-            for (short band = 0; band < equalizer.getNumberOfBands(); band++) {
-                double frequency = equalizer.getCenterFreq(band) / 1000d;
-                int lower = 0;
-                while (lower < EQ_HZ.length - 1 && EQ_HZ[lower + 1] < frequency) lower++;
-                double db = equalizerGains[lower];
-                if (lower < EQ_HZ.length - 1 && frequency > EQ_HZ[lower]) {
-                    double fraction = Math.log(frequency / EQ_HZ[lower]) / Math.log(EQ_HZ[lower + 1] / EQ_HZ[lower]);
-                    db += fraction * (equalizerGains[lower + 1] - db);
-                }
-                short level = (short) Math.max(range[0], Math.min(range[1], Math.round(db * 100d)));
-                equalizer.setBandLevel(band, level);
-            }
-            equalizer.setEnabled(true);
-        } catch (RuntimeException error) {
-            if (equalizer != null) { equalizer.release(); equalizer = null; }
-            throw error;
-        } finally { updateEqualizerVolume(); }
+        equalizer.setGains(enabled, gains);
     }
 
     public void setRate(float rate) {

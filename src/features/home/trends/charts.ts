@@ -41,7 +41,7 @@ export interface ChartEntry {
   delta: number;
 }
 
-const SIZE = 50;
+const SIZE = 25;
 const TTL = 60 * 60 * 1000;
 /** big music markets whose charts make up "world" */
 export const WORLD_COUNTRIES = ["us", "gb", "de", "fr", "br", "mx", "jp", "kr", "es", "it"];
@@ -168,7 +168,7 @@ export function mergeCharts(charts: ChartSong[][], size = SIZE): ChartSong[] {
 }
 
 async function loadSongs(region: ChartRegion): Promise<ChartSong[]> {
-  if (region === "russia") return (await fetchFeed("ru", SIZE)).slice(0, SIZE);
+  if (region === "russia") return (await fetchFeed("ru", 50)).slice(0, SIZE);
   const charts = await Promise.all(WORLD_COUNTRIES.map((c) => fetchFeed(c, 100).catch(() => [] as ChartSong[])));
   const merged = mergeCharts(charts.filter((c) => c.length > 0));
   if (merged.length === 0) throw new Error("no chart feeds");
