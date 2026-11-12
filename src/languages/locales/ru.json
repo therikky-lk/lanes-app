@@ -605,6 +605,7 @@
     "reorder_track": "Перетащить трек"
   },
   "playlist": {
+    "select_tracks": "Выбрать треки",
     "playlist": "Плейлист",
     "liked_songs": "Понравившиеся",
     "untitled_playlist": "Плейлист без названия",

@@ -1,3 +1,4 @@
+import TrackMenuHeader from "./TrackMenuHeader";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { memo, useCallback, useRef, useState } from "react";
 import { PlayFill, More2Fill, MusicLine, HeartFill, HeartLine } from "@mingcute/react";
@@ -152,15 +153,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
           }}
           position={menuPosition}
           closeLabel={t("common.close")}
-          mobileSheetHeader={(
-            <div className="flex flex-col items-center px-[8px] pb-[12px] pt-[4px] text-center">
-              <div className="relative mb-[14px] h-[112px] w-[112px] overflow-hidden rounded-[14px] bg-black/20 shadow-[0_8px_28px_rgba(0,0,0,0.35)]">
-                <CoverImage src={coverUrl} alt={track.title} fill sizes="112px" placeholder="empty" className="object-cover" />
-              </div>
-              <h2 className="m-0 max-w-full truncate text-[18px] font-[600] leading-[24px] text-text-primary">{cleanTrackTitle(track.title, track.artists)}</h2>
-              <p className="m-0 mt-[4px] max-w-full truncate text-[14px] leading-[20px] text-text-secondary">{track.artists}</p>
-            </div>
-          )}
+          mobileSheetHeader={<TrackMenuHeader coverUrl={coverUrl} title={cleanTrackTitle(track.title, track.artists)} artists={track.artists} />}
         />
       )}
     </div>

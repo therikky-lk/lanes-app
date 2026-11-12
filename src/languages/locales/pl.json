@@ -594,6 +594,7 @@
     "reorder_track": "Przeciągnij utwór"
   },
   "playlist": {
+    "select_tracks": "Wybierz utwory",
     "playlist": "Playlista",
     "liked_songs": "Polubione utwory",
     "untitled_playlist": "Playlista bez nazwy",
