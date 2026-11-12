@@ -594,6 +594,7 @@
     "reorder_track": "Titel verschieben"
   },
   "playlist": {
+    "select_tracks": "Titel auswählen",
     "playlist": "Wiedergabeliste",
     "liked_songs": "Lieblingstitel",
     "untitled_playlist": "Unbenannte Playlist",

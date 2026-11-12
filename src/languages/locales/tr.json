@@ -594,6 +594,7 @@
     "reorder_track": "Parçayı taşı"
   },
   "playlist": {
+    "select_tracks": "Parçaları seç",
     "playlist": "Çalma listesi",
     "liked_songs": "Beğenilen şarkılar",
     "untitled_playlist": "Adsız Çalma Listesi",

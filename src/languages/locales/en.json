@@ -605,6 +605,7 @@
     "reorder_track": "Reorder track"
   },
   "playlist": {
+    "select_tracks": "Select tracks",
     "playlist": "Playlist",
     "liked_songs": "Liked songs",
     "untitled_playlist": "Untitled Playlist",

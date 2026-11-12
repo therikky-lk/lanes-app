@@ -1,3 +1,4 @@
+import { addPlaylistSelection } from "../../services/addPlaylistSelection";
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { PlaylistFill, Search2Line, CloseCircleFill, AddLine } from "@mingcute/react";
 import { useToast } from "@/shared/ui";
@@ -19,6 +20,7 @@ export default function AddToPlaylistModal() {
 
   const open = useModalStore((state) => state.addToPlaylistOpen);
   const track = useModalStore((state) => state.addToPlaylistTrack);
+  const selection = useModalStore((state) => state.addToPlaylistSelection);
   const close = useModalStore((state) => state.closeAddToPlaylist);
   const openCreatePlaylist = useModalStore((state) => state.openCreatePlaylist);
 
@@ -74,15 +76,20 @@ export default function AddToPlaylistModal() {
   }, [open, rawPlaylists.length, playlists.length, updateScrollMask]);
 
   const handleAddToPlaylist = async (playlistId: string) => {
-    if (!track) return;
-    if (isLocalTrackId(track.id)) {
+    if (addingTo || (!track && !selection.length)) return;
+    if (track && isLocalTrackId(track.id)) {
       toast(t("local.add_failed"), "error");
       return;
     }
     const targetPlaylist = playlists.find((p) => p.id === playlistId);
     setAddingTo(playlistId);
     try {
-      await addTrack.mutateAsync({ playlistId, trackId: track.id, trackSnapshot: track.trackSnapshot });
+      if (track) {
+        await addTrack.mutateAsync({ playlistId, trackId: track.id, trackSnapshot: track.trackSnapshot });
+      } else if (await addPlaylistSelection(playlistId, selection) === 0) {
+        toast(t("common.track_already_in_playlist"), "info");
+        return;
+      }
       toast(t("common.added_to_playlist"), "checkmark", {
         description: targetPlaylist?.title || undefined,
       });
@@ -90,7 +97,7 @@ export default function AddToPlaylistModal() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         toast(t("common.track_already_in_playlist"), "error", {
-          description: track.title || undefined,
+          description: track?.title || undefined,
         });
       } else {
         diag(`[Lane][AddToPlaylist] failed ${JSON.stringify({
@@ -107,13 +114,12 @@ export default function AddToPlaylistModal() {
   };
 
   const handleNewPlaylist = () => {
-    const pendingTrack = track;
     close();
-    openCreatePlaylist(undefined, pendingTrack);
+    openCreatePlaylist(undefined, track, selection);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (!next ? close() : undefined)} maxWidth={400}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !addingTo) close(); }} maxWidth={400}>
       {/* outer gutters live here (12px); rows bleed only 8px on hover so
           cover art sits at the same 20px inset as the header text */}
       <div className="flex flex-col gap-[12px] px-[12px] pb-[12px]">
@@ -124,6 +130,9 @@ export default function AddToPlaylistModal() {
           >
             {t("common.add_to_playlist")}
           </h2>
+          {selection.length > 0 && (
+            <p className="mt-1 text-[13px] text-text-secondary">{t("common.tracks", { count: selection.length })}</p>
+          )}
           {track && (
             <div className="mt-[10px] flex items-center gap-[10px] rounded-md bg-bg-elevated/60 px-[10px] py-[8px]">
               <div className="relative h-[40px] w-[40px] shrink-0 overflow-hidden rounded-md bg-bg-elevated flex items-center justify-center">
@@ -254,6 +263,7 @@ export default function AddToPlaylistModal() {
         <div className="px-[8px]">
           <button
             type="button"
+            disabled={addingTo !== null}
             onClick={handleNewPlaylist}
             className="flex h-[36px] w-full items-center justify-center gap-[6px] rounded-md border border-border-primary bg-transparent text-[13px] font-[500] text-text-primary transition-colors hover:bg-bg-elevated cursor-pointer"
             style={font}

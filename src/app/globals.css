@@ -1059,7 +1059,8 @@ html[data-hover-reset] [data-window-controls] button:hover {
   backdrop-filter: blur(28px) saturate(1.25);
   backface-visibility: hidden;
 }
-.lane-frost-sheet.lane-vibe-settings-sheet {
+.lane-frost-sheet.lane-vibe-settings-sheet,
+.lane-frost-sheet.lane-track-actions-sheet {
   background: color-mix(in srgb, var(--bg-surface) 94%, transparent) !important;
 }
 

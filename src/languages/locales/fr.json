@@ -594,6 +594,7 @@
     "reorder_track": "Réorganiser le titre"
   },
   "playlist": {
+    "select_tracks": "Sélectionner des titres",
     "playlist": "Liste de lecture",
     "liked_songs": "Titres aimés",
     "untitled_playlist": "Playlist sans titre",

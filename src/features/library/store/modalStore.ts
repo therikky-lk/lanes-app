@@ -59,14 +59,17 @@ interface ModalState {
   // Add to playlist
   addToPlaylistOpen: boolean;
   addToPlaylistTrack: TrackDetail | null;
+  addToPlaylistSelection: ApiTrackBase[];
   openAddToPlaylist: (track: TrackDetail) => void;
+  openAddSelectionToPlaylist: (tracks: ApiTrackBase[]) => void;
   closeAddToPlaylist: () => void;
 
   // Create playlist
   createPlaylistOpen: boolean;
   createPlaylistInitialUrl: string;
   createPlaylistPendingTrack: TrackDetail | null;
-  openCreatePlaylist: (initialUrl?: string, pendingTrack?: TrackDetail | null) => void;
+  createPlaylistPendingSelection: ApiTrackBase[];
+  openCreatePlaylist: (initialUrl?: string, pendingTrack?: TrackDetail | null, selection?: ApiTrackBase[]) => void;
   closeCreatePlaylist: () => void;
 
   // Remove from library
@@ -118,25 +121,31 @@ export const useModalStore = create<ModalState>((set) => ({
 
   addToPlaylistOpen: false,
   addToPlaylistTrack: null,
+  addToPlaylistSelection: [],
   openAddToPlaylist: (track) =>
-    set({ addToPlaylistOpen: true, addToPlaylistTrack: track }),
+    set({ addToPlaylistOpen: true, addToPlaylistTrack: track, addToPlaylistSelection: [] }),
+  openAddSelectionToPlaylist: (tracks) =>
+    set({ addToPlaylistOpen: tracks.length > 0, addToPlaylistTrack: null, addToPlaylistSelection: tracks }),
   closeAddToPlaylist: () =>
-    set({ addToPlaylistOpen: false, addToPlaylistTrack: null }),
+    set({ addToPlaylistOpen: false, addToPlaylistTrack: null, addToPlaylistSelection: [] }),
 
   createPlaylistOpen: false,
   createPlaylistInitialUrl: "",
   createPlaylistPendingTrack: null,
-  openCreatePlaylist: (initialUrl = "", pendingTrack = null) =>
+  createPlaylistPendingSelection: [],
+  openCreatePlaylist: (initialUrl = "", pendingTrack = null, selection = []) =>
     set({
       createPlaylistOpen: true,
       createPlaylistInitialUrl: initialUrl,
       createPlaylistPendingTrack: pendingTrack,
+      createPlaylistPendingSelection: selection,
     }),
   closeCreatePlaylist: () =>
     set({
       createPlaylistOpen: false,
       createPlaylistInitialUrl: "",
       createPlaylistPendingTrack: null,
+      createPlaylistPendingSelection: [],
     }),
 
   removeFromLibraryOpen: false,

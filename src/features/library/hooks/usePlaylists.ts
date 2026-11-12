@@ -1,6 +1,6 @@
 import { compactPlaylistCover, getCustomPlaylistCover, getPlaylistCover, rememberServerCover } from "../services/playlistCovers";
 import { canSyncCoverMarker, readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
-import { buildLocalPlaylistEntry, DEVICE_ALBUM_PREFIX, localEntryToTrack } from "@/features/local/localPlaylistTracks";
+import { buildLocalPlaylistEntry, localEntrySnapshot, localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { isLocalLikesPlaylist } from "@/features/local/localLikesSync";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { useEffect, useState, useSyncExternalStore } from "react";
@@ -247,16 +247,6 @@ function toTrack(item: ApiUserPlaylistItem): Track {
 
 type UserPlaylistResponse = Awaited<ReturnType<typeof api.getUserPlaylist>>;
 const localTrackMigrationRequests = new Map<string, Promise<UserPlaylistResponse>>();
-
-function localEntrySnapshot(entry: ReturnType<typeof readLocalEntries>[number]) {
-  return {
-    id: entry.id,
-    title: entry.title,
-    artists: entry.artists ? entry.artists.split(/\s*,\s*/).filter(Boolean).map((name) => ({ id: "", name })) : [],
-    durationMs: entry.durationMs,
-    album: { id: `${DEVICE_ALBUM_PREFIX}${entry.deviceId}`, title: entry.deviceName },
-  };
-}
 
 /** Move old description-packed local tracks into playlist rows before removing their marker. */
 async function migrateLocalPlaylistEntries(playlistId: string, initial: UserPlaylistResponse): Promise<UserPlaylistResponse> {

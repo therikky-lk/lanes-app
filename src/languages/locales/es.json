@@ -594,6 +594,7 @@
     "reorder_track": "Reordenar canción"
   },
   "playlist": {
+    "select_tracks": "Seleccionar canciones",
     "playlist": "Lista de reproducción",
     "liked_songs": "Canciones que te gustan",
     "untitled_playlist": "Lista sin título",
