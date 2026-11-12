@@ -33,6 +33,7 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private ListenableFuture<MediaController> controller;
+    private PlayerHolder playerHolder;
     private boolean foreground = true;
     private long stateSequence;
     private JSObject latestState;
@@ -64,8 +65,8 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
     @Override
     public void load() {
         main.post(() -> {
-            PlayerHolder holder = PlayerHolder.get(getContext());
-            holder.setEvents(this);
+            playerHolder = PlayerHolder.get(getContext());
+            playerHolder.setEvents(this);
             // connecting a controller starts the session service, which then
             // runs in the foreground with the media notification while playing
             SessionToken token = new SessionToken(getContext(), new ComponentName(getContext(), LanePlaybackService.class));
@@ -75,7 +76,16 @@ public class LaneAudioPlugin extends Plugin implements PlayerHolder.Events {
 
     @Override
     protected void handleOnDestroy() {
-        if (controller != null) MediaController.releaseFuture(controller);
+        main.post(() -> {
+            if (playerHolder != null) {
+                playerHolder.clearEvents(this);
+                playerHolder = null;
+            }
+            if (controller != null) {
+                MediaController.releaseFuture(controller);
+                controller = null;
+            }
+        });
         super.handleOnDestroy();
     }
 

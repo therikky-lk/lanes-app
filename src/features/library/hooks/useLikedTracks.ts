@@ -11,6 +11,7 @@ type LikedData = { tracks: Track[]; total: number };
 const EMPTY: LikedData = { tracks: [], total: 0 };
 let cache: LikedData = EMPTY;
 let loaded = false;
+let complete = false;
 let request: Promise<void> | null = null;
 let activeOwner = "";
 let loadGeneration = 0;
@@ -125,6 +126,7 @@ function resetForOwner(nextOwner: string): void {
   cache = EMPTY;
   progressCache = EMPTY;
   loaded = false;
+  complete = false;
   optimisticOverrides.clear();
   optimisticTracks.clear();
   overrideAt.clear();
@@ -144,6 +146,7 @@ function load(force = false): Promise<void> {
   if (!session?.accessToken) {
     cache = EMPTY;
     loaded = false;
+    complete = false;
     emit(false);
     return Promise.resolve();
   }
@@ -160,6 +163,7 @@ function load(force = false): Promise<void> {
     // Keep the loading skeleton visible until the server's complete, current
     // list is ready; otherwise stale cache rows and counts flash on entry.
     const tracks: Track[] = [];
+    const ids = new Set<string>();
     let cursor: string | undefined;
     let pages = 0;
     let lastHomeBatch = 0;
@@ -169,16 +173,16 @@ function load(force = false): Promise<void> {
       const page = await api.listLikedTracks(100, cursor);
       if (generation !== loadGeneration) return;
       pages++;
-      tracks.push(
-        ...page.items.map(({ track, likedAt }) => ({
-          ...toClientTrack(track),
-          likedAt,
-        })),
-      );
+      for (const { track, likedAt } of page.items) {
+        const mapped = toClientTrack(track);
+        if (ids.has(mapped.id)) continue;
+        ids.add(mapped.id);
+        tracks.push({ ...mapped, likedAt });
+      }
       cursor = page.nextCursor ?? undefined;
       if (isNativeApp()) diag(`favorites page ${pages}: received=${page.items.length} elapsed=${Math.round(performance.now() - pageStartedAt)}ms`);
       if (showPagesAsTheyArrive) {
-        const partial = uniqueTracks(tracks);
+        const partial = tracks.slice();
         emitProgress(false, { tracks: partial, total: partial.length });
         // Home only needs occasional snapshots. Publishing every 100-track
         // page made its large sections recalculate repeatedly during loading.
@@ -192,22 +196,24 @@ function load(force = false): Promise<void> {
     // Keep the API artwork; bulk cover searches made opening a large library
     // issue thousands of unrelated requests.
     if (generation !== loadGeneration) return;
-    const currentTracks = uniqueTracks(tracks);
-    cache = { tracks: currentTracks, total: currentTracks.length };
-    remoteLocalLiked = (await remoteLocal).map(localEntryToTrack);
+    const otherDevices = await remoteLocal;
     if (generation !== loadGeneration) return;
+    const currentTracks = tracks;
+    cache = { tracks: currentTracks, total: currentTracks.length };
+    remoteLocalLiked = otherDevices.map(localEntryToTrack);
     loaded = true;
+    complete = true;
     progressCache = cache;
     lastRefresh = Date.now();
     if (isNativeApp()) diag(`favorites load: pages=${pages} tracks=${currentTracks.length} elapsed=${Math.round(performance.now() - diagnosticStartedAt)}ms`);
     // keep the optimistic state the server doesn't show yet: overrides made
     // after this reload started, or that it doesn't agree with yet
-    const serverIds = new Set(currentTracks.map((t) => t.id));
-    for (const [id, liked] of [...optimisticOverrides]) {
+    for (const [id, liked] of optimisticOverrides) {
       const at = overrideAt.get(id) ?? 0;
-      const agrees = serverIds.has(id) === liked;
+      const agrees = ids.has(id) === liked;
       if (agrees || (at < startedAt && Date.now() - at > 30_000)) {
         optimisticOverrides.delete(id);
+        optimisticTracks.delete(id);
         overrideAt.delete(id);
       }
     }
@@ -215,7 +221,11 @@ function load(force = false): Promise<void> {
   })()
     .catch((error) => {
       if (isNativeApp()) diag(`favorites load: failed after ${Math.round(performance.now() - diagnosticStartedAt)}ms (${error instanceof Error ? error.message.slice(0, 100) : String(error).slice(0, 100)})`);
-      if (generation === loadGeneration && !loaded) loaded = true;
+      if (generation === loadGeneration && !loaded) {
+        // Show the pages already received and keep them eligible for refresh.
+        cache = progressCache;
+        loaded = true;
+      }
     })
     .finally(() => {
       if (generation !== loadGeneration) return;
@@ -264,6 +274,7 @@ if (typeof window !== "undefined") {
       cache = EMPTY;
       progressCache = EMPTY;
       loaded = false;
+      complete = false;
       optimisticOverrides.clear();
       overrideAt.clear();
       emit(false);
@@ -333,3 +344,13 @@ if (typeof window !== "undefined" && typeof indexedDB !== "undefined") {
 export const likedTracksSnapshot = () => view.data.tracks;
 export const subscribeLikedTracks = subscribe;
 export const loadLikedTracks = load;
+
+/** Reuse the account's server pages once they cover the recommendation sample. */
+export function likedTracksForSignals(limit: number): Track[] | undefined {
+  if (activeOwner !== ownerKey() || activeOwner === "guest" || Date.now() - lastRefresh >= LIKE_SYNC_MIN_AGE_MS) {
+    return undefined;
+  }
+  const available = loaded ? cache.tracks : progressCache.tracks;
+  if (available.length >= limit || complete) return available.slice(0, limit);
+  return undefined;
+}
