@@ -21,6 +21,8 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink } from "react-icons/lu";
 import { FaSpotify } from "react-icons/fa";
+import DropdownMenu from "@/shared/ui/DropdownMenu";
+import { useLongPress } from "@/shared/hooks/useLongPress";
 import SegmentedTabs from "@/shared/ui/SegmentedTabs";
 import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
@@ -70,6 +72,7 @@ interface TrackItemProps {
   isCurrent?: boolean;
   showLikedDate?: boolean;
   showLikedDateInMenu?: boolean;
+  onSelectTrack?: (id: string) => void;
 }
 
 function YandexPlaylistLikesButton({ id, disabled }: { id: string; disabled: boolean }) {
@@ -165,10 +168,15 @@ const TrackItem = memo(function TrackItem({
   isCurrent,
   showLikedDate,
   showLikedDateInMenu,
+  onSelectTrack,
 }: TrackItemProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  const { style: holdStyle, onTouchStart, onContextMenuCapture, ...hold } = useLongPress(
+    () => onSelectTrack?.(track.id),
+    Boolean(onSelectTrack),
+  );
   const handlePlay = useCallback(() => {
     if (typeof window !== "undefined" && window.__linerWasDragging) return;
     if (track.onlyOnDevice) {
@@ -229,7 +237,18 @@ const TrackItem = memo(function TrackItem({
   );
 
   return (
-    <div style={style} data-reorder-item>
+    <div
+      {...(onSelectTrack ? hold : undefined)}
+      style={onSelectTrack ? { ...style, ...holdStyle } : style}
+      data-reorder-item
+      onTouchStart={onSelectTrack ? (event) => {
+        if (!(event.target as Element).closest("button, a, [data-prevent-drag]")) onTouchStart(event);
+      } : undefined}
+      onContextMenuCapture={onSelectTrack ? (event) => {
+        onContextMenuCapture(event);
+        if (event.defaultPrevented) event.stopPropagation();
+      } : undefined}
+    >
       {isMobile && !track.onlyOnDevice ? (
         <SwipeToQueue label={t("common.add_to_queue")} onAddToQueue={addToQueue}>
           {card}
@@ -254,6 +273,7 @@ function LibraryPlaylistContent() {
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectionDrag = useRef<{ pointerId: number; index: number; checked: boolean } | null>(null);
+  const selectionOpenedByHold = useRef(false);
 
   const stopSelecting = () => {
     selectionDrag.current = null;
@@ -406,6 +426,12 @@ function LibraryPlaylistContent() {
     if (!selectedIds.size) return [];
     return [...new Map(allTracks.filter((track) => selectedIds.has(track.id) && !track.onlyOnDevice).map((track) => [track.id, track])).values()];
   }, [allTracks, selectedIds]);
+
+  const startSelectingTrack = useCallback((id: string) => {
+    selectionOpenedByHold.current = true;
+    setSelectedIds(new Set([id]));
+    setSelecting(true);
+  }, []);
 
   const setSelectionRange = (start: number, end: number, checked: boolean) => {
     const ids = visibleTracks.slice(Math.min(start, end), Math.max(start, end) + 1)
@@ -732,6 +758,35 @@ function LibraryPlaylistContent() {
     }
   }, [isReady, skeletonExited]);
 
+  const canEditOrder = !isLikesMode && Boolean(decodedId) && !isFiltering
+    && currentTracks.some((track) => track.playlistItemId && !isLocalPlaylistItemId(track.playlistItemId));
+  const startEditingOrder = () => {
+    stopSelecting();
+    setIsPlaylistEditMode(true);
+  };
+  const renderTrackEditButton = (size: 34 | 36) => {
+    const className = size === 34 ? "!h-[34px] !w-[34px] shrink-0 !p-0" : "!h-[36px] !w-[36px] shrink-0 !p-0";
+    if (isPlaylistEditMode) {
+      return (
+        <Button type="button" variant="outline" className={className} onClick={() => setIsPlaylistEditMode(false)}
+          aria-label={t("playlist.save_order")} title={t("playlist.save_order")}>
+          <CheckLine size={17} />
+        </Button>
+      );
+    }
+    if (!canSelectTracks && !canEditOrder) return null;
+    return (
+      <DropdownMenu
+        align="end"
+        trigger={<Button type="button" variant="outline" className={className} aria-label={t("playlist.select_tracks")} title={t("playlist.select_tracks")}><LuPencil size={15} /></Button>}
+        items={[
+          ...(canSelectTracks ? [{ id: "select-tracks", label: t("playlist.select_tracks"), onClick: () => setSelecting(true) }] : []),
+          ...(!isLikesMode ? [{ id: "edit-order", label: t("playlist.edit_order"), disabled: !canEditOrder, onClick: startEditingOrder }] : []),
+        ]}
+      />
+    );
+  };
+
   if (!isLoading && !viewData) {
     return (
       <div className="h-full w-full bg-transparent flex items-center justify-center">
@@ -768,20 +823,20 @@ function LibraryPlaylistContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[8px] border-b border-white/[0.08] bg-[#090909]/95 px-[14px] pr-[116px] shadow-lg backdrop-blur-xl md:pl-[32px] md:pr-[148px]"
+            className="absolute inset-x-0 top-0 z-20 flex h-[56px] items-center gap-[8px] border-b border-border-primary bg-bg-overlay px-[14px] pr-[116px] shadow-sm backdrop-blur-xl md:pl-[32px] md:pr-[148px]"
             style={{ top: 0, height: 56 }}
             data-no-window-drag
           >
-            <div className="relative flex h-[32px] w-[32px] shrink-0 items-center justify-center overflow-hidden rounded-[7px] bg-[#161616]">
+            <div className="relative flex h-[32px] w-[32px] shrink-0 items-center justify-center overflow-hidden rounded-[7px] bg-bg-elevated">
               {isLikesMode ? (
                 <LikedCover heartRatio={0.4} />
               ) : viewData.coverUrl ? (
                 <CoverImage src={viewData.coverUrl} alt="" fill sizes="32px" className="object-cover" unoptimized />
               ) : (
-                <PlaylistFill size={16} className="text-white/60" />
+                <PlaylistFill size={16} className="text-text-secondary" />
               )}
             </div>
-            <strong className="min-w-0 max-w-[min(36vw,420px)] truncate text-[15px] font-semibold text-white">{viewData.title}</strong>
+            <strong className="min-w-0 max-w-[min(36vw,420px)] truncate text-[15px] font-semibold text-text-primary">{viewData.title}</strong>
             <Button variant="primary" onClick={handlePlayAll} disabled={!currentTracks.length} aria-label={t("common.play_all")} className="!h-[34px] shrink-0 gap-[6px] !px-[10px] !text-[12px] max-sm:!w-[34px] max-sm:!p-0">
               <PlayFill size={15} /><span className="max-sm:hidden">{t("common.play_all")}</span>
             </Button>
@@ -794,6 +849,7 @@ function LibraryPlaylistContent() {
               { id: "list" as const, label: <MenuLine size={15} />, title: t("common.list") || "List" },
               { id: "grid" as const, label: <GridLine size={15} />, title: t("common.grid") || "Grid" },
             ]} />}
+            {renderTrackEditButton(34)}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1135,18 +1191,21 @@ function LibraryPlaylistContent() {
                           />
                         )}
 
-                        {!isLikesMode && decodedId && (isPlaylistEditMode ? (
+                        {!isMobile && renderTrackEditButton(36)}
+
+                        {!isLikesMode && decodedId && (isMobile && isPlaylistEditMode ? (
                           <Button variant="outline" onClick={() => setIsPlaylistEditMode(false)} aria-label={t("playlist.save_order")} title={t("playlist.save_order")} className="!h-[36px] !w-[36px] shrink-0 !p-0">
                             <CheckLine size={17} />
                           </Button>
                         ) : (
                           <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} className="!bg-border-alpha-14" extraMenuItems={[
-                              {
+                              ...(isMobile ? [{
                                 id: "edit-order",
                                 icon: <LuPencil size={15} />,
                                 label: t("playlist.edit_order"),
-                                onClick: () => { stopSelecting(); setIsPlaylistEditMode(true); },
-                              },
+                                disabled: !canEditOrder,
+                                onClick: startEditingOrder,
+                              }] : []),
                               {
                                 id: "rename",
                                 icon: <LuPencil size={15} />,
@@ -1286,24 +1345,15 @@ function LibraryPlaylistContent() {
                   })}
                 </div>
               )}
-              {canSelectTracks && !isPlaylistEditMode && (
-                <div className={selecting
-                  ? "sticky top-0 z-[5] mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-bg-elevated px-2 py-2"
-                  : "mb-2 flex items-center px-2"
-                }>
-                  {selecting ? (
-                    <>
-                      <span className="mr-auto text-[13px] text-text-secondary">{t("common.tracks", { count: selectedTracks.length })}</span>
-                      <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
-                      <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
-                        useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(selectionSnapshot));
-                      }}>{t("common.add_to_playlist")}</Button>
-                    </>
-                  ) : (
-                    <Button type="button" size="sm" variant="outline" onClick={() => setSelecting(true)}>
-                      {t("playlist.select_tracks")}
-                    </Button>
-                  )}
+              {selecting && !isPlaylistEditMode && (
+                <div className="sticky z-[5] mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-bg-elevated px-2 py-2"
+                  style={{ top: isMobile ? "calc(max(var(--lane-safe-top, 0px), env(safe-area-inset-top, 0px)) + 8px)" : 0 }}
+                >
+                  <span className="mr-auto text-[13px] text-text-secondary">{t("common.tracks", { count: selectedTracks.length })}</span>
+                  <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
+                  <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
+                    useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(selectionSnapshot));
+                  }}>{t("common.add_to_playlist")}</Button>
                 </div>
               )}
               {isLikesMode && !selecting && !isMobile && trackView === "list" && currentTracks.length > 0 && (
@@ -1337,7 +1387,7 @@ function LibraryPlaylistContent() {
                 </div>
               ) : search.matches && search.matches.length === 0 ? (
                 <TrackSearchEmpty query={search.activeQuery} onClear={() => search.setQuery("")} />
-              ) : trackView === "grid" && !isMobile && !selecting ? (
+              ) : trackView === "grid" && !isMobile && !selecting && !isPlaylistEditMode ? (
                 <div
                   className="grid gap-x-[16px] gap-y-[18px] px-[8px] pb-[8px]"
                   style={{ gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}
@@ -1372,6 +1422,13 @@ function LibraryPlaylistContent() {
               ) : (
               <div
                 ref={trackListContainerRef}
+                onTouchStartCapture={() => { selectionOpenedByHold.current = false; }}
+                onClickCapture={(event) => {
+                  if (!selectionOpenedByHold.current || event.detail === 0) return;
+                  selectionOpenedByHold.current = false;
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
                 onPointerMove={selecting ? moveSelection : undefined}
                 onPointerUp={selecting ? endSelectionDrag : undefined}
                 onPointerCancel={selecting ? endSelectionDrag : undefined}
@@ -1483,6 +1540,7 @@ function LibraryPlaylistContent() {
                       showLikedDateInMenu={isLikesMode && isMobile}
                       playlistCoverUrl={viewData.coverUrl}
                       allTracks={playableTracks}
+                      onSelectTrack={isMobile && !isPlaylistEditMode && !track.onlyOnDevice ? startSelectingTrack : undefined}
                       showReorderHandle={canReorder && isPlaylistEditMode}
                       hideMenuTrigger={isPlaylistEditMode}
                       highlight={search.activeQuery || undefined}
