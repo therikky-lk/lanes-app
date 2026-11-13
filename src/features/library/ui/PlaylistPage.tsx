@@ -799,6 +799,24 @@ function LibraryPlaylistContent() {
     );
   }
 
+  const selectionToolbar = selecting && !isPlaylistEditMode && (
+    <div
+      className={`absolute z-[25] flex flex-wrap items-center gap-2 rounded-[14px] border border-border-primary bg-bg-overlay p-1.5 shadow-lg backdrop-blur-xl ${isMobile
+        ? "inset-x-[14px]"
+        : "bottom-3 left-1/2 w-max max-w-[calc(100%-24px)] -translate-x-1/2 justify-center"}`}
+      style={isMobile ? { bottom: "calc(var(--lane-dock-h, 58px) + 8px)" } : undefined}
+      data-no-window-drag
+    >
+      <span className={`px-2 text-[13px] tabular-nums text-text-secondary ${isMobile ? "mr-auto" : ""}`}>
+        {t("common.tracks", { count: selectedTracks.length })}
+      </span>
+      <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
+      <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
+        useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(selectionSnapshot));
+      }}>{t("common.add_to_playlist")}</Button>
+    </div>
+  );
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-transparent">
 
@@ -1297,8 +1315,8 @@ function LibraryPlaylistContent() {
                   marginTop: isMobile ? undefined : 8,
                   paddingBottom:
                     isMobile
-                      ? "calc(var(--lane-dock-h, 120px) + 48px)"
-                      : 24,
+                      ? `calc(var(--lane-dock-h, 120px) + ${selectionToolbar ? 104 : 48}px)`
+                      : selectionToolbar ? 80 : 24,
                 }}
               >
               {isMobile && isLikesMode && currentTracks.length > 0 && (
@@ -1343,17 +1361,6 @@ function LibraryPlaylistContent() {
                       </button>
                     );
                   })}
-                </div>
-              )}
-              {selecting && !isPlaylistEditMode && (
-                <div className="sticky z-[5] mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-bg-elevated px-2 py-2"
-                  style={{ top: isMobile ? "calc(max(var(--lane-safe-top, 0px), env(safe-area-inset-top, 0px)) + 8px)" : 0 }}
-                >
-                  <span className="mr-auto text-[13px] text-text-secondary">{t("common.tracks", { count: selectedTracks.length })}</span>
-                  <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
-                  <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
-                    useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(selectionSnapshot));
-                  }}>{t("common.add_to_playlist")}</Button>
                 </div>
               )}
               {isLikesMode && !selecting && !isMobile && trackView === "list" && currentTracks.length > 0 && (
@@ -1616,6 +1623,7 @@ function LibraryPlaylistContent() {
           </div>
         )}
       </div>
+      {selectionToolbar}
     </div>
   );
 }
