@@ -115,6 +115,7 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Youtube", titleKey: "settings.youtube.prompt_sign_in.title", descKey: "settings.youtube.prompt_sign_in.description" },
   { tabId: "Youtube", titleKey: "settings.youtube.sync_library.title", descKey: "settings.youtube.sync_library.description" },
   { tabId: "YandexMusic", titleKey: "common.import", descKey: "settings.yandex_music.also_like_description" },
+  { tabId: "YandexMusic", titleKey: "settings.yandex_music.hide_imported_playlist" },
 
   // Appearance
   { tabId: "Appearance", titleKey: "settings.language.label", descKey: "settings.language.description" },

@@ -1,3 +1,5 @@
+import { useYandexMusicPreferences } from "../store/yandexMusicPreferences";
+import { readPlaylistSource } from "../services/playlistCoverMarker";
 import OfflineCover from "./OfflineCover";
 import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
 import { TimeLine } from "@mingcute/react";
@@ -226,9 +228,12 @@ export default function LibraryPage() {
   const openCreatePlaylist = useModalStore((state) => state.openCreatePlaylist);
   const hasCustomBg = useIsContentTransparent();
 
+  const hideYandexPlaylist = useYandexMusicPreferences((state) => state.hideImportedPlaylist);
   const playlistItems: LibraryItemViewModel[] = useMemo(() => {
     if (!playlistsData) return [];
-    const list = playlistsData.playlists ?? [];
+    const list = hideYandexPlaylist
+      ? playlistsData.playlists.filter((playlist) => readPlaylistSource(playlist.description) !== "yandex")
+      : playlistsData.playlists;
     return list.map((playlist) => ({
       id: playlist.id,
       title: playlist.title,
@@ -241,7 +246,7 @@ export default function LibraryPage() {
       addedAt:
         playlist.createdAt || playlist.updatedAt || new Date().toISOString(),
     }));
-  }, [playlistsData, t]);
+  }, [playlistsData, hideYandexPlaylist, t]);
 
   const initialLoading = playlistsLoading;
 

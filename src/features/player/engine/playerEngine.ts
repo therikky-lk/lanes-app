@@ -37,8 +37,6 @@ import {
   type CachedLyricsItem,
 } from "@/features/lyrics";
 import { preloadCoverArt } from "@/features/covers";
-import { getCoverWithoutToken } from "@/shared/media/yandexCover";
-import { updateNativeArtwork } from "@/shared/platform/nativeAudio";
 import { linerDb, type CachedLyricsRecord } from "@/shared/storage";
 import { debouncedStorage } from "@/shared/utils/storage";
 import { showToast } from "@/shared/ui";
@@ -601,42 +599,8 @@ class PlayerEngine {
     if (playerRuntime) {
       void playerRuntime.loadAndPlay(selectedTrack);
     }
-    if (isNativeApp()) void this.repairNearbyYoutubeCovers(finalQueue, finalIndex, mySession);
 
     this.maybeExtendQueue(mySession, selectedTrack.id, finalIndex, finalQueue.length);
-  }
-
-  /** Fix YouTube video-frame thumbnails for the selected track and its two
-   * immediate neighbors without delaying playback or resolving the whole list. */
-  private async repairNearbyYoutubeCovers(queue: Track[], currentIndex: number, session: number): Promise<void> {
-    const indices = [currentIndex - 1, currentIndex, currentIndex + 1]
-      .filter((index) => index >= 0 && index < queue.length);
-    const isYoutubeImage = (url: string) => /(?:ytimg\.com|googleusercontent\.com|ggpht\.com)/i.test(url);
-    const updates = await Promise.all(indices.map(async (index) => {
-      const track = queue[index];
-      if (track.coverUrl && !isYoutubeImage(track.coverUrl)) return null;
-      const coverUrl = await getCoverWithoutToken(`${track.title} ${track.artists}`, track.title, track.artists);
-      return coverUrl && coverUrl !== track.coverUrl ? { index, id: track.id, coverUrl } : null;
-    }));
-    if (session !== this.sessionId) return;
-    const state = usePlayerStore.getState();
-    if (state.currentTrack?.id !== queue[currentIndex]?.id) return;
-    const changed = updates.filter((item): item is NonNullable<typeof item> => Boolean(item));
-    if (changed.length === 0) return;
-    const updatedQueue = [...state.queue];
-    for (const update of changed) {
-      const currentIndex = updatedQueue.findIndex((track) => track.id === update.id);
-      if (currentIndex < 0) continue;
-      updatedQueue[currentIndex] = { ...updatedQueue[currentIndex], coverUrl: update.coverUrl };
-      void preloadCoverArt(update.coverUrl);
-      if (currentIndex === state.currentIndex) {
-        void updateNativeArtwork(update.id, update.coverUrl);
-      }
-    }
-    usePlayerStore.setState({
-      queue: updatedQueue,
-      currentTrack: updatedQueue[state.currentIndex] ?? state.currentTrack,
-    });
   }
 
   public async playShuffled(

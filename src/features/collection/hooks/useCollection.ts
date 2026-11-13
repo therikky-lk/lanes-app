@@ -5,7 +5,6 @@ import { api, mediaUrl, toClientTrack } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
 import { getDailyMixArtists } from "@/features/home/hooks/useDailyMixes";
-import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 import { fetchYoutubeAccountPlaylist, isAccountPlaylistId } from "@/shared/media/youtube";
 
 export interface CollectionPageData {
@@ -67,7 +66,7 @@ export function useCollection(
           if (type === "playlist" && isAccountPlaylistId(decodedId)) {
             const youtubeCollection = await fetchYoutubeAccountPlaylist(decodedId);
             if (youtubeCollection) {
-              const tracks = await replaceTrackCoversWithYandex(youtubeCollection.tracks.map(toClientTrack));
+              const tracks = youtubeCollection.tracks.map(toClientTrack);
               return {
                 type: "playlist",
                 title: youtubeCollection.title,
@@ -88,7 +87,7 @@ export function useCollection(
             const mixesRes = await api.getDailyMixes();
             const found = mixesRes.items?.find((m) => m.id === id || m.id === decodedId);
             if (found) {
-              const clientTracks = await replaceTrackCoversWithYandex((found.tracks || []).map((t) => toClientTrack(t)));
+              const clientTracks = (found.tracks || []).map(toClientTrack);
               const primaryCover = found.cover?.url
                 ? mediaUrl(found.cover.url)
                 : (clientTracks[0]?.coverUrl || clientTracks[1]?.coverUrl || "");
@@ -219,7 +218,7 @@ export function useCollection(
               .filter(Boolean)
               .filter((url, idx, arr) => arr.indexOf(url) === idx)
               .slice(0, 4);
-            const tracks: Track[] = await replaceTrackCoversWithYandex(userItems.map((item) => toClientTrack(item.track)));
+            const tracks: Track[] = userItems.map((item) => toClientTrack(item.track));
             const ownerName = userPlaylist.owner?.displayName || userPlaylist.owner?.username || "";
             const formatted: CollectionPageData = {
               type: "playlist",
@@ -233,7 +232,7 @@ export function useCollection(
           }
 
           const collectionCoverUrl = collection.cover ? mediaUrl(collection.cover.url) : "";
-          const tracks = await replaceTrackCoversWithYandex((collection.tracks || []).map((t: any) => {
+          const tracks = (collection.tracks || []).map((t: any) => {
             const clientTrack = toClientTrack(t);
             let updated = clientTrack;
             if (collection.type === "album") {
@@ -250,7 +249,7 @@ export function useCollection(
               }
             }
             return updated;
-          }));
+          });
 
           const formatted: CollectionPageData = {
             type: collection.type,

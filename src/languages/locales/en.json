@@ -664,6 +664,7 @@
       "sign_in_help": "Sign in on the Yandex page. The import starts as soon as you confirm access.",
       "progress_sign_in": "Waiting for Yandex sign-in…",
       "error_sign_in": "Could not sign in to Yandex. Try again.",
+      "hide_imported_playlist": "Hide the imported tracks playlist",
       "also_like": "Also add to Liked Songs",
       "also_like_description": "Save matched tracks to the playlist and to your Liked Songs in Lane.",
       "import": "Sign in to Yandex and import",

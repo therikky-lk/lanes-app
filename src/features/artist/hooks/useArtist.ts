@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
-import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 export interface ArtistAlbumViewModel {
   id: string;
@@ -91,22 +90,6 @@ export function useArtist(id: string | null) {
 
         setData(formatted);
 
-        // Artist catalogs can contain dozens of tracks. Resolve artwork for the
-        // visible popular songs only, and do it after the page can render.
-        const popular = tracks.slice(0, 5);
-        if (popular.length > 0) {
-          void replaceTrackCoversWithYandex(popular).then((enriched) => {
-            if (!active || enriched.every((track, index) => track.coverUrl === popular[index]?.coverUrl)) return;
-            setData((current) => {
-              if (!current || current.title !== formatted.title) return current;
-              return {
-                ...current,
-                tracks: current.tracks.map((track, index) => enriched[index] ?? track),
-                popularSongs: enriched,
-              };
-            });
-          });
-        }
       } catch {
         if (active) {
           setData(null);

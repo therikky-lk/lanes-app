@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
-import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 
 export type PopularTrackItem = Track;
 
@@ -48,14 +47,6 @@ export const popularTracksAllTimeKeys = {
   allTime: ["popularTracksAllTime"] as const,
 };
 
-async function enrichTrackItems(items: PopularItem[]): Promise<PopularItem[]> {
-  const tracks = items.filter((item): item is Extract<PopularItem, { type: "track" }> => item.type === "track");
-  if (tracks.length === 0) return items;
-  const enriched = await replaceTrackCoversWithYandex(tracks.map((item) => item.item));
-  let index = 0;
-  return items.map((item) => item.type === "track" ? { ...item, item: enriched[index++] } : item);
-}
-
 const cache = new Map<string, { data: PopularItem[]; timestamp: number }>();
 const CACHE_TTL = 60_000;
 
@@ -74,7 +65,7 @@ export function usePopularTracksOnly(limit = 20) {
     let active = true;
     api
       .getPopularTracks("7d", limit)
-      .then(async (res) => {
+      .then((res) => {
         if (!active) return;
         const rawItems: PopularItem[] = (res.items || []).map((entry) => ({
           type: "track",
@@ -84,10 +75,6 @@ export function usePopularTracksOnly(limit = 20) {
         cache.set(`tracks_7d_${limit}`, { data: rawItems, timestamp: Date.now() });
         setData(rawItems);
         setIsLoading(false);
-        const items = await enrichTrackItems(rawItems).catch(() => rawItems);
-        if (!active) return;
-        cache.set(`tracks_7d_${limit}`, { data: items, timestamp: Date.now() });
-        setData(items);
       })
       .catch(() => {
         if (active) setData([]);
@@ -119,7 +106,7 @@ export function usePopularTracksAllTime(limit = 20) {
     let active = true;
     api
       .getPopularTracks("all", limit)
-      .then(async (res) => {
+      .then((res) => {
         if (!active) return;
         const rawItems: PopularItem[] = (res.items || []).map((entry) => ({
           type: "track",
@@ -129,10 +116,6 @@ export function usePopularTracksAllTime(limit = 20) {
         cache.set(`tracks_all_${limit}`, { data: rawItems, timestamp: Date.now() });
         setData(rawItems);
         setIsLoading(false);
-        const items = await enrichTrackItems(rawItems).catch(() => rawItems);
-        if (!active) return;
-        cache.set(`tracks_all_${limit}`, { data: items, timestamp: Date.now() });
-        setData(items);
       })
       .catch(() => {
         if (active) setData([]);
@@ -164,7 +147,7 @@ export function usePopular(limit = 50) {
     let active = true;
     api
       .getPopularTracks("30d", limit)
-      .then(async (res) => {
+      .then((res) => {
         if (!active) return;
         const rawTracks = (res.items || []).map((entry) => toClientTrack(entry.track));
         const artistMap = new Map<string, PopularArtistItem>();
@@ -195,25 +178,9 @@ export function usePopular(limit = 50) {
             playCount: artist.totalListens,
           }),
         );
+        cache.set(`popular_${limit}`, { data: items, timestamp: Date.now() });
         setData(items);
         setIsLoading(false);
-        const enrichedTracks = await replaceTrackCoversWithYandex(rawTracks).catch(() => rawTracks);
-        if (!active) return;
-        const coverByArtist = new Map<string, string>();
-        for (const [index, entry] of (res.items || []).entries()) {
-          const track = enrichedTracks[index];
-          const artistName =
-            track.artistList?.[0]?.name ||
-            track.artists?.split(",")?.[0]?.trim() ||
-            "";
-          if (artistName && track.coverUrl) coverByArtist.set(artistName, track.coverUrl);
-        }
-        const enrichedItems = items.map((item) => {
-          if (item.type !== "artist") return item;
-          return { ...item, item: { ...item.item, imageUrl: coverByArtist.get(item.item.name) || item.item.imageUrl } };
-        });
-        cache.set(`popular_${limit}`, { data: enrichedItems, timestamp: Date.now() });
-        setData(enrichedItems);
       })
       .catch(() => {
         if (active) setData([]);
