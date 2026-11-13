@@ -653,6 +653,7 @@
       "sign_in_help": "Yandex sayfasında erişimi onayla. İçe aktarma otomatik olarak başlayacak.",
       "progress_sign_in": "Yandex’e giriş bekleniyor…",
       "error_sign_in": "Yandex’e giriş yapılamadı. Tekrar dene.",
+      "hide_imported_playlist": "İçe aktarılan parçaların çalma listesini gizle",
       "also_like": "Beğenilen Şarkılar’a da ekle",
       "also_like_description": "Bulunan parçaları çalma listesine ve Lane’deki Beğenilen Şarkılar’a kaydet.",
       "import": "Yandex’e giriş yap ve içe aktar",

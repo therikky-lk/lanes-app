@@ -84,7 +84,6 @@ function isNativeServiceUrl(url: string): boolean {
     hostOf(getNewAccountApiBaseUrl()),
     "covers.tryliner.fun",
     "link.tryliner.fun",
-    "music.yandex.ru",
     "rss.marketingtools.apple.com",
     "ntfy.sh",
     "ntfy.envs.net",

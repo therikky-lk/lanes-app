@@ -7,7 +7,6 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
-import { replaceTrackCoversWithYandex } from "@/shared/media/yandexCover";
 import { isNativeApp } from "@/shared/platform/native";
 import { diag } from "@/shared/platform/diag";
 
@@ -362,9 +361,7 @@ export function usePlaylist(id: string | null) {
         };
         writeCoverCache(coverCache);
 
-        const coversStartedAt = performance.now();
-        const remoteTracks = await replaceTrackCoversWithYandex(response.items.map(toTrack));
-        const coversMs = Math.round(performance.now() - coversStartedAt);
+        const remoteTracks = response.items.map(toTrack);
         const itemIds = new Set(response.items.map((item) => item.track.id));
         const localTracks = readLocalEntries(response.playlist.description).filter((entry) => !itemIds.has(entry.id)).map(localEntryToTrack);
         const detail: LibraryPlaylistDetail = {
@@ -380,7 +377,7 @@ export function usePlaylist(id: string | null) {
         };
         queryCache.set(cacheKey, detail);
         setData(detail);
-        if (isNativeApp()) diag(`playlist load: tracks=${detail.trackCount} cache=${initial ? 1 : 0} api=${apiMs}ms covers=${coversMs}ms total=${Math.round(performance.now() - requestStartedAt)}ms`);
+        if (isNativeApp()) diag(`playlist load: tracks=${detail.trackCount} cache=${initial ? 1 : 0} api=${apiMs}ms total=${Math.round(performance.now() - requestStartedAt)}ms`);
       } catch (err) {
         if (isNativeApp()) diag(`playlist load: failed after ${Math.round(performance.now() - requestStartedAt)}ms (${err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100)})`);
         if (active) setError(err);

@@ -653,6 +653,7 @@
       "sign_in_help": "Confirmez l’accès sur la page Yandex. L’import démarrera automatiquement.",
       "progress_sign_in": "En attente de la connexion à Yandex…",
       "error_sign_in": "Impossible de se connecter à Yandex. Réessayez.",
+      "hide_imported_playlist": "Masquer la playlist des titres importés",
       "also_like": "Ajouter aussi aux favoris",
       "also_like_description": "Enregistrez les titres trouvés dans la playlist et dans vos favoris Lane.",
       "import": "Se connecter à Yandex et importer",

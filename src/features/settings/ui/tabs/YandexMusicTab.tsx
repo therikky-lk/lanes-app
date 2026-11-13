@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { HeartLine } from "@mingcute/react";
+import { EyeCloseLine, HeartLine } from "@mingcute/react";
 import { useNavigate } from "react-router-dom";
 import { create } from "zustand";
 import { useTranslation } from "@/languages";
+import { useYandexMusicPreferences } from "@/features/library/store/yandexMusicPreferences";
 import { useModalStore } from "@/features/library/store/modalStore";
 import {
   importYandexMusic, YandexImportError, type YandexImportProgress, type YandexImportResult,
@@ -40,7 +41,7 @@ export function YandexMusicTab() {
   const navigate = useNavigate();
   const { progress, controller, cancelling, accountAction, connectedOwner } = useImportStatus();
   const busy = Boolean(controller || accountAction);
-  const [alsoLike, setAlsoLike] = useState(false);
+  const { alsoLike, setAlsoLike, hideImportedPlaylist, setHideImportedPlaylist } = useYandexMusicPreferences();
   const [result, setResult] = useState<YandexImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const owner = integrationOwner();
@@ -177,38 +178,40 @@ export function YandexMusicTab() {
   return (
     <div className="flex flex-col gap-[28px]">
       <div className="lane-setting-status rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
-        <div className="flex items-center gap-[14px]">
-          <div className="flex size-[56px] shrink-0 items-center justify-center rounded-[14px] bg-white dark:bg-[#171717]">
-            <YandexMusicIcon size={28} />
+        <div className="flex flex-wrap items-center gap-x-[16px] gap-y-[12px]">
+          <div className="flex min-w-0 flex-[1_1_210px] items-center gap-[16px]">
+            <div className="flex size-[64px] shrink-0 items-center justify-center rounded-[14px] bg-white dark:bg-[#171717]">
+              <YandexMusicIcon size={28} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[15px] font-[600] text-text-primary">{t("settings.yandex_music.title")}</div>
+              <p role="status" className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">
+                {t(accountAction === "connecting" ? "settings.yandex_music.progress_sign_in" : connected ? "settings.youtube.signed_in" : "settings.youtube.signed_out_title")}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[15px] font-[600] text-text-primary">{t("settings.yandex_music.title")}</div>
-            <p role="status" className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">
-              {t(accountAction === "connecting" ? "settings.yandex_music.progress_sign_in" : connected ? "settings.youtube.signed_in" : "settings.youtube.signed_out_title")}
-            </p>
-          </div>
-        </div>
-        <div className="mt-[12px] flex flex-wrap items-center gap-2">
-          {connected ? (
-            <>
-              <Button type="button" size="sm" disabled={busy} onClick={() => void startImport()}>
-                {t("common.import")}
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+            {connected ? (
+              <>
+                <Button type="button" className="!h-[42px] !rounded-[12px] !px-[16px]" disabled={busy} onClick={() => void startImport()}>
+                  {t("common.import")}
+                </Button>
+                {controller ? (
+                  <Button type="button" className="!h-[42px] !rounded-[12px] !px-[16px]" variant="outline" disabled={cancelling} onClick={cancelImport}>
+                    {t("common.cancel")}
+                  </Button>
+                ) : (
+                  <Button type="button" className="!h-[42px] !rounded-[12px] !px-[16px]" variant="outline" disabled={busy} onClick={() => void disconnect()}>
+                    {t("settings.youtube.sign_out")}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button type="button" className="!h-[42px] !rounded-[12px] !px-[16px]" disabled={!owner || busy} onClick={() => void connect()}>
+                {t("settings.youtube.sign_in")}
               </Button>
-              {controller ? (
-                <Button type="button" size="sm" variant="outline" disabled={cancelling} onClick={cancelImport}>
-                  {t("common.cancel")}
-                </Button>
-              ) : (
-                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void disconnect()}>
-                  {t("settings.youtube.sign_out")}
-                </Button>
-              )}
-            </>
-          ) : (
-            <Button type="button" size="sm" disabled={!owner || busy} onClick={() => void connect()}>
-              {t("settings.youtube.sign_in")}
-            </Button>
-          )}
+            )}
+          </div>
         </div>
         {progress && (
           <div role={matching ? undefined : "status"} className="mt-[14px] flex flex-col gap-2 text-[13px] text-text-secondary">
@@ -259,6 +262,11 @@ export function YandexMusicTab() {
           description={t("settings.yandex_music.also_like_description")}
           icon={<HeartLine size={20} />}
           control={<ToggleSwitch checked={alsoLike} onChange={setAlsoLike} disabled={busy} ariaLabel={t("settings.yandex_music.also_like")} />}
+        />
+        <SettingRow
+          title={t("settings.yandex_music.hide_imported_playlist")}
+          icon={<EyeCloseLine size={20} />}
+          control={<ToggleSwitch checked={hideImportedPlaylist} onChange={setHideImportedPlaylist} ariaLabel={t("settings.yandex_music.hide_imported_playlist")} />}
         />
       </SettingSection>
     </div>

@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
+import { useYandexMusicPreferences } from "@/features/library/store/yandexMusicPreferences";
 import { YandexMusicTab } from "./YandexMusicTab";
 
 const mocks = vi.hoisted(() => ({
@@ -13,9 +14,15 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("react-router-dom", () => ({ useNavigate: () => vi.fn() }));
 vi.mock("@/languages", () => ({ useTranslation: () => ({ t: (key: string) => key, locale: "en" }) }));
-vi.mock("@/shared/ui", () => ({ ToggleSwitch: () => null, useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("@/shared/ui", async () => ({
+  ToggleSwitch: (await import("@/shared/ui/ToggleSwitch")).ToggleSwitch,
+  useToast: () => ({ toast: vi.fn() }),
+}));
 vi.mock("@/shared/ui/YandexMusicIcon", () => ({ default: () => null }));
-vi.mock("../controls", () => ({ SettingSection: () => null, SettingRow: () => null }));
+vi.mock("../controls", () => ({
+  SettingSection: ({ children }: { children: React.ReactNode }) => <section>{children}</section>,
+  SettingRow: ({ control }: { control: React.ReactNode }) => control,
+}));
 vi.mock("@/features/library/store/modalStore", () => ({ useModalStore: {} }));
 vi.mock("@/shared/media/matching", () => ({ isRateLimit: () => false }));
 vi.mock("@/shared/platform/browser", () => ({ isBrowserRuntime: () => false }));
@@ -36,6 +43,8 @@ vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicImpor
 
 it("connects without importing and cancels a manually started import", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  await useYandexMusicPreferences.persist.clearStorage();
+  useYandexMusicPreferences.setState({ alsoLike: false, hideImportedPlaylist: false });
   const session = { accessToken: "test-token" };
   let connected = false;
   mocks.read.mockImplementation(async () => ({ revision: Number(connected), session: connected ? session : null }));
@@ -59,7 +68,25 @@ it("connects without importing and cancels a manually started import", async () 
     expect(mocks.write).toHaveBeenCalledWith("yandex", "liner:lane-user", { revision: 0, session });
     expect(mocks.importMusic).not.toHaveBeenCalled();
 
+    const toggle = (key: string) => container.querySelector<HTMLButtonElement>(`button[aria-label="${key}"]`)!;
+    const alsoLike = "settings.yandex_music.also_like";
+    const hide = "settings.yandex_music.hide_imported_playlist";
+    await act(async () => {
+      toggle(alsoLike).click();
+      toggle(hide).click();
+    });
+    const savedPreferences = localStorage.getItem("lane_yandex_music_preferences")!;
+    await act(async () => root.render(null));
+    useYandexMusicPreferences.setState({ alsoLike: false, hideImportedPlaylist: false });
+    // Restore the persisted values after a fresh settings mount.
+    localStorage.setItem("lane_yandex_music_preferences", savedPreferences);
+    await useYandexMusicPreferences.persist.rehydrate();
+    await act(async () => root.render(<YandexMusicTab />));
+    expect(toggle(alsoLike).getAttribute("aria-pressed")).toBe("true");
+    expect(toggle(hide).getAttribute("aria-pressed")).toBe("true");
+
     await act(async () => button("common.import")!.click());
+    expect(mocks.importMusic.mock.calls[0][2]).toBe(true);
     const signal = mocks.importMusic.mock.calls[0][4] as AbortSignal;
     expect(signal.aborted).toBe(false);
     await act(async () => button("common.cancel")!.click());
@@ -69,6 +96,8 @@ it("connects without importing and cancels a manually started import", async () 
   } finally {
     await act(async () => root.unmount());
     container.remove();
+    useYandexMusicPreferences.setState({ alsoLike: false, hideImportedPlaylist: false });
+    await useYandexMusicPreferences.persist.clearStorage();
     vi.unstubAllGlobals();
   }
 });

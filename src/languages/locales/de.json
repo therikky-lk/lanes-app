@@ -653,6 +653,7 @@
       "sign_in_help": "Bestätige den Zugriff auf der Yandex-Seite. Danach startet der Import automatisch.",
       "progress_sign_in": "Warte auf die Anmeldung bei Yandex…",
       "error_sign_in": "Die Anmeldung bei Yandex ist fehlgeschlagen. Versuche es erneut.",
+      "hide_imported_playlist": "Playlist mit importierten Titeln ausblenden",
       "also_like": "Auch zu Lieblingstiteln hinzufügen",
       "also_like_description": "Speichere gefundene Titel in der Playlist und in deinen Lieblingstiteln in Lane.",
       "import": "Bei Yandex anmelden und importieren",
