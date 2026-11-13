@@ -1,5 +1,5 @@
 import { isNativeApp } from "@/shared/platform/native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
@@ -10,7 +10,7 @@ import WindowControls from "@/features/navigation/ui/WindowControls";
 import { useWindowState } from "@/features/navigation/hooks/useWindowState";
 import logo from "@/assets/logo.svg";
 import AppImage from "@/features/covers/ui/AppImage";
-import { ApiError } from "@/shared/api/api";
+import { api, ApiError, type EmailCodePurpose } from "@/shared/api/api";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { APP_VERSION } from "@/shared/config/version";
 import { diagLines } from "@/shared/platform/diag";
@@ -21,6 +21,7 @@ import {
 } from "../store/authStore";
 import { useTranslation, LOCALE_OPTIONS } from "@/languages";
 import HumanCheckNotice from "./HumanCheckNotice";
+import EmailCodeForm from "./EmailCodeForm";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
@@ -96,10 +97,31 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [errorReport, setErrorReport] = useState("");
   const [reportCopied, setReportCopied] = useState(false);
+  const [emailFlow, setEmailFlow] = useState<EmailCodePurpose | null>(null);
+  const [resetAvailable, setResetAvailable] = useState(false);
+  const [passwordReset, setPasswordReset] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      void api.getEmailAuthCapabilities().then(
+        (capabilities) => { if (active) setResetAvailable(capabilities.passwordReset); },
+        () => { if (active) setResetAvailable(false); },
+      );
+    };
+    load();
+    window.addEventListener("online", load);
+    return () => {
+      active = false;
+      window.removeEventListener("online", load);
+    };
+  }, []);
+
 
   const selectMode = (next: "login" | "register") => {
     if (submitting || next === mode) return;
     setMode(next);
+    setPasswordReset(false);
     setRegisterStep(1);
     setError("");
     setErrorReport("");
@@ -217,6 +239,11 @@ export default function LoginPage() {
     setSubmitting(true);
     setError("");
     try {
+      const capabilities = await api.getEmailAuthCapabilities().catch(() => null);
+      if (capabilities?.registrationVerification) {
+        setEmailFlow("register");
+        return;
+      }
       await register(
         normalizedEmail,
         password,
@@ -228,7 +255,10 @@ export default function LoginPage() {
       const code = getAuthErrorCode(nextError);
       setErrorReport(buildAuthFailureReport(nextError, "register"));
       setReportCopied(false);
-      if (code === "email_already_used") {
+      if (nextError instanceof ApiError && nextError.code === "EMAIL_CODE_REQUIRED") {
+        setErrorReport("");
+        setEmailFlow("register");
+      } else if (code === "email_already_used") {
         setRegisterStep(1);
         setError(t("login.errors.email_already_used"));
       } else {
@@ -311,6 +341,24 @@ export default function LoginPage() {
           {/* Middle: grows + centers form content */}
           <div className="my-auto flex flex-col justify-center">
             <div className="w-full">
+              {emailFlow ? (
+                <EmailCodeForm
+                  purpose={emailFlow}
+                  initialEmail={email.trim().toLowerCase()}
+                  onBack={() => setEmailFlow(null)}
+                  onReset={(address) => {
+                    setEmail(address);
+                    setPassword("");
+                    setPasswordReset(true);
+                    setEmailFlow(null);
+                  }}
+                  onRegister={async (verification) => {
+                    await register(email.trim().toLowerCase(), password, username.trim().toLowerCase(), displayName.trim(), verification);
+                    navigate("/", { replace: true });
+                  }}
+                />
+              ) : (
+                <>
               <div className="mb-[20px] flex gap-[8px]">
                 {(
                   [
@@ -359,6 +407,7 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {passwordReset && <p role="status" className="mt-0 text-sm text-white/80">{t("login.email_code.reset_done")}</p>}
               <form noValidate onSubmit={submit} className="flex flex-col">
                 <AnimatePresence initial={false}>
                   {mode === "login" || registerStep === 1 ? (
@@ -381,12 +430,13 @@ export default function LoginPage() {
                       </label>
                       <TextInput
                         id="auth-email"
+                        name="email"
                         autoFocus
                         type="email"
                         inputMode="email"
                         autoCapitalize="none"
                         spellCheck={false}
-                        autoComplete="email"
+                        autoComplete={mode === "login" ? "username" : "email"}
                         placeholder={t("login.placeholder_email")}
                         className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
                         value={email}
@@ -408,6 +458,7 @@ export default function LoginPage() {
                       </label>
                       <TextInput
                         id="auth-password"
+                        name="password"
                         type={showPassword ? "text" : "password"}
                         autoComplete={
                           mode === "login" ? "current-password" : "new-password"
@@ -446,6 +497,19 @@ export default function LoginPage() {
                           </button>
                         }
                       />
+
+                      {mode === "login" && resetAvailable && (
+                        <button type="button" disabled={submitting}
+                          onClick={() => {
+                            setError("");
+                            setErrorReport("");
+                            setPasswordReset(false);
+                            setEmailFlow("reset");
+                          }}
+                          className="mt-2 self-end text-xs text-white/75 hover:text-white">
+                          {t("login.email_code.reset")}
+                        </button>
+                      )}
 
                       <AnimatePresence initial={false}>
                         {mode === "register" && (
@@ -719,6 +783,8 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
               </form>
+                </>
+              )}
             </div>
           </div>
 

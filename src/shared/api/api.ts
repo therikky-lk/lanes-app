@@ -681,7 +681,46 @@ async function withAuthProof<T>(
   }
 }
 
+export type EmailCodePurpose = "register" | "reset";
+
+type EmailAuthCapabilities = { registrationVerification: boolean; passwordReset: boolean };
+type EmailCodeReceipt = { challenge: string; retryAfter: number };
+type EmailVerification = { challenge: string; code: string };
+
+function emailAuthRequest<T>(path: string, body?: object): Promise<T> {
+  const accountApi = getNewAccountApiBaseUrl();
+  if (!accountApi) return Promise.reject(new ApiError(0, "Account service is not configured."));
+  return request<T>(
+    "/v1/auth/" + path,
+    body ? { method: "POST", body: JSON.stringify(body) } : undefined,
+    false,
+    DEFAULT_TIMEOUT_MS,
+    accountApi,
+  );
+}
+
 export const api = {
+  async getEmailAuthCapabilities(): Promise<EmailAuthCapabilities> {
+    const result = await emailAuthRequest<EmailAuthCapabilities>("email-capabilities");
+    return {
+      registrationVerification: result?.registrationVerification === true,
+      passwordReset: result?.passwordReset === true,
+    };
+  },
+
+  async requestEmailCode(purpose: EmailCodePurpose, email: string): Promise<EmailCodeReceipt> {
+    const receipt = await emailAuthRequest<EmailCodeReceipt>("email-code", { purpose, email });
+    if (typeof receipt?.challenge !== "string" || !/^[0-9a-f-]{36}$/.test(receipt.challenge) ||
+        !Number.isFinite(receipt.retryAfter) || receipt.retryAfter < 0 || receipt.retryAfter > 3600) {
+      throw new ApiError(502, "Invalid email verification response.");
+    }
+    return receipt;
+  },
+
+  resetPassword(email: string, password: string, verification: EmailVerification): Promise<void> {
+    return emailAuthRequest("reset-password", { email, password, ...verification });
+  },
+
   createShare(input: { type: ShareEntityType; entityId: string; snapshot: ShareSnapshot }): Promise<{ id: string; url: string }> {
     return request("/v1/shares", { method: "POST", body: JSON.stringify(input) }, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
   },
@@ -739,6 +778,7 @@ export const api = {
     password: string,
     username: string,
     displayName: string,
+    verification?: EmailVerification,
   ): Promise<AuthTokens> {
     const newAccountApi = getNewAccountApiBaseUrl();
     if (!newAccountApi) throw new ApiError(0, "New account service is not configured.", "NEW_ACCOUNT_API_NOT_CONFIGURED");
@@ -751,6 +791,7 @@ export const api = {
           ...authBody(proof),
           username: username.trim().toLowerCase(),
           displayName: displayName.trim(),
+          ...verification,
         }, newAccountApi),
         false,
         DEFAULT_TIMEOUT_MS,

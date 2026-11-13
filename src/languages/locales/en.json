@@ -368,6 +368,21 @@
     "on_device": "On this device"
   },
   "login": {
+    "email_code": {
+      "reset": "Forgot your password?",
+      "verify": "Verify your email",
+      "label": "Six-digit code",
+      "new_password": "New password",
+      "sent_reset": "If a Lane account uses {email}, you’ll receive a code.",
+      "sent_register": "We sent a code to {email}.",
+      "resend_in": "Resend in {seconds} s",
+      "resend": "Resend code",
+      "send": "Send code",
+      "save": "Save new password",
+      "invalid": "The code is incorrect or expired.",
+      "failed": "Couldn’t complete this step. Try again.",
+      "reset_done": "Password updated. Sign in with your new password."
+    },
     "welcome_back": "Welcome back",
     "sign_in_to_account": "Sign in to your account",
     "auth_title_login": "Your music, your way",
