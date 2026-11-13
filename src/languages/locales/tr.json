@@ -368,6 +368,21 @@
     "history_subtitle": "Oynadığınız her şey"
   },
   "login": {
+    "email_code": {
+      "reset": "Şifreni mi unuttun?",
+      "verify": "E-postanı doğrula",
+      "label": "Altı haneli kod",
+      "new_password": "Yeni şifre",
+      "sent_reset": "Bir Lane hesabı {email} adresini kullanıyorsa bir kod alacaksın.",
+      "sent_register": "{email} adresine bir kod gönderdik.",
+      "resend_in": "{seconds} sn sonra yeniden gönder",
+      "resend": "Kodu yeniden gönder",
+      "send": "Kod gönder",
+      "save": "Yeni şifreyi kaydet",
+      "invalid": "Kod yanlış veya süresi dolmuş.",
+      "failed": "Bu adım tamamlanamadı. Tekrar dene.",
+      "reset_done": "Şifre güncellendi. Yeni şifrenle giriş yap."
+    },
     "welcome_back": "Tekrar hoş geldin",
     "sign_in_to_account": "Hesabına giriş yap",
     "auth_title_login": "Senin müziğin, senin tarzın",

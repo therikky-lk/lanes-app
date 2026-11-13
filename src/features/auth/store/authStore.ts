@@ -24,6 +24,7 @@ export type AuthState = {
     password: string,
     username: string,
     displayName: string,
+    verification?: { challenge: string; code: string },
   ) => Promise<void>;
   updateProfile: (patch: UpdateProfileInput) => Promise<PublicUser>;
   setAvatarUrl: (avatarUrl: string | null) => void;
@@ -115,8 +116,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       window.dispatchEvent(new Event("library:changed"));
     }
   },
-  register: async (email, password, username, displayName) => {
-    const result = await api.register(email, password, username, displayName);
+  register: async (email, password, username, displayName, verification) => {
+    const result = await api.register(email, password, username, displayName, verification);
     queryCache.clear();
     set({ status: "authenticated", user: result.user });
     if (typeof window !== "undefined") {

@@ -368,6 +368,21 @@
     "history_subtitle": "Tudo que você tocou"
   },
   "login": {
+    "email_code": {
+      "reset": "Esqueceu a senha?",
+      "verify": "Confirme seu e-mail",
+      "label": "Código de seis dígitos",
+      "new_password": "Nova senha",
+      "sent_reset": "Se houver uma conta Lane associada a {email}, você receberá um código.",
+      "sent_register": "Enviamos um código para {email}.",
+      "resend_in": "Reenviar em {seconds} s",
+      "resend": "Reenviar código",
+      "send": "Enviar código",
+      "save": "Salvar nova senha",
+      "invalid": "O código está incorreto ou expirou.",
+      "failed": "Não foi possível concluir esta etapa. Tente novamente.",
+      "reset_done": "Senha atualizada. Entre com a nova senha."
+    },
     "welcome_back": "Bem-vindo de volta",
     "sign_in_to_account": "Entre na sua conta",
     "auth_title_login": "Sua música, do seu jeito",

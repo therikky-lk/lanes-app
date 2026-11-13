@@ -368,6 +368,21 @@
     "history_subtitle": "Todo lo que jugaste"
   },
   "login": {
+    "email_code": {
+      "reset": "¿Olvidaste tu contraseña?",
+      "verify": "Verifica tu correo",
+      "label": "Código de seis dígitos",
+      "new_password": "Nueva contraseña",
+      "sent_reset": "Si hay una cuenta de Lane asociada a {email}, recibirás un código.",
+      "sent_register": "Enviamos un código a {email}.",
+      "resend_in": "Reenviar en {seconds} s",
+      "resend": "Reenviar código",
+      "send": "Enviar código",
+      "save": "Guardar nueva contraseña",
+      "invalid": "El código es incorrecto o ha caducado.",
+      "failed": "No se pudo completar este paso. Inténtalo de nuevo.",
+      "reset_done": "Contraseña actualizada. Inicia sesión con la nueva contraseña."
+    },
     "welcome_back": "Te damos la bienvenida",
     "sign_in_to_account": "Inicia sesión en tu cuenta",
     "auth_title_login": "Tu música, a tu manera",

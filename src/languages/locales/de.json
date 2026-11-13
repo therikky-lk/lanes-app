@@ -368,6 +368,21 @@
     "history_subtitle": "Alles, was Sie gespielt haben"
   },
   "login": {
+    "email_code": {
+      "reset": "Passwort vergessen?",
+      "verify": "E-Mail-Adresse bestätigen",
+      "label": "Sechsstelliger Code",
+      "new_password": "Neues Passwort",
+      "sent_reset": "Wenn {email} zu einem Lane-Konto gehört, erhältst du einen Code.",
+      "sent_register": "Wir haben einen Code an {email} gesendet.",
+      "resend_in": "Erneut senden in {seconds} s",
+      "resend": "Code erneut senden",
+      "send": "Code senden",
+      "save": "Neues Passwort speichern",
+      "invalid": "Der Code ist falsch oder abgelaufen.",
+      "failed": "Dieser Schritt ist fehlgeschlagen. Versuche es erneut.",
+      "reset_done": "Passwort geändert. Melde dich mit dem neuen Passwort an."
+    },
     "welcome_back": "Willkommen zurück!",
     "sign_in_to_account": "Melde dich bei deinem Konto an",
     "auth_title_login": "Deine Musik, auf deine Art",

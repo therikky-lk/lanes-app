@@ -368,6 +368,21 @@
     "history_subtitle": "Wszystko, w co grałeś"
   },
   "login": {
+    "email_code": {
+      "reset": "Nie pamiętasz hasła?",
+      "verify": "Potwierdź adres e-mail",
+      "label": "Sześciocyfrowy kod",
+      "new_password": "Nowe hasło",
+      "sent_reset": "Jeśli do {email} przypisano konto Lane, otrzymasz kod.",
+      "sent_register": "Wysłaliśmy kod na adres {email}.",
+      "resend_in": "Wyślij ponownie za {seconds} s",
+      "resend": "Wyślij kod ponownie",
+      "send": "Wyślij kod",
+      "save": "Zapisz nowe hasło",
+      "invalid": "Kod jest nieprawidłowy lub wygasł.",
+      "failed": "Nie udało się ukończyć tego kroku. Spróbuj ponownie.",
+      "reset_done": "Hasło zostało zmienione. Zaloguj się nowym hasłem."
+    },
     "welcome_back": "Witaj ponownie",
     "sign_in_to_account": "Zaloguj się na swoje konto",
     "auth_title_login": "Twoja muzyka, po twojemu",
