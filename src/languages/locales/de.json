@@ -684,6 +684,7 @@
       "error_import": "Der Import konnte nicht abgeschlossen werden. Versuche es erneut.",
       "error_rate": "Zu viele Anfragen. Warte kurz und versuche es erneut.",
       "error_source": "Die Yandex-Music-Mediathek konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+      "error_already_imported": "Du hast diese Playlist bereits aus Yandex Music importiert.",
       "error_access": "Yandex Music hat keinen Zugriff auf deine Mediathek gewährt. Melde dich erneut an.",
       "error_lane_account": "Melde dich bei Lane an, um Titel zu importieren.",
       "native_only": "Der Import ist in der Desktop- und Android-App verfügbar."

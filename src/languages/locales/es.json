@@ -684,6 +684,7 @@
       "error_import": "No se pudo completar la importación. Inténtalo de nuevo.",
       "error_rate": "Demasiadas solicitudes. Espera un momento y vuelve a intentarlo.",
       "error_source": "No se pudo leer la biblioteca de Yandex Music. Comprueba tu conexión e inténtalo de nuevo.",
+      "error_already_imported": "Ya has importado esta lista de reproducción desde Yandex Music.",
       "error_access": "Yandex Music no concedió acceso a tu biblioteca. Vuelve a iniciar sesión.",
       "error_lane_account": "Inicia sesión en Lane para importar canciones.",
       "native_only": "La importación está disponible en las aplicaciones de escritorio y Android."

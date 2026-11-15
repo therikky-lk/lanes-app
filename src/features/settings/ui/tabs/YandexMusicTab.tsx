@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EyeCloseLine, HeartLine } from "@mingcute/react";
 import { useNavigate } from "react-router-dom";
 import { create } from "zustand";
@@ -8,15 +8,16 @@ import { useModalStore } from "@/features/library/store/modalStore";
 import {
   importYandexMusic, YandexImportError, type YandexImportProgress, type YandexImportResult,
 } from "@/features/library/services/import/sources/yandexMusic/yandexMusicImport";
-import { YandexSourceError } from "@/features/library/services/import/sources/yandexMusic/yandexMusicSource";
+import { loadYandexAvatar, YandexSourceError } from "@/features/library/services/import/sources/yandexMusic/yandexMusicSource";
 import { signInToYandexMusic } from "@/features/library/services/import/sources/yandexMusic/yandexMusicAccount";
-import { IntegrationSessionError, integrationOwner, readIntegration, readYandexConnection, writeIntegration } from "@/shared/api/integrationSessions";
+import { IntegrationSessionError, integrationOwner, readIntegration, writeIntegration } from "@/shared/api/integrationSessions";
 import { isRateLimit } from "@/shared/media/matching";
 import { isBrowserRuntime } from "@/shared/platform/browser";
 import Button from "@/shared/ui/Button";
 import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { SettingRow, SettingSection } from "../controls";
+import { ServiceAccountAvatar } from "../ServiceAccountAvatar";
 
 const useImportStatus = create<{
   progress: YandexImportProgress | null;
@@ -44,24 +45,41 @@ export function YandexMusicTab() {
   const { alsoLike, setAlsoLike, hideImportedPlaylist, setHideImportedPlaylist } = useYandexMusicPreferences();
   const [result, setResult] = useState<YandexImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<{ owner: string; avatarUrl: string | null } | null>(null);
+  const profileRevision = useRef<{ owner: string; revision: number } | null>(null);
   const owner = integrationOwner();
   const connected = owner !== null && connectedOwner === owner;
   const playlistId = result?.playlistId;
 
   useEffect(() => {
     if (!owner || busy || isBrowserRuntime()) return;
-    let active = true;
-    const refresh = () => {
-      if (document.visibilityState === "hidden" || isBusy()) return;
-      void readYandexConnection(owner).then(({ connected }) => {
-        if (active && !isBusy()) setConnectedOwner(connected ? owner : null);
-      }).catch(() => undefined);
+    const refreshController = new AbortController();
+    const { signal } = refreshController;
+    let refreshing = false;
+    const refresh = async () => {
+      if (document.visibilityState === "hidden" || isBusy() || refreshing) return;
+      refreshing = true;
+      try {
+        const known = profileRevision.current?.owner === owner ? profileRevision.current.revision : 0;
+        const { revision, session } = await readIntegration("yandex", owner, known, signal);
+        if (signal.aborted || isBusy() || (known > 0 && revision === known)) return;
+        setConnectedOwner(session ? owner : null);
+        setProfile(null);
+        const avatarUrl = session ? await loadYandexAvatar(session.accessToken, signal) : null;
+        if (signal.aborted || isBusy()) return;
+        profileRevision.current = { owner, revision };
+        if (session) setProfile({ owner, avatarUrl });
+      } catch {
+        // Keep the last known connection when the refresh fails.
+      } finally {
+        refreshing = false;
+      }
     };
     refresh();
     const timer = window.setInterval(refresh, 30_000);
     window.addEventListener("focus", refresh);
     return () => {
-      active = false;
+      refreshController.abort();
       window.clearInterval(timer);
       window.removeEventListener("focus", refresh);
     };
@@ -100,6 +118,7 @@ export function YandexMusicTab() {
       const { revision } = await readIntegration("yandex", owner);
       await writeIntegration("yandex", owner, { revision, session: null });
       setConnectedOwner(null);
+      setProfile(null);
       setResult(null);
     } catch {
       setError(t("common.error_network"));
@@ -115,7 +134,6 @@ export function YandexMusicTab() {
     setResult(null);
     setError(null);
     useImportStatus.setState({ controller: operation, progress: { phase: "loading", done: 0, total: 0 } });
-    let revision: number | undefined;
     try {
       const remote = await readIntegration("yandex", owner, 0, signal);
       signal.throwIfAborted();
@@ -124,7 +142,6 @@ export function YandexMusicTab() {
         setError(t("settings.yandex_music.error_access"));
         return;
       }
-      revision = remote.revision;
       const imported = await importYandexMusic(remote.session.accessToken, t("settings.yandex_music.playlist_title"), alsoLike, (progress) => {
         useImportStatus.setState({ progress });
       }, signal);
@@ -139,14 +156,11 @@ export function YandexMusicTab() {
       if (isRateLimit(failure) || (failure instanceof YandexSourceError && failure.code === "rate_limited")) {
         message = t("settings.yandex_music.error_rate");
       } else if (failure instanceof YandexSourceError) {
-        if (failure.code === "access_denied" && owner && revision !== undefined) {
-          await writeIntegration("yandex", owner, { revision, session: null })
-            .then(() => setConnectedOwner(null))
-            .catch(() => undefined);
-        }
         message = failure.code === "source_unavailable"
           ? t("settings.yandex_music.error_source")
           : t("settings.yandex_music.error_access");
+      } else if (failure instanceof YandexImportError && failure.code === "already_imported") {
+        message = t("settings.yandex_music.error_already_imported");
       } else if (failure instanceof YandexImportError && (failure.code === "lane_sign_in" || failure.code === "account_changed")) {
         message = t("settings.yandex_music.error_lane_account");
       } else if (failure instanceof IntegrationSessionError) {
@@ -180,9 +194,9 @@ export function YandexMusicTab() {
       <div className="lane-setting-status rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
         <div className="flex flex-wrap items-center gap-x-[16px] gap-y-[12px]">
           <div className="flex min-w-0 flex-[1_1_210px] items-center gap-[16px]">
-            <div className="flex size-[64px] shrink-0 items-center justify-center rounded-[14px] bg-white dark:bg-[#171717]">
+            <ServiceAccountAvatar url={connected && profile?.owner === owner ? profile?.avatarUrl : null} className="bg-white dark:bg-[#171717]">
               <YandexMusicIcon size={28} />
-            </div>
+            </ServiceAccountAvatar>
             <div className="min-w-0">
               <div className="text-[15px] font-[600] text-text-primary">{t("settings.yandex_music.title")}</div>
               <p role="status" className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">

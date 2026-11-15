@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   },
   loadYandexLikedTracks: vi.fn(),
   matchWithRetry: vi.fn(),
-  appendImportedPlaylistTracks: vi.fn(),
   finalizeImportedPlaylist: vi.fn(),
 }));
 
@@ -29,7 +28,6 @@ vi.mock("../../../../hooks/usePlaylists", () => ({ notifyLibraryChanged: vi.fn()
 vi.mock("./yandexMusicSource", () => ({ loadYandexLikedTracks: mocks.loadYandexLikedTracks }));
 vi.mock("../../manager/clientImportManager", () => ({ matchWithRetry: mocks.matchWithRetry }));
 vi.mock("../../manager/finalizeImport", () => ({
-  appendImportedPlaylistTracks: mocks.appendImportedPlaylistTracks,
   finalizeImportedPlaylist: mocks.finalizeImportedPlaylist,
 }));
 
@@ -55,19 +53,18 @@ function prepareSource(...tracks: Track[]) {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.api.listPlaylists.mockResolvedValue({ items: [playlist] });
+  mocks.api.listPlaylists.mockResolvedValue({ items: [] });
   mocks.api.getUserPlaylist.mockResolvedValue({ playlist, items: [{ track: original }] });
   mocks.api.listLikedTracks.mockResolvedValue({ items: [], nextCursor: null });
-  mocks.appendImportedPlaylistTracks.mockResolvedValue(1);
   mocks.finalizeImportedPlaylist.mockResolvedValue({ playlistId: playlist.id, saved: 1 });
 });
 
-it("reuses the saved playlist, skips duplicate recordings and preserves a live version", async () => {
-  prepareSource(duplicate, live);
-  const result = await importYandexMusic("token", "Music from Yandex", false, () => {});
-  expect(result).toEqual({ playlistId: playlist.id, added: 1, skipped: 0 });
-  expect(mocks.matchWithRetry).toHaveBeenCalledTimes(1);
-  expect(mocks.appendImportedPlaylistTracks).toHaveBeenCalledWith(playlist.id, [live], undefined);
+it("rejects an existing imported playlist before fetching tracks from Yandex", async () => {
+  const edited = withDescriptionText(description, "Renamed in Lane");
+  mocks.api.listPlaylists.mockResolvedValue({ items: [{ ...playlist, description: edited }] });
+  await expect(importYandexMusic("token", "Music from Yandex", true, () => {}))
+    .rejects.toMatchObject({ code: "already_imported" });
+  expect(mocks.loadYandexLikedTracks).not.toHaveBeenCalled();
   expect(mocks.finalizeImportedPlaylist).not.toHaveBeenCalled();
   expect(mocks.api.likeTrackSnapshot).not.toHaveBeenCalled();
 });
@@ -105,7 +102,6 @@ it("stops catalog matching on cancellation without writing playlist tracks or li
   await expect(importYandexMusic("token", "Music from Yandex", true, () => {}, controller.signal))
     .rejects.toMatchObject({ name: "AbortError" });
   expect(mocks.matchWithRetry).toHaveBeenCalledTimes(1);
-  expect(mocks.appendImportedPlaylistTracks).not.toHaveBeenCalled();
   expect(mocks.finalizeImportedPlaylist).not.toHaveBeenCalled();
   expect(mocks.api.likeTrackSnapshot).not.toHaveBeenCalled();
 });

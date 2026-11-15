@@ -6,11 +6,11 @@ import { loadLikedTracks } from "../../../../hooks/useLikedTracks";
 import { notifyLibraryChanged } from "../../../../hooks/usePlaylists";
 import { importedPlaylistDescription, readPlaylistSource } from "../../../playlistCoverMarker";
 import { matchWithRetry } from "../../manager/clientImportManager";
-import { appendImportedPlaylistTracks, finalizeImportedPlaylist } from "../../manager/finalizeImport";
+import { finalizeImportedPlaylist } from "../../manager/finalizeImport";
 import { delay } from "../../shared/http";
 import { loadYandexLikedTracks } from "./yandexMusicSource";
 
-type ImportErrorCode = "lane_sign_in" | "account_changed" | "busy" | "matching_unavailable";
+type ImportErrorCode = "lane_sign_in" | "account_changed" | "busy" | "matching_unavailable" | "already_imported";
 
 export class YandexImportError extends Error {
   constructor(readonly code: ImportErrorCode) {
@@ -186,6 +186,15 @@ export async function addYandexPlaylistToLikes(playlistId: string): Promise<Yand
 
 let importing = false;
 
+async function ensureYandexPlaylistNotImported(owner: string, signal?: AbortSignal) {
+  const { items } = await api.listPlaylists();
+  signal?.throwIfAborted();
+  checkAccount(owner);
+  if (items.some((playlist) => readPlaylistSource(playlist.description) === "yandex")) {
+    throw new YandexImportError("already_imported");
+  }
+}
+
 export async function importYandexMusic(
   token: string,
   title: string,
@@ -199,19 +208,12 @@ export async function importYandexMusic(
   importing = true;
   try {
     onProgress({ phase: "loading", done: 0, total: 0 });
+    await ensureYandexPlaylistNotImported(owner, signal);
     const { total, tracks } = await loadYandexLikedTracks(token, signal);
     signal?.throwIfAborted();
     checkAccount(owner);
     if (tracks.length === 0) return { added: 0, skipped: total };
 
-    const { items: playlists } = await api.listPlaylists();
-    signal?.throwIfAborted();
-    const existing = playlists.find((playlist) => readPlaylistSource(playlist.description) === "yandex");
-    const currentTracks = existing
-      ? (await api.getUserPlaylist(existing.id)).items.map(({ track }) => canonicalSnapshot(track))
-      : [];
-    signal?.throwIfAborted();
-    const current = new TrackIndex(currentTracks);
     const matches: (Track | undefined)[] = [];
     let done = 0;
     let lookupErrors = 0;
@@ -219,18 +221,13 @@ export async function importYandexMusic(
     await forEachTrack(tracks, async (track, index) => {
       signal?.throwIfAborted();
       checkAccount(owner);
-      const known = current.matchingTrack(track);
-      if (known) {
-        matches[index] = known;
-      } else {
-        try {
-          const match = await matchWithRetry(track, signal);
-          if (match.status === "approved") matches[index] = match.track;
-          else if (match.reason === "catalog_lookup_failed") lookupErrors++;
-        } catch (error) {
-          if (signal?.aborted || isRateLimit(error)) throw error;
-          lookupErrors++;
-        }
+      try {
+        const match = await matchWithRetry(track, signal);
+        if (match.status === "approved") matches[index] = match.track;
+        else if (match.reason === "catalog_lookup_failed") lookupErrors++;
+      } catch (error) {
+        if (signal?.aborted || isRateLimit(error)) throw error;
+        lookupErrors++;
       }
       signal?.throwIfAborted();
       onProgress({ phase: "matching", done: ++done, total: tracks.length });
@@ -240,30 +237,22 @@ export async function importYandexMusic(
     const matched = matches.filter((track): track is Track => Boolean(track));
     if (matched.length === 0 && lookupErrors > 0) throw new YandexImportError("matching_unavailable");
     const skipped = total - matched.length;
-    if (matched.length === 0) return { playlistId: existing?.id, added: 0, skipped };
+    if (matched.length === 0) return { added: 0, skipped };
 
-    // Read the current playlist again before appending. An edit made while
-    // catalog matching was running should be reflected in the duplicate check.
-    const latest = existing ? await api.getUserPlaylist(existing.id) : null;
-    signal?.throwIfAborted();
-    checkAccount(owner);
-    const contents = new TrackIndex(latest?.items.map(({ track }) => canonicalSnapshot(track)));
+    await ensureYandexPlaylistNotImported(owner, signal);
+    const contents = new TrackIndex();
     const missing = matched.filter((track) => {
       if (contents.has(track)) return false;
       contents.add(track);
       return true;
     });
     onProgress({ phase: "saving", done: 0, total: missing.length });
-    let playlistId = existing?.id;
+    let playlistId: string;
     let added = 0;
     try {
-      if (!playlistId) {
-        const saved = await trackPendingWrite(finalizeImportedPlaylist(title, importedPlaylistDescription("yandex"), missing, signal));
-        playlistId = saved.playlistId;
-        added = saved.saved;
-      } else if (missing.length > 0) {
-        added = await trackPendingWrite(appendImportedPlaylistTracks(playlistId, missing, signal));
-      }
+      const saved = await trackPendingWrite(finalizeImportedPlaylist(title, importedPlaylistDescription("yandex"), missing, signal));
+      playlistId = saved.playlistId;
+      added = saved.saved;
     } finally {
       if (accountKey() === owner) notifyLibraryChanged();
     }

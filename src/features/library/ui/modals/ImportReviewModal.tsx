@@ -13,6 +13,7 @@ import Dialog from "@/shared/ui/Dialog";
 import Button from "@/shared/ui/Button";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { useTranslation } from "@/languages";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useModalStore } from "../../store/modalStore";
 import { useImportStore } from "../../store/importStore";
 import {
@@ -81,11 +82,13 @@ function ImportReviewSkeletonRows() {
             <div className="h-[13px] w-[58%] animate-pulse rounded bg-border-alpha-33" />
             <div className="h-[19px] w-[68px] animate-pulse rounded-md bg-border-alpha-14" />
           </div>
-          <div className="flex items-center gap-[10px] p-[8px] rounded-md border border-border-primary/60 bg-bg-primary/80">
-            <div className="h-[38px] w-[38px] shrink-0 animate-pulse rounded-md bg-border-alpha-14" />
-            <div className="flex flex-col gap-[6px] flex-1 min-w-0">
-              <div className="h-[12px] w-[46%] animate-pulse rounded bg-border-alpha-33" />
-              <div className="h-[10px] w-[28%] animate-pulse rounded bg-border-alpha-14" />
+          <div className="flex flex-col gap-[10px] p-[8px] rounded-md border border-border-primary/60 bg-bg-primary/80 @min-[29rem]:flex-row @min-[29rem]:items-center">
+            <div className="flex min-w-0 flex-1 items-center gap-[10px]">
+              <div className="h-[38px] w-[38px] shrink-0 animate-pulse rounded-md bg-border-alpha-14" />
+              <div className="flex flex-col gap-[6px] flex-1 min-w-0">
+                <div className="h-[12px] w-[46%] animate-pulse rounded bg-border-alpha-33" />
+                <div className="h-[10px] w-[28%] animate-pulse rounded bg-border-alpha-14" />
+              </div>
             </div>
             <div className="h-[27px] w-[118px] shrink-0 animate-pulse rounded-md bg-border-alpha-14" />
           </div>
@@ -98,6 +101,7 @@ function ImportReviewSkeletonRows() {
 export default function ImportReviewModal() {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const open = useModalStore((state) => state.importReviewOpen);
   const jobId = useModalStore((state) => state.importReviewJobId);
@@ -113,13 +117,13 @@ export default function ImportReviewModal() {
 
   const listRef = useRef<HTMLDivElement>(null);
 
-  // estimate size with 10px gap matches card height + spacing
+  const rowGap = 10;
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => listRef.current,
-    estimateSize: () => 124,
+    estimateSize: () => isMobile ? 166 : 124,
     getItemKey: (index) => items[index]?.id || index,
-    gap: 10,
+    gap: rowGap,
     overscan: 5,
   });
 
@@ -313,19 +317,24 @@ export default function ImportReviewModal() {
   };
 
   const approvedCount = Object.values(decisions).filter((d) => d === "approve").length;
+  const visibleRows = rowVirtualizer.getVirtualItems();
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => (!next ? close() : undefined)}
-      maxWidth={540}
+      maxWidth={isMobile ? "none" : 540}
+      maxHeight={isMobile ? "100%" : "85dvh"}
+      className={isMobile ? "mx-0! h-full min-w-0 rounded-none! border-0! pt-[calc(max(env(safe-area-inset-top,0px),var(--lane-safe-top,0px))+12px)] supports-[height:100dvh]:h-dvh" : undefined}
     >
-      <div className="flex flex-col gap-[16px] px-[20px] pb-[20px] min-h-0">
+      <div className={`@container flex min-h-0 min-w-0 flex-col gap-[12px] ${isMobile
+        ? "flex-1 pl-[calc(max(env(safe-area-inset-left,0px),var(--lane-safe-left,0px))+12px)] pr-[calc(max(env(safe-area-inset-right,0px),var(--lane-safe-right,0px))+12px)] pb-[calc(max(env(safe-area-inset-bottom,0px),var(--lane-safe-bottom,0px))+12px)]"
+        : "px-[16px] pb-[16px]"}`}>
         {/* Header */}
-        <div className="flex items-start justify-between gap-[12px]">
+        <div className="flex shrink-0 flex-col gap-[6px] @min-[29rem]:flex-row @min-[29rem]:items-start @min-[29rem]:justify-between @min-[29rem]:gap-[12px]">
           <div className="flex flex-col gap-[4px] min-w-0 flex-1">
             <h2
-              className="m-0 text-[18px] font-[500] text-text-primary flex items-center gap-[8px]"
+              className="m-0 flex flex-wrap items-center gap-[8px] text-[18px] font-[500] text-text-primary"
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
             >
               {t("import.review_title")}
@@ -344,7 +353,7 @@ export default function ImportReviewModal() {
           </div>
 
           {items.length > 0 && !loading && (
-            <div className="flex items-center gap-[6px] shrink-0 pt-[2px]">
+            <div className="flex flex-wrap items-center gap-x-[6px] shrink-0">
               <button
                 type="button"
                 onClick={handleSelectAll}
@@ -367,7 +376,7 @@ export default function ImportReviewModal() {
         {/* Content list */}
         <div
           ref={listRef}
-          className="flex-1 min-h-[140px] max-h-[460px] overflow-y-auto overscroll-contain -mx-[8px] px-[8px]"
+          className={`min-h-0 min-w-0 flex-auto overflow-x-hidden overflow-y-auto overscroll-contain ${isMobile ? "" : "max-h-[460px]"}`}
         >
           {!loading && items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-[48px] gap-[10px] text-text-tertiary">
@@ -380,12 +389,15 @@ export default function ImportReviewModal() {
             </div>
           ) : (
             <div
-              className="relative w-full"
+              className="flex min-w-0 flex-col"
               style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
+                gap: rowGap,
+                minHeight: rowVirtualizer.getTotalSize(),
+                paddingTop: visibleRows[0]?.start ?? 0,
+                paddingBottom: Math.max(0, rowVirtualizer.getTotalSize() - (visibleRows.at(-1)?.end ?? 0)),
               }}
             >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              {visibleRows.map((virtualRow) => {
                 const item = items[virtualRow.index];
                 if (!item) return null;
 
@@ -404,22 +416,15 @@ export default function ImportReviewModal() {
                     key={virtualRow.key}
                     ref={rowVirtualizer.measureElement}
                     data-index={virtualRow.index}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                    className={`flex flex-col gap-[10px] p-[12px] rounded-lg border transition-all ${
+                    className={`flex min-w-0 flex-col gap-[10px] p-[12px] rounded-lg border transition-[background-color,border-color,opacity] ${
                       isApproved
                         ? "bg-bg-elevated border-border-primary/80"
                         : "bg-bg-elevated/50 border-border-primary/40 opacity-75 hover:opacity-100"
                     }`}
                   >
                   {/* Original track row */}
-                  <div className="flex items-start justify-between gap-[10px]">
-                    <div className="flex flex-col min-w-0 flex-1">
+                  <div className="flex flex-col items-start gap-[4px] @min-[29rem]:flex-row @min-[29rem]:justify-between @min-[29rem]:gap-[10px]">
+                    <div className="flex max-w-full flex-col min-w-0 flex-1">
                       <span className="text-[13px] font-[500] text-text-primary truncate">
                         {item.sourceTrack.title}
                       </span>
@@ -432,7 +437,7 @@ export default function ImportReviewModal() {
                     </div>
 
                     {/* Reason Badge */}
-                    <div className="shrink-0">
+                    <div className="max-w-full shrink-0">
                       <span
                         className={`inline-flex items-center gap-[4px] text-[11px] px-[8px] py-[3px] rounded-md font-[450] ${
                           isAutoMatched
@@ -457,7 +462,7 @@ export default function ImportReviewModal() {
                       const isThisPlaying = isThisCurrent && isPlaying;
 
                       return (
-                        <div className="flex items-center justify-between gap-[12px] p-[8px] rounded-md bg-bg-primary/80 border border-border-primary/60">
+                        <div className="flex min-w-0 flex-col gap-[8px] p-[8px] rounded-md bg-bg-primary/80 border border-border-primary/60 @min-[29rem]:flex-row @min-[29rem]:items-center @min-[29rem]:gap-[12px]">
                           <div className="flex items-center gap-[10px] min-w-0 flex-1">
                             <div
                               className="relative h-[38px] w-[38px] rounded-md bg-border-alpha-14 overflow-hidden shrink-0 flex items-center justify-center group/cover cursor-pointer select-none"
@@ -522,7 +527,7 @@ export default function ImportReviewModal() {
                           </div>
 
                           {/* Decision buttons */}
-                          <div className="flex items-center gap-[4px] shrink-0">
+                          <div className="grid grid-cols-2 gap-[4px] @min-[29rem]:flex @min-[29rem]:shrink-0">
                             <button
                               type="button"
                               onClick={() => toggleDecision(item.id, "approve")}
@@ -532,8 +537,8 @@ export default function ImportReviewModal() {
                                   : "bg-transparent text-text-secondary border-border-primary hover:bg-border-alpha-14 hover:text-text-primary"
                               }`}
                             >
-                              <CheckLine size={14} />
-                              <span>{t("import.approve")}</span>
+                              <CheckLine size={14} className="shrink-0" />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{t("import.approve")}</span>
                             </button>
                             <button
                               type="button"
@@ -544,8 +549,8 @@ export default function ImportReviewModal() {
                                   : "bg-transparent text-text-tertiary border-transparent hover:text-text-secondary"
                               }`}
                             >
-                              <CloseLine size={14} />
-                              <span>{t("import.deny")}</span>
+                              <CloseLine size={14} className="shrink-0" />
+                              <span className="min-w-0 [overflow-wrap:anywhere]">{t("import.deny")}</span>
                             </button>
                           </div>
                         </div>
@@ -567,40 +572,40 @@ export default function ImportReviewModal() {
       </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-between pt-[8px] border-t border-border-primary mt-[4px]">
+        <div className="grid shrink-0 grid-cols-2 gap-[8px] border-t border-border-primary pt-[8px] @min-[29rem]:flex @min-[29rem]:items-center">
           <Button
             type="button"
             variant="secondary"
             size="sm"
             onClick={() => void handleSkipAll()}
             disabled={submitting || loading || items.length === 0}
-            className="!text-text-tertiary hover:!text-text-primary"
+            className="h-auto! min-h-[36px] py-[5px] [overflow-wrap:anywhere] !text-text-tertiary hover:!text-text-primary @min-[29rem]:mr-auto"
           >
             {t("import.skip_all")}
           </Button>
 
-          <div className="flex items-center gap-[8px]">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={close}
-              disabled={submitting}
-            >
-              {t("common.close")}
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => void handleApply()}
-              disabled={submitting || loading || items.length === 0}
-            >
-              {submitting
-                ? t("import.applying")
-                : `${t("import.apply_decisions")} (${approvedCount})`}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={close}
+            disabled={submitting}
+            className="h-auto! min-h-[36px] py-[5px] [overflow-wrap:anywhere]"
+          >
+            {t("common.close")}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => void handleApply()}
+            disabled={submitting || loading || items.length === 0}
+            className="col-span-2 h-auto! min-h-[36px] py-[5px] [overflow-wrap:anywhere]"
+          >
+            {submitting
+              ? t("import.applying")
+              : `${t("import.apply_decisions")} (${approvedCount})`}
+          </Button>
         </div>
       </div>
     </Dialog>

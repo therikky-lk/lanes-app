@@ -684,6 +684,7 @@
       "error_import": "İçe aktarma tamamlanamadı. Tekrar dene.",
       "error_rate": "Çok fazla istek gönderildi. Biraz bekleyip tekrar dene.",
       "error_source": "Yandex Music kitaplığı okunamadı. Bağlantını kontrol edip tekrar dene.",
+      "error_already_imported": "Bu çalma listesini Yandex Music’ten zaten içe aktardınız.",
       "error_access": "Yandex Music kitaplığına erişim vermedi. Tekrar giriş yap.",
       "error_lane_account": "Parçaları içe aktarmak için Lane hesabına giriş yap.",
       "native_only": "İçe aktarma masaüstü ve Android uygulamalarında kullanılabilir."
