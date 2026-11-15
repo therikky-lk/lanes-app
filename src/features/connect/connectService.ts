@@ -693,7 +693,11 @@ async function onRelayMessage(text: string): Promise<void> {
       break;
     case "library":
       // the server already has the change; give it a moment, then reload
-      setTimeout(() => window.dispatchEvent(new Event("library:changed")), 600);
+      if (remoteLibraryTimer) clearTimeout(remoteLibraryTimer);
+      remoteLibraryTimer = setTimeout(() => {
+        remoteLibraryTimer = null;
+        window.dispatchEvent(new CustomEvent("library:changed", { detail: { remote: true } }));
+      }, 600);
       break;
     case "bye":
       if (followingId === message.from.id) stopFollowing();
@@ -744,6 +748,7 @@ async function onRelayMessage(text: string): Promise<void> {
 // ---- lifecycle ----------------------------------------------------------------
 
 let libraryTimer: ReturnType<typeof setTimeout> | null = null;
+let remoteLibraryTimer: ReturnType<typeof setTimeout> | null = null;
 function onLibraryChange(): void {
   // several quick likes in a row: one message
   if (libraryTimer) clearTimeout(libraryTimer);
@@ -824,6 +829,10 @@ export function stopConnect(sayBye = true): void {
   unsubscribeStore?.();
   unsubscribeStore = null;
   window.removeEventListener("library:local-change", onLibraryChange);
+  if (libraryTimer) clearTimeout(libraryTimer);
+  libraryTimer = null;
+  if (remoteLibraryTimer) clearTimeout(remoteLibraryTimer);
+  remoteLibraryTimer = null;
   if (broadcastTimer) clearTimeout(broadcastTimer);
   broadcastTimer = null;
   if (resendTimer) clearTimeout(resendTimer);

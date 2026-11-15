@@ -279,7 +279,8 @@ export function applyOptimisticUnlike(trackId: string): () => void {
 }
 
 if (typeof window !== "undefined") {
-  const handleRefresh = () => {
+  const handleRefresh = (event: Event) => {
+    const remoteChange = event instanceof CustomEvent && event.detail?.remote === true;
     const nextOwner = ownerKey();
     const ownerChanged = activeOwner !== nextOwner;
     resetForOwner(nextOwner);
@@ -292,10 +293,9 @@ if (typeof window !== "undefined") {
       optimisticOverrides.clear();
       overrideAt.clear();
       emit(false);
-    } else if (ownerChanged || Date.now() - lastRefresh >= LIKE_SYNC_MIN_AGE_MS) {
-      // library:changed also fires for playlist edits, covers and imports.
-      // Those changes used to restart every page of a 1k+ likes response.
-      lastRefresh = Date.now();
+    } else if (remoteChange || ownerChanged || Date.now() - lastRefresh >= LIKE_SYNC_MIN_AGE_MS) {
+      // Remote changes invalidate the snapshot. Keep throttling local events
+      // such as cover edits, which can arrive repeatedly during one import.
       void load(true);
     }
   };
@@ -306,13 +306,11 @@ if (typeof window !== "undefined") {
   // foreground if the snapshot is stale, then poll while it remains visible.
   const refreshIfStale = (minAgeMs: number) => {
     if (!loaded || document.visibilityState !== "visible" || Date.now() - lastRefresh < minAgeMs) return;
-    lastRefresh = Date.now();
     void load(true);
   };
-  window.addEventListener("library:changed", () => (lastRefresh = Date.now()));
-  const refreshOnReturn = () => refreshIfStale(LIKE_SYNC_MIN_AGE_MS);
+  const refreshOnReturn = () => refreshIfStale(5_000);
   window.addEventListener("focus", refreshOnReturn);
-  window.addEventListener("online", () => refreshIfStale(5_000));
+  window.addEventListener("online", refreshOnReturn);
   document.addEventListener("visibilitychange", refreshOnReturn);
   setInterval(() => refreshIfStale(LIKE_SYNC_MIN_AGE_MS), LIKE_SYNC_POLL_MS);
 }
