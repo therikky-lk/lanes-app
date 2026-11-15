@@ -4,7 +4,7 @@ import type { Track as ApiTrackBase } from "@/shared/contracts";
 import { isLocalTrackId } from "@/shared/media/local/localTracks";
 import { setLocalLike } from "@/features/local/localLikesSync";
 import { useCallback, useState } from "react";
-import { api } from "@/shared/api";
+import { api, toTrackSnapshot } from "@/shared/api";
 import {
   notifyLibraryChanged,
   evictPlaylistFromCache,
@@ -12,7 +12,7 @@ import {
   removeLocalTrackFromPlaylist,
 } from "./usePlaylists";
 import { isLocalPlaylistItemId, LOCAL_ITEM_PREFIX } from "@/features/local/localPlaylistTracks";
-import { applyOptimisticLike, applyOptimisticUnlike } from "./useLikedTracks";
+import { applyOptimisticLike, applyOptimisticUnlike, loadLikedTracks } from "./useLikedTracks";
 
 type Options = {
   onSuccess?: (...args: any[]) => void;
@@ -170,9 +170,12 @@ export function useLikeTrack() {
       await setLocalLike(trackId, true).finally(() => setIsPending(false));
       return undefined as unknown as Awaited<ReturnType<typeof api.likeTrack>>;
     }
-    const rollback = applyOptimisticLike(trackId, knownTrack(input));
+    const track = knownTrack(input);
+    const snapshot = track?.title?.trim() ? toTrackSnapshot({ ...track, id: trackId }) : undefined;
+    const rollback = applyOptimisticLike(trackId, track);
     try {
-      const result = await api.likeTrack(trackId);
+      const result = await api.likeTrack(trackId, snapshot);
+      if (!snapshot) void loadLikedTracks(true);
       notifyLibraryChanged();
       return result;
     } catch (err) {

@@ -65,7 +65,7 @@ export {
   type AuthTokens,
 } from "./auth-session";
 
-export { toClientTrack } from "./track";
+export { toClientTrack, toTrackSnapshot } from "./track";
 
 export {
   registerLocalImportHandler,

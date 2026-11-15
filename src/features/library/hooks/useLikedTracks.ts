@@ -176,6 +176,8 @@ function load(force = false): Promise<void> {
     // With no snapshot, keep showing pages as they arrive.
     const showPagesAsTheyArrive = !loaded;
     const tracks: Track[] = [];
+    const missingMetadata: number[] = [];
+    const previousTracks = new Map(cache.tracks.map((track) => [track.id, track]));
     const ids = new Set<string>();
     let cursor: string | undefined;
     let pages = 0;
@@ -188,9 +190,17 @@ function load(force = false): Promise<void> {
       pages++;
       for (const { track, likedAt } of page.items) {
         const mapped = toClientTrack(track);
-        if (ids.has(mapped.id)) continue;
+        if (!mapped.id || ids.has(mapped.id)) continue;
         ids.add(mapped.id);
-        tracks.push({ ...mapped, likedAt });
+        const known = optimisticTracks.get(mapped.id) ?? previousTracks.get(mapped.id);
+        if (mapped.title?.trim()) {
+          tracks.push({ ...mapped, likedAt });
+        } else if (known?.title?.trim()) {
+          tracks.push({ ...known, likedAt });
+        } else {
+          missingMetadata.push(tracks.length);
+          tracks.push({ ...mapped, likedAt });
+        }
       }
       cursor = page.nextCursor ?? undefined;
       if (isNativeApp()) diag(`favorites page ${pages}: received=${page.items.length} elapsed=${Math.round(performance.now() - pageStartedAt)}ms`);
@@ -206,8 +216,21 @@ function load(force = false): Promise<void> {
         }
       }
     } while (cursor);
-    // Keep the API artwork; bulk cover searches made opening a large library
-    // issue thousands of unrelated requests.
+    // Older likes can contain just an ID. Only look up those incomplete
+    // entries, and keep their original IDs and like dates.
+    const batchSize = 4;
+    for (let offset = 0; offset < missingMetadata.length; offset += batchSize) {
+      await Promise.all(missingMetadata.slice(offset, offset + batchSize).map(async (index) => {
+        const original = tracks[index];
+        const details = await api.getTrack(original.id).catch(() => undefined);
+        if (!details) return;
+        const recovered = toClientTrack(details);
+        if (recovered.title?.trim()) {
+          tracks[index] = { ...recovered, id: original.id, likedAt: original.likedAt };
+        }
+      }));
+      if (generation !== loadGeneration) return;
+    }
     if (generation !== loadGeneration) return;
     const otherDevices = await remoteLocal;
     if (generation !== loadGeneration) return;
@@ -254,7 +277,7 @@ function load(force = false): Promise<void> {
 }
 
 export function applyOptimisticLike(trackId: string, track?: Track): () => void {
-  if (track?.title) optimisticTracks.set(trackId, { ...track, id: trackId, likedAt: track.likedAt ?? Date.now() });
+  if (track?.title?.trim()) optimisticTracks.set(trackId, { ...track, id: trackId, likedAt: track.likedAt ?? Date.now() });
   const prev = optimisticOverrides.get(trackId);
   optimisticOverrides.set(trackId, true);
   overrideAt.set(trackId, Date.now());

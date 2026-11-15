@@ -25,6 +25,7 @@ export interface TrackGridCardProps {
 function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTitle, onPlay, showLikeButton = false }: TrackGridCardProps) {
   const { t } = useTranslation();
   const coverUrl = track.coverUrl || coverFallback || "";
+  const displayTitle = cleanTrackTitle(track.title, track.artists)?.trim() || t("player.track_unavailable_title");
   const menuItems = useSongMenuItems({
     id: track.id,
     title: track.title,
@@ -136,7 +137,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
         )}
       </div>
       <div className="min-w-0">
-        <p className={`m-0 truncate text-[14px] font-[500] ${isCurrent ? "text-accent-primary" : "text-text-primary"}`}>{cleanTrackTitle(track.title, track.artists)}</p>
+        <p className={`m-0 truncate text-[14px] font-[500] ${isCurrent ? "text-accent-primary" : "text-text-primary"}`}>{displayTitle}</p>
         <p className="m-0 mt-[2px] flex min-w-0 items-center gap-[5px] text-[13px] text-text-tertiary" onClick={(e) => e.stopPropagation()}>
           {track.explicit && <ExplicitBadge size="md" className="shrink-0" />}
           <ArtistLink name={track.artists} artistId={track.artistId} artistList={track.artistList} className="text-text-tertiary" />
@@ -153,7 +154,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
           }}
           position={menuPosition}
           closeLabel={t("common.close")}
-          mobileSheetHeader={<TrackMenuHeader coverUrl={coverUrl} title={cleanTrackTitle(track.title, track.artists)} artists={track.artists} />}
+          mobileSheetHeader={<TrackMenuHeader coverUrl={coverUrl} title={displayTitle} artists={track.artists} />}
         />
       )}
     </div>

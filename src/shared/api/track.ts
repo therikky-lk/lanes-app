@@ -1,5 +1,5 @@
 import { mediaUrl } from "./api";
-import type { ApiTrack } from "../contracts";
+import type { Track as TrackSnapshot } from "../contracts";
 import type { Track } from "../types";
 import { cleanTrackTitle } from "../utils/trackTitle";
 
@@ -118,3 +118,15 @@ export function toClientTrack(source: any): Track {
   };
 }
 
+export function toTrackSnapshot(track: Track): TrackSnapshot {
+  return {
+    id: track.id,
+    title: track.title,
+    artists: track.artistList?.map(({ id, name }) => ({ id: id ?? "", name }))
+      ?? [{ id: track.artistId ?? "", name: track.artists }],
+    durationMs: track.durationMs,
+    ...(track.coverUrl ? { cover: { url: track.coverUrl, width: 480, height: 480 } } : {}),
+    ...(track.album ? { album: track.album } : {}),
+    ...(track.explicit !== undefined ? { explicit: track.explicit } : {}),
+  };
+}
