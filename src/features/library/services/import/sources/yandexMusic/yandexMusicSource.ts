@@ -32,8 +32,7 @@ function numericId(value: unknown): string | undefined {
   return /^\d+$/.test(id) ? id : undefined;
 }
 
-async function request<T>(path: string, token: string, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
-  const url = `${API}${path}`;
+async function requestJson<T>(url: string, token: string, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
   const method = form ? "POST" : "GET";
   const headers: Record<string, string> = { Accept: "application/json", Authorization: `OAuth ${token}` };
   if (form) headers["Content-Type"] = "application/x-www-form-urlencoded";
@@ -77,16 +76,29 @@ async function request<T>(path: string, token: string, signal?: AbortSignal, for
     }
     if (status < 200 || status >= 300) throw new YandexSourceError("source_unavailable");
 
-    let body: { result?: T } | null;
     try {
-      body = await readBody() as typeof body;
+      return await readBody() as T;
     } catch {
       signal?.throwIfAborted();
       throw new YandexSourceError("source_unavailable");
     }
-    if (body?.result == null) throw new YandexSourceError("source_unavailable");
-    return body.result;
   }
+}
+
+async function request<T>(path: string, token: string, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
+  const body = await requestJson<{ result?: T } | null>(`${API}${path}`, token, signal, form);
+  if (body?.result == null) throw new YandexSourceError("source_unavailable");
+  return body.result;
+}
+
+export async function loadYandexAvatar(token: string, signal?: AbortSignal): Promise<string | null> {
+  if (!isYandexMusicToken(token)) throw new YandexSourceError("invalid_token");
+  const profile = await requestJson<{ default_avatar_id?: unknown; is_avatar_empty?: boolean } | null>(
+    "https://login.yandex.ru/info?format=json", token, signal,
+  );
+  const avatarId = profile?.default_avatar_id;
+  if (profile?.is_avatar_empty || typeof avatarId !== "string" || !/^[\w-]+(?:\/[\w-]+)*$/.test(avatarId)) return null;
+  return `https://avatars.yandex.net/get-yapic/${avatarId}/islands-200`;
 }
 
 function mapTrack(track: YandexTrack): ImportedTrack | undefined {

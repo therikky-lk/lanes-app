@@ -1,12 +1,14 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
+import { YandexSourceError } from "@/features/library/services/import/sources/yandexMusic/yandexMusicSource";
+import { YandexImportError } from "@/features/library/services/import/sources/yandexMusic/yandexMusicImport";
 import { useYandexMusicPreferences } from "@/features/library/store/yandexMusicPreferences";
 import { YandexMusicTab } from "./YandexMusicTab";
 
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
-  status: vi.fn(),
+  avatar: vi.fn(),
   write: vi.fn(),
   signIn: vi.fn(),
   importMusic: vi.fn(),
@@ -29,26 +31,30 @@ vi.mock("@/shared/platform/browser", () => ({ isBrowserRuntime: () => false }));
 vi.mock("@/shared/api/integrationSessions", () => ({
   integrationOwner: () => "liner:lane-user",
   readIntegration: mocks.read,
-  readYandexConnection: mocks.status,
   writeIntegration: mocks.write,
   IntegrationSessionError: class extends Error {},
 }));
 vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicAccount", () => ({
   signInToYandexMusic: mocks.signIn,
 }));
+vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicSource", async (original) => ({
+  ...await original<typeof import("@/features/library/services/import/sources/yandexMusic/yandexMusicSource")>(),
+  loadYandexAvatar: mocks.avatar,
+}));
 vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicImport", () => ({
   importYandexMusic: mocks.importMusic,
-  YandexImportError: class extends Error {},
+  YandexImportError: class extends Error { constructor(readonly code: string) { super(code); } },
 }));
 
-it("connects without importing and cancels a manually started import", async () => {
+it("connects and shows the portrait, and keeps the session after cancellation or import errors", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   await useYandexMusicPreferences.persist.clearStorage();
   useYandexMusicPreferences.setState({ alsoLike: false, hideImportedPlaylist: false });
   const session = { accessToken: "test-token" };
   let connected = false;
   mocks.read.mockImplementation(async () => ({ revision: Number(connected), session: connected ? session : null }));
-  mocks.status.mockImplementation(async () => ({ connected }));
+  const avatarUrl = "https://avatars.yandex.net/get-yapic/avatar/islands-200";
+  mocks.avatar.mockResolvedValue(avatarUrl);
   mocks.signIn.mockResolvedValue({ status: "success", token: session.accessToken });
   mocks.write.mockImplementation(async () => {
     connected = true;
@@ -67,6 +73,7 @@ it("connects without importing and cancels a manually started import", async () 
     await act(async () => button("settings.youtube.sign_in")!.click());
     expect(mocks.write).toHaveBeenCalledWith("yandex", "liner:lane-user", { revision: 0, session });
     expect(mocks.importMusic).not.toHaveBeenCalled();
+    expect(container.querySelector("img")?.src).toBe(avatarUrl);
 
     const toggle = (key: string) => container.querySelector<HTMLButtonElement>(`button[aria-label="${key}"]`)!;
     const alsoLike = "settings.yandex_music.also_like";
@@ -93,6 +100,17 @@ it("connects without importing and cancels a manually started import", async () 
     expect(signal.aborted).toBe(true);
     expect(button("common.cancel")).toBeUndefined();
     expect(button("common.import")?.disabled).toBe(false);
+
+    mocks.importMusic.mockRejectedValueOnce(new YandexImportError("already_imported"));
+    await act(async () => button("common.import")!.click());
+    expect(container.querySelector("[role=alert]")?.textContent).toBe("settings.yandex_music.error_already_imported");
+    expect(button("settings.youtube.sign_out")).toBeDefined();
+
+    mocks.importMusic.mockRejectedValueOnce(new YandexSourceError("access_denied"));
+    await act(async () => button("common.import")!.click());
+    expect(container.querySelector("[role=alert]")?.textContent).toBe("settings.yandex_music.error_access");
+    expect(button("settings.youtube.sign_out")).toBeDefined();
+    expect(mocks.write).toHaveBeenCalledTimes(1);
   } finally {
     await act(async () => root.unmount());
     container.remove();

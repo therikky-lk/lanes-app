@@ -51,6 +51,3 @@ export function writeIntegration<P extends keyof Sessions>(
   return request<{ revision: number }>(provider, owner, { method: "PUT", body: JSON.stringify(state) });
 }
 
-export function readYandexConnection(owner: string) {
-  return request<{ connected: boolean }>("yandex", owner, undefined, "?status");
-}

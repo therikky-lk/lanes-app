@@ -4,6 +4,7 @@ import { useTranslation } from "@/languages";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { signOutYoutube, useYoutubePreferences } from "@/shared/media/youtube";
 import { useYoutubeAccount, useYoutubeSignInStore } from "@/features/youtube-auth";
+import { ServiceAccountAvatar } from "../ServiceAccountAvatar";
 import { SettingRow, SettingSection } from "../controls";
 
 export function YoutubeTab({ searchQuery }: { searchQuery?: string }) {
@@ -22,16 +23,18 @@ export function YoutubeTab({ searchQuery }: { searchQuery?: string }) {
   return (
     <div className="flex flex-col gap-[28px]">
       {!searchQuery?.trim() && (
-        <div className="lane-setting-status flex items-center gap-[16px] rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
-          <div className="flex h-[64px] w-[64px] shrink-0 items-center justify-center rounded-[14px] bg-white/[0.08] text-text-secondary">
-            <YoutubeFill size={26} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[15px] font-[600] text-text-primary">
-              {signedIn ? (account?.name || account?.handle || "YouTube") : (t("settings.youtube.signed_out_title") || "Not signed in")}
-            </div>
-            <div className="mt-[3px] truncate text-[13px] text-text-secondary">
-              {signedIn ? (account?.email || account?.handle || t("settings.youtube.signed_in") || "Connected") : (t("settings.youtube.signed_out_description") || "Sign in to keep YouTube playback working")}
+        <div className="lane-setting-status flex flex-wrap items-center justify-end gap-[16px] rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
+          <div className="flex min-w-0 flex-[1_1_210px] items-center gap-[16px]">
+            <ServiceAccountAvatar url={signedIn ? account?.photoUrl : null} className="bg-white/[0.08] text-text-secondary">
+              <YoutubeFill size={26} />
+            </ServiceAccountAvatar>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-[600] text-text-primary">
+                {signedIn ? (account?.name || account?.handle || "YouTube") : (t("settings.youtube.signed_out_title") || "Not signed in")}
+              </div>
+              <div className="mt-[3px] truncate text-[13px] text-text-secondary">
+                {signedIn ? (account?.email || account?.handle || t("settings.youtube.signed_in") || "Connected") : (t("settings.youtube.signed_out_description") || "Sign in to keep YouTube playback working")}
+              </div>
             </div>
           </div>
           {signedIn ? (

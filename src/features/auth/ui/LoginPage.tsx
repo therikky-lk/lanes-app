@@ -315,7 +315,7 @@ export default function LoginPage() {
           </div>
         </aside>
 
-        <div className="flex min-h-[378px] w-full flex-col justify-center px-[22px] py-[22px] sm:px-[28px] md:px-[26px] md:py-[24px]">
+        <div className={`flex min-w-0 w-full flex-col justify-center px-[22px] py-[22px] sm:px-[28px] md:px-[26px] md:py-[24px] ${emailFlow ? "md:min-h-[378px]" : "min-h-[378px]"}`}>
           {/* Compact brand header stays available on phones, where the side panel is hidden. */}
           <div className="mb-[18px] flex shrink-0 items-center gap-[10px] md:hidden">
             <AppImage

@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { loadYandexLikedTracks } from "./yandexMusicSource";
+import { loadYandexAvatar, loadYandexLikedTracks } from "./yandexMusicSource";
 
 const mocks = vi.hoisted(() => ({
   native: vi.fn(() => false),
@@ -16,6 +16,18 @@ afterEach(() => {
   vi.useRealTimers();
   mocks.native.mockReturnValue(false);
   mocks.request.mockReset();
+});
+
+it("loads a Yandex ID portrait without sending the token in the image URL", async () => {
+  const fetch = vi.fn()
+    .mockResolvedValueOnce(Response.json({ default_avatar_id: "42/account-photo", is_avatar_empty: false }))
+    .mockResolvedValueOnce(Response.json({ default_avatar_id: "default", is_avatar_empty: true }));
+  vi.stubGlobal("fetch", fetch);
+  await expect(loadYandexAvatar("test_token_1234")).resolves.toBe("https://avatars.yandex.net/get-yapic/42/account-photo/islands-200");
+  expect(fetch).toHaveBeenCalledWith("https://login.yandex.ru/info?format=json", expect.objectContaining({
+    redirect: "error", headers: expect.objectContaining({ Authorization: "OAuth test_token_1234" }),
+  }));
+  await expect(loadYandexAvatar("test_token_1234")).resolves.toBeNull();
 });
 
 it("loads liked metadata in ordered batches of 100 using only the Yandex API", async () => {
