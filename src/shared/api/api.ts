@@ -958,9 +958,9 @@ export const api = {
     return request<ApiLikedTracksPage>(`/v1/me/library/tracks?${params}`);
   },
 
-  async likeTrack(id: string): Promise<void> {
+  async likeTrack(id: string, snapshot?: ApiTrackBase): Promise<void> {
     return trackPendingWrite((async () => {
-      const track = await clientCatalog.resolveSnapshot(id);
+      const track = snapshot ?? await clientCatalog.resolveSnapshot(id);
       return request<void>(
         `/v1/me/library/tracks/${encodeURIComponent(id)}`,
         { method: "PUT", ...(track ? { body: JSON.stringify({ track, trackSnapshot: track }) } : {}) },

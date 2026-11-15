@@ -43,8 +43,7 @@ import { useListReorder } from "@/shared/hooks";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import type { Track } from "@/shared/types";
 import { useTranslation } from "@/languages";
-import { api } from "@/shared/api";
-import type { Track as TrackSnapshot } from "@/shared/contracts";
+import { api, toTrackSnapshot } from "@/shared/api";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import { useLocalTracks } from "@/features/local/hooks/useLocalTracks";
 import { isLocalPlaylistItemId, withLocalAvailability } from "@/features/local/localPlaylistTracks";
@@ -140,19 +139,6 @@ function formatLikedDateRelative(value: Track["likedAt"]): string | undefined {
   return new Intl.RelativeTimeFormat(navigator.language, { numeric: "auto" }).format(Math.round(seconds / divisor), unit);
 }
 
-function selectionSnapshot(track: Track): TrackSnapshot {
-  return {
-    id: track.id,
-    title: track.title,
-    artists: track.artistList?.map(({ id, name }) => ({ id: id ?? "", name }))
-      ?? [{ id: track.artistId ?? "", name: track.artists }],
-    durationMs: track.durationMs,
-    ...(track.coverUrl ? { cover: { url: track.coverUrl, width: 480, height: 480 } } : {}),
-    ...(track.album ? { album: track.album } : {}),
-    ...(track.explicit !== undefined ? { explicit: track.explicit } : {}),
-  };
-}
-
 const TrackItem = memo(function TrackItem({
   track,
   playlistId,
@@ -202,7 +188,7 @@ const TrackItem = memo(function TrackItem({
   const card = (
 <SongCardWithMenu
         id={track.id}
-        title={track.title}
+        title={track.title?.trim() ? track.title : t("player.track_unavailable_title")}
         artists={track.artists}
         artistId={track.artistId}
         artistList={track.artistList}
@@ -812,7 +798,7 @@ function LibraryPlaylistContent() {
       </span>
       <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
       <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
-        useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(selectionSnapshot));
+        useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(toTrackSnapshot));
       }}>{t("common.add_to_playlist")}</Button>
     </div>
   );
