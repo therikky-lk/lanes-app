@@ -3,7 +3,7 @@ import SettingsPageFrame from "./SettingsPageFrame";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill, RightLine } from "@mingcute/react";
+import { User3Line, CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill, RightLine } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
@@ -20,6 +20,7 @@ import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { isNativeApp } from "@/shared/platform/native";
 import { ArrowLeftLine } from "@mingcute/react";
 import SettingsAccount from "./SettingsAccount";
+import ProfileTab from "./ProfileTab";
 import { useTranslation, getTranslationsForAllLocales } from "@/languages";
 import { useModalStore } from "@/features/library";
 import {
@@ -36,9 +37,10 @@ import {
   YandexMusicTab,
 } from "./tabs";
 
-type TabId = "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
+type TabId = "Profile" | "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
+  Profile: User3Line,
   Playback: Play,
   Connect: DeviceLine,
   Shortcuts: KeyboardLine,
@@ -59,7 +61,7 @@ const TAB_GROUPS: { labelKey: "player" | "interface" | "integrations" | "applica
   { labelKey: "player", ids: ["Playback", "Audio", "Shortcuts"] },
   { labelKey: "interface", ids: ["Appearance", "Overlay"] },
   { labelKey: "integrations", ids: ["Youtube", "YandexMusic", "Connect", "Discord"] },
-  { labelKey: "application", ids: ["Storage", "About"] },
+  { labelKey: "application", ids: ["Profile", "Storage", "About"] },
 ].map((group) => ({
   ...group,
   ids: isNativeApp() ? (group.ids as TabId[]).filter((id) => !DESKTOP_ONLY_TABS.has(id)) : (group.ids as TabId[]),
@@ -67,6 +69,7 @@ const TAB_GROUPS: { labelKey: "player" | "interface" | "integrations" | "applica
 
 
 const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] = [
+  { tabId: "Profile", titleKey: "settings.profile.title", descKey: "settings.profile.description" },
   // Playback
   { tabId: "Playback", titleKey: "settings.autoplay_similar.title", descKey: "settings.autoplay_similar.description" },
   { tabId: "Playback", titleKey: "settings.track_double_click.title", descKey: "settings.track_double_click.description" },
@@ -171,6 +174,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
   };
 
   const tabLabels: Record<TabId, string> = {
+    Profile: t("settings.profile.title"),
     Playback: t("settings.tabs.playback"),
     Connect: "Lane Connect",
     Shortcuts: t("settings.tabs.shortcuts") || "Shortcuts",
@@ -186,6 +190,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
   };
 
   const tabDescriptions: Record<TabId, string> = {
+    Profile: t("settings.profile.description"),
     Playback: t("settings.playback.description"),
     Connect: t("connect.description"),
     Shortcuts: t("settings.shortcuts.description") || "System-wide and player keyboard shortcuts.",
@@ -206,6 +211,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     const set = new Set<TabId>();
 
     const TAB_LABEL_KEYS: Record<TabId, string> = {
+      Profile: "settings.profile.title",
       Playback: "settings.tabs.playback",
       Connect: "connect.tab",
       Shortcuts: "settings.tabs.shortcuts",
@@ -221,6 +227,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     };
 
     const TAB_DESC_KEYS: Record<TabId, string> = {
+      Profile: "settings.profile.description",
       Playback: "settings.playback.description",
       Connect: "connect.description",
       Shortcuts: "settings.shortcuts.description",
@@ -326,10 +333,10 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             <h2 className="m-0 text-[20px] font-[600] tracking-[-0.01em] text-text-primary" style={font}>
               {t("common.sidebar.settings") || "Settings"}
             </h2>
-            <div className="ml-auto flex items-center"><SettingsAccount compact onSignOut={handleClose} /></div>
+            <div className="ml-auto flex items-center"><SettingsAccount compact onOpenProfile={() => { setSearchQuery(""); setActiveTab("Profile"); setMobilePage(true); }} /></div>
           </div>
         )}
-        {!isMobile && <div className="flex justify-start px-[12px] pt-[12px]"><SettingsAccount onSignOut={handleClose} /></div>}
+        {!isMobile && <div className="flex justify-start px-[12px] pt-[12px]"><SettingsAccount onOpenProfile={() => { setSearchQuery(""); setActiveTab("Profile"); setMobilePage(true); }} /></div>}
         <div className="px-[12px] pt-[14px] pb-[8px]">
           <div className="relative flex items-center">
             <Search2Line
@@ -471,6 +478,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             transition={{ duration: 0.12, ease: "easeOut" }}
             className="flex-1 flex flex-col"
           >
+            {activeTab === "Profile" && <ProfileTab />}
             {activeTab === "Playback" && <PlaybackTab searchQuery={searchQuery} />}
             {activeTab === "Connect" && <ConnectTab searchQuery={searchQuery} />}
             {activeTab === "Shortcuts" && <ShortcutsTab searchQuery={searchQuery} />}

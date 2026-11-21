@@ -200,3 +200,69 @@ test("same provider session is scoped by verified Lane user and auth backend", a
   assert.deepEqual(await (await call("liner", "primary")).json(), { revision: 2, session: null });
   assert.deepEqual(await (await call("hyprr", "primary")).json(), { revision: 1, session });
 });
+
+test("profile stores banner, links and favorites in D1 and merges independent edits", async t => {
+  const { env } = fixture(t);
+  const headers = { authorization: "Bearer account-token", "content-type": "application/json" };
+  const path = "/v1/me/profile-customization/liner";
+  const read = () => worker.fetch(request(path, { headers }), env);
+  const patch = body => worker.fetch(request(path, { method: "PATCH", headers, body: JSON.stringify(body) }), env);
+  assert.deepEqual(await (await read()).json(), { banner: null, links: [], artist: null, tracks: [] });
+  const banner = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+  const track = { id: "song-1", title: "Song", artists: "Artist", coverUrl: "https://example.test/cover.jpg", durationMs: 10000, playCount: 0 };
+  assert.equal((await patch({ banner, artist: { id: "artist-1", name: "Artist", coverUrl: "" }, tracks: [track] })).status, 200);
+  assert.equal((await patch({ links: ["https://example.test/me"] })).status, 200);
+  assert.deepEqual(await (await read()).json(), { banner, artist: { id: "artist-1", name: "Artist", coverUrl: "" }, tracks: [track], links: ["https://example.test/me"] });
+  const stored = await env.DB.prepare("SELECT document_json FROM profile_customization WHERE owner=?").bind(JSON.stringify(["liner", "owner-id"])).first();
+  assert.equal(JSON.parse(stored.document_json).banner, banner);
+  const deleted = await patch({ banner: null, artist: null, tracks: [] });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await (await read()).json(), { banner: null, artist: null, tracks: [], links: ["https://example.test/me"] });
+});
+
+test("profile rejects invalid content, excessive favorites and oversized uploads", async t => {
+  const { env } = fixture(t);
+  const patch = body => worker.fetch(request("/v1/me/profile-customization/liner", { method: "PATCH", headers: { authorization: "Bearer account-token" }, body: JSON.stringify(body) }), env);
+  for (const body of [{ banner: "data:image/svg+xml;base64,PHN2Zz4=" }, { links: ["javascript:alert(1)"] }, { links: ["https://user:password@example.test/"] }, { tracks: [{ id: "local:secret" }] }, { tracks: [1, 2, 3, 4] }, { owner: "other-account" }, { toString: "invalid" }]) {
+    assert.equal((await patch(body)).status, 400, JSON.stringify(body));
+  }
+  assert.equal((await patch({ banner: "x".repeat(800000) })).status, 413);
+});
+
+test("profile requires a valid account and isolates account backends and users", async t => {
+  const { env, state } = fixture(t);
+  const path = "/v1/me/profile-customization/liner";
+  assert.equal((await worker.fetch(request(path), env)).status, 401);
+  state.authorized = false;
+  assert.equal((await worker.fetch(request(path, { headers: { authorization: "Bearer bad" } }), env)).status, 401);
+  state.authorized = true;
+  await worker.fetch(request(path, { headers: { authorization: "Bearer account-token" } }), env);
+  await env.DB.batch([env.DB.prepare("INSERT INTO profile_customization(owner,document_json) VALUES(?,?)").bind(JSON.stringify(["hyprr", "owner-id"]), JSON.stringify({ links: ["https://secret.example/"] }))]);
+  assert.deepEqual((await (await worker.fetch(request(path, { headers: { authorization: "Bearer account-token" } }), env)).json()).links, []);
+});
+
+test("sharing uses the selected account service for tracks, artists and public playlists", async t => {
+  const directory = mkdtempSync(join(tmpdir(), "lane-sharing-backend-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const calls = [];
+  const upstream = mock.method(globalThis, "fetch", async (url, init) => {
+    const target = new URL(url); calls.push(target.href);
+    assert.equal(target.origin, "https://lane-account-api.nidenseekn.workers.dev");
+    assert.ok(init.headers.get("x-liner-signature"));
+    if (target.pathname === "/v1/me") return Response.json({ id: "new-user", username: "listener" });
+    if (target.pathname === `/v1/me/playlists/${playlistId}`) return Response.json({ playlist: { id: playlistId, ownerId: "new-user", title: "Public playlist", isPublic: true }, items: [] });
+    if (target.pathname === "/v1/users/new-user/playlists") return Response.json({ items: [{ id: playlistId, isPublic: true }] });
+    return new Response(null, { status: 404 });
+  });
+  t.after(() => upstream.mock.restore());
+  const env = { DB: sqliteD1(join(directory, "db.sqlite")), signRequest: createSigner(module) };
+  for (const type of ["track", "artist", "album", "playlist"]) {
+    const response = await worker.fetch(request("/v1/shares", { method: "POST", headers: { authorization: "Bearer new-account-token" }, body: JSON.stringify({ type, entityId: ({ playlist: playlistId, track: "dQw4w9WgXcQ", artist: "UCabcdefghijklmnopqrstuv", album: "MPREabcdefgh" })[type], snapshot: { title: "Music" }, authBackend: "hyprr" }) }), env);
+    assert.equal(response.status, 201, `${type}: ${await response.clone().text()}`);
+    const share = await response.json();
+    assert.equal((await worker.fetch(request(`/v1/public/shares/${share.id}`), env)).status, 200);
+  }
+  assert.ok(calls.some(url => url.includes("/v1/users/new-user/playlists")));
+  const profile = await worker.fetch(request("/v1/me/profile-customization/hyprr", { headers: { authorization: "Bearer new-account-token" } }), env);
+  assert.equal(profile.status, 200);
+});
