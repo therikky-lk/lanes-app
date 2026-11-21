@@ -1,0 +1,42 @@
+name: Keep five latest release notes
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/RELEASE_NOTES.md
+      - scripts/trim-release-notes.mjs
+      - .github/workflows/release-notes.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-notes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trim:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Keep the latest five versions
+        run: node scripts/trim-release-notes.mjs
+      - name: Commit trimmed release notes
+        run: |
+          git add .github/RELEASE_NOTES.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Keep only five latest release notes"
+          git push origin HEAD:main
