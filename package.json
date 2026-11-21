@@ -1,7 +1,7 @@
 {
   "name": "lane",
-  "version": "1.8.2",
-  "androidVersionCode": 10802,
+  "version": "1.8.3",
+  "androidVersionCode": 10803,
   "type": "module",
   "private": true,
   "description": "Lane Music Player",

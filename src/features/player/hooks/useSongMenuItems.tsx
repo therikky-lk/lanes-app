@@ -1,3 +1,4 @@
+import { resolveApiErrorMessage } from "@/shared/api/api";
 import { shareEntity } from "@/shared/utils/share";
 import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
 import { LuShare2 } from "react-icons/lu";
@@ -332,7 +333,7 @@ export function useSongMenuItems(ctx: SongMenuContext): DropdownMenuItem[] {
         const artistAvatarUrl = type === "track" ? await resolveArtistAvatar(artistId, artistName) ?? undefined : undefined;
         const result = await shareEntity(type, id, { title, subtitle: artists, coverUrl, artistAvatarUrl });
         if (result === "copied") showToast(t("sharing.copied"), "checkmark");
-      } catch { showToast(t("sharing.failed"), "error"); }
+      } catch (error) { showToast(resolveApiErrorMessage(error, t, "sharing.failed"), "error"); }
     },
   });
   return items;

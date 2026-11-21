@@ -1,25 +1,17 @@
-import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/features/auth";
-import { useModalStore } from "@/features/library";
 import { useTranslation } from "@/languages";
 import UserAvatar from "@/shared/ui/UserAvatar";
 
-export default function SettingsAccount({ compact = false }: { onSignOut?: () => void; compact?: boolean }) {
-  const navigate = useNavigate();
+export default function SettingsAccount({ compact = false, onOpenProfile }: { onOpenProfile: () => void; compact?: boolean }) {
   const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const displayName = user?.displayName || user?.username || user?.email?.split("@")[0] || "Lane";
-
-  const openProfile = () => {
-    useModalStore.getState().closeSettings();
-    navigate("/profile");
-  };
 
   return (
     <button
       type="button"
       aria-label={t("settings.profile.title")}
-      onClick={openProfile}
+      onClick={onOpenProfile}
       className="flex min-w-0 max-w-full cursor-pointer items-center gap-[10px] rounded-full border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/50"
     >
       <UserAvatar user={user} size={40} className="!rounded-full !border-0" />

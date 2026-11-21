@@ -1,3 +1,4 @@
+import { profileCustomization } from "./profile-customization.mjs";
 import { integrationSession } from "./integration-sessions.mjs";
 import { schemaStatements } from "./schema.mjs";
 import { isUserPlaylist, publicPlaylistSnapshot, renderSharePage, snapshotOf, validEntity, safeImage } from "./presentation.mjs";
@@ -64,8 +65,8 @@ function requireDatabase(env) {
   if (!env.DB) error(503, "DATABASE_NOT_CONFIGURED", "Bind the Lane D1 database first.");
   return env.DB;
 }
-async function readBody(request) {
-  if (Number(request.headers.get("content-length")) > MAX_BODY) error(413, "BODY_TOO_LARGE", "Request is too large.");
+async function readBody(request, maxBody = MAX_BODY) {
+  if (Number(request.headers.get("content-length")) > maxBody) error(413, "BODY_TOO_LARGE", "Request is too large.");
   const reader = request.body?.getReader();
   if (!reader) error(400, "INVALID_INPUT", "Expected JSON.");
   let text = "", size = 0;
@@ -75,7 +76,7 @@ async function readBody(request) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_BODY) { await reader.cancel(); error(413, "BODY_TOO_LARGE", "Request is too large."); }
+      if (size > maxBody) { await reader.cancel(); error(413, "BODY_TOO_LARGE", "Request is too large."); }
       text += decoder.decode(value, { stream: true });
     }
     text += decoder.decode();
@@ -91,7 +92,9 @@ async function publicPlaylist(env, id) {
   const row = await requireDatabase(env).prepare("SELECT * FROM public_playlists WHERE id=?").bind(id).first();
   if (!row) error(404, "NOT_FOUND", "Playlist is unavailable.");
   // Check the live public list on every read. No account tokens are saved in D1.
-  const list = await accountRequest(env, `/v1/users/${encodeURIComponent(row.owner_id)}/playlists`);
+  const backendRow = await requireDatabase(env).prepare("SELECT backend FROM public_playlist_backends WHERE id=?").bind(id).first();
+  const origin = backendRow?.backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env);
+  const list = await accountRequest(env, `/v1/users/${encodeURIComponent(row.owner_id)}/playlists`, undefined, origin);
   if (!Array.isArray(list.items) || !list.items.some(item => item.id === id && item.isPublic === true)) error(404, "NOT_FOUND", "Playlist is no longer public.");
   return JSON.parse(row.document_json);
 }
@@ -119,16 +122,21 @@ async function createShare(request, env) {
   const body = await readBody(request);
   if (!validEntity(body.type, body.entityId)) error(400, "INVALID_INPUT", "This item cannot be shared.");
   const db = requireDatabase(env);
-  const { user, authorization } = await authenticatedUser(request, env);
+  const backend = body.authBackend ?? "liner";
+  if (!["liner", "hyprr"].includes(backend)) error(400, "INVALID_INPUT", "Invalid account backend.");
+  const { user, authorization } = await authenticatedUser(request, env, backend);
+  const origin = backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env);
+  const senderId = backend === "liner" ? user.id : JSON.stringify([backend, user.id]);
   let snapshot = snapshotOf(body.snapshot);
   let playlistDocument;
   if (body.type === "playlist" && isUserPlaylist(body.entityId)) {
     const existing = await db.prepare("SELECT * FROM public_playlists WHERE id=?").bind(body.entityId).first();
-    if (existing && existing.owner_id !== user.id) {
+    const existingBackend = existing ? await db.prepare("SELECT backend FROM public_playlist_backends WHERE id=?").bind(body.entityId).first() : null;
+    if (existing && (existing.owner_id !== user.id || (existingBackend?.backend ?? "liner") !== backend)) {
       const document = await publicPlaylist(env, body.entityId);
       snapshot = publicPlaylistSnapshot({ title: document.playlist.title, description: document.playlist.description });
     } else {
-      const detail = await accountRequest(env, `/v1/me/playlists/${encodeURIComponent(body.entityId)}`, authorization);
+      const detail = await accountRequest(env, `/v1/me/playlists/${encodeURIComponent(body.entityId)}`, authorization, origin);
       if (detail?.playlist?.id !== body.entityId) error(502, "INVALID_PLAYLIST", "Playlist ID mismatch.");
       playlistDocument = sanitizedPlaylist(detail, user.id);
       snapshot = publicPlaylistSnapshot({ title: detail.playlist.title, description: detail.playlist.description });
@@ -139,9 +147,10 @@ async function createShare(request, env) {
   const sender = { username: typeof user.username === "string" ? user.username.slice(0, 200) : "", displayName: typeof user.displayName === "string" ? user.displayName.slice(0, 300) : "" };
   const now = Math.floor(Date.now() / 1000);
   const commands = [];
+  if (playlistDocument) commands.push(db.prepare("INSERT INTO public_playlist_backends(id,backend) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET backend=excluded.backend").bind(body.entityId, backend));
   if (playlistDocument) commands.push(db.prepare("INSERT INTO public_playlists(id,owner_id,document_json) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET document_json=excluded.document_json").bind(body.entityId, user.id, JSON.stringify(playlistDocument)));
   // Conditional insertion keeps the hourly limit atomic even for concurrent requests.
-  const insert = db.prepare("INSERT INTO shared_links(id,sender_id,sender_json,entity_type,entity_id,snapshot_json,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT count(*) FROM shared_links WHERE sender_id=? AND created_at>?)<100").bind(id, user.id, JSON.stringify(sender), body.type, body.entityId, JSON.stringify(snapshot), now, user.id, now - 3600);
+  const insert = db.prepare("INSERT INTO shared_links(id,sender_id,sender_json,entity_type,entity_id,snapshot_json,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT count(*) FROM shared_links WHERE sender_id=? AND created_at>?)<100").bind(id, senderId, JSON.stringify(sender), body.type, body.entityId, JSON.stringify(snapshot), now, senderId, now - 3600);
   commands.push(insert);
   const results = await db.batch(commands);
   if (!results.at(-1)?.meta?.changes) error(429, "RATE_LIMITED", "Too many links. Try again later.");
@@ -184,6 +193,14 @@ async function readThumbnail(request, env, id) {
 async function handle(request, env) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  const profile = url.pathname.match(/^\/v1\/me\/profile-customization\/(liner|hyprr)$/);
+  if (profile) {
+    const backend = profile[1];
+    const { user } = await authenticatedUser(request, env, backend);
+    await initializeDatabase(env);
+    return profileCustomization(request, env, { owner: JSON.stringify([backend, user.id]), readBody, json, error });
+  }
+  if (url.pathname.startsWith("/v1/me/profile-customization")) return json({ code: "NOT_FOUND" }, 404);
   const integration = url.pathname.match(/^\/v1\/me\/integration-sessions\/(liner|hyprr)\/(youtube|yandex)$/);
   if (integration) {
     const [, backend, provider] = integration;

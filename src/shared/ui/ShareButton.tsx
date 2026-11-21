@@ -7,7 +7,7 @@ import { shareEntity } from "@/shared/utils/share";
 import type { ShareEntityType, ShareSnapshot } from "@/shared/contracts/sharing";
 import DropdownMenu from "./DropdownMenu";
 import type { DropdownMenuItem } from "./DropdownMenu";
-import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
+import { resolveApiErrorMessage } from "@/shared/api/api";
 import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
 
 export default function ShareButton({ type, entityId, snapshot, menu = true, extraMenuItems = [], className = "" }: {
@@ -26,17 +26,8 @@ export default function ShareButton({ type, entityId, snapshot, menu = true, ext
         : snapshot.coverUrl;
       const result = await shareEntity(type, entityId, { ...snapshot, coverUrl });
       if (result === "copied") showToast(t("sharing.copied"), "checkmark");
-    } catch {
-      if (type === "artist") {
-        // Keep artist sharing usable even if the rich-preview link service is unreachable.
-        try {
-          const fallbackUrl = `${LANE_LINK_ORIGIN}/#/artist?id=${encodeURIComponent(entityId)}`;
-          if (navigator.share) await navigator.share({ title: snapshot.title, url: fallbackUrl });
-          else { await navigator.clipboard.writeText(fallbackUrl); showToast(t("sharing.copied"), "checkmark"); }
-        } catch (fallbackError) {
-          if (!(fallbackError instanceof Error && fallbackError.name === "AbortError")) showToast(t("sharing.failed"), "error");
-        }
-      } else showToast(t("sharing.failed"), "error");
+    } catch (error) {
+      showToast(resolveApiErrorMessage(error, t, "sharing.failed"), "error");
     } finally { setBusy(false); }
   };
   if (menu) {

@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeftLine, Edit2Line, ExitLine } from "@mingcute/react";
+import { Edit2Line } from "@mingcute/react";
 import { useAuthStore } from "@/features/auth";
 import { useLocalAvatarStore } from "@/features/auth/store/localAvatarStore";
 import { useTranslation } from "@/languages";
 import { getAccessToken, getAuthSession } from "@/shared/api";
 import { getApiBaseUrlForAuthBackend, LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
-import { onAndroidBack } from "@/shared/platform/androidBack";
-import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import Button from "@/shared/ui/Button";
-import UserAvatar from "@/shared/ui/UserAvatar";
 
 type CropImage = { url: string; image: HTMLImageElement };
 type Point = { x: number; y: number };
@@ -47,13 +43,10 @@ function makeCroppedAvatar(source: CropImage, zoom: number, offset: Point): stri
   return canvas.toDataURL("image/jpeg", 0.88);
 }
 
-export default function ProfilePage() {
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
+export default function AvatarEditor() {
   const { t } = useTranslation();
   const user = useAuthStore(state => state.user);
   const removeLocalAvatar = useLocalAvatarStore(state => state.removeAvatar);
-  const logout = useAuthStore(state => state.logout);
   const fileInput = useRef<HTMLInputElement>(null);
   const cropArea = useRef<HTMLDivElement>(null);
   const drag = useRef<{ pointerId: number; origin: Point; offset: Point } | null>(null);
@@ -62,11 +55,8 @@ export default function ProfilePage() {
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const isRussian = typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ru");
-  const displayName = user?.displayName || user?.username || user?.email?.split("@")[0] || "Lane";
 
   useEffect(() => () => { if (cropImage?.url) URL.revokeObjectURL(cropImage.url); }, [cropImage]);
-  useEffect(() => onAndroidBack(() => { navigate(-1); return true; }), [navigate]);
 
   const maxOffset = (nextZoom: number, dimension: "x" | "y") => {
     if (!cropImage) return 0;
@@ -150,34 +140,7 @@ export default function ProfilePage() {
     });
   };
 
-  return (
-    <section className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-bg-primary" style={{ paddingTop: "var(--lane-safe-top, 0px)", paddingBottom: "var(--lane-dock-h, 58px)" }}>
-      <header className="flex h-[56px] shrink-0 items-center gap-[12px] border-b border-border-primary/50 px-[16px] md:px-[32px]">
-        <button type="button" aria-label={t("common.back")} onClick={() => navigate(-1)} className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-white/[0.05] text-text-secondary hover:bg-white/[0.1] hover:text-text-primary">
-          <ArrowLeftLine size={19} />
-        </button>
-        <h1 className="m-0 text-[18px] font-[650] text-text-primary">{t("settings.profile.title")}</h1>
-      </header>
-      <main className="min-h-0 flex-1 overflow-y-auto px-[16px] py-[24px] md:px-[32px]" style={{ paddingBottom: isMobile ? "calc(var(--lane-dock-h, 120px) + 24px)" : undefined }}>
-        <div className="mx-auto flex w-full max-w-[440px] flex-col items-center rounded-[16px] border border-border-primary/40 bg-bg-panel/45 px-[18px] py-[20px] sm:px-[24px]">
-          <div className="relative mb-[18px] h-[120px] w-[120px] overflow-hidden rounded-full bg-bg-elevated">
-            {cropImage ? (
-              <img
-                src={cropImage.url}
-                alt={isRussian ? "Предпросмотр аватара" : "Avatar preview"}
-                draggable={false}
-                className="pointer-events-none absolute left-1/2 top-1/2 max-w-none"
-                style={{
-                  width: `${(cropImage.image.naturalWidth / Math.min(cropImage.image.naturalWidth, cropImage.image.naturalHeight)) * 100}%`,
-                  height: `${(cropImage.image.naturalHeight / Math.min(cropImage.image.naturalWidth, cropImage.image.naturalHeight)) * 100}%`,
-                  transform: `translate(calc(-50% + ${offset.x * 120 / CROP_SIZE}px), calc(-50% + ${offset.y * 120 / CROP_SIZE}px)) scale(${zoom})`,
-                }}
-              />
-            ) : <UserAvatar key={user?.avatarUrl} user={user} size={120} className="!h-full !w-full !rounded-full !border-0" />}
-          </div>
-          <strong className="max-w-full truncate text-[22px] font-[650] tracking-[-0.02em] text-text-primary">{displayName}</strong>
-          <span className="mt-[4px] max-w-full truncate text-[14px] text-text-tertiary">{user?.username ? `@${user.username}` : user?.email}</span>
-
+  return <div className="flex flex-col items-start">
           <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; void chooseImage(file); }} />
           {!cropImage ? (
             <button type="button" disabled={busy || !user} onClick={() => fileInput.current?.click()} className="mt-[20px] inline-flex h-[44px] items-center gap-[8px] rounded-full border border-border-primary/50 bg-white/[0.035] px-[18px] text-[14px] font-medium text-text-secondary hover:bg-white/[0.08] hover:text-text-primary disabled:opacity-50">
@@ -187,7 +150,7 @@ export default function ProfilePage() {
             <div className="mt-[20px] w-full max-w-[360px]">
               <div
                 ref={cropArea}
-                className="relative mx-auto h-[192px] w-[192px] overflow-hidden rounded-full bg-black"
+                className="relative touch-none mx-auto h-[192px] w-[192px] overflow-hidden rounded-full bg-black"
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={() => { drag.current = null; }}
@@ -218,20 +181,12 @@ export default function ProfilePage() {
               </label>
               <p className="mb-0 mt-[8px] text-center text-[12px] text-text-tertiary">{t("settings.profile.crop_hint")}</p>
               <div className="mt-[16px] flex gap-[10px]">
-                <Button variant="secondary" disabled={busy} className="!h-[42px] !flex-1 !rounded-[12px]" onClick={() => setCropImage(null)}>{t("common.cancel")}</Button>
-                <Button variant="primary" disabled={busy} className="!h-[42px] !flex-1 !rounded-[12px]" onClick={() => void uploadAvatar()}>{busy ? t("settings.profile.saving") : t("settings.profile.save_crop")}</Button>
+                <Button type="button" variant="secondary" disabled={busy} className="!h-[42px] !flex-1 !rounded-[12px]" onClick={() => setCropImage(null)}>{t("common.cancel")}</Button>
+                <Button type="button" variant="primary" disabled={busy} className="!h-[42px] !flex-1 !rounded-[12px]" onClick={() => void uploadAvatar()}>{busy ? t("settings.profile.saving") : t("settings.profile.save_crop")}</Button>
               </div>
             </div>
           )}
           {error && <p role="alert" className="mb-0 mt-[16px] text-center text-[13px] text-red-400">{error}</p>}
-          {!cropImage && user && <Button variant="secondary" disabled={busy} className="mt-[40px] !h-[48px] !w-full !rounded-[13px]" onClick={async () => {
-            setBusy(true);
-            try { await logout(); navigate("/", { replace: true }); }
-            catch { setError(t("settings.profile.save_failed")); }
-            finally { setBusy(false); }
-          }}><ExitLine size={18} />{t("settings.profile.sign_out")}</Button>}
-        </div>
-      </main>
-    </section>
-  );
+
+  </div>;
 }

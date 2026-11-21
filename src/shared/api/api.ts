@@ -722,7 +722,7 @@ export const api = {
   },
 
   createShare(input: { type: ShareEntityType; entityId: string; snapshot: ShareSnapshot }): Promise<{ id: string; url: string }> {
-    return request("/v1/shares", { method: "POST", body: JSON.stringify(input) }, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
+    return request("/v1/shares", { method: "POST", body: JSON.stringify({ ...input, authBackend: getAuthSession()?.authBackend ?? "liner" }) }, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
   },
   getShare(id: string): Promise<SharedEntity> {
     return request(`/v1/public/shares/${encodeURIComponent(id)}`, undefined, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
