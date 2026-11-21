@@ -604,6 +604,7 @@ function MiniPlayer({
       </AnimatePresence>
 
       <div
+        data-liquid-glass="player"
         className={`relative h-[64px] w-full overflow-hidden cursor-pointer ${
           usesRoundedStyle
             ? `rounded-full border-[0.5px] border-border-tertiary ${

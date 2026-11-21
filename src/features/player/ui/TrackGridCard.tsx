@@ -84,7 +84,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
       onClick={onPlay}
       onContextMenu={onContextMenu}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-[16px] bg-[#161616]">
+      <div className="relative aspect-square w-full overflow-hidden rounded-[16px] bg-bg-elevated">
         {coverUrl ? (
           <CoverImage
             src={coverUrl}

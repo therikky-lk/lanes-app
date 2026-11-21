@@ -168,6 +168,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
   return (
     <aside className="h-full">
       <div
+        data-liquid-glass="sidebar"
         className={`h-full w-[58px] ${
           isEdgeToEdge ? "rounded-l-none" : "rounded-l-xl"
         } rounded-r-sm ${

@@ -135,7 +135,7 @@ export default function HomePage() {
                     key: "history",
                     onClick: () => navigate("/recent"),
                     tile: (
-                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-black/[0.06] text-text-primary dark:bg-white/[0.08] md:h-[52px] md:w-[52px]">
+                      <span className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[10px] bg-bg-toolbox-active text-text-primary md:h-[52px] md:w-[52px]">
                         <HistoryLine size={22} />
                       </span>
                     ),
@@ -154,7 +154,7 @@ export default function HomePage() {
                   key={item.key}
                   type="button"
                   onClick={item.onClick}
-                    className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-[18px] border-0 bg-[#e6e6eb] px-[8px] text-left text-text-primary cursor-pointer transition-colors hover:bg-[#dedee3] active:bg-[#d4d4d8] dark:bg-[#161616] dark:text-white dark:hover:bg-[#1c1c1c] dark:active:bg-[#222222] md:h-[72px] md:gap-[14px] md:px-[10px]"
+                    className="group flex h-[64px] min-w-0 items-center gap-[12px] rounded-[18px] border-0 bg-bg-elevated px-[8px] text-left text-text-primary cursor-pointer transition-colors hover:bg-bg-panel active:bg-border-secondary md:h-[72px] md:gap-[14px] md:px-[10px]"
                 >
                   {item.tile}
                   <span className="min-w-0 flex-1">
@@ -174,7 +174,7 @@ export default function HomePage() {
                       {item.thumbs.map((thumb, index) => (
                         <span
                           key={`${item.key}-thumb-${index}`}
-                          className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[10px] bg-bg-elevated ring-2 ring-[#e6e6eb] not-first:-ml-[30px] dark:ring-[#161616] md:h-[52px] md:w-[52px] md:not-first:-ml-[34px]"
+                          className="relative h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[10px] bg-bg-elevated ring-2 ring-bg-elevated group-hover:ring-bg-panel group-active:ring-border-secondary not-first:-ml-[30px] md:h-[52px] md:w-[52px] md:not-first:-ml-[34px]"
                           style={{ zIndex: item.thumbs.length - index }}
                         >
                           <CoverImage src={thumb} alt="" fill sizes="(min-width: 768px) 52px, 44px" className="object-cover" />

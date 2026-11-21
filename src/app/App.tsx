@@ -13,8 +13,10 @@ import { useDiscordSync } from "@/features/discord";
 import { AppRoutes } from "./routes";
 import DeeplinkHandler from "./DeeplinkHandler";
 import EnvironmentWarning from "./EnvironmentWarning";
+import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import { ConnectivityWall } from "@/features/connectivity";
 import "./globals.css";
+import "./liquid-glass.css";
 
 function AppIconSync() {
   useAppIconSync();
@@ -58,6 +60,7 @@ export default function App() {
         disableTransitionOnChange
       >
         <GlobalTooltip />
+        <LiquidGlassFilter />
         <ThemeSync />
         <AppIconSync />
         <PresenceSync />

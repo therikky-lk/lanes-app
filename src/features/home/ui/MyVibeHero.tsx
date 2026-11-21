@@ -637,7 +637,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
                 className={
                   isMobile
                     ? "lane-frost-sheet lane-vibe-settings-sheet absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl px-[16px] pt-[10px]"
-                    : "absolute right-[12px] top-[12px] bottom-[12px] w-[440px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-border-alpha-14 bg-bg-surface dark:bg-[#1a1a1d] px-[18px] pt-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+                    : "absolute right-[12px] top-[12px] bottom-[12px] w-[440px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-border-alpha-14 bg-bg-surface px-[18px] pt-[16px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                 }
                 style={{ paddingBottom: "calc(var(--lane-safe-bottom, 0px) + 20px)", fontFamily: "var(--font-inter), sans-serif" }}
                 initial={isMobile ? { y: "100%" } : { x: "calc(100% + 24px)" }}

@@ -22,8 +22,15 @@ export default function PhoneMenu({
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   useLayoutEffect(() => {
     if (!open) return;
-    const rect = anchorRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 18, right: Math.max(14, window.innerWidth - rect.right + 4) });
+    const anchor = anchorRef.current;
+    const rect = anchor?.getBoundingClientRect();
+    if (rect) {
+      const toolbar = document.documentElement.dataset.colorTheme === "liquid-glass"
+        ? anchor?.closest('[data-liquid-glass="toolbar"]')
+        : null;
+      const top = toolbar ? toolbar.getBoundingClientRect().bottom + 8 : rect.bottom + 18;
+      setPos({ top, right: Math.max(14, window.innerWidth - rect.right + 4) });
+    }
   }, [open, anchorRef]);
   if (!open || !pos) return null;
   return createPortal(
@@ -32,6 +39,7 @@ export default function PhoneMenu({
         onWheel={event => { event.preventDefault(); event.stopPropagation(); }}
         onTouchMove={event => { event.preventDefault(); event.stopPropagation(); }} />
       <motion.div
+        data-dropdown-menu="true"
         className="fixed z-[181] w-[248px] max-w-[calc(100vw-28px)] overflow-hidden rounded-[16px] border border-border-primary/40 p-[6px] shadow-none"
         initial={{ opacity: 0, y: -4 }}
         animate={{ opacity: 1, y: 0 }}

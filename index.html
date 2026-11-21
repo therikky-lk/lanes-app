@@ -6,9 +6,12 @@
     <meta name="referrer" content="no-referrer" />
     <script>
       try {
-        const preset = localStorage.getItem("lane_theme_preset");
-        const presets = ["system", "light", "dark", "amoled", "violet", "ocean", "emerald", "sunset", "rose", "spotify"];
+        const saved = localStorage.getItem("lane_theme_preset");
+        const migrations = { rose: "ruby", sapphire: "violet", sunset: "amber", emerald: "spotify" };
+        const preset = Object.hasOwn(migrations, saved) ? migrations[saved] : saved;
+        const presets = ["system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"];
         document.documentElement.dataset.colorTheme = presets.includes(preset) ? preset : "system";
+        if (saved !== preset && presets.includes(preset)) localStorage.setItem("lane_theme_preset", preset);
       } catch {}
       if (typeof crypto !== "undefined" && typeof crypto.randomUUID !== "function" && typeof crypto.getRandomValues === "function") {
         Object.defineProperty(crypto, "randomUUID", {

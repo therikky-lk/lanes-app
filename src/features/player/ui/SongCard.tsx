@@ -238,7 +238,7 @@ function SongCard({
           </div>
         ) : (
           <div
-            className={`relative ${imageSizeClass} shrink-0 overflow-hidden bg-[#161616] flex items-center justify-center ${
+            className={`relative ${imageSizeClass} shrink-0 overflow-hidden bg-bg-elevated flex items-center justify-center ${
               imageShape === "circle" ? "rounded-full" : "rounded-[12px]"
             }`}
           >

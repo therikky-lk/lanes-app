@@ -570,10 +570,10 @@ export default function LibraryPage() {
       {isMobile && (
           <header
             ref={mobileHeaderRef}
-            className="absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary"
+            className="lane-library-mobile-header absolute inset-x-0 top-0 z-20 border-b border-border-primary/40 bg-bg-primary"
             style={{ paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)" }}
           >
-            <div className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
+            <div data-liquid-glass="toolbar" className="flex items-center gap-[4px] pl-[16px] pr-[6px] pb-[8px]">
               <div className="min-w-0 flex-1">
                 <h1 className="m-0 truncate text-[22px] font-[700] tracking-[-0.01em] text-text-primary">{t("library.title")}</h1>
                 <p className="m-0 truncate text-[12px] text-text-tertiary">{mobileTabLabels[activeTab]}</p>
@@ -650,6 +650,7 @@ export default function LibraryPage() {
             {mobileSearch && (
               <div className="px-[12px] pb-[10px]">
                 <input
+                  data-liquid-glass="field"
                   autoFocus
                   type="text"
                   value={activeState.query}

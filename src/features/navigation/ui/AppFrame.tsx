@@ -922,6 +922,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   return (
     <div
       ref={appFrameRef}
+      data-lane-frame
       data-desktop-fullscreen={!isMobile && isFullscreenPlayer ? "true" : undefined}
       data-custom-bg={hasCustomBg ? "true" : undefined}
       className={`relative flex ${isMobile ? "flex-col" : "flex-row"} h-full w-full overflow-hidden ${
@@ -970,6 +971,7 @@ export default function AppFrame({ children }: AppFrameProps) {
 
       <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? "min-h-0" : "h-full gap-1.5"} relative overflow-hidden`}>
         <main
+          data-lane-content
           data-custom-bg={hasCustomBg ? "true" : undefined}
           className={`flex-1 min-w-0 flex flex-col relative h-full ${
             hasCustomBg ? "" : "bg-bg-primary"

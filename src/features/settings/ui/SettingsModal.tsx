@@ -308,7 +308,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     >
       <aside className={`${isMobile ? (mobilePage ? "hidden" : "flex-1 w-full") : "w-[248px] shrink-0"} flex flex-col min-h-0 bg-transparent`}>
         {isMobile && (
-          <div className="flex items-center gap-[8px] px-[10px] pt-[10px]">
+          <div data-liquid-glass="toolbar" className="lane-settings-heading flex items-center gap-[8px] px-[10px] pt-[10px]">
             <button
               type="button"
               aria-label={t("common.back") || "Back"}
@@ -323,7 +323,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
           </div>
         )}
         <div className="px-[12px] pt-[14px] pb-[8px]">
-          <div className="relative flex items-center">
+          <div data-liquid-glass="field" className="relative flex items-center">
             <Search2Line
               size={15}
               className="absolute left-[10px] text-text-tertiary pointer-events-none"

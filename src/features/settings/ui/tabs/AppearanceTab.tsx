@@ -1,14 +1,17 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { useTheme } from "next-themes";
-import { LuMonitor, LuSun, LuMoon, LuMoonStar } from "react-icons/lu";
+import { LuMonitor, LuSun, LuMoon, LuMoonStar, LuDroplets } from "react-icons/lu";
 import { useTranslation, LOCALE_OPTIONS } from "@/languages";
 import { Select, ToggleSwitch } from "@/shared/ui";
 import { useLibraryPreferences } from "@/features/library/store/libraryPreferences";
 import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
 import { SettingRow, SettingSection } from "../controls";
 
-type ThemePreset = "system" | "light" | "dark" | "amoled" | "violet" | "ocean" | "emerald" | "sunset" | "rose" | "spotify";
+type ThemePreset = "system" | "light" | "dark" | "amoled" | "violet" | "ocean" | "spotify" | "liquid-glass" | "ruby" | "amber" | "coffee";
 const THEME_PRESET_KEY = "lane_theme_preset";
+const LEGACY_THEME_PRESETS: Record<string, ThemePreset> = {
+  rose: "ruby", sapphire: "violet", sunset: "amber", emerald: "spotify",
+};
 const themePresetMode = (preset: ThemePreset): "system" | "light" | "dark" =>
   preset === "system" ? "system" : preset === "light" ? "light" : "dark";
 
@@ -17,15 +20,16 @@ function presetIcon(preset: ThemePreset): ReactNode {
     amoled: "#fff",
     violet: "#a78bfa",
     ocean: "#38bdf8",
-    emerald: "#34d399",
-    sunset: "#fb923c",
-    rose: "#fb7185",
     spotify: "#1ed760",
+    ruby: "#f87171",
+    amber: "#facc15",
+    coffee: "#d6b59a",
   };
   if (preset === "system") return <LuMonitor size={16} />;
   if (preset === "light") return <LuSun size={16} />;
   if (preset === "dark") return <LuMoon size={16} />;
   if (preset === "amoled") return <LuMoonStar size={16} />;
+  if (preset === "liquid-glass") return <LuDroplets size={16} />;
   return <span aria-hidden="true" className="inline-block h-[12px] w-[12px] rounded-full" style={{ backgroundColor: colors[preset] }} />;
 }
 
@@ -48,9 +52,11 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   useEffect(() => {
     let saved: ThemePreset = "system";
     try {
-      const value = localStorage.getItem(THEME_PRESET_KEY);
-      if (value && ["system", "light", "dark", "amoled", "violet", "ocean", "emerald", "sunset", "rose", "spotify"].includes(value)) {
+      const previous = localStorage.getItem(THEME_PRESET_KEY);
+      const value = previous && Object.hasOwn(LEGACY_THEME_PRESETS, previous) ? LEGACY_THEME_PRESETS[previous] : previous;
+      if (value && ["system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"].includes(value)) {
         saved = value as ThemePreset;
+        if (previous !== saved) localStorage.setItem(THEME_PRESET_KEY, saved);
       }
     } catch {}
     setThemePreset(saved);
@@ -106,12 +112,13 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
               { value: "system", label: t("settings.theme.system"), icon: presetIcon("system") },
               { value: "light", label: t("settings.theme.light"), icon: presetIcon("light") },
               { value: "dark", label: t("settings.theme.dark"), icon: presetIcon("dark") },
+              { value: "liquid-glass", label: "Liquid Glass", icon: presetIcon("liquid-glass") },
               { value: "amoled", label: t("settings.theme.amoled"), icon: presetIcon("amoled") },
               { value: "violet", label: t("settings.theme.violet"), icon: presetIcon("violet") },
               { value: "ocean", label: t("settings.theme.ocean"), icon: presetIcon("ocean") },
-              { value: "emerald", label: t("settings.theme.emerald"), icon: presetIcon("emerald") },
-              { value: "sunset", label: t("settings.theme.sunset"), icon: presetIcon("sunset") },
-              { value: "rose", label: t("settings.theme.rose"), icon: presetIcon("rose") },
+              { value: "ruby", label: t("settings.theme.ruby"), icon: presetIcon("ruby") },
+              { value: "amber", label: t("settings.theme.amber"), icon: presetIcon("amber") },
+              { value: "coffee", label: t("settings.theme.coffee"), icon: presetIcon("coffee") },
               { value: "spotify", label: t("settings.theme.spotify"), icon: presetIcon("spotify") },
             ]}
             value={themePreset}
