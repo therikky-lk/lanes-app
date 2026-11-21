@@ -73,7 +73,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not(.light) {
+  :root:where(:not([data-theme="light"]):not(.light)) {
     --bg-canvas: #000000;
     --bg-surface: #0a0a0a;
     --bg-primary: #0a0a0a;
@@ -132,6 +132,106 @@
 
   --btn-primary-bg: #F4F4F4;
   --btn-primary-text: #000000;
+}
+
+:root[data-color-theme="amoled"] {
+  --bg-canvas: #000;
+  --bg-surface: #000;
+  --bg-primary: #000;
+  --bg-elevated: #09090b;
+  --bg-panel: #0b0b0d;
+  --border-primary: #161619;
+}
+:root[data-color-theme="violet"] {
+  --bg-canvas: #0d0a14;
+  --bg-surface: #11101a;
+  --bg-primary: #11101a;
+  --bg-elevated: #1b1725;
+  --bg-panel: #211c2d;
+  --accent-primary: #a78bfa;
+  --accent-secondary: #c4b5fd;
+  --accent-tertiary: #ddd6fe;
+  --btn-primary-bg: #a78bfa;
+  --btn-primary-text: #171222;
+}
+:root[data-color-theme="ocean"] {
+  --bg-canvas: #071117;
+  --bg-surface: #0b151c;
+  --bg-primary: #0b151c;
+  --bg-elevated: #12232c;
+  --bg-panel: #162a35;
+  --accent-primary: #38bdf8;
+  --accent-secondary: #7dd3fc;
+  --accent-tertiary: #bae6fd;
+  --btn-primary-bg: #38bdf8;
+  --btn-primary-text: #071117;
+}
+:root[data-color-theme="emerald"] {
+  --bg-canvas: #08120e;
+  --bg-surface: #0d1712;
+  --bg-primary: #0d1712;
+  --bg-elevated: #14241a;
+  --bg-panel: #192c20;
+  --accent-primary: #34d399;
+  --accent-secondary: #6ee7b7;
+  --accent-tertiary: #a7f3d0;
+  --btn-primary-bg: #34d399;
+  --btn-primary-text: #07130d;
+}
+:root[data-color-theme="sunset"] {
+  --bg-canvas: #160e0b;
+  --bg-surface: #1a1210;
+  --bg-primary: #1a1210;
+  --bg-elevated: #2a1b17;
+  --bg-panel: #33201a;
+  --accent-primary: #fb923c;
+  --accent-secondary: #fdba74;
+  --accent-tertiary: #fed7aa;
+  --btn-primary-bg: #fb923c;
+  --btn-primary-text: #1a0e07;
+}
+:root[data-color-theme="rose"] {
+  --bg-canvas: #150c12;
+  --bg-surface: #1a1017;
+  --bg-primary: #1a1017;
+  --bg-elevated: #291722;
+  --bg-panel: #321b29;
+  --accent-primary: #fb7185;
+  --accent-secondary: #fda4af;
+  --accent-tertiary: #fecdd3;
+  --btn-primary-bg: #fb7185;
+  --btn-primary-text: #1a090e;
+}
+:root[data-color-theme="spotify"] {
+  --bg-canvas: #07110c;
+  --bg-surface: #0b1510;
+  --bg-primary: #0b1510;
+  --bg-elevated: #13221a;
+  --bg-panel: #172a20;
+  --accent-primary: #1ed760;
+  --accent-secondary: #5ee889;
+  --accent-tertiary: #a7f3c0;
+  --btn-primary-bg: #1ed760;
+  --btn-primary-text: #07120b;
+}
+
+/* Keep overlays, dividers, selections and secondary controls in the same palette. */
+:root:is([data-color-theme="violet"], [data-color-theme="ocean"], [data-color-theme="emerald"], [data-color-theme="sunset"], [data-color-theme="rose"], [data-color-theme="spotify"]) {
+  --bg-overlay: color-mix(in srgb, var(--bg-primary) 96%, transparent);
+  --bg-toolbox: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  --bg-toolbox-active: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  --border-toolbox-divider: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  --border-primary: color-mix(in srgb, var(--accent-primary) 14%, var(--bg-primary));
+  --border-secondary: color-mix(in srgb, var(--accent-primary) 22%, var(--bg-primary));
+  --border-tertiary: color-mix(in srgb, var(--accent-primary) 32%, var(--bg-primary));
+  --text-primary: #f5f7ff;
+  --text-secondary: color-mix(in srgb, var(--accent-tertiary) 75%, #fff);
+  --text-tertiary: color-mix(in srgb, var(--accent-tertiary) 60%, #777);
+}
+:root[data-color-theme="amoled"] {
+  --bg-overlay: rgba(0, 0, 0, .98);
+  --border-secondary: #222;
+  --border-tertiary: #333;
 }
 
 @theme inline {
@@ -682,6 +782,8 @@ html[data-hover-reset] [data-window-controls] button:hover {
   line-height: 1.2;
 }
 .lane-settings-mobile .lane-setting-control:has(.lane-select-trigger) { flex: 0 0 100%; width: 100%; }
+.lane-settings-mobile :is(.lane-language-setting, .lane-theme-setting) { flex-wrap: nowrap; }
+.lane-settings-mobile :is(.lane-language-setting, .lane-theme-setting) .lane-setting-control { flex: 0 0 auto; width: auto; margin-left: auto; }
 .lane-settings-mobile .lane-playback-settings .lane-setting-row:has(.lane-setting-control [role="group"]) {
   align-items: stretch;
 }

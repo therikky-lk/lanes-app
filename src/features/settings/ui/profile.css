@@ -2,17 +2,28 @@
 .lane-profile button { cursor: pointer; font: inherit; }
 .lane-profile button:disabled, .lane-profile-dialog button:disabled { opacity: .45; cursor: default; }
 .lane-profile button:focus-visible, .lane-profile-dialog button:focus-visible, .lane-profile a:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
-.lane-profile-card { border-radius: 24px; overflow: hidden; background: var(--profile-surface); }
+.lane-profile-card { border-radius: 16px; overflow: hidden; background: var(--profile-surface); }
 .lane-profile-banner { height: 150px; position: relative; background: radial-gradient(ellipse at 5% 0%, #7778, transparent 65%), radial-gradient(ellipse at 100% 100%, #6668, transparent 65%), var(--profile-control, var(--bg-elevated)); background-size: cover; background-position: center; }
-.lane-profile-banner-action { position: absolute; top: 14px; right: 14px; background: #202020a6 !important; color: #fff !important; backdrop-filter: blur(12px); font-size: 12px !important; }
+.lane-profile-banner-upload { display: block; width: 100%; border: 0; padding: 0; }
+.lane-profile-upload-hint { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; padding: 10px; background: #0009; color: #fff; opacity: 0; transition: opacity .18s ease; font-size: 12px; text-align: center; pointer-events: none; }
+.lane-profile-avatar-editor { flex-shrink: 0; }
+.lane-profile-avatar-upload { display: block; position: relative; padding: 0; border: 0; border-radius: 50%; background: transparent; }
+.lane-profile-avatar-upload .lane-profile-upload-hint { border-radius: 50%; inset: 5px; font-size: 10px; }
+.lane-profile-banner-upload:focus-visible .lane-profile-upload-hint, .lane-profile-avatar-upload:focus-visible .lane-profile-upload-hint { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .lane-profile-banner-upload:hover:not(:disabled) .lane-profile-upload-hint, .lane-profile-avatar-upload:hover:not(:disabled) .lane-profile-upload-hint { opacity: 1; }
+}
+.lane-profile-name { display: flex; align-items: center; gap: 8px; }
+.lane-profile-name h2 { margin: 0; flex: 1; min-width: 0; }
+.lane-profile-identity .lane-profile-name + p { margin-top: 7px; }
 .lane-profile-card-body { padding: 0 22px 24px; }
-.lane-profile-identity { display: flex; gap: 16px; align-items: flex-end; margin-top: -28px; position: relative; min-width: 0; }
+.lane-profile-identity { --profile-avatar-overlap: 28px; --profile-banner-gap: 16px; display: flex; gap: 16px; align-items: flex-start; margin-top: calc(-1 * var(--profile-avatar-overlap)); position: relative; min-width: 0; }
 .lane-profile-avatar { border: 5px solid var(--profile-surface) !important; border-radius: 50% !important; box-sizing: content-box; }
-.lane-profile-identity > div:last-child { min-width: 0; flex: 1; padding-bottom: 4px; }
-.lane-profile-identity h2 { font-size: clamp(22px, 3.2vw, 32px); font-weight: 800; letter-spacing: -.045em; line-height: 1.15; overflow-wrap: anywhere; margin: 0 0 7px; }
+.lane-profile-identity > div:last-child { min-width: 0; flex: 1; padding-top: calc(var(--profile-avatar-overlap) + var(--profile-banner-gap)); padding-bottom: 4px; }
+.lane-profile-identity h2 { font-size: clamp(22px, 3.2vw, 32px); font-weight: 800; letter-spacing: .01em; line-height: 1.15; overflow-wrap: anywhere; margin: 0; }
 .lane-profile-identity p { color: var(--text-tertiary); font-size: 14px; overflow: hidden; text-overflow: ellipsis; margin: 0; }
 .lane-profile-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-.lane-profile-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 42px; padding: 10px 17px; border: 0; border-radius: 14px; color: var(--text-primary); background: var(--profile-control, color-mix(in srgb, var(--text-primary) 8%, var(--bg-primary))); font-size: 13px !important; font-weight: 550 !important; line-height: 1.3; transition: filter .15s; }
+.lane-profile-button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 42px; padding: 10px 17px; border: 0; border-radius: 10px; color: var(--text-primary); background: var(--profile-control, color-mix(in srgb, var(--text-primary) 8%, var(--bg-primary))); font-size: 13px !important; font-weight: 550 !important; line-height: 1.3; transition: filter .15s; }
 .lane-profile-button:hover { filter: brightness(1.12); }
 .lane-profile-button.is-primary { background: var(--text-primary); color: var(--bg-primary); }
 .lane-profile-bio { display: flex; align-items: flex-start; gap: 8px; width: 100%; text-align: left; color: var(--text-tertiary); font-size: 14px !important; line-height: 1.6 !important; margin-top: 20px; border: 0; padding: 0; background: transparent; }
@@ -39,13 +50,14 @@
 .lane-profile-artwork { display: grid; place-items: center; flex-shrink: 0; width: 48px; height: 48px; overflow: hidden; border-radius: 10px; background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
 .lane-profile-artwork.is-artist { border-radius: 50%; }
 .lane-profile-artwork img { width: 100%; height: 100%; object-fit: cover; }
-.lane-profile-icon { display: inline-flex; align-items: center; justify-content: center; border: 0; background: color-mix(in srgb, var(--text-primary) 7%, transparent); color: var(--text-secondary); border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; }
-.lane-profile-signout { display: inline-flex; align-items: center; gap: 8px; border: 0; padding: 10px 0; margin-top: 24px; background: transparent; color: var(--text-tertiary); font-size: 13px !important; }
+.lane-profile-icon { display: inline-flex; align-items: center; justify-content: center; border: 0; background: color-mix(in srgb, var(--text-primary) 7%, transparent); color: var(--text-secondary); border-radius: 10px; width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; }
+.lane-profile-signout { display: flex; width: fit-content; justify-content: center; align-items: center; gap: 8px; border: 0; padding: 10px 0; margin: 24px auto 0; background: transparent; color: var(--text-tertiary); font-size: 13px !important; }
 .lane-profile-error { font-size: 13px; line-height: 1.5; color: #e86868; margin: 12px 0; }
-.lane-profile-dialog { --profile-control: color-mix(in srgb, var(--text-primary) 7%, var(--bg-primary)); border-radius: 26px !important; padding: 0 !important; color: var(--text-primary); background: var(--bg-primary) !important; }
+.lane-profile-dialog { --profile-control: color-mix(in srgb, var(--text-primary) 7%, var(--bg-primary)); align-self: flex-end; border-radius: 18px 18px 0 0 !important; padding: 0 !important; color: var(--text-primary); background: var(--bg-primary) !important; }
 .lane-profile-dialog-heading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; padding: 22px 24px; gap: 12px; }
 .lane-profile-dialog-heading h3 { font-size: 18px; font-weight: 650; margin: 0; }
-.lane-profile-grabber { display: none; }
+.lane-profile-sheet-handle { touch-action: none; flex-shrink: 0; cursor: grab; }
+.lane-profile-grabber { display: block; flex-shrink: 0; margin: 10px auto 0; width: 40px; height: 4px; border-radius: 4px; background: var(--text-tertiary); opacity: .5; }
 .lane-profile-editor-body { overflow-y: auto; min-height: 0; padding: 0 24px 24px; }
 .lane-profile-editor-summary { display: flex; align-items: center; gap: 18px; padding: 20px; border-radius: 22px; background: var(--profile-control); margin-bottom: 24px; }
 .lane-profile-editor-summary > div:last-child { min-width: 0; }
@@ -57,10 +69,14 @@
 .lane-profile-field { display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
 .lane-profile-field > span { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 600; }
 .lane-profile-field small { color: var(--text-tertiary); font-size: 12px; font-weight: 400; line-height: 1.6; }
-.lane-profile-field input, .lane-profile-field textarea { background: var(--profile-control); color: var(--text-primary); border: 1px solid transparent; border-radius: 15px; padding: 13px 15px; font: inherit; font-size: 14px; outline: none; width: 100%; min-width: 0; }
+.lane-profile-field input, .lane-profile-field textarea { box-sizing: border-box; background: var(--profile-control); color: var(--text-primary); border: 1px solid transparent; border-radius: 10px; padding: 13px 15px; font: inherit; font-size: 14px; outline: none; width: 100%; min-width: 0; }
 .lane-profile-field input:focus, .lane-profile-field textarea:focus { border-color: var(--text-tertiary); }
 .lane-profile-field input::placeholder, .lane-profile-field textarea::placeholder { color: var(--text-tertiary); }
-.lane-profile-field textarea { min-height: 130px; resize: vertical; }
+.lane-profile-field textarea { min-height: 100px; resize: none; overflow: hidden; line-height: 1.5; }
+.lane-profile-privacy { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0 4px; }
+.lane-profile-privacy > div { min-width: 0; }
+.lane-profile-privacy strong { font-size: 14px; font-weight: 600; }
+.lane-profile-privacy p { margin: 5px 0 0; color: var(--text-tertiary); font-size: 12px; line-height: 1.6; }
 .lane-profile-editor-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid color-mix(in srgb, var(--text-primary) 7%, transparent); }
 .lane-profile-editor-banner { height: 120px; border-radius: 16px; }
 .lane-profile-look h4 { font-size: 14px; margin: 20px 0 0; }
@@ -75,12 +91,12 @@
 @media (max-width: 767px) {
   .lane-profile-card-body { padding: 0 16px 22px; }
   .lane-profile-banner { height: 135px; }
-  .lane-profile-identity { gap: 12px; align-items: flex-end; }
+  .lane-profile-identity { gap: 12px; }
   .lane-profile-avatar { width: 78px !important; height: 78px !important; }
   .lane-profile-identity h2 { font-size: 24px; }
   .lane-profile-identity p { font-size: 12px; }
   .lane-profile-favorites-card.is-empty { padding: 20px; }
-  .lane-profile-dialog { align-self: flex-end; margin: 0 !important; width: 100%; max-width: 100% !important; max-height: calc(94dvh - var(--lane-safe-top, 0px)) !important; border-radius: 26px 26px 0 0 !important; padding-bottom: var(--lane-safe-bottom, 0px) !important; }
+  .lane-profile-dialog { align-self: flex-end; margin: 0 !important; width: 100%; max-width: 100% !important; max-height: calc(94dvh - var(--lane-safe-top, 0px)) !important; border-radius: 18px 18px 0 0 !important; padding-bottom: var(--lane-safe-bottom, 0px) !important; }
   .lane-profile-dialog-heading { padding: 20px; }
   .lane-profile-editor-body { padding: 0 20px 20px; }
   .lane-profile-grabber { display: block; flex-shrink: 0; margin: 10px auto 0; width: 40px; height: 4px; border-radius: 4px; background: var(--text-tertiary); opacity: .5; }

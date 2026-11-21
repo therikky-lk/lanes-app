@@ -32,7 +32,7 @@ export function mapInnertubeBrowseTracks(
 }
 
 export function trackCountFrom(value: unknown): number | undefined {
-  const match = getText(value)?.match(/([\d,]+)\s+tracks?/i);
+  const match = getText(value)?.match(/([\d,]+)\s+(?:tracks?|songs?|трек(?:а|ов)?|пес(?:ня|ни|ен|ню|ней))/i);
   return match ? Number(match[1].replace(/,/g, "")) : undefined;
 }
 
@@ -48,7 +48,9 @@ export function mapInnertubeAlbumDetails(id: string, body: unknown): AlbumDetail
   const cover = coverFromThumbnail(header?.thumbnail);
   const year = yearFromRuns(header?.subtitle);
   const trackCount = trackCountFrom(header?.secondSubtitle);
-  const tracks = mapInnertubeBrowseTracks(body, artists).map((track) => ({
+  // YouTube can substitute an official video (OMV) for most songs in the
+  // album's own tracklist. These are still album members, not recommendations.
+  const tracks = mapInnertubeBrowseTracks(body, artists, true).map((track) => ({
     ...track,
     cover: cover ?? track.cover,
     album: track.album ?? { id, title },

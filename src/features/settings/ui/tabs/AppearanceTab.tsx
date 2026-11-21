@@ -1,188 +1,39 @@
-import { useState, useEffect } from "react";
-import { LayoutGroup, motion } from "framer-motion";
+import { useState, useEffect, type ReactNode } from "react";
 import { useTheme } from "next-themes";
-import {
-  usePlayerStore,
-  type AccentVariant,
-} from "@/features/player";
+import { LuMonitor, LuSun, LuMoon, LuMoonStar } from "react-icons/lu";
 import { useTranslation, LOCALE_OPTIONS } from "@/languages";
 import { Select, ToggleSwitch } from "@/shared/ui";
 import { useLibraryPreferences } from "@/features/library/store/libraryPreferences";
 import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
-import {
-  useCustomizationStore,
-  selectIsGlassThemeActive,
-} from "../../store/customizationStore";
-import { SettingBlock, SettingRow, SettingSection } from "../controls";
-import defaultLogo from "@/assets/branding/logo-default.svg";
-import spotifyLogo from "@/assets/branding/logo-spotify.svg";
-import discordLogo from "@/assets/branding/logo-discord.svg";
-import telegramLogo from "@/assets/branding/logo-telegram.svg";
-import auroraLogo from "@/assets/branding/logo-aurora.svg";
-import sunsetLogo from "@/assets/branding/logo-sunset.svg";
-import oceanLogo from "@/assets/branding/logo-ocean.svg";
-import forestLogo from "@/assets/branding/logo-forest.svg";
-import berryLogo from "@/assets/branding/logo-berry.svg";
-import carbonLogo from "@/assets/branding/logo-carbon.svg";
-import pixelLogo from "@/assets/branding/logo-pixel.svg";
-import scanlinesLogo from "@/assets/branding/logo-scanlines.svg";
-import vhsLogo from "@/assets/branding/logo-vhs.svg";
+import { SettingRow, SettingSection } from "../controls";
 
-const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
+type ThemePreset = "system" | "light" | "dark" | "amoled" | "violet" | "ocean" | "emerald" | "sunset" | "rose" | "spotify";
+const THEME_PRESET_KEY = "lane_theme_preset";
+const themePresetMode = (preset: ThemePreset): "system" | "light" | "dark" =>
+  preset === "system" ? "system" : preset === "light" ? "light" : "dark";
 
-const logos: Record<AccentVariant, string> = {
-  default: defaultLogo,
-  spotify: spotifyLogo,
-  discord: discordLogo,
-  telegram: telegramLogo,
-  aurora: auroraLogo,
-  sunset: sunsetLogo,
-  ocean: oceanLogo,
-  forest: forestLogo,
-  berry: berryLogo,
-  carbon: carbonLogo,
-  pixel: pixelLogo,
-  scanlines: scanlinesLogo,
-  vhs: vhsLogo,
-};
-
-const brandingVariants: readonly AccentVariant[] = [
-  "default",
-  "spotify",
-  "discord",
-  "telegram",
-  "aurora",
-  "sunset",
-  "ocean",
-  "forest",
-  "berry",
-  "carbon",
-  "pixel",
-  "scanlines",
-  "vhs",
-];
-
-// tiny dashboard mock so theme choice reads visually instead of as text
-function ThemeMock({ mode }: { mode: "light" | "dark" }) {
-  const dark = mode === "dark";
-  return (
-    <div className={`flex h-full w-full ${dark ? "bg-[#101012]" : "bg-[#ececee]"}`}>
-      <div className={`flex w-[36%] flex-col gap-[4px] p-[8px] ${dark ? "bg-[#1c1c1e]" : "bg-white"}`}>
-        <div className="flex gap-[3px] px-[1px] pb-[3px]">
-          <span className="h-[4px] w-[4px] rounded-full bg-[#ff5f57]" />
-          <span className="h-[4px] w-[4px] rounded-full bg-[#febc2e]" />
-          <span className="h-[4px] w-[4px] rounded-full bg-[#28c840]" />
-        </div>
-        {[22, 16, 20].map((w, i) => (
-          <span
-            key={i}
-            className={`h-[5px] rounded-full ${dark ? "bg-white/15" : "bg-black/10"}`}
-            style={{ width: w }}
-          />
-        ))}
-        <span className={`mt-auto h-[12px] rounded-[3px] ${dark ? "bg-white/20" : "bg-black/15"}`} />
-      </div>
-      <div className="flex flex-1 flex-col gap-[4px] p-[8px]">
-        <span className={`h-[6px] w-[46px] rounded-full ${dark ? "bg-white/25" : "bg-black/20"}`} />
-        <div className="grid grid-cols-2 gap-[4px]">
-          {[0, 1, 2, 3].map((i) => (
-            <span
-              key={i}
-              className={`h-[14px] rounded-[3px] ${dark ? "bg-white/10" : "bg-black/[0.07]"}`}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ThemeCard({
-  mode,
-  label,
-  active,
-  disabled = false,
-  disabledReason,
-  onSelect,
-}: {
-  mode: "light" | "dark" | "system";
-  label: string;
-  active: boolean;
-  disabled?: boolean;
-  disabledReason?: string;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={disabled ? undefined : onSelect}
-      aria-pressed={active}
-      aria-disabled={disabled}
-      title={disabled ? disabledReason : undefined}
-      className={`lane-theme-card group relative isolate flex flex-col gap-[6px] border-0 bg-transparent p-0 text-left ${
-        disabled ? "cursor-not-allowed opacity-40 select-none" : "cursor-pointer"
-      }`}
-    >
-      {active && <motion.span layoutId="settings-theme-active-pill" className="lane-theme-active-pill" transition={{ type: "spring", stiffness: 520, damping: 38 }} aria-hidden="true" />}
-      <span
-        className={`lane-theme-preview relative block h-[76px] w-full overflow-hidden rounded-lg border transition-colors ${
-          disabled
-            ? "border-border-primary"
-            : active
-              ? "border-text-primary ring-1 ring-text-primary"
-              : "border-border-primary group-hover:border-text-tertiary"
-        }`}
-      >
-        {mode === "system" ? (
-          <span className="flex h-full w-full">
-            <span className="h-full w-1/2 overflow-hidden">
-              <ThemeMock mode="light" />
-            </span>
-            <span className="h-full w-1/2 overflow-hidden">
-              <ThemeMock mode="dark" />
-            </span>
-          </span>
-        ) : (
-          <ThemeMock mode={mode} />
-        )}
-        {active ? (
-          <span className="absolute right-[6px] top-[6px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-text-primary">
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path
-                d="M2 6.5L4.5 9L10 3"
-                stroke="var(--color-bg-primary)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-        ) : null}
-      </span>
-      <span
-        className={`lane-theme-label relative z-[1] text-[12.5px] leading-none ${
-          disabled
-            ? "text-text-tertiary"
-            : active
-              ? "text-text-primary"
-              : "text-text-secondary"
-        }`}
-        style={{ ...font, fontWeight: active ? 500 : 400 }}
-      >
-        {label}
-      </span>
-    </button>
-  );
+function presetIcon(preset: ThemePreset): ReactNode {
+  const colors: Partial<Record<ThemePreset, string>> = {
+    amoled: "#fff",
+    violet: "#a78bfa",
+    ocean: "#38bdf8",
+    emerald: "#34d399",
+    sunset: "#fb923c",
+    rose: "#fb7185",
+    spotify: "#1ed760",
+  };
+  if (preset === "system") return <LuMonitor size={16} />;
+  if (preset === "light") return <LuSun size={16} />;
+  if (preset === "dark") return <LuMoon size={16} />;
+  if (preset === "amoled") return <LuMoonStar size={16} />;
+  return <span aria-hidden="true" className="inline-block h-[12px] w-[12px] rounded-full" style={{ backgroundColor: colors[preset] }} />;
 }
 
 export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const { t, locale, setLocale } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
-  const accentVariant = usePlayerStore((state) => state.accentVariant);
-  const setAccentVariant = usePlayerStore((state) => state.setAccentVariant);
-  const isGlassActive = useCustomizationStore(selectIsGlassThemeActive);
+  const [themePreset, setThemePreset] = useState<ThemePreset>("system");
   const rememberLibraryCategory = useLibraryPreferences((state) => state.rememberCategory);
   const rememberLibraryLayout = useLibraryPreferences((state) => state.rememberLayout);
   const setRememberLibraryCategory = useLibraryPreferences((state) => state.setRememberCategory);
@@ -195,19 +46,33 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const setShowLocalCollection = useOfflineLibraryStore((state) => state.setShowLocalCollection);
 
   useEffect(() => {
+    let saved: ThemePreset = "system";
+    try {
+      const value = localStorage.getItem(THEME_PRESET_KEY);
+      if (value && ["system", "light", "dark", "amoled", "violet", "ocean", "emerald", "sunset", "rose", "spotify"].includes(value)) {
+        saved = value as ThemePreset;
+      }
+    } catch {}
+    setThemePreset(saved);
+    document.documentElement.dataset.colorTheme = saved;
+    if (theme !== themePresetMode(saved)) setTheme(themePresetMode(saved));
     setMounted(true);
   }, []);
 
-  const systemIsLight =
-    mounted &&
-    typeof window !== "undefined" &&
-    !window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const chooseThemePreset = (value: string) => {
+    const preset = value as ThemePreset;
+    setThemePreset(preset);
+    document.documentElement.dataset.colorTheme = preset;
+    try { localStorage.setItem(THEME_PRESET_KEY, preset); } catch {}
+    setTheme(themePresetMode(preset));
+  };
 
   return (
     <>
     <SettingSection>
       <SettingRow
         title={t("settings.language.label")}
+        className="lane-language-setting"
         description={t("settings.language.description")}
         titleKey="settings.language.label"
         descKey="settings.language.description"
@@ -228,53 +93,35 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
         }
       />
 
-      <SettingBlock
+      <SettingRow
         title={t("settings.theme.title")}
-        description={
-          isGlassActive
-            ? t("settings.theme.disabled_for_glass") ||
-              "Light theme is disabled when using custom wallpaper glassmorphism."
-            : t("settings.theme.description")
-        }
+        className="lane-theme-setting"
+        description={t("settings.theme.description")}
         titleKey="settings.theme.title"
-        descKey={isGlassActive ? undefined : "settings.theme.description"}
+        descKey="settings.theme.description"
         searchQuery={searchQuery}
-      >
-        {mounted ? (
-          <LayoutGroup id="settings-theme-options">
-          <div className="grid grid-cols-3 gap-[10px]">
-            {(
-              [
-                { value: "system", label: t("settings.theme.system") },
-                { value: "light", label: t("settings.theme.light") },
-                { value: "dark", label: t("settings.theme.dark") },
-              ] as const
-            ).map((item) => {
-              const isLightOpt = item.value === "light";
-              const isSystemLightOpt = item.value === "system" && systemIsLight;
-              const disabled = isGlassActive && (isLightOpt || isSystemLightOpt);
-
-              return (
-                <ThemeCard
-                  key={item.value}
-                  mode={item.value}
-                  label={item.label}
-                  active={theme === item.value}
-                  disabled={disabled}
-                  disabledReason={
-                    disabled
-                      ? t("settings.theme.disabled_for_glass") ||
-                        "Light theme is disabled when using custom wallpaper glassmorphism."
-                      : undefined
-                  }
-                  onSelect={() => setTheme(item.value)}
-                />
-              );
-            })}
-          </div>
-          </LayoutGroup>
-        ) : null}
-      </SettingBlock>
+        control={mounted ? (
+          <Select
+            options={[
+              { value: "system", label: t("settings.theme.system"), icon: presetIcon("system") },
+              { value: "light", label: t("settings.theme.light"), icon: presetIcon("light") },
+              { value: "dark", label: t("settings.theme.dark"), icon: presetIcon("dark") },
+              { value: "amoled", label: t("settings.theme.amoled"), icon: presetIcon("amoled") },
+              { value: "violet", label: t("settings.theme.violet"), icon: presetIcon("violet") },
+              { value: "ocean", label: t("settings.theme.ocean"), icon: presetIcon("ocean") },
+              { value: "emerald", label: t("settings.theme.emerald"), icon: presetIcon("emerald") },
+              { value: "sunset", label: t("settings.theme.sunset"), icon: presetIcon("sunset") },
+              { value: "rose", label: t("settings.theme.rose"), icon: presetIcon("rose") },
+              { value: "spotify", label: t("settings.theme.spotify"), icon: presetIcon("spotify") },
+            ]}
+            value={themePreset}
+            onChange={chooseThemePreset}
+            align="bottom-right"
+            className="min-w-[130px]"
+            aria-label={t("settings.theme.title")}
+          />
+        ) : <span />}
+      />
 
     </SettingSection>
 

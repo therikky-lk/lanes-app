@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <script>
+      try {
+        const preset = localStorage.getItem("lane_theme_preset");
+        const presets = ["system", "light", "dark", "amoled", "violet", "ocean", "emerald", "sunset", "rose", "spotify"];
+        document.documentElement.dataset.colorTheme = presets.includes(preset) ? preset : "system";
+      } catch {}
       if (typeof crypto !== "undefined" && typeof crypto.randomUUID !== "function" && typeof crypto.getRandomValues === "function") {
         Object.defineProperty(crypto, "randomUUID", {
           configurable: true,

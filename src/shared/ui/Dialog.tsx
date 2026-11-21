@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls, useReducedMotion } from "framer-motion";
 import { isWindowDraggingActive } from "@/shared/hooks";
 import { isEscapeGuarded } from "@/shared/utils/escapeGuard";
 
@@ -15,6 +15,7 @@ export interface DialogProps {
   backdropClassName?: string;
   zIndex?: number;
   animateLayout?: boolean;
+  bottomSheet?: boolean;
 }
 
 const activeDialogs: Array<() => void> = [];
@@ -30,7 +31,10 @@ export default function Dialog({
   backdropClassName = "",
   zIndex,
   animateLayout = false,
+  bottomSheet = false,
 }: DialogProps) {
+  const dragControls = useDragControls();
+  const reduceMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
   const pointerStartRef = useRef<{ x: number; y: number; target: EventTarget | null } | null>(null);
 
@@ -116,21 +120,35 @@ export default function Dialog({
         <motion.div
           key="dialog"
           data-dialog-container="true"
-          initial={{ opacity: 0, scale: 0.97, y: 10 }}
+          initial={bottomSheet ? { opacity: 1 } : { opacity: 0, scale: 0.97, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.97, y: 10 }}
+          exit={bottomSheet ? { opacity: 1 } : { opacity: 0, scale: 0.97, y: 10 }}
           transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
           layout={animateLayout}
           className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
           style={zIndex ? { zIndex } : undefined}
         >
           <motion.div
+            initial={bottomSheet ? { y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 } : undefined}
+            animate={bottomSheet ? { y: 0, opacity: 1 } : undefined}
+            exit={bottomSheet ? { y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 } : undefined}
+            drag={bottomSheet ? "y" : false}
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onPointerDown={event => {
+              if (bottomSheet && (event.target as HTMLElement).closest("[data-sheet-handle]")) dragControls.start(event);
+            }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 80 || (info.offset.y > 20 && info.velocity.y > 500)) onOpenChange(false);
+            }}
             className={`pointer-events-auto w-full mx-[16px] max-h-[85vh] flex flex-col rounded-xl border border-border-primary bg-bg-primary overflow-hidden relative ${
               className || "pt-[16px]"
             }`}
             style={{ maxWidth, minHeight, ...(maxHeight ? { maxHeight } : {}) }}
             layout={animateLayout}
-            transition={animateLayout ? { layout: { type: "spring", stiffness: 360, damping: 34 } } : undefined}
+            transition={bottomSheet ? { duration: reduceMotion ? 0.1 : 0.32, ease: [0.22, 1, 0.36, 1] } : animateLayout ? { layout: { type: "spring", stiffness: 360, damping: 34 } } : undefined}
           >
             {children}
           </motion.div>

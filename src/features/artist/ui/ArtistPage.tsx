@@ -1,4 +1,5 @@
 import ShareButton from "@/shared/ui/ShareButton";
+import SectionExpandButton from "@/shared/ui/SectionExpandButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState, Suspense, useRef } from "react";
 import {
@@ -177,6 +178,7 @@ function ArtistContent() {
         <StickyHeader
           isScrolled={isScrolled}
           desktopBackdrop
+          backButtonSurface
           plainMetadata
           title={data?.title}
           thumbnail={
@@ -401,14 +403,7 @@ function ArtistContent() {
                       {stripMarkdown(data.description)}
                     </p>
                     {data.description.length > 120 && (
-                      <button
-                        type="button"
-                        onClick={() => setIsProfileModalOpen(true)}
-                        className="mt-[2px] self-start text-[12px] font-[500] text-text-tertiary hover:text-text-primary cursor-pointer bg-transparent border-0 p-0 transition-colors"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {t("artist.show_all")}
-                      </button>
+                      <SectionExpandButton label={t("artist.show_all")} onClick={() => setIsProfileModalOpen(true)} />
                     )}
                   </div>
                 )}
@@ -425,16 +420,6 @@ function ArtistContent() {
                     >
                       {t("artist.popular_songs")}
                     </h2>
-                    {data.tracks.length > 5 && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAllTracks((prev) => !prev)}
-                        className="text-[13px] font-[500] text-text-secondary hover:text-text-primary transition-colors cursor-pointer bg-transparent border-0 p-0"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {showAllTracks ? t("artist.show_less") : t("artist.show_all")}
-                      </button>
-                    )}
                   </div>
                   <div className="flex flex-col -mt-[14px] -mx-[8px]">
                     {data.tracks.slice(0, 5).map((track) => (
@@ -513,6 +498,8 @@ function ArtistContent() {
                       </p>
                     )}
                   </div>
+                  {data.tracks.length > 5 && <SectionExpandButton label={t(showAllTracks ? "artist.show_less" : "artist.show_all")}
+                    expanded={showAllTracks} controls="artist-tracks-section" onClick={() => setShowAllTracks(value => !value)} />}
                 </section>
 
                 {data.albums.length > 0 && (
@@ -525,14 +512,6 @@ function ArtistContent() {
                         {t("artist.albums")}
                         <span className="ml-[8px] text-[14px] font-[400] text-text-tertiary tabular-nums">{data.albums.length}</span>
                       </h2>
-                      <button
-                        type="button"
-                        onClick={() => setReleasesView("albums")}
-                        className="shrink-0 inline-flex h-[30px] items-center rounded-md border-0 bg-transparent px-[10px] text-[13px] font-[500] text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary cursor-pointer transition-colors"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {t("artist.show_all")}
-                      </button>
                     </div>
                     <ScrollableRow
                       overlayWidth="w-[32px]"
@@ -551,6 +530,7 @@ function ArtistContent() {
                         />
                       ))}
                     </ScrollableRow>
+                    <SectionExpandButton label={t("artist.show_all")} onClick={() => setReleasesView("albums")} />
                   </section>
                 )}
 
@@ -564,14 +544,6 @@ function ArtistContent() {
                         {t("artist.singles")}
                         <span className="ml-[8px] text-[14px] font-[400] text-text-tertiary tabular-nums">{data.singles.length}</span>
                       </h2>
-                      <button
-                        type="button"
-                        onClick={() => setReleasesView("singles")}
-                        className="shrink-0 inline-flex h-[30px] items-center rounded-md border-0 bg-transparent px-[10px] text-[13px] font-[500] text-text-secondary hover:bg-border-alpha-14 hover:text-text-primary cursor-pointer transition-colors"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {t("artist.show_all")}
-                      </button>
                     </div>
                     <ScrollableRow
                       overlayWidth="w-[32px]"
@@ -590,6 +562,7 @@ function ArtistContent() {
                         />
                       ))}
                     </ScrollableRow>
+                    <SectionExpandButton label={t("artist.show_all")} onClick={() => setReleasesView("singles")} />
                   </section>
                 )}
               </div>

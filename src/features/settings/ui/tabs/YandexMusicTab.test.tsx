@@ -8,7 +8,7 @@ import { YandexMusicTab } from "./YandexMusicTab";
 
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
-  avatar: vi.fn(),
+  profile: vi.fn(),
   write: vi.fn(),
   signIn: vi.fn(),
   importMusic: vi.fn(),
@@ -39,7 +39,7 @@ vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicAccou
 }));
 vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicSource", async (original) => ({
   ...await original<typeof import("@/features/library/services/import/sources/yandexMusic/yandexMusicSource")>(),
-  loadYandexAvatar: mocks.avatar,
+  loadYandexProfile: mocks.profile,
 }));
 vi.mock("@/features/library/services/import/sources/yandexMusic/yandexMusicImport", () => ({
   importYandexMusic: mocks.importMusic,
@@ -54,7 +54,7 @@ it("connects and shows the portrait, and keeps the session after cancellation or
   let connected = false;
   mocks.read.mockImplementation(async () => ({ revision: Number(connected), session: connected ? session : null }));
   const avatarUrl = "https://avatars.yandex.net/get-yapic/avatar/islands-200";
-  mocks.avatar.mockResolvedValue(avatarUrl);
+  mocks.profile.mockResolvedValue({ avatarUrl, displayName: "Yandex listener", login: "listener" });
   mocks.signIn.mockResolvedValue({ status: "success", token: session.accessToken });
   mocks.write.mockImplementation(async () => {
     connected = true;
@@ -74,6 +74,8 @@ it("connects and shows the portrait, and keeps the session after cancellation or
     expect(mocks.write).toHaveBeenCalledWith("yandex", "liner:lane-user", { revision: 0, session });
     expect(mocks.importMusic).not.toHaveBeenCalled();
     expect(container.querySelector("img")?.src).toBe(avatarUrl);
+    expect(container.querySelector("[title='Yandex listener']")?.textContent).toBe("Yandex listener");
+    expect(container.querySelector(".lane-yandex-account-actions")?.children).toHaveLength(2);
 
     const toggle = (key: string) => container.querySelector<HTMLButtonElement>(`button[aria-label="${key}"]`)!;
     const alsoLike = "settings.yandex_music.also_like";

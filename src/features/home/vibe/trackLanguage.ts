@@ -147,7 +147,7 @@ export async function languageFilter(
   known: Track[] = [],
   budgetMs = 7000,
 ): Promise<((t: Track, strict?: boolean) => boolean) & { known: (t: Track) => boolean }> {
-  const todo = tracks.filter((t) => !(t.id in cache) && !t.id.startsWith("local:"));
+  const todo = [...new Map(tracks.filter(t => !(t.id in cache) && !t.id.startsWith("local:")).map(t => [t.id, t])).values()];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
   let next = 0;
@@ -158,7 +158,13 @@ export async function languageFilter(
       if (!controller.signal.aborted) remember(t.id, v);
     }
   };
-  await Promise.all(Array.from({ length: 6 }, worker));
+  // Native HTTP implementations may ignore AbortSignal. Release the caller
+  // at the shared deadline even if an individual lyrics request never settles.
+  await Promise.race([
+    Promise.all(Array.from({ length: budgetMs > 0 ? 6 : 0 }, worker)),
+    new Promise<void>(resolve => controller.signal.addEventListener("abort", () => resolve(), { once: true })),
+  ]);
+  controller.abort();
   clearTimeout(timer);
 
   const byArtist = artistVerdicts([...known, ...tracks]);
@@ -175,7 +181,12 @@ export async function languageFilter(
   const predicate = (t: Track, strict = true) => {
     const own = cache[t.id];
     if (own && own !== "unknown") return fits(own);
-    if (language === "instrumental") return false; // only tracks marked as such
+    if (language === "instrumental") {
+      // Unknown lyrics needn't block a recording explicitly labelled as an
+      // instrumental. Never override a known vocal recording or trust an
+      // entire "instrumental" search result indiscriminately.
+      return !strict && /\binstrumental\b|инструментал|без (?:слов|вокала)/i.test(t.title);
+    }
     const artist = byArtist.get(artistKey(t));
     if (artist) return fits(artist);
     if (strict) return false;

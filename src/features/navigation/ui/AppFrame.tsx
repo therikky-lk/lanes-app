@@ -838,9 +838,11 @@ export default function AppFrame({ children }: AppFrameProps) {
     if (!isMobile || !e.isPrimary) return;
     suppressSheetClick.current = false;
     const target = e.target as HTMLElement;
-    if (target.closest('braccato-lyrics, [role="slider"], input, textarea, [data-no-sheet-drag]')) return;
+    // Buttons have their own tap handling. Don't measure the artwork/layout
+    // or arm the fullscreen drag recognizer for each toolbar press.
+    if (target.closest('button, a, [role="button"], braccato-lyrics, [role="slider"], input, textarea, [data-no-sheet-drag]')) return;
     const cover = e.currentTarget.querySelector<HTMLElement>('[data-player-artwork]');
-    // All of the space above the artwork is a grab area, including the toolbar.
+    // The space above the artwork is a grab area, except interactive controls.
     // Lyrics, artwork swipes and playback controls keep their own gestures.
     const coverBox = cover?.getBoundingClientRect();
     const topLimit = coverBox && coverBox.height > 0 ? coverBox.top : e.currentTarget.getBoundingClientRect().top + 64;

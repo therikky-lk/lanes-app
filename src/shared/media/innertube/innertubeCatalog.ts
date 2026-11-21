@@ -1,4 +1,5 @@
 import { isBrowserRuntime } from "@/shared/platform/browser";
+import { isAbortError } from "@/shared/utils/abort";
 import { getInvidiousTrack, getInvidiousRadio } from "./invidiousFallback";
 import { isMusicVideo } from "./innertubeTrackMapper";
 import type {
@@ -36,6 +37,7 @@ export interface RadioOptions {
 }
 
 const DEFAULT_RADIO_SIZE = 25;
+const MAX_ALBUM_TRACK_PAGES = 20;
 
 function browse(browseId: string, params?: string, signal?: AbortSignal): Promise<unknown> {
   return postInnertube("browse", { browseId, ...(params ? { params } : {}) }, { signal });
@@ -84,8 +86,41 @@ async function getRadio(trackId: string, options: RadioOptions = {}): Promise<Ra
 }
 
 async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDetails> {
-  const album = mapInnertubeAlbumDetails(albumId, await browse(albumId, undefined, signal));
+  let body = await browse(albumId, undefined, signal);
+  const album = mapInnertubeAlbumDetails(albumId, body);
   if (!album) throw notFound("Album");
+  const tracks = [...album.tracks];
+  const seen = new Set(tracks.map((track) => track.id));
+  const seenTokens = new Set<string>();
+
+  // Album browse results can be paginated. Rendering just the initial browse
+  // response silently dropped the rest of the album on mobile and desktop.
+  for (let page = 0; page < MAX_ALBUM_TRACK_PAGES; page++) {
+    if (album.trackCount && tracks.length >= album.trackCount) break;
+    const token = getGridContinuation(body);
+    if (!token || seenTokens.has(token)) break;
+    seenTokens.add(token);
+    try {
+      body = await postInnertube("browse", { continuation: token }, { signal });
+    } catch (error) {
+      if (isAbortError(error) || signal?.aborted || !tracks.length) throw error;
+      break;
+    }
+    const nextTracks = mapInnertubeBrowseTracks(body, album.artists, true);
+    const previousCount = tracks.length;
+    for (const track of nextTracks) {
+      if (seen.has(track.id)) continue;
+      seen.add(track.id);
+      tracks.push({
+        ...track,
+        cover: album.cover ?? track.cover,
+        album: track.album ?? { id: albumId, title: album.title },
+      });
+    }
+    if (tracks.length === previousCount) break;
+  }
+
+  album.tracks = tracks;
   return album;
 }
 

@@ -3,7 +3,7 @@ import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftLine, CheckLine, CloseLine, GridLine, MenuLine, More2Fill } from "@mingcute/react";
+import { ArrowLeftLine, CheckLine, GridLine, MenuLine, More2Fill } from "@mingcute/react";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
@@ -122,26 +122,25 @@ export default function ArtistReleasesView({
               className="sticky top-[0px] z-20 flex items-center gap-[6px] px-[8px] pb-[8px] border-b border-white/[0.05]"
               style={{
                 paddingTop: "calc(var(--lane-safe-top, 0px) + 8px)",
-                // Android's web view blurs only some of the covers behind a sticky
-                // header (rectangles of blur): a nearly solid header instead
-                background:
-                  "linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary, #0d0d10) 97%, transparent), color-mix(in srgb, var(--bg-primary, #0d0d10) 90%, transparent))",
+                background: "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)",
+                backdropFilter: "blur(24px) saturate(1.5)",
+                WebkitBackdropFilter: "blur(24px) saturate(1.5)",
               }}
             >
               <button
                 type="button"
                 onClick={onClose}
                 aria-label={t("common.back") || "Back"}
-                className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border-0 bg-transparent text-text-primary active:bg-border-alpha-14 cursor-pointer"
+                className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-md border-0 bg-bg-panel/85 backdrop-blur-xl text-text-primary active:bg-border-alpha-14 cursor-pointer"
               >
                 <ArrowLeftLine size={22} />
               </button>
               <div className="min-w-0 flex-1">
-                <h2 className="m-0 truncate text-[18px] font-[600] tracking-[-0.01em] text-text-primary">
-                  {t("artist.discography") || "Discography"}
+                <h2 className="m-0 truncate text-[22px] font-[650] tracking-[-0.01em] text-text-primary">
+                  {artistName}
                 </h2>
                 <p className="m-0 truncate text-[12px] text-text-tertiary">
-                  {filters.find((f) => f.id === filter)?.label} · {items.length}
+                  {t("artist.discography")} · {filters.find((f) => f.id === filter)?.label} · {items.length}
                 </p>
               </div>
               <div className="relative shrink-0">
@@ -192,20 +191,14 @@ export default function ArtistReleasesView({
             }}
           >
             <div className="flex items-center gap-[12px]">
-              <div className="min-w-0 flex-1">
-                <p className="m-0 text-[13px] text-text-tertiary truncate">{artistName}</p>
-                <h2 className="m-0 truncate text-[26px] font-[600] tracking-[-0.02em] text-text-primary">
-                  {t("artist.discography") || "Discography"}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label={t("common.close") || "Close"}
-                className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full border-0 bg-border-alpha-14 text-text-primary hover:bg-border-alpha-22 cursor-pointer transition-colors"
-              >
-                <CloseLine size={18} />
+              <button type="button" onClick={onClose} aria-label={t("common.back")}
+                className="inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-md border-0 bg-bg-panel/85 backdrop-blur-xl px-[10px] text-[13px] font-medium text-text-primary hover:bg-bg-panel cursor-pointer">
+                <ArrowLeftLine size={16} /><span>{t("common.back")}</span>
               </button>
+              <div className="min-w-0 flex-1">
+                <h2 className="m-0 truncate text-[30px] font-[650] tracking-[-0.02em] text-text-primary">{artistName}</h2>
+                <p className="m-0 text-[14px] text-text-tertiary truncate">{t("artist.discography") || "Discography"}</p>
+              </div>
             </div>
             <div className="flex items-center gap-[10px]">
               <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar">

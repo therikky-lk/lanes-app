@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CellphoneLine, ComputerLine } from "@mingcute/react";
+import { AddLine, CellphoneLine, ComputerLine, LinkLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { manualCode, setDeviceName, setManualCode, transferTo, useConnectStore } from "@/features/connect/connectService";
 import { generatePairingCode, normalizePairingCode } from "@/features/connect/connectCrypto";
@@ -119,31 +119,33 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
             </div>
           ) : (
             <>
-              <Button variant="secondary" size="sm" className="self-start !h-[34px] !rounded-[10px] !bg-white/[0.08] !text-text-primary hover:!bg-white/[0.12]" onClick={() => applyCode(generatePairingCode())}>
-                {tr("connect.create", "Create code")}
-              </Button>
-            <div className="flex min-w-0 items-center gap-[8px]">
+              <div className="flex min-w-0 items-center gap-[8px]">
+                <Button variant="secondary" size="icon" aria-label={tr("connect.create", "Create code")} title={tr("connect.create", "Create code")} className="shrink-0 !h-[38px] !w-[38px] !rounded-[10px] !bg-white/[0.08] !p-0 !text-text-primary hover:!bg-white/[0.12]" onClick={() => applyCode(generatePairingCode())}>
+                  <AddLine size={16} aria-hidden="true" />
+                </Button>
                 <input
                   value={input}
                   onChange={(e) => {
                     setInput(e.target.value);
                     setBad(false);
                   }}
-                  placeholder="XXXX-XXXX-XXXX-XXXX"
+                  placeholder={tr("connect.enter_code", "Enter code")}
                   autoCapitalize="characters"
                   className="h-[38px] min-w-0 flex-1 rounded-[10px] border border-transparent bg-white/[0.06] px-[12px] font-mono text-[13px] tracking-[0.06em] text-text-primary outline-none transition-colors focus:border-white/[0.12] focus:bg-white/[0.08] placeholder:text-text-tertiary"
                 />
                 <Button
                   variant="secondary"
-                  className="!h-[38px] !rounded-[10px] !bg-white/[0.08] !px-[16px] !text-text-primary hover:!bg-white/[0.12]"
-                  size="sm"
+                  aria-label={tr("connect.join", "Link")}
+                  title={tr("connect.join", "Link")}
+                  className="shrink-0 !h-[38px] !w-[38px] !rounded-[10px] !bg-white/[0.08] !p-0 !text-text-primary hover:!bg-white/[0.12]"
+                  size="icon"
                   onClick={() => {
                     const normalized = normalizePairingCode(input);
                     if (!normalized) setBad(true);
                     else applyCode(normalized);
                   }}
                 >
-                  {tr("connect.join", "Link")}
+                  <LinkLine size={16} aria-hidden="true" />
                 </Button>
               </div>
               {bad && <span className="text-[12px] text-[#E5484D]">{tr("connect.bad_code", "That code doesn't look right")}</span>}

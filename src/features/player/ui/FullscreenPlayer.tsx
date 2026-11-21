@@ -17,6 +17,7 @@ import {
   createElement,
   useRef,
   useState,
+  memo,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { shouldReleaseTopPin, startsPinnedToTop } from "./lyricsTopPin";
@@ -54,10 +55,11 @@ interface BraccatoLyricsViewProps {
   blurEdges?: boolean;
 }
 
-function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }: BraccatoLyricsViewProps) {
+const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }: BraccatoLyricsViewProps) {
   const player = usePlayerStore(useShallow(s => ({ status: s.status })));
   const elementRef = useRef<any>(null);
   const latestLyricsRef = useRef(lyrics);
+  const assignedLyricsRef = useRef<BraccatoLyricsViewProps["lyrics"] | null>(null);
   const freeScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWheelTimeRef = useRef(0);
   const isInFreeSearchRef = useRef(false);
@@ -131,8 +133,6 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
     const el = elementRef.current;
     if (el?.renderer) {
       el.renderer.noteUserScroll?.();
-      el.renderer.noteUserScroll?.();
-      el.renderer.noteUserScroll?.();
     }
 
     if (freeScrollTimerRef.current) {
@@ -156,6 +156,7 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
     if (!el) return;
     el.theme = braccatoThemeCss;
     el.lyrics = latestLyricsRef.current;
+    assignedLyricsRef.current = latestLyricsRef.current;
     el.source = "#liner-audio";
 
     const handleBraccatoLineClick = (e: Event) => {
@@ -168,8 +169,6 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
           freeScrollTimerRef.current = null;
         }
         if (el.renderer) {
-          el.renderer.noteUserScroll?.();
-          el.renderer.noteUserScroll?.();
           el.renderer.noteUserScroll?.();
         }
       } else {
@@ -264,6 +263,7 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
         freeScrollTimerRef.current = null;
       }
       elementRef.current = null;
+      assignedLyricsRef.current = null;
     };
   }, [scrollToActiveLine]);
 
@@ -275,7 +275,12 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
   useEffect(() => {
     latestLyricsRef.current = lyrics;
     const element = elementRef.current;
-    if (element) element.lyrics = lyrics;
+    // The ref callback already installs the initial lyrics. Assigning again
+    // rebuilds the entire custom element when the lyrics pane is first opened.
+    if (element && assignedLyricsRef.current !== lyrics) {
+      element.lyrics = lyrics;
+      assignedLyricsRef.current = lyrics;
+    }
   }, [lyrics]);
 
   useEffect(() => {
@@ -353,7 +358,7 @@ function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }
       {blurEdges && <><div aria-hidden className="lane-lyrics-blur-edge lane-lyrics-blur-edge--top" /><div aria-hidden className="lane-lyrics-blur-edge lane-lyrics-blur-edge--bottom" /></>}
     </div>
   );
-}
+});
 
 export interface FullscreenPlayerProps {
   effectsReady?: boolean;
@@ -430,7 +435,16 @@ export function FullscreenPlayer({
     activeProvider,
     availableProviders,
     currentLyricsTrackId,
-  } = useLyricsStore();
+  } = useLyricsStore(useShallow(s => ({
+    braccatoLyrics: s.braccatoLyrics,
+    rawFormat: s.rawFormat,
+    lyricsLoading: s.lyricsLoading,
+    lyricsError: s.lyricsError,
+    plainLyrics: s.plainLyrics,
+    activeProvider: s.activeProvider,
+    availableProviders: s.availableProviders,
+    currentLyricsTrackId: s.currentLyricsTrackId,
+  })));
 
   const onError = useCallback((err: Error) => {
     console.error("kawarp load error:", err);
@@ -488,7 +502,7 @@ export function FullscreenPlayer({
           )}
         </AnimatePresence>
         {effectsReady && effects.liveBackground ? (
-          <KawarpWrapper src={kawarpSrc} onLoad={onKawarpLoad} onError={onError} />
+           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen || customLyricsOpen)} onLoad={onKawarpLoad} onError={onError} />
         ) : null}
       </div>
 

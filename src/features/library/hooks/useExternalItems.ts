@@ -1,22 +1,32 @@
 import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl } from "@/shared/api";
 import type { LibraryItemViewModel } from "../types";
 import { getPlaylistCover } from "../services/playlistCovers";
 import { readCoverMarker } from "../services/playlistCoverMarker";
+import {
+  confirmPlaylistRemovals, isPlaylistRemoved, playlistLibraryOwner, playlistRemovalGeneration,
+  playlistRemovalSnapshot, subscribePlaylistRemovals,
+} from "../services/playlistRemovals";
 
 export type EntityType = "album" | "artist" | "playlist";
 
 export function useExternalItems(type: EntityType) {
   const [data, setData] = useState<LibraryItemViewModel[]>([]);
+  const removalRevision = useSyncExternalStore(subscribePlaylistRemovals, playlistRemovalSnapshot, playlistRemovalSnapshot);
+  const visibleData = useMemo(() => type === "playlist" ? data.filter(item => !isPlaylistRemoved(item.id)) : data, [data, type, removalRevision]);
   useEffect(() => {
     let active = true;
+    let sequence = 0;
     const load = async () => {
+      const current = ++sequence;
+      const owner = playlistLibraryOwner();
+      const generation = playlistRemovalGeneration();
       try {
         const collectionType =
           type === "album" ? "albums" : type === "artist" ? "artists" : "playlists";
         const response = await api.listSavedCollections(collectionType);
-        if (!active) return;
+        if (!active || current !== sequence || owner !== playlistLibraryOwner()) return;
         const items = await Promise.all(response.items.map(async (entry: any) => {
           const value = entry[type];
           const rawCover = value.cover ? mediaUrl(value.cover.url) : "";
@@ -54,8 +64,10 @@ export function useExternalItems(type: EntityType) {
             isOwned: false,
           };
         }));
+        if (!active || current !== sequence || owner !== playlistLibraryOwner() || generation !== playlistRemovalGeneration()) return;
         setData(items);
-      } catch { if (active) setData([]); }
+        if (type === "playlist") confirmPlaylistRemovals("saved", new Set(items.map(item => item.id)), generation, owner);
+      } catch { if (active && current === sequence && owner === playlistLibraryOwner()) setData([]); }
     };
     void load();
     const refresh = () => void load();
@@ -67,5 +79,5 @@ export function useExternalItems(type: EntityType) {
       window.removeEventListener("auth:changed", refresh);
     };
   }, [type]);
-  return { data };
+  return { data: visibleData };
 }

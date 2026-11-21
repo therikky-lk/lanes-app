@@ -7,10 +7,10 @@ import { useCallback, useState } from "react";
 import { api, toTrackSnapshot } from "@/shared/api";
 import {
   notifyLibraryChanged,
-  evictPlaylistFromCache,
   addLocalTrackToPlaylist,
   removeLocalTrackFromPlaylist,
 } from "./usePlaylists";
+import { removeLibraryPlaylist } from "../services/removeLibraryPlaylist";
 import { isLocalPlaylistItemId, LOCAL_ITEM_PREFIX } from "@/features/local/localPlaylistTracks";
 import { applyOptimisticLike, applyOptimisticUnlike, loadLikedTracks } from "./useLikedTracks";
 
@@ -86,10 +86,7 @@ export function useCreatePlaylist() {
 }
 
 export function useDeletePlaylist() {
-  return useMutation(async ({ playlistId }: { playlistId: string }) => {
-    evictPlaylistFromCache(playlistId);
-    return api.deletePlaylist(playlistId);
-  });
+  return useMutation(({ playlistId }: { playlistId: string }) => removeLibraryPlaylist(playlistId, true));
 }
 
 export function useSaveExternalItem() {
@@ -118,29 +115,7 @@ export function useRemoveExternalItem() {
       isOwned?: boolean;
     }) => {
       if (type === "playlist") {
-        evictPlaylistFromCache(id);
-        if (isOwned === false) {
-          return api.removeCollection("playlists", id);
-        }
-        try {
-          const res = await api.deletePlaylist(id);
-          // purge any saved collection reference in case it was both created and saved
-          await api.removeCollection("playlists", id).catch(() => {});
-          return res;
-        } catch (err: unknown) {
-          // the reply can get lost even when the playlist is gone (phones):
-          // only a playlist that is still there is a failure
-          const still = await api
-            .listPlaylists()
-            .then((r) => r.items.some((p) => p.id === id))
-            .catch(() => true);
-          if (!still) return;
-          if (isOwned === true) {
-            throw err;
-          }
-          // fall back to removing from saved collections if playlist was not owned
-          return api.removeCollection("playlists", id);
-        }
+        return removeLibraryPlaylist(id, isOwned);
       }
       return api.removeCollection(`${type}s` as "albums" | "artists", id);
     },

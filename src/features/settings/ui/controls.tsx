@@ -57,6 +57,7 @@ export function SettingRow({
   descKey,
   searchQuery,
   explained: _explained,
+  className = "",
 }: {
   title: string;
   description?: string;
@@ -66,11 +67,12 @@ export function SettingRow({
   descKey?: string;
   searchQuery?: string;
   explained?: boolean;
+  className?: string;
 }) {
   if (!matchesSearch({ title, description, titleKey, descKey, searchQuery })) return null;
 
   return (
-    <div className={`${rowSurface} lane-setting-row flex min-h-[52px] items-center justify-between gap-[14px] py-[10px]`}>
+    <div className={`${rowSurface} lane-setting-row flex min-h-[52px] items-center justify-between gap-[14px] py-[10px] ${className}`}>
       {icon ? <span className="flex shrink-0 self-start pt-[1px] text-text-tertiary [&_svg]:h-[18px] [&_svg]:w-[18px]">{icon}</span> : null}
       <RowText title={title} description={description} />
       {control ? <div className="lane-setting-control shrink-0">{control}</div> : null}

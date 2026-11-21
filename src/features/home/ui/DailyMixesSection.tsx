@@ -13,6 +13,7 @@ import { SparklesFill, PlayFill, AddFill } from "@mingcute/react";
 import { ArrowLeftLine, ArrowRightLine } from "@mingcute/react";
 import useHorizontalScroll from "@/shared/hooks/useHorizontalScroll";
 import { isMobileLayout, useIsMobile } from "@/shared/hooks/useIsMobile";
+import SectionExpandButton from "@/shared/ui/SectionExpandButton";
 
 interface DailyMixCardProps {
   mix: DailyMix;
@@ -181,16 +182,6 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
             {t("home.dailyMixes") || "Daily Mixes"}
           </h2>
         </div>
-        {isMobile && mixes.length > 2 && (
-          <button
-            type="button"
-            aria-expanded={showAll}
-            onClick={() => setShowAll(value => !value)}
-            className="min-h-[44px] shrink-0 cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-[13px] font-medium text-text-secondary transition-colors hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/40"
-          >
-            {t(showAll ? "artist.show_less" : "common.show_more")}
-          </button>
-        )}
         {!isMobile && (
           <div className="hidden shrink-0 items-center gap-[4px] md:flex">
             <button
@@ -215,7 +206,7 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
         )}
       </div>
 
-      {isMobile ? <div className="mt-[18px] grid grid-cols-2 gap-x-[12px] gap-y-[20px] px-[16px] pb-[20px]">
+      {isMobile ? <div id="daily-mixes-list" className="mt-[18px] grid grid-cols-2 gap-x-[12px] gap-y-[20px] px-[16px] pb-[20px]">
         {(showAll ? mixes : mixes.slice(0, 2)).map(mix => <DailyMixCard key={mix.id} mix={mix} />)}
       </div> : (      <ScrollableRow
         controller={scroll}
@@ -225,10 +216,11 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
           <DailyMixCard key={`daily-mix-${mix.id}-${index}`} mix={mix} />
         ))}
       </ScrollableRow>)}
+      {isMobile && mixes.length > 2 && <SectionExpandButton label={t(showAll ? "artist.show_less" : "common.show_more")}
+        expanded={showAll} controls="daily-mixes-list" onClick={() => setShowAll(value => !value)} />}
 
     </div>
   );
 }
 
 export default memo(DailyMixesSection);
-

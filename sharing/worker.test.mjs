@@ -229,6 +229,18 @@ test("profile rejects invalid content, excessive favorites and oversized uploads
   assert.equal((await patch({ banner: "x".repeat(800000) })).status, 413);
 });
 
+test("profile preserves animated GIF banners and rejects mismatched image types", async t => {
+  const { env } = fixture(t);
+  const patch = banner => worker.fetch(request("/v1/me/profile-customization/liner", {
+    method: "PATCH", headers: { authorization: "Bearer account-token" }, body: JSON.stringify({ banner }),
+  }), env);
+  const banner = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  const response = await patch(banner);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).banner, banner);
+  assert.equal((await patch("data:image/gif;base64,PHN2Zz4=")).status, 400);
+});
+
 test("profile requires a valid account and isolates account backends and users", async t => {
   const { env, state } = fixture(t);
   const path = "/v1/me/profile-customization/liner";

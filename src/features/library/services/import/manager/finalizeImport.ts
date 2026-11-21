@@ -7,6 +7,7 @@ const FALLBACK_CONCURRENCY = 4;
 export interface FinalizedPlaylist {
   playlistId: string;
   saved: number;
+  playlist: Awaited<ReturnType<typeof api.createPlaylist>>;
 }
 
 function uniqueTracks(tracks: Track[]): Track[] {
@@ -112,7 +113,7 @@ export async function finalizeImportedPlaylist(
     if (saved !== unique.length) {
       throw new Error(`Only ${saved} of ${unique.length} playlist tracks were saved.`);
     }
-    return { playlistId: playlist.id, saved };
+    return { playlistId: playlist.id, saved, playlist };
   } catch (error) {
     if (!signal?.aborted) await api.deletePlaylist(playlist.id).catch(() => undefined);
     throw error;

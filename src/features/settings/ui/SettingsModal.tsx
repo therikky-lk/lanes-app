@@ -8,7 +8,6 @@ import { ConnectTab } from "./tabs/ConnectTab";
 import {
   Play,
   Palette,
-  Gallery,
   HeadphonesRound,
   InfoCircle,
   Database,
@@ -19,7 +18,6 @@ import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { isNativeApp } from "@/shared/platform/native";
 import { ArrowLeftLine } from "@mingcute/react";
-import SettingsAccount from "./SettingsAccount";
 import ProfileTab from "./ProfileTab";
 import { useTranslation, getTranslationsForAllLocales } from "@/languages";
 import { useModalStore } from "@/features/library";
@@ -27,7 +25,6 @@ import {
   PlaybackTab,
   ShortcutsTab,
   AppearanceTab,
-  CustomizationTab,
   AudioTab,
   StorageTab,
   AboutTab,
@@ -37,7 +34,7 @@ import {
   YandexMusicTab,
 } from "./tabs";
 
-type TabId = "Profile" | "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Appearance" | "Customization" | "Audio" | "Storage" | "About";
+type TabId = "Profile" | "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Appearance" | "Audio" | "Storage" | "About";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Profile: User3Line,
@@ -49,7 +46,6 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Youtube: YoutubeFill,
   YandexMusic: (props) => <YandexMusicIcon {...props} monochrome />,
   Appearance: Palette,
-  Customization: Gallery,
   Audio: HeadphonesRound,
   Storage: Database,
   About: InfoCircle,
@@ -124,11 +120,6 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "Appearance", titleKey: "settings.language.label", descKey: "settings.language.description" },
   { tabId: "Appearance", titleKey: "settings.theme.title", descKey: "settings.theme.description" },
 
-  // Customization
-  { tabId: "Appearance", titleKey: "settings.customization.wallpaper_title", descKey: "settings.customization.wallpaper_description" },
-  { tabId: "Appearance", titleKey: "settings.customization.blocks_title", descKey: "settings.customization.blocks_description" },
-  { tabId: "Appearance", titleKey: "settings.customization.reset_all", descKey: "settings.customization.reset_all_desc" },
-
   // Audio
   { tabId: "Audio", titleKey: "settings.audio.title", descKey: "settings.audio.description" },
   { tabId: "Audio", titleKey: "settings.connection.checks_title" },
@@ -183,7 +174,6 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     Youtube: t("settings.tabs.youtube") || "YouTube",
     YandexMusic: t("settings.yandex_music.title"),
     Appearance: t("settings.tabs.appearance"),
-    Customization: t("settings.tabs.customization") || "Customization",
     Audio: t("settings.tabs.audio"),
     Storage: t("settings.tabs.storage"),
     About: t("settings.tabs.about"),
@@ -199,7 +189,6 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     Youtube: t("settings.youtube.description") || "Sign in to your YouTube account to prevent playback errors.",
     YandexMusic: t("settings.yandex_music.description"),
     Appearance: t("settings.theme.description"),
-    Customization: t("settings.customization.description") || "Window background wallpaper, transparency and block blur effects.",
     Audio: t("settings.audio.description"),
     Storage: t("settings.storage.description"),
     About: t("settings.about.tagline"),
@@ -220,7 +209,6 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
       Youtube: "settings.tabs.youtube",
       YandexMusic: "settings.yandex_music.title",
       Appearance: "settings.theme.title",
-      Customization: "settings.tabs.customization",
       Audio: "settings.tabs.audio",
       Storage: "settings.tabs.storage",
       About: "settings.tabs.about",
@@ -236,7 +224,6 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
       Youtube: "settings.youtube.description",
       YandexMusic: "settings.yandex_music.description",
       Appearance: "settings.theme.description",
-      Customization: "settings.customization.description",
       Audio: "settings.audio.description",
       Storage: "settings.storage.description",
       About: "settings.about.tagline",
@@ -333,10 +320,8 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             <h2 className="m-0 text-[20px] font-[600] tracking-[-0.01em] text-text-primary" style={font}>
               {t("common.sidebar.settings") || "Settings"}
             </h2>
-            <div className="ml-auto flex items-center"><SettingsAccount compact onOpenProfile={() => { setSearchQuery(""); setActiveTab("Profile"); setMobilePage(true); }} /></div>
           </div>
         )}
-        {!isMobile && <div className="flex justify-start px-[12px] pt-[12px]"><SettingsAccount onOpenProfile={() => { setSearchQuery(""); setActiveTab("Profile"); setMobilePage(true); }} /></div>}
         <div className="px-[12px] pt-[14px] pb-[8px]">
           <div className="relative flex items-center">
             <Search2Line
@@ -486,10 +471,9 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             {activeTab === "Discord" && <DiscordTab searchQuery={searchQuery} />}
             {activeTab === "Youtube" && <YoutubeTab searchQuery={searchQuery} />}
             {activeTab === "YandexMusic" && <YandexMusicTab />}
-            {(activeTab === "Appearance" || activeTab === "Customization") && (
+            {activeTab === "Appearance" && (
               <div className="flex flex-col gap-[28px]">
                 <AppearanceTab searchQuery={searchQuery} />
-                <CustomizationTab searchQuery={searchQuery} />
               </div>
             )}
             {activeTab === "Audio" && <AudioTab searchQuery={searchQuery} />}

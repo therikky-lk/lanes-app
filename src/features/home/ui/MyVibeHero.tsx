@@ -10,6 +10,7 @@ import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import { useTranslation } from "@/languages";
+import { useToast } from "@/shared/ui";
 import type { Track } from "@/shared/types/track";
 import { BeatTracker } from "../vibe/audioAnalyser";
 import { isVibeContext, sameSettings, startVibe, storedSettings, storeSettings, vibeSettingsOf } from "../vibe/vibeController";
@@ -116,6 +117,9 @@ const LANGUAGE_FLAG = { russian: "flag-russia", ukrainian: "flag-ukraine", engli
 
 export default function MyVibeHero({ liked, recent, trending, expanded = false, onToggleExpanded }: MyVibeHeroProps) {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const launchRevision = useRef(0);
+  useEffect(() => () => { launchRevision.current++; }, []);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const silkRef = useRef<HTMLCanvasElement>(null);
   const bloomRef = useRef<HTMLCanvasElement>(null);
@@ -441,15 +445,20 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   }, []);
 
   const launch = async (next: VibeSettings) => {
+    const revision = ++launchRevision.current;
     setStarting(true);
     try {
-      await startVibe(next, { liked, recent, trending });
+      const started = await startVibe(next, { liked, recent, trending });
+      if (started === false && revision === launchRevision.current) toast(t("home.vibe.start_failed"), "error");
+    } catch {
+      if (revision === launchRevision.current) toast(t("home.vibe.start_failed"), "error");
     } finally {
-      setStarting(false);
+      if (revision === launchRevision.current) setStarting(false);
     }
   };
 
   const onMainClick = () => {
+    if (starting) return;
     if (vibeActive && sameAsPlaying) {
       if (isPlaying) playerEngine.pause();
       else playerEngine.resume();
@@ -467,7 +476,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     setSettings(next);
     storeSettings(next);
     // already listening: the stream follows the new settings right away
-    if (vibeActive) void launch(next);
+    if (vibeActive || starting) void launch(next);
   };
 
   const label = {
@@ -484,13 +493,13 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     const next = { character: null, mood: null, language: null };
     setSettings(next);
     storeSettings(next);
-    if (vibeActive) void launch(next);
+    if (vibeActive || starting) void launch(next);
   };
   const clear = (key: keyof VibeSettings) => {
     const next = { ...settings, [key]: null };
     setSettings(next);
     storeSettings(next);
-    if (vibeActive) void launch(next);
+    if (vibeActive || starting) void launch(next);
   };
 
   return (

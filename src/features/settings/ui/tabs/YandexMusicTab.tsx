@@ -8,7 +8,7 @@ import { useModalStore } from "@/features/library/store/modalStore";
 import {
   importYandexMusic, YandexImportError, type YandexImportProgress, type YandexImportResult,
 } from "@/features/library/services/import/sources/yandexMusic/yandexMusicImport";
-import { loadYandexAvatar, YandexSourceError } from "@/features/library/services/import/sources/yandexMusic/yandexMusicSource";
+import { loadYandexProfile, YandexSourceError, type YandexProfile } from "@/features/library/services/import/sources/yandexMusic/yandexMusicSource";
 import { signInToYandexMusic } from "@/features/library/services/import/sources/yandexMusic/yandexMusicAccount";
 import { IntegrationSessionError, integrationOwner, readIntegration, writeIntegration } from "@/shared/api/integrationSessions";
 import { isRateLimit } from "@/shared/media/matching";
@@ -18,6 +18,7 @@ import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
 import { ToggleSwitch, useToast } from "@/shared/ui";
 import { SettingRow, SettingSection } from "../controls";
 import { ServiceAccountAvatar } from "../ServiceAccountAvatar";
+import "./yandexMusicAccount.css";
 
 const useImportStatus = create<{
   progress: YandexImportProgress | null;
@@ -45,7 +46,7 @@ export function YandexMusicTab() {
   const { alsoLike, setAlsoLike, hideImportedPlaylist, setHideImportedPlaylist } = useYandexMusicPreferences();
   const [result, setResult] = useState<YandexImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<{ owner: string; avatarUrl: string | null } | null>(null);
+  const [profile, setProfile] = useState<(YandexProfile & { owner: string }) | null>(null);
   const profileRevision = useRef<{ owner: string; revision: number } | null>(null);
   const owner = integrationOwner();
   const connected = owner !== null && connectedOwner === owner;
@@ -65,10 +66,10 @@ export function YandexMusicTab() {
         if (signal.aborted || isBusy() || (known > 0 && revision === known)) return;
         setConnectedOwner(session ? owner : null);
         setProfile(null);
-        const avatarUrl = session ? await loadYandexAvatar(session.accessToken, signal) : null;
+        const account = session ? await loadYandexProfile(session.accessToken, signal) : null;
         if (signal.aborted || isBusy()) return;
         profileRevision.current = { owner, revision };
-        if (session) setProfile({ owner, avatarUrl });
+        if (account) setProfile({ owner, ...account });
       } catch {
         // Keep the last known connection when the refresh fails.
       } finally {
@@ -191,20 +192,20 @@ export function YandexMusicTab() {
 
   return (
     <div className="flex flex-col gap-[28px]">
-      <div className="lane-setting-status rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
-        <div className="flex flex-wrap items-center gap-x-[16px] gap-y-[12px]">
-          <div className="flex min-w-0 flex-[1_1_210px] items-center gap-[16px]">
+      <div className="lane-setting-status lane-yandex-account rounded-[16px] bg-white/[0.09] px-[14px] py-[14px]">
+        <div className="lane-yandex-account-layout">
+          <div className="flex min-w-0 items-center gap-[16px]">
             <ServiceAccountAvatar url={connected && profile?.owner === owner ? profile?.avatarUrl : null} className="bg-white dark:bg-[#171717]">
               <YandexMusicIcon size={28} />
             </ServiceAccountAvatar>
             <div className="min-w-0">
-              <div className="text-[15px] font-[600] text-text-primary">{t("settings.yandex_music.title")}</div>
+              <div className="truncate text-[15px] font-[600] text-text-primary" title={connected && profile?.owner === owner ? profile.displayName || undefined : undefined}>{connected && profile?.owner === owner && profile.displayName || t("settings.yandex_music.title")}</div>
               <p role="status" className="m-0 mt-[3px] text-[13px] leading-snug text-text-secondary">
                 {t(accountAction === "connecting" ? "settings.yandex_music.progress_sign_in" : connected ? "settings.youtube.signed_in" : "settings.youtube.signed_out_title")}
               </p>
             </div>
           </div>
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+          <div className={`lane-yandex-account-actions ${connected ? "is-connected" : ""}`}>
             {connected ? (
               <>
                 <Button type="button" className="!h-[42px] !rounded-[12px] !px-[16px]" disabled={busy} onClick={() => void startImport()}>
