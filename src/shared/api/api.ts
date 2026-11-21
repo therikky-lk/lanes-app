@@ -447,7 +447,7 @@ async function request<T>(
 ): Promise<T> {
   const resolvedApiBaseUrl = apiBaseUrl ?? getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend);
   const method = (init?.method ?? "GET").toUpperCase();
-  if (method === "GET" && !init?.signal) {
+  if (method === "GET" && !init?.signal && init?.cache !== "no-store") {
     const key = `${resolvedApiBaseUrl}${path}::${allowRefresh}`;
     const inFlight = inFlightGetRequests.get(key);
     if (inFlight) {
@@ -986,7 +986,7 @@ export const api = {
   listSavedCollections(
     type: "albums" | "artists" | "playlists",
   ): Promise<{ items: unknown[] }> {
-    return request<{ items: unknown[] }>(`/v1/me/library/${type}`);
+    return request<{ items: unknown[] }>(`/v1/me/library/${type}`, { cache: "no-store" });
   },
 
   // the catalog lives on the client now, so the server can't look a collection up by
@@ -1010,7 +1010,7 @@ export const api = {
   },
 
   listPlaylists(): Promise<{ items: ApiUserPlaylist[] }> {
-    return request<{ items: ApiUserPlaylist[] }>("/v1/me/playlists");
+    return request<{ items: ApiUserPlaylist[] }>("/v1/me/playlists", { cache: "no-store" });
   },
 
   getUserPlaylist(

@@ -3,12 +3,16 @@ import { canSyncCoverMarker, readCoverMarker, readLocalEntries, withCoverMarker,
 import { buildLocalPlaylistEntry, localEntrySnapshot, localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { isLocalLikesPlaylist } from "@/features/local/localLikesSync";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
 import { isNativeApp } from "@/shared/platform/native";
 import { diag } from "@/shared/platform/diag";
+import {
+  confirmPlaylistRemovals, isPlaylistRemoved, playlistLibraryOwner, playlistRemovalGeneration,
+  playlistRemovalSnapshot, subscribePlaylistRemovals,
+} from "../services/playlistRemovals";
 
 export interface LibraryPlaylistSummary {
   id: string;
@@ -57,14 +61,61 @@ function extractCovers(items: ApiUserPlaylistItem[]): string[] {
     .slice(0, 4);
 }
 
+async function loadPlaylistPreview(id: string) {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      api.getUserPlaylist(id, { signal: controller.signal }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => { controller.abort(); reject(new Error("Playlist preview timed out")); }, 5000);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 const EMPTY: PlaylistList = { playlists: [], total: 0 };
 let cache = EMPTY;
 let loaded = false;
 let request: Promise<void> | null = null;
+let refreshQueued = false;
 let listConsumers = 0;
 let listRefreshTimer: number | null = null;
 const listeners = new Set<() => void>();
 let view = { data: cache, error: undefined as unknown, isLoading: true };
+const confirmedImports = new Map<string, { owner: string; playlist: LibraryPlaylistSummary; expires: number }>();
+
+function withConfirmedImports(playlists: LibraryPlaylistSummary[], owner: string | null) {
+  const ids = new Set(playlists.map(playlist => playlist.id));
+  const additions: LibraryPlaylistSummary[] = [];
+  for (const [id, pending] of confirmedImports) {
+    if (pending.expires < Date.now() || isPlaylistRemoved(id, pending.owner)) { confirmedImports.delete(id); continue; }
+    if (pending.owner === owner && !ids.has(id)) additions.push(pending.playlist);
+  }
+  return [...additions, ...playlists];
+}
+
+/** Publish only a server-created, successfully saved import, not an optimistic draft. */
+export function registerImportedPlaylist(
+  playlist: Awaited<ReturnType<typeof api.createPlaylist>>,
+  tracks: Parameters<typeof toClientTrack>[0][],
+  owner: string | null,
+) {
+  if (!owner || owner !== playlistLibraryOwner()) return;
+  const coverUrls = [...new Set(tracks.map(track => track.cover?.url ? mediaUrl(track.cover.url) : "").filter(Boolean))].slice(0, 4);
+  const summary: LibraryPlaylistSummary = {
+    ...playlist, trackCount: tracks.length, coverUrl: getPlaylistCover(playlist.id, playlist.description) || coverUrls[0] || "",
+    coverUrls, revision: playlist.revision ?? 0,
+  };
+  confirmedImports.set(playlist.id, { owner, playlist: summary, expires: Date.now() + 5 * 60_000 });
+  const playlists = withConfirmedImports(cache.playlists.filter(item => item.id !== playlist.id), owner);
+  cache = { playlists, total: playlists.length };
+  queryCache.delete(`playlist:detail:${playlist.id}`);
+  emit();
+  notifyLibraryChanged();
+}
 
 export function notifyLibraryChanged() {
   window.dispatchEvent(new Event("library:changed"));
@@ -74,9 +125,11 @@ export function notifyLibraryChanged() {
 
 // optimistically drop playlist from store so ui reacts instantly without waiting on network
 export function evictPlaylistFromCache(id: string) {
+  confirmedImports.delete(id);
+  const playlists = cache.playlists.filter((p) => p.id !== id);
   cache = {
-    playlists: cache.playlists.filter((p) => p.id !== id),
-    total: Math.max(0, cache.total - 1),
+    playlists,
+    total: playlists.length,
   };
   queryCache.delete(`playlist:detail:${id}`);
   emit();
@@ -99,7 +152,10 @@ function snapshot() {
 const SERVER_SNAPSHOT = { data: EMPTY, error: undefined as unknown, isLoading: true };
 
 function load(force = false): Promise<void> {
-  if (request) return request;
+  if (request) {
+    if (force) refreshQueued = true;
+    return request;
+  }
   const session = getAuthSession();
   if (!session?.accessToken) {
     cache = EMPTY;
@@ -108,6 +164,8 @@ function load(force = false): Promise<void> {
     return Promise.resolve();
   }
   if (loaded && !force) return Promise.resolve();
+  const owner = playlistLibraryOwner();
+  const generation = playlistRemovalGeneration();
 
   if (!loaded) {
     view = { data: cache, error: undefined, isLoading: true };
@@ -119,6 +177,23 @@ function load(force = false): Promise<void> {
     const listed = await api.listPlaylists();
     // the hidden list behind likes of the user's own files is not a playlist to show
     const response = { ...listed, items: listed.items.filter((p) => !isLocalLikesPlaylist(p)) };
+
+    // Show the server list before loading every playlist's tracks/artwork.
+    // One hanging detail used to hide all newly imported playlists.
+    if (owner !== playlistLibraryOwner() || generation !== playlistRemovalGeneration()) return;
+    const summaries = response.items.map(playlist => {
+      const previous = cache.playlists.find(item => item.id === playlist.id);
+      const saved = coverCache[playlist.id];
+      return {
+        ...playlist,
+        trackCount: previous?.trackCount ?? saved?.trackCount ?? 0,
+        coverUrl: previous?.coverUrl ?? saved?.coverUrls[0] ?? "",
+        coverUrls: previous?.coverUrls ?? saved?.coverUrls ?? [],
+      };
+    });
+    const immediate = withConfirmedImports(summaries, owner);
+    cache = { playlists: immediate, total: immediate.length };
+    emit();
 
     const playlists = await Promise.all(
       response.items.map(async (playlist) => {
@@ -137,7 +212,7 @@ function load(force = false): Promise<void> {
 
         let detail: { items: ApiUserPlaylistItem[] };
         try {
-          detail = await api.getUserPlaylist(playlist.id);
+          detail = await loadPlaylistPreview(playlist.id);
         } catch {
           // Keep the playlist visible if one detail/cover request fails.
           return {
@@ -165,6 +240,8 @@ function load(force = false): Promise<void> {
       })
     );
 
+    // A list fetched before a deletion/account change must not resurrect its old items.
+    if (owner !== playlistLibraryOwner() || generation !== playlistRemovalGeneration()) return;
     const liveIds = new Set(response.items.map((p) => p.id));
     for (const id of Object.keys(coverCache)) {
       if (!liveIds.has(id)) delete coverCache[id];
@@ -182,6 +259,7 @@ function load(force = false): Promise<void> {
         // attach them to the playlist so every signed-in device can restore it.
         void compactPlaylistCover(customCover)
           .then((cover) => {
+            if (owner !== playlistLibraryOwner() || isPlaylistRemoved(playlist.id, owner)) return;
             if (cover === fromServer || !canSyncCoverMarker(playlist.description, cover)) return;
             return api.updatePlaylist(playlist.id, { description: withCoverMarker(playlist.description, cover) });
           })
@@ -202,8 +280,14 @@ function load(force = false): Promise<void> {
         playlist.coverUrls = [importedCover];
       }
     }
-    cache = { playlists, total: playlists.length };
+    const merged = withConfirmedImports(playlists, owner);
+    for (const playlist of playlists) {
+      const pending = confirmedImports.get(playlist.id);
+      if (pending?.owner === owner) confirmedImports.delete(playlist.id);
+    }
+    cache = { playlists: merged, total: merged.length };
     loaded = true;
+    confirmPlaylistRemovals("owned", new Set(listed.items.map(playlist => playlist.id)), generation, owner);
   })()
     .catch((err) => {
       if (!loaded) cache = EMPTY;
@@ -213,6 +297,9 @@ function load(force = false): Promise<void> {
     .finally(() => {
       request = null;
       emit();
+      const reload = refreshQueued || owner !== playlistLibraryOwner() || generation !== playlistRemovalGeneration();
+      refreshQueued = false;
+      if (reload) void load(true);
     });
   return request;
 }
@@ -283,6 +370,11 @@ async function migrateLocalPlaylistEntries(playlistId: string, initial: UserPlay
 
 export function usePlaylistsList() {
   const state = useSyncExternalStore(subscribe, snapshot, () => SERVER_SNAPSHOT);
+  const removalRevision = useSyncExternalStore(subscribePlaylistRemovals, playlistRemovalSnapshot, playlistRemovalSnapshot);
+  const visibleData = useMemo(() => {
+    const playlists = state.data.playlists.filter(playlist => !isPlaylistRemoved(playlist.id));
+    return { playlists, total: playlists.length };
+  }, [state.data, removalRevision]);
   useEffect(() => {
     void load();
     listConsumers += 1;
@@ -299,7 +391,7 @@ export function usePlaylistsList() {
       }
     };
   }, []);
-  return state;
+  return { ...state, data: visibleData };
 }
 
 export function usePlaylist(id: string | null) {
@@ -333,9 +425,10 @@ export function usePlaylist(id: string | null) {
       try {
         const apiStartedAt = performance.now();
         let response = await api.getUserPlaylist(id);
+        if (!active || isPlaylistRemoved(id)) return;
         response = await migrateLocalPlaylistEntries(id, response);
         apiMs = Math.round(performance.now() - apiStartedAt);
-        if (!active) return;
+        if (!active || isPlaylistRemoved(id)) return;
 
         const covers = extractCovers(response.items);
         const syncedCover = readCoverMarker(response.playlist.description);

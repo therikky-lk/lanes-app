@@ -359,9 +359,19 @@ async function sendState(state: RemoteState): Promise<void> {
   await send(message);
 }
 
-function onPlayerChange(state: { status: string }, prev: { status: string }): void {
-  // playback started on this device by itself (not mirrored): newest player
-  if (!useConnectStore.getState().followingId && isActive(state.status) && !isActive(prev.status)) becomePlayer();
+function onPlayerChange(
+  state: { status: string; currentTrack?: Track | null },
+  prev: { status: string; currentTrack?: Track | null },
+): void {
+  // Starting a different track is a new local playback claim even when this
+  // player's status was already "playing". Without a fresh epoch the other
+  // device can keep playing its previous track in parallel.
+  const pickedDifferentTrack = state.currentTrack?.id !== prev.currentTrack?.id;
+  if (
+    !useConnectStore.getState().followingId &&
+    isActive(state.status) &&
+    (!isActive(prev.status) || pickedDifferentTrack)
+  ) becomePlayer();
   broadcastState();
 }
 
@@ -670,8 +680,9 @@ async function takeOver(message: Extract<Message, { t: "takeover" }>): Promise<v
   // the music kept going while the message travelled; clocks may differ a bit
   const transit = message.playing && message.at ? Math.min(Math.max(0, Date.now() - message.at), 10_000) : 0;
   const positionMs = message.positionMs + transit;
-  await playerEngine.playTrack(track, queue, message.context, null, message.index);
-  if (positionMs > 3000) playerEngine.seek(positionMs);
+  // Pass the handover position into the load itself. Seeking immediately after
+  // playTrack races audio source preparation and can leave the new device at 0.
+  await playerEngine.playTrack(track, queue, message.context, null, message.index, false, positionMs);
   if (!message.playing) setTimeout(() => playerEngine.pause(), 400);
   broadcastState(true);
 }

@@ -2,8 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 export type VisualQuality = "all" | "balanced" | "lite";
 export function visualEffects(quality: VisualQuality, mobile = false) {
-  const effective = mobile ? "all" : quality;
-  return { liveBackground: effective !== "lite", lyricBlur: !mobile && effective === "all", letterAnimation: effective !== "lite" };
+  const effective = quality;
+  // Word timing stays enabled on phones without creating two spans per letter
+  // for the entire song while the user is opening the lyrics pane.
+  return { liveBackground: effective !== "lite", lyricBlur: !mobile && effective === "all", letterAnimation: !mobile && effective !== "lite" };
 }
 export const useVisualQualityStore = create<{ quality: VisualQuality; setQuality: (quality: VisualQuality) => void }>()(persist(
   set => ({ quality: "all", setQuality: quality => set({ quality }) }),

@@ -1,4 +1,5 @@
 import { innertubeCatalog } from "@/shared/media/innertube";
+import { loadAlbumWithFallback } from "./albumFallback";
 import { isSoundCloudCatalogId, isSoundCloudUrl, resolveSoundCloudUrl, soundcloudCatalog } from "@/shared/media/soundcloud";
 import { audiusCatalog, isAudiusId } from "@/shared/media/audius";
 import {
@@ -133,14 +134,7 @@ export const clientCatalog = {
 
   getAlbum(id: string, server: () => Promise<AlbumDetails>): Promise<AlbumDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getAlbum(id);
-    return preferClient("album", async () => {
-      const album = await innertubeCatalog.getAlbum(id);
-      // A browse response can contain valid album metadata but no list items
-      // (for example when YouTube Music changes the shelf shape). Treat that
-      // as an incomplete client result so the API can provide the tracks.
-      if (album.tracks.length === 0) throw new Error("album returned no tracks");
-      return album;
-    }, server);
+    return loadAlbumWithFallback(() => innertubeCatalog.getAlbum(id), server);
   },
 
   async getArtistImage(id: string): Promise<string | undefined> {

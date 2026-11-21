@@ -504,6 +504,7 @@ class PlayerEngine {
     contextCover?: string | null,
     queueIndex?: number,
     preserveQueue?: boolean,
+    startPositionMs = 0,
   ): Promise<void> {
     const requestStartedAt = performance.now();
     if (remoteInterceptor) {
@@ -592,12 +593,12 @@ class PlayerEngine {
       this.telemetry.startTrack(selectedTrack, usePlayerStore.getState().playbackContext);
     }
     store.setCurrentTrack(selectedTrack, finalIndex);
-    store.setPosition(0);
+    store.setPosition(startPositionMs);
     store.setDuration(selectedTrack.durationMs ?? 0);
     store.setStatus("loading", null);
 
     if (playerRuntime) {
-      void playerRuntime.loadAndPlay(selectedTrack);
+      void playerRuntime.loadAndPlay(selectedTrack, startPositionMs);
     }
 
     this.maybeExtendQueue(mySession, selectedTrack.id, finalIndex, finalQueue.length);

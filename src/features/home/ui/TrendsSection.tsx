@@ -1,6 +1,7 @@
 import Button from "@/shared/ui/Button";
 import { useEffect, useId, useRef, useState } from "react";
-import { DownLine, FireFill, HeartFill, HeartLine } from "@mingcute/react";
+import { FireFill, HeartFill, HeartLine } from "@mingcute/react";
+import SectionExpandButton from "@/shared/ui/SectionExpandButton";
 import { useTranslation } from "@/languages";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import CoverImage from "@/features/covers/ui/CoverImage";
@@ -263,17 +264,9 @@ export default function TrendsSection() {
       </div>
 
       {entries && entries.length > PREVIEW && (
-        <div className="mt-[6px] flex justify-center">
-          <Button variant="secondary" size="icon"
-            type="button"
-            aria-controls={chartId}
-            aria-expanded={all}
-            aria-label={all ? t("trends.less") : t("trends.all", { n: entries.length })}
-            onClick={() => setAll((v) => !v)}
-          >
-            <DownLine size={20} aria-hidden="true" className={all ? "rotate-180" : undefined} />
-          </Button>
-        </div>
+        <SectionExpandButton controls={chartId} expanded={all}
+          label={all ? t("trends.less") : t("trends.all", { n: entries.length })}
+          onClick={() => setAll(value => !value)} />
       )}
     </div>
   );

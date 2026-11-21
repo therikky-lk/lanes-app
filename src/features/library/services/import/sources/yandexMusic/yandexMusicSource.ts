@@ -91,14 +91,25 @@ async function request<T>(path: string, token: string, signal?: AbortSignal, for
   return body.result;
 }
 
-export async function loadYandexAvatar(token: string, signal?: AbortSignal): Promise<string | null> {
+export type YandexProfile = { displayName: string | null; login: string | null; avatarUrl: string | null };
+
+export async function loadYandexProfile(token: string, signal?: AbortSignal): Promise<YandexProfile> {
   if (!isYandexMusicToken(token)) throw new YandexSourceError("invalid_token");
-  const profile = await requestJson<{ default_avatar_id?: unknown; is_avatar_empty?: boolean } | null>(
+  const profile = await requestJson<{ default_avatar_id?: unknown; is_avatar_empty?: boolean; display_name?: unknown; real_name?: unknown; login?: unknown } | null>(
     "https://login.yandex.ru/info?format=json", token, signal,
   );
   const avatarId = profile?.default_avatar_id;
-  if (profile?.is_avatar_empty || typeof avatarId !== "string" || !/^[\w-]+(?:\/[\w-]+)*$/.test(avatarId)) return null;
-  return `https://avatars.yandex.net/get-yapic/${avatarId}/islands-200`;
+  const nonempty = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : null;
+  return {
+    displayName: nonempty(profile?.display_name) || nonempty(profile?.real_name) || nonempty(profile?.login),
+    login: nonempty(profile?.login),
+    avatarUrl: !profile?.is_avatar_empty && typeof avatarId === "string" && /^[\w-]+(?:\/[\w-]+)*$/.test(avatarId)
+      ? `https://avatars.yandex.net/get-yapic/${avatarId}/islands-200` : null,
+  };
+}
+
+export async function loadYandexAvatar(token: string, signal?: AbortSignal): Promise<string | null> {
+  return (await loadYandexProfile(token, signal)).avatarUrl;
 }
 
 function mapTrack(track: YandexTrack): ImportedTrack | undefined {

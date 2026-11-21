@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "@/languages";
-import { CloseLine } from "@mingcute/react";
+import { ArrowLeftLine } from "@mingcute/react";
+import { onAndroidBack } from "@/shared/platform/androidBack";
 import Dialog from "../../../shared/ui/Dialog";
 import { ScrollableText } from "../../../shared/ui";
 import CoverImage from "../../covers/ui/CoverImage";
@@ -156,6 +157,9 @@ export default function ArtistProfileModal({
   bio,
 }: ArtistProfileModalProps) {
   const { t } = useTranslation();
+  useEffect(() => {
+    if (open) return onAndroidBack(() => { onClose(); return true; });
+  }, [open, onClose]);
   const avatarSrc = geniusImageUrl || toMaxQualityAvatarUrl(fallbackImageUrl);
   const bioScrollRef = useRef<HTMLDivElement>(null);
   const [bioScrollMask, setBioScrollMask] = useState(
@@ -210,18 +214,17 @@ export default function ArtistProfileModal({
       maxWidth={440}
       className="p-[18px] relative"
     >
-      {/* subtle close button */}
       <button
         type="button"
         onClick={onClose}
-        className="absolute top-[14px] right-[14px] inline-flex h-[24px] w-[24px] items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-bg-panel transition-colors cursor-pointer border-0 bg-transparent"
-        title={t("common.close")}
+        className="mb-[16px] inline-flex h-[32px] shrink-0 self-start items-center gap-[6px] rounded-md bg-bg-panel/85 backdrop-blur-xl px-[10px] text-[13px] font-medium text-text-primary transition-colors cursor-pointer border-0 hover:bg-bg-panel"
+        aria-label={t("common.back")}
       >
-        <CloseLine size={16} />
+        <ArrowLeftLine size={16} /><span>{t("common.back")}</span>
       </button>
 
       {/* artist header */}
-      <div className="flex items-center gap-[12px] pr-[28px]">
+      <div className="flex shrink-0 items-center gap-[12px]">
         {avatarSrc ? (
           <div className="relative h-[48px] w-[48px] shrink-0 overflow-hidden rounded-full bg-bg-panel">
             <CoverImage

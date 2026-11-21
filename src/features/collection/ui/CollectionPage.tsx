@@ -456,7 +456,7 @@ function CollectionContent() {
                   </div>
                 }
                   primaryAction={
-                    <div className="flex w-full max-w-[640px] flex-row items-center gap-[8px] max-md:flex-col">
+                    <div className="flex w-full max-w-[640px] flex-row items-center gap-[8px] max-md:flex-col max-md:items-stretch">
                       <Button
                         variant={hasCustomBg ? "glass-primary" : "primary"}
                         onClick={handlePlayAll}
@@ -472,7 +472,7 @@ function CollectionContent() {
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleAddToQueue}
                           disabled={!data || data.tracks.length === 0}
-                          className={`!h-[36px] !flex-none min-w-0 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
+                          className={`!h-[36px] min-w-0 md:flex-none max-md:flex-1 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
                             // optical centring: with three icon buttons beside it the label reads 1px right
                             !isDailyMix ? "[&>*]:-translate-x-px" : ""
                           }`}
@@ -540,10 +540,12 @@ function CollectionContent() {
                 />
               </div>
 
+              <div className={search.isOpen ? "w-full shrink-0 py-[8px]" : "shrink-0"}>
                 <TrackSearchField search={search} totalCount={data.tracks.length}
                   placeholder={t(isAlbum ? "track_search.placeholder_album" : "track_search.placeholder_playlist")}
                   glass={hasCustomBg} closeOnBlur={false} onSubmit={handleSearchSubmit}
-                  className="!h-[44px] !w-full !rounded-[12px] my-[8px] [&_input]:text-[16px]" />
+                  className="!h-[44px] !w-full !rounded-[12px] [&_input]:text-[16px]" />
+              </div>
               <div
                 ref={isMobile ? undefined : scrollRef}
                 data-no-window-drag

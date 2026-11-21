@@ -161,6 +161,35 @@ export function useCollection(
             }
           }
 
+          // Artist discography entries can point at a one-track release ID
+          // even when the displayed release title is a full album (e.g. the
+          // same album track promoted as a standalone release). Resolve the
+          // canonical album by its exact title/artist before showing that
+          // single track as the entire album.
+          if (isRelease && fallbackTitle && collection && collection.tracks.length <= 1) {
+            const title = fallbackTitle.toLocaleLowerCase().trim();
+            const artist = fallbackArtist?.toLocaleLowerCase().trim();
+            const results = await api.search(fallbackTitle, "album").catch(() => ({ items: [] }));
+            const candidates = results.items
+              .filter((item) =>
+                item.type === "album" &&
+                item.title.toLocaleLowerCase().trim() === title &&
+                (!artist || item.artists.some((entry) => {
+                  const name = entry.name.toLocaleLowerCase().trim();
+                  return name === artist || name.includes(artist) || artist.includes(name);
+                })),
+              )
+              .sort((a, b) => Number(b.id !== decodedId) - Number(a.id !== decodedId));
+            for (const candidate of candidates) {
+              if (candidate.id === decodedId) continue;
+              const completeAlbum = await api.getAlbum(candidate.id).catch(() => null);
+              if (completeAlbum && completeAlbum.tracks.length > collection.tracks.length) {
+                collection = completeAlbum;
+                break;
+              }
+            }
+          }
+
           // Single releases can expose a browse id that returns metadata but
           // no track shelf. Resolve the release again through catalog search.
           if (!isRelease && type !== "playlist" && (!collection || collection.tracks.length === 0) && fallbackTitle) {

@@ -171,7 +171,7 @@ export const TrackSearchField = memo(function TrackSearchField({
           transition={{ duration: expandOnOpen ? 0.2 : 0.14, ease: [0.22, 1, 0.36, 1] }}
           layout={expandOnOpen}
           data-no-window-drag
-          className={`flex ${expandOnOpen ? "h-[36px] overflow-hidden rounded-[10px]" : "h-[32px] w-[300px] rounded-md"} items-center gap-[8px] px-[10px] pointer-events-auto ${
+          className={`flex shrink-0 ${expandOnOpen ? "h-[36px] overflow-hidden rounded-[10px]" : "h-[32px] w-[300px] rounded-md"} items-center gap-[8px] px-[10px] pointer-events-auto ${
             glass
               ? "apple-glass-pill !border-none"
               : "bg-bg-panel/85 backdrop-blur-xl text-text-primary"

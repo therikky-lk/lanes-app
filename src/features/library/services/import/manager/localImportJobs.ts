@@ -2,6 +2,8 @@ import { LOCAL_IMPORT_PREFIX, registerLocalImportHandler } from "@/shared/api/lo
 import type { ImportJob, ImportReview, ImportSource, Track } from "@/shared/contracts";
 import { finalizeImportedPlaylist } from "./finalizeImport";
 import { saveImportedPlaylistMeta } from "../importedPlaylistMeta";
+import { registerImportedPlaylist } from "../../../hooks/usePlaylists";
+import { playlistLibraryOwner } from "../../playlistRemovals";
 
 interface LocalImportRecord {
   job: ImportJob;
@@ -57,14 +59,16 @@ export async function finalizeLocalImport(
   if (!record) throw new Error("Import was not found.");
   if (record.job.status === "completed") return { finalized: true };
   const total = record.job.result?.total ?? tracks.length;
+  const owner = playlistLibraryOwner();
   updateLocalImportJob(jobId, { status: "finalizing" });
   try {
-    const { playlistId, saved } = await finalizeImportedPlaylist(
+    const { playlistId, saved, playlist } = await finalizeImportedPlaylist(
       title || record.job.title || "Imported playlist",
       description ?? record.job.description,
       tracks,
     );
     saveImportedPlaylistMeta(playlistId, record.job.source, record.job.sourceUrl);
+    registerImportedPlaylist(playlist, tracks, owner);
     updateLocalImportJob(jobId, {
       status: "completed",
       requiresDecision: false,

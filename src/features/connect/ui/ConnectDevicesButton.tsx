@@ -48,7 +48,7 @@ export default function ConnectDevicesButton({ className = "", size = 18 }: { cl
           if (!active) transferTo(device.id);
           setOpen(false);
         }}
-        className={`flex w-full items-center gap-[12px] rounded-xl border-0 bg-transparent px-[12px] py-[10px] text-left cursor-pointer active:bg-border-alpha-14 hover:bg-border-alpha-14 ${
+        className={`flex min-h-[48px] w-full items-center gap-[12px] rounded-xl border-0 bg-transparent px-[12px] py-[10px] text-left cursor-pointer [touch-action:manipulation] active:bg-border-alpha-14 hover:bg-border-alpha-14 ${
           active ? "text-accent-primary" : "text-text-primary"
         }`}
       >
@@ -82,9 +82,9 @@ export default function ConnectDevicesButton({ className = "", size = 18 }: { cl
       {open &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-[300]" onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-[9998]" onPointerDown={(e) => e.stopPropagation()} onClick={() => setOpen(false)} />
             <div
-              className="fixed z-[301] w-[260px] overflow-hidden rounded-2xl border border-white/[0.08] p-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+              className="fixed z-[9999] w-[260px] max-w-[calc(100vw-20px)] overflow-hidden rounded-2xl border border-white/[0.08] p-[8px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
               style={{
                 ...pos,
                 background: "color-mix(in srgb, var(--bg-elevated, #1a1a1e) 70%, transparent)",
@@ -92,6 +92,7 @@ export default function ConnectDevicesButton({ className = "", size = 18 }: { cl
                 WebkitBackdropFilter: "blur(28px) saturate(1.6)",
                 fontFamily: "var(--font-inter), sans-serif",
               }}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
             >
               <p className="m-0 px-[12px] pb-[6px] pt-[4px] text-[12px] font-[600] uppercase tracking-[0.04em] text-text-tertiary">

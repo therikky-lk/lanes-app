@@ -33,7 +33,7 @@ export async function profileCustomization(request, env, { owner, readBody, json
     if (!Object.hasOwn(EMPTY, key)) invalid();
     const value = body[key];
     if (key === "banner") {
-      if (value !== null && (typeof value !== "string" || value.length > 700000 || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/=]+$/.test(value))) invalid();
+      if (value !== null && (typeof value !== "string" || value.length > 700000 || !/^(?:data:image\/jpeg;base64,\/9j\/|data:image\/gif;base64,R0lGOD[dl]h)[A-Za-z0-9+/=]+$/.test(value))) invalid();
       patch.banner = value;
     } else if (key === "links") {
       if (!Array.isArray(value) || value.length > 3) invalid();

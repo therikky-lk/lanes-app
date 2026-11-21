@@ -16,12 +16,26 @@ function flatten(object, prefix = "", out = {}) {
 const dictionaries = Object.fromEntries(locales.map(locale => [locale, flatten(JSON.parse(fs.readFileSync(path.join(root, `src/languages/locales/${locale}.json`), "utf8")))]));
 const base = dictionaries.en;
 const errors = [];
+// Equal keys do not imply translated text: copied English sentences used to
+// pass this check and appeared inside otherwise localized profile dialogs.
+const invariantText = new Set([
+  "common.streaming_link_placeholder",
+  "settings.discord.enable.title",
+  "settings.notifications.playback_sub",
+  "settings.notifications.release_sub",
+  "settings.profile.avatar_url_placeholder",
+  "settings.about.tech_electron",
+  "settings.about.tech_react",
+]);
 const placeholders = value => [...value.matchAll(/\{([^{}]+)\}/g)].map(match => match[1]).sort().join(",");
 for (const [locale, dictionary] of Object.entries(dictionaries)) {
   for (const [key, template] of Object.entries(base)) {
     const value = dictionary[key];
     if (typeof value !== "string" || !value.trim()) errors.push(`${locale}: missing or empty ${key}`);
     else if (placeholders(value) !== placeholders(template)) errors.push(`${locale}: placeholders differ for ${key}`);
+    else if (locale !== "en" && value === template && template.length > 15 && /[A-Za-z]/.test(template) && !invariantText.has(key)) {
+      errors.push(`${locale}: untranslated English text for ${key}`);
+    }
   }
   // Plural forms specific to a locale must retain their count parameter too.
   for (const [key, value] of Object.entries(dictionary)) {

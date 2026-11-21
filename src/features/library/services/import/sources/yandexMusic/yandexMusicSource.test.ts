@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { loadYandexAvatar, loadYandexLikedTracks } from "./yandexMusicSource";
+import { loadYandexAvatar, loadYandexLikedTracks, loadYandexProfile } from "./yandexMusicSource";
 
 const mocks = vi.hoisted(() => ({
   native: vi.fn(() => false),
@@ -28,6 +28,19 @@ it("loads a Yandex ID portrait without sending the token in the image URL", asyn
     redirect: "error", headers: expect.objectContaining({ Authorization: "OAuth test_token_1234" }),
   }));
   await expect(loadYandexAvatar("test_token_1234")).resolves.toBeNull();
+});
+
+it("uses the Yandex display name and falls back to the login without requiring an avatar", async () => {
+  const fetch = vi.fn()
+    .mockResolvedValueOnce(Response.json({ display_name: " Listener ", real_name: "Real Name", login: "listener", default_avatar_id: "42/photo" }))
+    .mockResolvedValueOnce(Response.json({ display_name: " ", login: "listener", is_avatar_empty: true }));
+  vi.stubGlobal("fetch", fetch);
+  await expect(loadYandexProfile("test_token_1234")).resolves.toEqual({
+    displayName: "Listener", login: "listener", avatarUrl: "https://avatars.yandex.net/get-yapic/42/photo/islands-200",
+  });
+  await expect(loadYandexProfile("test_token_1234")).resolves.toEqual({
+    displayName: "listener", login: "listener", avatarUrl: null,
+  });
 });
 
 it("loads liked metadata in ordered batches of 100 using only the Yandex API", async () => {

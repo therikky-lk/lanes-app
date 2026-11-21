@@ -16,6 +16,7 @@ export interface StickyHeaderProps {
   className?: string;
   desktopBackdrop?: boolean;
   plainMetadata?: boolean;
+  backButtonSurface?: boolean;
 }
 
 export function StickyHeader({
@@ -29,6 +30,7 @@ export function StickyHeader({
   className = "",
   desktopBackdrop = false,
   plainMetadata = false,
+  backButtonSurface = false,
 }: StickyHeaderProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -84,8 +86,12 @@ export function StickyHeader({
               aria-label={t("common.back")}
               data-no-tooltip="true"
               data-no-window-drag
-              data-transparent-back-button
-              className="group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-md px-[10px] active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto text-[13px] font-[500] text-text-primary border-0 !border-none !bg-transparent !backdrop-blur-none !shadow-none hover:!bg-transparent active:!bg-transparent"
+              data-transparent-back-button={!backButtonSurface || undefined}
+              className={`group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-md px-[10px] active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto text-[13px] font-[500] text-text-primary border-0 !border-none ${
+                backButtonSurface
+                  ? hasCustomBg ? "apple-glass-pill !border-none" : "bg-bg-panel/85 backdrop-blur-xl hover:bg-bg-panel"
+                  : "!bg-transparent !backdrop-blur-none !shadow-none hover:!bg-transparent active:!bg-transparent"
+              }`}
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
             >
               <ArrowLeftLine
@@ -138,6 +144,5 @@ export function StickyHeader({
 }
 
 export default StickyHeader;
-
 
 

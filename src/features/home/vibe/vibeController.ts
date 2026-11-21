@@ -7,6 +7,7 @@ import { shuffle } from "@/shared/utils/shuffle";
 import { isNativeApp } from "@/shared/platform/native";
 import { diag } from "@/shared/platform/diag";
 import { languageFilter } from "./trackLanguage";
+import { collectAvailable, within } from "./vibeRequests";
 import {
   affinity,
   buildTaste,
@@ -36,7 +37,7 @@ const SETTINGS_KEY = "lane_vibe_settings";
 const BATCH = 20;
 // the listener waits for the first batch: the lyrics lookups that decide the
 // language get this long in all (refills run in the background, with more time)
-const START_LANGUAGE_BUDGET_MS = 5000;
+const START_LANGUAGE_BUDGET_MS = 1500;
 const REFILL_LANGUAGE_BUDGET_MS = 16000;
 
 function recentSeeds(): string[] {
@@ -165,7 +166,7 @@ const MOOD_QUERIES: Record<PoolKey, string[]> = {
   calm: ["спокойная музыка", "chill vibes", "relaxing songs"],
   sad: ["грустные песни", "sad songs", "melancholic"],
 };
-const moodPools = new Map<string, Promise<Track[]>>();
+const moodPools = new Map<string, { promise: Promise<Track[]>; expires: number }>();
 
 function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<Track[]> {
   const key = `${mood}:${language ?? "-"}`;
@@ -177,32 +178,24 @@ function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<
         : language === "english"
           ? MOOD_QUERIES_EN
           : MOOD_QUERIES;
-  let pool = moodPools.get(key);
+  const cached = moodPools.get(key);
+  let pool = cached && cached.expires > Date.now() ? cached.promise : undefined;
   if (!pool) {
-    pool = (async () => {
-      const playlists = (
-        await Promise.all(
-          queries[mood].map((q) =>
-            api
-              .search(q, "playlist")
-              .then((r) => r.items.filter((i) => i.type === "playlist").slice(0, 2))
-              .catch(() => []),
-          ),
-        )
-      ).flat();
-      const lists = await Promise.all(
-        playlists.slice(0, 6).map((p) =>
-          api
-            .getPlaylist(p.id)
-            .then((d) => d.tracks.map((t) => toClientTrack(t)))
-            .catch(() => [] as Track[]),
-        ),
-      );
-      // songs only: music videos come with frame thumbnails from i.ytimg.com
-      return lists.flat().filter((t) => !/ytimg\.com/.test(t.coverUrl || ""));
-    })();
-    pool.then((tracks) => tracks.length === 0 && moodPools.delete(key)).catch(() => moodPools.delete(key));
-    moodPools.set(key, pool);
+    const songsOnly = (tracks: Track[]) => tracks.filter(t => !/ytimg\.com/.test(t.coverUrl || ""));
+    // Direct song results race playlist discovery. A single slow playlist must
+    // not hold the first song hostage, and an empty pool must be retryable.
+    const requests = queries[mood].slice(0, 2).flatMap(q => [
+      api.search(q, "track").then(r => songsOnly(r.items.flatMap(item =>
+        item.type === "track" ? [toClientTrack(item as ApiTrackInput)] : []))),
+      within(api.search(q, "playlist"), 2000, { items: [] }).then(async r => {
+        const playlists = r.items.filter(item => item.type === "playlist").slice(0, 2);
+        return collectAvailable(playlists.map(p => api.getPlaylist(p.id).then(d => songsOnly(d.tracks.map(t => toClientTrack(t))))), 2500, 30);
+      }),
+    ]);
+    pool = collectAvailable(requests, 4500, 20);
+    const entry = { promise: pool, expires: Date.now() + 10 * 60_000 };
+    moodPools.set(key, entry);
+    void pool.then(tracks => { if (!tracks.length && moodPools.get(key) === entry) moodPools.delete(key); });
   }
   return pool;
 }
@@ -241,7 +234,7 @@ async function nextBatch(
   const { mood, character, language } = settings;
   const loaded = useFallbackSignals
     ? { liked: (fallback?.liked ?? []).slice(0, 300), history: (fallback?.recent ?? []).slice(0, 200) }
-    : await loadSignals();
+    : await within(loadSignals(), runKind === "start" ? 1500 : 5000, { liked: [] as Track[], history: [] as Track[] });
   signalsMs = Math.round(performance.now() - phaseAt);
   phaseAt = performance.now();
   const liked = loaded.liked.length ? loaded.liked : fallback?.liked ?? [];
@@ -265,7 +258,7 @@ async function nextBatch(
   const [moodTracks, instrumentalTracks, popularTracks] = await Promise.all([
     mood ? moodPool(mood, language) : Promise.resolve([] as Track[]),
     language === "instrumental" ? moodPool("instrumental") : Promise.resolve([] as Track[]),
-    character === "popular" || (spoken && !mood) ? moodPool("popular", language) : Promise.resolve([] as Track[]),
+    character === "popular" || (spoken && !mood) || (!mood && !taste.seeds.length) ? moodPool("popular", language) : Promise.resolve([] as Track[]),
   ]);
   poolsMs = Math.round(performance.now() - phaseAt);
   phaseAt = performance.now();
@@ -279,7 +272,7 @@ async function nextBatch(
       ? moodTracks
       : language === "instrumental"
         ? instrumentalTracks
-        : character === "popular" || spoken
+           : character === "popular" || spoken || !taste.seeds.length
           ? popularTracks
           : []
   ).filter(fits);
@@ -312,7 +305,14 @@ async function nextBatch(
   }
   rememberSeeds(seeds.map((s) => s.id));
 
-  let candidates = [...(await Promise.all(seeds.map((s) => radioFor(s)))).flat(), ...extra];
+  // Start from the selected tag's pool immediately. Radio enriches refills;
+  // previously even a full matching pool waited for up to six radio requests.
+  let candidates = runKind === "start" && pool.length
+    ? [...pool]
+    : [...await collectAvailable(seeds.map(s => radioFor(s)), runKind === "start" ? 3000 : 7000, BATCH), ...pool, ...extra];
+  if (!candidates.length && !mood && !language && character !== "unfamiliar") {
+    candidates = [...liked, ...history, ...(fallback?.trending ?? [])].filter(fits);
+  }
   radioMs = Math.round(performance.now() - phaseAt);
   phaseAt = performance.now();
   // "favorite": the listener's own liked songs make up a good part of it
@@ -324,13 +324,13 @@ async function nextBatch(
     // the language is decided by the lyrics (LRCLIB), not by the name; the
     // lookups below share one time budget instead of adding up
     const deadline = Date.now() + languageBudgetMs;
-    const budget = (cap: number) => Math.max(800, Math.min(cap, deadline - Date.now()));
+    const budget = (cap: number) => Math.max(0, Math.min(cap, deadline - Date.now()));
     const speaks = await languageFilter(filtered, language, liked, budget(7000));
     const inLang = (t: Track) => speaks(t) || (languagePoolIds.has(t.id) && !speaks.known(t));
     let inLanguage = filtered.filter(inLang);
     const taken = new Set([...exclude, ...session.played.keys()]);
     const fresh = () => inLanguage.filter((t) => !taken.has(t.id)).length;
-    if (fresh() < 12) {
+    if (fresh() < 12 && runKind !== "start" && Date.now() < deadline) {
       // the mood's radio mostly went elsewhere: grow more from songs that are
       // known to be in this language (the listener's own first, then the pool)
       const sample = shuffle([...liked, ...pool]).slice(0, 160);
@@ -343,7 +343,7 @@ async function nextBatch(
         new Set([...avoid, ...seeds.map((s) => s.id)]),
       );
       if (langSeeds.length) {
-        const more = (await Promise.all(langSeeds.map((s) => radioFor(s)))).flat().filter(fits);
+        const more = (await collectAvailable(langSeeds.map(s => radioFor(s)), budget(4000), BATCH)).filter(fits);
         const moreSpeaks = await languageFilter(more, language, liked, budget(5000));
         const seen = new Set(inLanguage.map((t) => t.id));
         for (const t of [...langSeeds, ...more]) {
@@ -388,14 +388,22 @@ setRadioRefillProvider((context, queue) => {
 });
 
 /** start (or restart) the vibe with the given settings */
-export async function startVibe(settings: VibeSettings, fallback?: Fallback): Promise<boolean> {
+let startRevision = 0;
+export async function startVibe(settings: VibeSettings, fallback?: Fallback): Promise<boolean | null> {
+  const revision = ++startRevision;
+  const initialTrack = usePlayerStore.getState().currentTrack?.id;
+  const initialContext = usePlayerStore.getState().playbackContext;
   session.played.clear();
   session.skipped.clear();
   const hasFallbackSignals = Boolean(fallback?.liked?.length || fallback?.recent?.length || fallback?.trending?.length);
   // Make a fresh signals snapshot available for the next refill, but don't
   // hold the first song hostage while 3–5 paged API requests complete.
   if (hasFallbackSignals) void loadSignals().catch(() => undefined);
-  const batch = await nextBatch(settings, new Set(), fallback, START_LANGUAGE_BUDGET_MS, "start", hasFallbackSignals);
+  const batch = await nextBatch(settings, new Set(initialTrack ? [initialTrack] : []), fallback, START_LANGUAGE_BUDGET_MS, "start", hasFallbackSignals);
+  const current = usePlayerStore.getState();
+  // A slower old tag selection must never replace the latest selection or a
+  // track the listener manually started while this batch was loading.
+  if (revision !== startRevision || current.currentTrack?.id !== initialTrack || current.playbackContext !== initialContext) return null;
   if (batch.length === 0) return false;
   const { character, mood, language } = settings;
   const vibeContext = `${VIBE_CONTEXT_PREFIX}${character ?? "-"}:${mood ?? "-"}:${language ?? "-"}:${Date.now().toString(36)}`;

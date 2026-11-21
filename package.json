@@ -5,6 +5,7 @@
   "type": "module",
   "private": true,
   "description": "Lane Music Player",
+  "homepage": "https://github.com/therikky-lk/lanes-app",
   "author": {
     "name": "therikky-lk",
     "email": "191606503+therikky-lk@users.noreply.github.com"
@@ -196,6 +197,8 @@
     "bgutils-js": "4.0.3",
     "electron-updater": "^6.8.9",
     "framer-motion": "^12.38.0",
+    "gifenc": "^1.0.3",
+    "gifuct-js": "^2.1.2",
     "gsap": "^3.15.0",
     "hash-wasm": "4.12.0",
     "lottie-web": "^5.13.0",

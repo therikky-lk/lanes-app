@@ -1,7 +1,7 @@
 import { useArtworkInteractionStore } from "../store/artworkInteractionStore";
 import { isNativeApp } from "@/shared/platform/native";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { KawarpEngine } from "../engine/kawarpEngine";
 import { getCoverElement, useCoverElement } from "@/features/covers";
 
@@ -12,11 +12,12 @@ export const KAWARP_RENDER_SCALE = isNativeApp() ? (isLowEndDevice() ? 0.22 : 0.
 
 interface KawarpWrapperProps {
   src?: string;
+  paused?: boolean;
   onLoad?: () => void;
   onError?: (err: Error) => void;
 }
 
-export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
+export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, onLoad, onError }: KawarpWrapperProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<KawarpEngine | null>(null);
@@ -113,9 +114,9 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
-    if (interacting) engine.stop();
+    if (interacting || paused) engine.stop();
     else engine.start();
-  }, [interacting]);
+  }, [interacting, paused]);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -155,6 +156,6 @@ export function KawarpWrapper({ src, onLoad, onError }: KawarpWrapperProps) {
       />
     </div>
   );
-}
+});
 
 export default KawarpWrapper;
