@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
+import type { ArtistDetails } from "@/shared/contracts";
+import { sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
 
 export interface ArtistAlbumViewModel {
   id: string;
@@ -16,6 +18,7 @@ export interface ArtistReleaseViewModel extends ArtistAlbumViewModel {
 }
 
 export interface ArtistPageData {
+  id: string;
   title: string;
   description: string;
   coverUrl: string;
@@ -34,7 +37,7 @@ export interface ArtistPageData {
   singles: ArtistReleaseViewModel[];
 }
 
-export function useArtist(id: string | null) {
+export function useArtist(id: string | null, expectedName: string | null = null) {
   const [data, setData] = useState<ArtistPageData | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(id));
 
@@ -51,12 +54,11 @@ export function useArtist(id: string | null) {
     setData(null);
     setLoading(true);
 
-    async function loadArtist() {
-      try {
-        const artist = await api.getArtist(artistId);
-        if (!active) return;
+    function publish(artist: ArtistDetails) {
+        if (!active || (expectedName && !sameArtistName(artist.name, expectedName))) return;
         const tracks = artist.tracks.map(toClientTrack);
         const formatted: ArtistPageData = {
+          id: artist.id,
           title: artist.name,
           monthlyListeners: artist.monthlyListeners,
           verified: Boolean(artist.verified),
@@ -89,11 +91,23 @@ export function useArtist(id: string | null) {
         };
 
         setData(formatted);
+    }
 
-      } catch {
-        if (active) {
-          setData(null);
+    async function loadArtist() {
+      try {
+        let artist = expectedName && sameArtistName(artistId, expectedName)
+          ? null
+          : await api.getArtist(artistId, publish).catch(() => null);
+        if (!active) return;
+        if (expectedName && (!artist || !sameArtistName(artist.name, expectedName))) {
+          const { items } = await api.search(expectedName, "artist");
+          if (!active) return;
+          const matchId = uniqueArtistId(items, expectedName);
+          artist = matchId && matchId !== artistId ? await api.getArtist(matchId, publish) : null;
         }
+        if (artist) publish(artist);
+      } catch {
+        // Keep any verified profile already published from the first response.
       } finally {
         if (active) {
           setLoading(false);
@@ -106,7 +120,7 @@ export function useArtist(id: string | null) {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, expectedName]);
 
   return { data, loading };
 }

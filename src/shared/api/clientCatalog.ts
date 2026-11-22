@@ -143,9 +143,9 @@ export const clientCatalog = {
     return innertubeCatalog.getArtistImage(id).catch(() => undefined);
   },
 
-  getArtist(id: string, server: () => Promise<ArtistDetails>): Promise<ArtistDetails> {
+  getArtist(id: string, server: () => Promise<ArtistDetails>, onPreview?: (artist: ArtistDetails) => void): Promise<ArtistDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getArtist(id);
-    return loadArtistWithFallback(() => innertubeCatalog.getArtist(id), server);
+    return loadArtistWithFallback(() => innertubeCatalog.getArtist(id, undefined, onPreview), server);
   },
 
   getPlaylist(id: string, server: () => Promise<CatalogPlaylistDetails>): Promise<CatalogPlaylistDetails> {

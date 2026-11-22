@@ -1,4 +1,5 @@
 import { isPlayerDismissDrag, shouldDismissPlayer } from "@/features/player/ui/playerDismissGesture";
+import { artistHref } from "@/shared/media/artistIdentity";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { startConnect, stopConnect } from "@/features/connect/connectService";
 import { onAndroidBack } from "@/shared/platform/androidBack";
@@ -733,7 +734,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           coverUrl: it.coverUrl,
           itemData: it,
         });
-        navigate(`/artist?id=${encodeURIComponent(it.id)}`);
+        navigate(artistHref(it.id, it.name || it.title));
       } else if (
         it._type === "playlist" ||
         it.owner !== undefined ||

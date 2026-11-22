@@ -63,7 +63,7 @@ export function fromLinerStream(stream: LinerAudioStream, track: PlayableTrack):
   return {
     url: stream.url,
     mimeType: stream.mimeType,
-    codec: stream.codec ?? "opus",
+    codec: stream.codec ?? (/^(?:audio|application)\/(?:x-)?flac\b/i.test(stream.mimeType) ? "flac" : "opus"),
     bitrate: seconds > 0 ? Math.round((stream.size * 8) / seconds) : 0,
     expiresAtMs: toTimestamp(stream.expiresAt),
     ...(stream.size ? { contentLength: stream.size } : {}),

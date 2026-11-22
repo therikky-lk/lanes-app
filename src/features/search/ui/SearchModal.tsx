@@ -27,6 +27,7 @@ import {
   useSearchYoutube,
 } from "../hooks";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
+import { artistHref } from "@/shared/media/artistIdentity";
 import SearchResultsList from "./SearchResultsList";
 import SearchHistoryList from "./SearchHistoryList";
 import { useSearchHistoryStore } from "../store/searchHistoryStore";
@@ -362,7 +363,7 @@ export function SearchModal({
         itemData: it,
       });
       onClose();
-      navigate(`/artist?id=${encodeURIComponent(it.id)}`);
+      navigate(artistHref(it.id, it.name || it.title));
     } else if (
       (it as any)._type === "playlist" ||
       it.owner !== undefined ||

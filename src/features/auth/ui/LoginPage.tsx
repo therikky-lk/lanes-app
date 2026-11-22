@@ -11,9 +11,6 @@ import { useWindowState } from "@/features/navigation/hooks/useWindowState";
 import logo from "@/assets/logo.svg";
 import AppImage from "@/features/covers/ui/AppImage";
 import { api, ApiError, type EmailCodePurpose } from "@/shared/api/api";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
-import { APP_VERSION } from "@/shared/config/version";
-import { diagLines } from "@/shared/platform/diag";
 import {
   authErrorMessage,
   getAuthErrorCode,
@@ -25,56 +22,7 @@ import EmailCodeForm from "./EmailCodeForm";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
-
-function buildAuthFailureReport(error: unknown, path: "login" | "register"): string {
-  const apiError = error instanceof ApiError ? error : null;
-  const safeLogs = [...diagLines()]
-    .slice(-40)
-    .filter((line) => /\b(API|HTTP|Cloudflare|Capacitor)\b/i.test(line))
-    .map((line) =>
-      line.replace(/([?&](?:access_token|refresh_token|token|password|email)=)[^&\s]*/gi, "$1[redacted]"),
-    );
-  return JSON.stringify(
-    {
-      occurredAt: new Date().toISOString(),
-      app: {
-        version: APP_VERSION,
-        platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
-        language: typeof navigator !== "undefined" ? navigator.language : "unknown",
-      },
-      request: {
-        method: "POST",
-        url: `${getApiBaseUrl()}/v1/auth/${path}`,
-        status: apiError?.status ?? 0,
-        code: apiError?.code ?? (error instanceof Error ? error.name : "UNKNOWN_ERROR"),
-        requestId: apiError?.requestId,
-        cloudflareRayId: apiError?.cloudflareRayId,
-      },
-      recentNetworkLog: safeLogs,
-      note: "This report excludes the email, password, access token, and refresh token.",
-    },
-    null,
-    2,
-  );
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    const input = document.createElement("textarea");
-    input.value = text;
-    input.style.position = "fixed";
-    input.style.opacity = "0";
-    document.body.appendChild(input);
-    input.select();
-    const copied = document.execCommand("copy");
-    input.remove();
-    return copied;
-  }
-}
+const inputStyle = "h-[44px]! rounded-[8px]! border-white/15 bg-[#111112]! [--input-autofill-bg:#111112] [&_input]:text-white! [&_input]:placeholder:text-white/40!";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -95,8 +43,6 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [errorReport, setErrorReport] = useState("");
-  const [reportCopied, setReportCopied] = useState(false);
   const [emailFlow, setEmailFlow] = useState<EmailCodePurpose | null>(null);
   const [resetAvailable, setResetAvailable] = useState(false);
   const [passwordReset, setPasswordReset] = useState(false);
@@ -124,7 +70,6 @@ export default function LoginPage() {
     setPasswordReset(false);
     setRegisterStep(1);
     setError("");
-    setErrorReport("");
     setConfirmPassword("");
   };
 
@@ -208,8 +153,6 @@ export default function LoginPage() {
         navigate("/", { replace: true });
       } catch (nextError) {
         setError(resolveErrorMessage(nextError));
-        setErrorReport(buildAuthFailureReport(nextError, "login"));
-        setReportCopied(false);
       } finally {
         setSubmitting(false);
       }
@@ -253,10 +196,7 @@ export default function LoginPage() {
       navigate("/", { replace: true });
     } catch (nextError) {
       const code = getAuthErrorCode(nextError);
-      setErrorReport(buildAuthFailureReport(nextError, "register"));
-      setReportCopied(false);
       if (nextError instanceof ApiError && nextError.code === "EMAIL_CODE_REQUIRED") {
-        setErrorReport("");
         setEmailFlow("register");
       } else if (code === "email_already_used") {
         setRegisterStep(1);
@@ -286,7 +226,6 @@ export default function LoginPage() {
       <section className="relative z-10 mx-4 my-auto grid max-h-[calc(100%-32px)] w-full max-w-[780px] grid-cols-1 gap-[10px] overflow-y-auto rounded-[22px] border border-white/[0.04] bg-[#1f1f20]/85 p-[9px] shadow-[0_28px_90px_rgba(0,0,0,0.28)] backdrop-blur-2xl md:grid-cols-[0.82fr_1.18fr]">
         <aside className="relative hidden min-h-[378px] flex-col items-start overflow-hidden rounded-[14px] bg-[#303033] px-[28px] py-[24px] text-left md:flex">
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            <span className="absolute -left-[8px] -top-[112px] select-none text-[420px] font-black leading-none tracking-[-0.12em] text-white/[0.035]">N</span>
             <span className="absolute -right-[48px] -top-[20px] h-[115%] w-[42%] rotate-[-28deg] bg-black/[0.12]" />
             <span className="absolute -bottom-[34%] left-[42%] h-[90%] w-[20%] rotate-[-28deg] bg-white/[0.025]" />
           </div>
@@ -438,7 +377,7 @@ export default function LoginPage() {
                         spellCheck={false}
                         autoComplete={mode === "login" ? "username" : "email"}
                         placeholder={t("login.placeholder_email")}
-                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
+                        className={inputStyle}
                         value={email}
                         hasError={Boolean(error)}
                         aria-invalid={Boolean(error)}
@@ -468,7 +407,7 @@ export default function LoginPage() {
                             ? t("login.placeholder_password")
                             : t("login.placeholder_password_new")
                         }
-                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
+                        className={inputStyle}
                         value={password}
                         hasError={Boolean(error)}
                         aria-invalid={Boolean(error)}
@@ -502,7 +441,6 @@ export default function LoginPage() {
                         <button type="button" disabled={submitting}
                           onClick={() => {
                             setError("");
-                            setErrorReport("");
                             setPasswordReset(false);
                             setEmailFlow("reset");
                           }}
@@ -534,7 +472,7 @@ export default function LoginPage() {
                               type={showConfirmPassword ? "text" : "password"}
                               autoComplete="new-password"
                               placeholder={t("login.placeholder_confirm")}
-                              className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
+                              className={inputStyle}
                               value={confirmPassword}
                                     hasError={Boolean(error)}
                               aria-invalid={Boolean(error)}
@@ -593,7 +531,7 @@ export default function LoginPage() {
                         spellCheck={false}
                         autoComplete="username"
                         placeholder={t("login.placeholder_username")}
-                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
+                        className={inputStyle}
                         value={username}
                         icon={
                           <span className="text-[14px] font-medium text-white/45 select-none">
@@ -629,7 +567,7 @@ export default function LoginPage() {
                         type="text"
                         autoComplete="name"
                         placeholder={t("login.placeholder_display_name")}
-                        className="!h-[44px] !rounded-[8px] !border-white/15 !bg-[#111112] [&_input]:!text-white [&_input]:placeholder:!text-white/40"
+                        className={inputStyle}
                         value={displayName}
                         hasError={Boolean(error)}
                         aria-invalid={Boolean(error)}
@@ -661,33 +599,6 @@ export default function LoginPage() {
                     )}
                   </AnimatePresence>
                 </div>
-
-                {error && errorReport && (
-                  <div className="mb-[10px] rounded-[10px] border border-white/[0.08] bg-black/20 px-[10px] py-[8px] text-left">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-[500] text-white/65">
-                        {t("login.errors.error_details")}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={async () => setReportCopied(await copyText(errorReport))}
-                        className="shrink-0 cursor-pointer rounded-[7px] border-0 bg-white/[0.08] px-[9px] py-[5px] text-[11px] font-[500] text-white/85 transition-colors hover:bg-white/[0.14]"
-                      >
-                        {reportCopied
-                          ? t("login.errors.error_log_copied")
-                          : t("login.errors.copy_error_log")}
-                      </button>
-                    </div>
-                    <details className="mt-[6px]">
-                      <summary className="cursor-pointer select-none text-[11px] text-white/50">
-                        {t("login.errors.show_error_log")}
-                      </summary>
-                      <pre className="mb-0 mt-[6px] max-h-[150px] overflow-auto whitespace-pre-wrap break-all rounded-[7px] bg-black/25 p-[8px] text-[10px] leading-[1.4] text-white/65">
-                        {errorReport}
-                      </pre>
-                    </details>
-                  </div>
-                )}
 
                 {/* Submit / Action buttons */}
                 <AnimatePresence initial={false}>

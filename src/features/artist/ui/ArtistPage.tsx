@@ -1,7 +1,7 @@
 import ShareButton from "@/shared/ui/ShareButton";
 import SectionExpandButton from "@/shared/ui/SectionExpandButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useState, Suspense, useRef } from "react";
+import { useState, Suspense, useRef } from "react";
 import {
   PlayFill,
   AddLine,
@@ -62,50 +62,25 @@ function ArtistContent() {
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
   const [searchParams] = useSearchParams();
-  const id = searchParams.get("id");
+  const requestedId = searchParams.get("id");
+  const { data, loading } = useArtist(requestedId, searchParams.get("name"));
+  const id = data?.id ?? requestedId;
   const pinned = usePinsStore((st) => Boolean(id && st.pins.some((p) => p.kind === "artist" && p.id === id)));
 
-  const { data, loading } = useArtist(id);
   const artistImage = useArtistAvatar(data ? id ?? undefined : undefined, data?.title, data?.coverUrl ?? undefined);
   const [showAllTracks, setShowAllTracks] = useState(false);
   const [releasesView, setReleasesView] = useState<ReleaseFilter | null>(null);
   const ROW_LIMIT = 14;
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [skeletonExited, setSkeletonExited] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [loadingMore] = useState(false);
   const [hasMore] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const tracksSectionRef = useRef<HTMLElement>(null);
 
-  const decodedId = id ? decodeURIComponent(id) : "";
+  const decodedId = id ?? "";
   const { data: savedArtists } = useExternalItems("artist");
   const inLibrary = savedArtists.some((artist) => artist.id === decodedId);
-
-  useEffect(() => {
-    setImagesLoaded(!loading && !!data);
-    if (loading || !data) setSkeletonExited(false);
-  }, [loading, data]);
-
-  const isReady = !loading && !!data && imagesLoaded;
-
-  useEffect(() => {
-    if (isReady && !skeletonExited) {
-      const timer = setTimeout(() => {
-        setSkeletonExited(true);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [isReady, skeletonExited]);
-
-  useEffect(() => {
-    setIsScrolled(false);
-    setShowAllTracks(false);
-    setIsProfileModalOpen(false);
-    setImagesLoaded(false);
-    setSkeletonExited(false);
-  }, [id]);
 
   const handlePlayAll = () => {
     if (!data || data.tracks.length === 0) return;
@@ -126,7 +101,7 @@ function ArtistContent() {
 
   const handleSaveToLibrary = () => {
     if (!data || !id) return;
-    const decoded = decodeURIComponent(id);
+    const decoded = id;
     if (inLibrary) {
       useModalStore.getState().openRemoveFromLibrary({
         id: decoded,
@@ -202,7 +177,7 @@ function ArtistContent() {
         />
 
         <div className="relative z-1 grid grid-cols-1 items-start w-full">
-          {isReady && data && (
+          {data && (
             <div className="col-start-1 row-start-1 w-full pb-[32px]">
               <div className="relative w-full min-h-[340px] md:min-h-[380px] flex flex-col justify-between overflow-hidden">
                 {artistImage ? (
@@ -570,16 +545,7 @@ function ArtistContent() {
           </div>
         )}
 
-        {!skeletonExited && (
-          <div
-            className={`col-start-1 row-start-1 w-full z-10 transition-opacity duration-300 ease-out ${
-              isReady ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"
-            }`}
-            onTransitionEnd={() => setSkeletonExited(true)}
-          >
-            <ArtistPageSkeleton />
-          </div>
-        )}
+         {!data && <ArtistPageSkeleton />}
       </div>
       </div>
 
@@ -612,9 +578,10 @@ function ArtistContent() {
 }
 
 export default function ArtistPage() {
+  const [searchParams] = useSearchParams();
   return (
     <Suspense fallback={<ArtistPageSkeleton />}>
-      <ArtistContent />
+      <ArtistContent key={searchParams.toString()} />
     </Suspense>
   );
 }

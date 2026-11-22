@@ -944,9 +944,11 @@ export const api = {
     return clientCatalog.getArtistImage(id);
   },
 
-  getArtist(id: string): Promise<ApiArtistDetails> {
-    return clientCatalog.getArtist(id, () =>
-      request<ApiArtistDetails>(`/v1/artists/${encodeURIComponent(id)}`),
+  getArtist(id: string, onPreview?: (artist: ApiArtistDetails) => void): Promise<ApiArtistDetails> {
+    return clientCatalog.getArtist(
+      id,
+      () => request<ApiArtistDetails>(`/v1/artists/${encodeURIComponent(id)}`),
+      onPreview,
     );
   },
 

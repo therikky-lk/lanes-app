@@ -10,7 +10,7 @@ export { debouncedStorage };
 export type RepeatMode = "off" | "all" | "one";
 export type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "error";
 export type MiniPlayerStyle = "default" | "rounded";
-export type AudioQuality = "low" | "standard" | "high" | "lossless";
+export type AudioQuality = "low" | "standard" | "high" | "320" | "lossless";
 export type TrackDoubleClickBehavior = "play" | "queue";
 export type DefaultPlaybackContext = "resume" | "empty";
 export type AccentVariant =

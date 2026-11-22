@@ -11,7 +11,6 @@ import LoginPage from "@/features/auth/ui/LoginPage";
 import PlayerPage from "@/features/player/ui/FullscreenPlayer";
 import LocalTracksPage from "@/features/local/ui/LocalTracksPage";
 import RecentPage from "@/features/home/ui/RecentPage";
-import StatsPage from "@/features/stats/ui/StatsPage";
 import PublicProfilePage from "@/features/settings/ui/PublicProfilePage";
 
 export function AppRoutes() {
@@ -24,7 +23,6 @@ export function AppRoutes() {
       <Route path="/library/cached" element={<CachedTracksPage />} />
       <Route path="/local" element={<LocalTracksPage />} />
       <Route path="/recent" element={<RecentPage />} />
-      <Route path="/stats" element={<StatsPage />} />
       <Route path="/profile" element={<Navigate to="/settings/Profile" replace />} />
       <Route path="/user" element={<PublicProfilePage />} />
       <Route path="/artist" element={<ArtistPage />} />

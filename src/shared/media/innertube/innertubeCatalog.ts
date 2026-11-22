@@ -1,5 +1,6 @@
 import { isBrowserRuntime } from "@/shared/platform/browser";
 import { isAbortError } from "@/shared/utils/abort";
+import { sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
 import { getInvidiousTrack, getInvidiousRadio } from "./invidiousFallback";
 import { isMusicVideo } from "./innertubeTrackMapper";
 import type {
@@ -215,10 +216,11 @@ async function loadArtistReleaseTracks(releases: { id: string }[], signal?: Abor
   return mergeArtistTracks(...result);
 }
 
-async function loadArtist(artistId: string, signal?: AbortSignal): Promise<ArtistDetails | null> {
+async function loadArtist(artistId: string, signal?: AbortSignal, onPreview?: (artist: ArtistDetails) => void): Promise<ArtistDetails | null> {
   const body = await browse(artistId, undefined, signal);
   const artist = mapInnertubeArtistDetails(artistId, body);
   if (!artist) return null;
+  onPreview?.(artist);
   const topSongs = getArtistTopSongsBrowse(body);
   const releaseRefs = getArtistReleaseBrowses(body);
   const [allTracks, allAlbums, allSingles] = await Promise.all([
@@ -289,14 +291,14 @@ async function getArtistImage(artistId: string, signal?: AbortSignal): Promise<s
   return mapInnertubeArtistDetails(artistId, await browse(artistId, undefined, signal))?.cover?.url;
 }
 
-async function getArtist(artistId: string, signal?: AbortSignal): Promise<ArtistDetails> {
-  const direct = await loadArtist(artistId, signal).catch(() => null);
+async function getArtist(artistId: string, signal?: AbortSignal, onPreview?: (artist: ArtistDetails) => void): Promise<ArtistDetails> {
+  const direct = await loadArtist(artistId, signal, onPreview).catch(() => null);
   if (direct) return direct;
   const searched = await searchCatalog(artistId, "artist", signal).catch(() => []);
-  const match = searched.find((item) => item.type === "artist");
-  if (match && match.id !== artistId) {
-    const resolved = await loadArtist(match.id, signal);
-    if (resolved) return resolved;
+  const matchId = uniqueArtistId(searched, artistId);
+  if (matchId && matchId !== artistId) {
+    const resolved = await loadArtist(matchId, signal);
+    if (resolved && sameArtistName(resolved.name, artistId)) return resolved;
   }
   throw notFound("Artist");
 }

@@ -37,7 +37,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
           : "bg-bg-primary";
 
     const borderClass = hasError
-      ? "border-accent-primary ring-1 ring-accent-primary"
+      ? "border-accent-primary! inset-ring-1 inset-ring-accent-primary"
       : isTransparent
         ? "border-black/15 dark:border-white/20 hover:border-black/25 dark:hover:border-white/35 focus-within:border-black/25 dark:focus-within:border-white/30"
         : "border-border-primary focus-within:border-border-alpha-33";
@@ -50,7 +50,7 @@ const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
       <input
         ref={ref}
         disabled={disabled}
-        className="w-full bg-transparent border-none p-0 text-[inherit] font-[400] text-text-primary placeholder:text-text-tertiary outline-none disabled:cursor-not-allowed [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&:-webkit-autofill]:shadow-[0_0_0_1000px_var(--bg-primary)_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:var(--text-primary)]"
+        className="w-full bg-transparent border-none p-0 text-[inherit] font-[400] text-text-primary placeholder:text-text-tertiary outline-none disabled:cursor-not-allowed [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&:-webkit-autofill]:shadow-[0_0_0_1000px_var(--input-autofill-bg,var(--bg-primary))_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:currentColor]"
         style={{
           fontFamily: "var(--font-inter), sans-serif",
           letterSpacing: "0",

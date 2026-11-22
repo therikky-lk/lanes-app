@@ -1,7 +1,5 @@
-import DiagnosticsBox from "./DiagnosticsBox";
 import { isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { FaTelegramPlane, FaGithub } from "react-icons/fa";
 import { Refresh1Line } from "@mingcute/react";
 import { QuestionCircle } from "@solar-icons/react";
@@ -42,7 +40,6 @@ const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
 
 export function AboutTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const accentVariant = usePlayerStore((state) => state.accentVariant);
 
@@ -53,7 +50,6 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
     sha256: string | null;
   } | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const isRussian = typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("ru");
 
   const compareVersions = (a: string, b: string) => {
     const left = a.replace(/^v/i, "").split(".").map(Number);
@@ -228,11 +224,6 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           </div>
         </div>
       </div>
-      <Button variant="secondary" size="sm" onClick={() => navigate("/stats")} className="mt-[12px] w-full max-w-[604px] !h-[40px] !rounded-[12px]">
-        {isRussian ? "Открыть статистику" : "Open statistics"}
-      </Button>
-      {isNativeApp() && <DiagnosticsBox />}
     </div>
   );
 }
-

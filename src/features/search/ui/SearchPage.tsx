@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { CloseLine, SearchLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
+import { artistHref } from "@/shared/media/artistIdentity";
 import { playerEngine } from "@/features/player";
 import Button from "@/shared/ui/Button";
 import { debouncedStorage } from "@/shared/utils/storage";
@@ -80,7 +81,9 @@ export default function SearchPage() {
     rememberQuery(useSearchPageStore.getState().query);
     const type = item._type ?? item.type;
     addHistory({ id: item.id, type: type === "artist" ? "artist" : type === "album" ? "album" : "playlist", title: item.title ?? item.name, subtitle: item.artists, coverUrl: item.coverUrl, itemData: item });
-    navigate(item._href ?? (type === "artist" ? `/artist?id=${encodeURIComponent(item.id)}` : `/collection?type=${type === "album" ? "album" : "playlist"}&id=${encodeURIComponent(item.id)}`));
+    navigate(type === "artist"
+      ? artistHref(item.id, item.name ?? item.title)
+      : item._href ?? `/collection?type=${type === "album" ? "album" : "playlist"}&id=${encodeURIComponent(item.id)}`);
   }, [navigate, addHistory, rememberQuery]);
 
   const rememberArtist = useCallback((artist: { id: string; name: string }) => {

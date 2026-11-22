@@ -1040,7 +1040,8 @@
       "low": "Qualité basse (économie de données)",
       "standard": "Qualité standard (Opus 64kbps / MP3 128kbps)",
       "high": "Haute qualité (AAC 256kbps)",
-      "lossless": "Sans perte (FLAC/ALAC) - Indisponible"
+      "quality_320": "320 kbit/s (si disponible)",
+      "lossless": "Sans perte (FLAC/ALAC, si disponible)"
     },
     "profile": {
       "remove_avatar": "Supprimer l’avatar",

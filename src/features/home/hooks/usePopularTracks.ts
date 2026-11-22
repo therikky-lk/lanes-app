@@ -158,7 +158,7 @@ export function usePopular(limit = 50) {
             track.artists?.split(",")?.[0]?.trim() ||
             "";
           const artistId =
-            track.artistList?.[0]?.id || track.artistId || artistName;
+            track.artistList?.[0]?.id || (track.artistList?.length ? undefined : track.artistId) || artistName;
           if (artistName && !artistMap.has(artistName)) {
             artistMap.set(artistName, {
               id: artistId,

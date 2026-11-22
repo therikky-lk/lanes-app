@@ -1100,7 +1100,8 @@
       "low": "Low Quality (Data Saver)",
       "standard": "Standard Quality (Opus 64kbps / MP3 128kbps)",
       "high": "High Quality (AAC 256kbps)",
-      "lossless": "Lossless (FLAC/ALAC) - Unavailable"
+      "quality_320": "320 kbps (when available)",
+      "lossless": "Lossless (FLAC/ALAC, when available)"
     },
     "profile": {
       "remove_avatar": "Remove avatar",

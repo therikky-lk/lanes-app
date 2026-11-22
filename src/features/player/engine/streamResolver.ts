@@ -26,8 +26,13 @@ export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlayback
 function audioOptions(quality: AudioQuality) {
   return {
     preferredCodec: quality === "low" || quality === "standard" ? ("aac" as const) : ("opus" as const),
-    preferHighest: quality === "lossless",
+    preferHighest: quality === "lossless" || quality === "320",
   };
+}
+
+function isLossless(stream: PlaybackStream): boolean {
+  return /^(?:flac|alac)$/i.test(stream.codec) ||
+    /^(?:audio|application)\/(?:x-)?(?:flac|alac)\b/i.test(stream.mimeType);
 }
 
 async function resolveYoutubeStandIn(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
@@ -37,14 +42,14 @@ async function resolveYoutubeStandIn(track: PlayableTrack, signal?: AbortSignal,
   return fromInnertubeStream(await resolveDirectAudioStream(videoId, { signal, ...audioOptions(quality) }));
 }
 
-async function resolveSoundCloud(track: PlayableTrack, signal?: AbortSignal): Promise<PlaybackStream> {
+async function resolveSoundCloud(track: PlayableTrack, signal?: AbortSignal, quality: AudioQuality = "high"): Promise<PlaybackStream> {
   try {
     return fromSoundCloudStream(await resolveSoundCloudStream(track.id, { signal }));
   } catch (soundCloudError) {
     if (soundCloudError instanceof PlaybackRateLimitError || isAbortError(soundCloudError, signal)) throw soundCloudError;
     log("yellow", "playback", `soundcloud resolution failed, searching youtube: ${String(soundCloudError)}`);
     try {
-      return await resolveYoutubeStandIn(track, signal);
+      return await resolveYoutubeStandIn(track, signal, quality);
     } catch (standInError) {
       if (isAbortError(standInError, signal)) throw standInError;
       throw soundCloudError;
@@ -114,7 +119,19 @@ async function resolveYoutubeTrack(track: PlayableTrack, videoId: string, signal
     throw error;
   });
   try {
-    const stream = await Promise.any([server, direct]);
+    let stream = await Promise.any([server, direct]);
+    if (quality === "lossless" && !isLossless(stream)) {
+      const original = await server.catch(() => null);
+      if (original && isLossless(original)) stream = original;
+    } else if (quality === "320" && (isLossless(stream) || stream.bitrate !== 320_000)) {
+      const candidates = await Promise.all([server.catch(() => null), direct.catch(() => null)]);
+      for (const candidate of candidates) {
+        if (candidate && !isLossless(candidate) && (
+          isLossless(stream) ||
+          Math.abs(candidate.bitrate - 320_000) < Math.abs(stream.bitrate - 320_000)
+        )) stream = candidate;
+      }
+    }
     signal?.throwIfAborted();
     return stream;
   } catch (error) {
@@ -133,11 +150,11 @@ async function resolveStream(track: PlayableTrack, signal?: AbortSignal, quality
     if (!record) throw new Error("This uploaded track is no longer on this device");
     return { blob: record.blob, mimeType: record.mimeType, codec: "", bitrate: 0, expiresAtMs: null, contentLength: record.size };
   }
-  if (toSoundCloudTrackId(track.id)) return resolveSoundCloud(track, signal);
+  if (toSoundCloudTrackId(track.id)) return resolveSoundCloud(track, signal, quality);
   if (isAudiusId(track.id)) {
     // the API answers with a redirect to the artist's mp3 on a content node
     log("cyan", "playback", `playing "${track.title}" from Audius`);
-    return { url: audiusStreamUrl(track.id), mimeType: "audio/mpeg", codec: "mp3", bitrate: 320, expiresAtMs: null };
+    return { url: audiusStreamUrl(track.id), mimeType: "audio/mpeg", codec: "mp3", bitrate: 320_000, expiresAtMs: null };
   }
   const videoId = toVideoId(track.id);
   if (videoId) return resolveYoutubeTrack(track, videoId, signal, quality);

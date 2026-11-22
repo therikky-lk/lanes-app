@@ -1040,7 +1040,8 @@
       "low": "Düşük Kalite (Veri Tasarrufu)",
       "standard": "Standart Kalite (Opus 64kbps / MP3 128kbps)",
       "high": "Yüksek Kalite (AAC 256kbps)",
-      "lossless": "Kayıpsız (FLAC/ALAC) - Kullanılamıyor"
+      "quality_320": "320 kbps (varsa)",
+      "lossless": "Kayıpsız (FLAC/ALAC, varsa)"
     },
     "profile": {
       "remove_avatar": "Avatarı kaldır",
