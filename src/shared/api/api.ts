@@ -1,6 +1,7 @@
 import type { ShareEntityType, ShareSnapshot, SharedEntity } from "@/shared/contracts/sharing";
 import { usesLocalAppTransport } from "./localAppTransport";
 import { decodeLyricsStream } from "./lyricsStream";
+import { collectLyricsSources, lyricsTargets } from "./lyricsSources";
 import {
   getAccessToken,
   getAuthSession,
@@ -1148,35 +1149,30 @@ export const api = {
     signal?: AbortSignal,
     hint?: { title: string; artist: string; durationMs?: number },
   ): AsyncGenerator<LyricsStreamEvent> {
-    let foundOnServer = false;
-    let serverDone: LyricsStreamEvent | null = null;
+    signal?.throwIfAborted();
+    let token: string | null = null;
     try {
-      for await (const event of api.streamServerLyrics(id, signal, hint)) {
-        if (event.type === "provider" && event.status === "found") foundOnServer = true;
-        if (event.type === "done") {
-          serverDone = event;
-          break;
-        }
-        yield event;
-      }
-    } catch (err) {
-      if (signal?.aborted) throw err;
-      console.warn("[lyrics] Liner stream unavailable", err);
+      token = await getValidAccessToken();
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      console.warn("[lyrics] Session refresh unavailable", error);
     }
-    if (foundOnServer || (serverDone?.type === "done" && serverDone.instrumental)) {
-      if (!serverDone) throw new Error("Liner lyrics stream ended before completion");
-      yield { ...serverDone, source: "server" };
-      return;
-    }
-    for await (const event of streamFallbackLyrics(id, hint, signal)) {
-      yield event.type === "done" ? { ...event, source: "fallback" } : event;
-    }
+    const targets = lyricsTargets(
+      getApiBaseUrl(), getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend),
+      getAuthSession()?.authBackend, token,
+    );
+    yield* collectLyricsSources(
+      targets.map(target => () => api.streamServerLyrics(id, signal, hint, target)),
+      () => streamFallbackLyrics(id, hint, signal),
+      signal,
+    );
   },
 
   async *streamServerLyrics(
     id: string,
     signal?: AbortSignal,
     hint?: { title: string; artist: string; durationMs?: number },
+    target?: { baseUrl: string; token: string | null },
   ): AsyncGenerator<LyricsStreamEvent> {
     const hintParams =
       hint?.title.trim() && hint.artist.trim()
@@ -1187,7 +1183,8 @@ export const api = {
           }).toString()
         : "";
     const path = `/v1/tracks/${encodeURIComponent(id)}/lyrics${hintParams ? `?${hintParams}` : ""}`;
-    const accessToken = await getValidAccessToken();
+    const accessToken = target ? target.token : getAuthSession()?.authBackend === "hyprr" ? null : await getValidAccessToken();
+    const baseUrl = target?.baseUrl ?? getApiBaseUrl();
     const signedHeaders = await signApiRequest("GET", path);
     const requestId =
       typeof crypto !== "undefined" && crypto.randomUUID
@@ -1205,11 +1202,11 @@ export const api = {
     const connect = new AbortController();
     const connectTimer = setTimeout(() => connect.abort(), 20_000);
     try {
-      const localPreview = usesLocalAppTransport();
+      const localPreview = usesLocalAppTransport() && baseUrl === getApiBaseUrl();
       res = await fetch(
         localPreview
           ? `/__lane/lyrics/${encodeURIComponent(id)}${hintParams ? `?${hintParams}` : ""}`
-          : `${getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend)}${path}`,
+          : `${baseUrl}${path}`,
         {
           signal: signal ? AbortSignal.any([signal, connect.signal]) : connect.signal,
           headers: {

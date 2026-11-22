@@ -240,13 +240,13 @@ export async function* streamFallbackLyrics(
     }
   }
 
-  if (!found) {
+  {
     const videoId = trackId.replace(/^yt:/, "");
     if (/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
       const text = await findYoutubeMusicLyrics(videoId, signal);
       if (text) {
         const c = makeCandidate("YouTube Music", "plain", text, 0.9);
-        found = c;
+        if (!found || c.quality.total > found.quality.total) found = c;
         yield { type: "provider", provider: c.provider, status: "found", syncLevel: c.syncLevel, candidate: c };
       }
     }

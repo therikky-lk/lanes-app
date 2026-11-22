@@ -1,3 +1,9 @@
+import { getApiBaseUrl } from "@/shared/api/baseUrl";
+
+export function getLyricsCacheSource(): string {
+  return `${getApiBaseUrl()}#lyrics-sources-v3`;
+}
+
 import type { LyricsCandidate } from "@/shared/contracts/lyrics";
 
 type LyricsCacheState = {

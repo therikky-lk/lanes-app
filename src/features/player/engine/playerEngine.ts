@@ -1,5 +1,4 @@
-import { needsLyricsRefresh } from "@/features/lyrics/store/lyricsRefresh";
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { getLyricsCacheSource, needsLyricsRefresh } from "@/features/lyrics/store/lyricsRefresh";
 import { EQ_MAX_CUSTOM_PRESETS, EQ_PRESET_NAME_MAX } from "./equalizer";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { diag } from "@/shared/platform/diag";
@@ -1401,7 +1400,7 @@ class PlayerEngine {
     if (!trackId) return;
 
     const memory = lyricsCache.get(trackId);
-    if (memory && !needsLyricsRefresh(memory, getApiBaseUrl())) return;
+    if (memory && !needsLyricsRefresh(memory, getLyricsCacheSource())) return;
     if (this.inFlightLyricsPrefetches.has(trackId)) {
       return this.inFlightLyricsPrefetches.get(trackId);
     }
@@ -1411,7 +1410,7 @@ class PlayerEngine {
       try {
         const existing = await linerDb.getLyrics(trackId);
         if (existing) {
-          if (!needsLyricsRefresh(existing, getApiBaseUrl())) {
+          if (!needsLyricsRefresh(existing, getLyricsCacheSource())) {
             return;
           }
         }
@@ -1461,7 +1460,7 @@ class PlayerEngine {
             rawLyrics: bestCandidate.lyrics.content,
             rawFormat: bestCandidate.lyrics.format,
             candidate: bestCandidate,
-            sourceApi: getApiBaseUrl(),
+            sourceApi: getLyricsCacheSource(),
             complete,
             fallback,
             lastCheckedAt: Date.now(),
@@ -1572,7 +1571,7 @@ class PlayerEngine {
 
       const lastChecked = (cached as any).lastCheckedAt || (cached as any).timestamp || 0;
       log("cyan", "lyrics", `cache hit for "${track.title}" (age: ${Math.round((Date.now() - lastChecked) / 1000)}s)`);
-      if (!needsLyricsRefresh(cached, getApiBaseUrl())) {
+      if (!needsLyricsRefresh(cached, getLyricsCacheSource())) {
         return;
       }
 
@@ -1616,7 +1615,7 @@ class PlayerEngine {
             availableProviders: freshCached.availableProviders || [],
           });
           bestCandidate = freshCached.candidate;
-          if (!needsLyricsRefresh(freshCached, getApiBaseUrl())) return;
+          if (!needsLyricsRefresh(freshCached, getLyricsCacheSource())) return;
         }
       } catch {}
     }
@@ -1681,7 +1680,7 @@ class PlayerEngine {
                 rawLyrics: candidate.lyrics.content,
                 rawFormat: candidate.lyrics.format,
                 candidate,
-                sourceApi: getApiBaseUrl(),
+                sourceApi: getLyricsCacheSource(),
                 complete: false,
                 lastCheckedAt: Date.now(),
                 updatedAt: Date.now(),
@@ -1721,7 +1720,7 @@ class PlayerEngine {
               rawLyrics: bestCandidate.lyrics.content,
               rawFormat: bestCandidate.lyrics.format,
               candidate: bestCandidate,
-              sourceApi: getApiBaseUrl(),
+              sourceApi: getLyricsCacheSource(),
               complete: true,
               fallback: event.source === "fallback",
               lastCheckedAt: Date.now(),

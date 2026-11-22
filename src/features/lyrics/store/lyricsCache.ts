@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { getLyricsCacheSource } from "./lyricsRefresh";
 import type {
   LyricsCandidate,
   LyricsSyncLevel,
@@ -251,7 +251,7 @@ class LyricsCache {
       providers,
       availableProviders,
       timestamp: Date.now(),
-      sourceApi: getApiBaseUrl(),
+      sourceApi: getLyricsCacheSource(),
       complete: false,
     };
 
@@ -310,7 +310,7 @@ class LyricsCache {
       providers,
       availableProviders: validOptions,
       timestamp: Date.now(),
-      sourceApi: getApiBaseUrl(),
+      sourceApi: getLyricsCacheSource(),
       complete,
       fallback,
     };
