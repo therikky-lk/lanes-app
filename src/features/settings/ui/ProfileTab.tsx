@@ -11,8 +11,11 @@ import ToggleSwitch from "@/shared/ui/ToggleSwitch";
 import { shareEntity } from "@/shared/utils/share";
 import { showToast } from "@/shared/ui/Toast";
 import { resolveApiErrorMessage } from "@/shared/api/api";
+import { api } from "@/shared/api";
+import type { UserProfile } from "@/shared/contracts/users";
 import AvatarEditor from "./AvatarEditor";
 import ProfileMusic from "./ProfileMusic";
+import ProfileStats from "./ProfileStats";
 import ProfileMusicPicker from "./ProfileMusicPicker";
 import ImageCropDialog from "./ImageCropDialog";
 import { loadCropSource, type CropSource } from "./imageCrop";
@@ -35,6 +38,9 @@ function ProfileContent() {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reload, setReload] = useState(0);
+  const [stats, setStats] = useState<UserProfile | null>(null);
+  const [statsFailed, setStatsFailed] = useState(false);
+  const [statsReload, setStatsReload] = useState(0);
   const [editor, setEditor] = useState(false);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -66,6 +72,30 @@ function ProfileContent() {
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [owner, reload]);
+
+  useEffect(() => {
+    if (!owner || !user?.id) return;
+    let current = true;
+    setStatsFailed(false);
+    void api.getUserProfile(user.id).then(result => {
+      if (current) setStats(result);
+    }).catch(() => {
+      if (current) setStatsFailed(true);
+    });
+    return () => { current = false; };
+  }, [owner, user?.id, statsReload]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== "hidden") setStatsReload(value => value + 1);
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const input = bioInput.current;
@@ -149,6 +179,8 @@ function ProfileContent() {
           <div className="lane-profile-account"><h2>{displayName}</h2><p>{user?.username ? `@${user.username}` : user?.email}</p></div>
         </div>
         {user?.bio && <button className="lane-profile-bio has-bio" disabled={busy} onClick={openEditor}><span>{user.bio}</span></button>}
+        {user && <ProfileStats followersCount={stats?.followersCount} listenedDurationMs={stats?.listenedDurationMs} likedTracksCount={stats?.likedTracksCount} />}
+        {statsFailed && <div role="alert" className="lane-profile-note">{t("settings.profile.load_failed")} <button type="button" className="lane-profile-button" onClick={() => setStatsReload(value => value + 1)}>{t("settings.profile.retry")}</button></div>}
         {user && !user.isPublic && <p className="lane-profile-note">{t("settings.profile.public_profile.description")}</p>}
         {user && <div className="lane-profile-header-actions">
           <button type="button" className="lane-profile-button" disabled={busy} onClick={openEditor} aria-label={t("settings.profile.edit")}><Edit2Line size={18} /><span>{t("settings.profile.edit")}</span></button>
