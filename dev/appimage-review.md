@@ -3,7 +3,7 @@
 ## Findings (2026-11-22)
 
 [PR #12350](https://github.com/AppImage/appimage.github.io/pull/12350) was merged
-on 2026-11-21. It tested Lane 1.8.3, not the current working copy (1.8.4).
+on 2026-11-21. It tested Lane 1.8.3. The fixes are included in Lane 1.8.5.
 Do not submit a duplicate catalog entry.
 
 - `Name=Lane` was already correct. The discovery bot derived `lanes` from the
@@ -72,7 +72,7 @@ Local checks:
 ```bash
 pnpm test:packaging
 pnpm electron:build:linux
-./release/Lane-1.8.4-x86_64.AppImage --appimage-updateinformation
+./release/Lane-1.8.5-x86_64.AppImage --appimage-updateinformation
 ```
 
 The Linux release job additionally extracts the image without FUSE, validates
