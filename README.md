@@ -49,7 +49,7 @@
 | Windows 10/11, 64-bit | `Lane-Setup-версия.exe` | Запусти установщик. Portable-версия запускается без установки. |
 | macOS, Apple Silicon | `Lane-версия-arm64.dmg` | Открой DMG и перенеси Lane в Applications. |
 | macOS, Intel | `Lane-версия-x64.dmg` | Открой DMG и перенеси Lane в Applications. |
-| Linux, AppImage | `Lane-версия-x64.AppImage` | См. команду ниже. |
+| Linux, AppImage | `Lane-версия-x86_64.AppImage` | См. команду ниже. |
 | Ubuntu / Debian | `lane_версия_amd64.deb` | Установи пакет командой ниже. |
 | Fedora / openSUSE | `lane-версия.x86_64.rpm` | Установи пакет командой ниже. |
 | Android | APK-файл релиза | Открой APK и подтверди установку. |
@@ -62,6 +62,17 @@
 chmod +x Lane-*.AppImage
 ./Lane-*.AppImage
 ```
+
+Новые сборки используют статический AppImage runtime: устанавливать `libfuse2`
+для него не требуется. Сам Electron по-прежнему использует системные библиотеки
+Linux; AppImage не означает совместимость с любым дистрибутивом.
+Если монтирование FUSE недоступно, попробуй
+`./Lane-версия-x86_64.AppImage --appimage-extract-and-run`.
+
+Рядом с версионным AppImage публикуется `.AppImage.zsync`. Встроенные update
+information позволяют обновлять его через AppImageUpdate; встроенный механизм
+обновлений Lane через `electron-updater` также сохранён. Используй версионный
+файл `Lane-версия-x86_64.AppImage`, а не копию `Lane-latest.AppImage`.
 
 Для Ubuntu, Debian или Linux Mint:
 
@@ -132,6 +143,11 @@ pnpm build:web
 ### Сборки для отдельных платформ
 
 Команды упаковки рассчитаны на соответствующую операционную систему. Android-сборке дополнительно нужны JDK 21 и Android SDK.
+
+Для Linux-упаковки нужны `zsync` (команда `zsyncmake`), `rpm` и
+`libarchive-tools`; для проверки `.desktop` — `desktop-file-utils`.
+Релизный Linux runner остаётся Ubuntu 22.04. Подробности runtime, обновлений
+и записи в каталоге: [проверка AppImage](dev/appimage-review.md).
 
 ```bash
 # Linux

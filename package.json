@@ -10,7 +10,7 @@
     "name": "therikky-lk",
     "email": "191606503+therikky-lk@users.noreply.github.com"
   },
-  "desktopName": "lane",
+  "desktopName": "Lane",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -21,6 +21,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "check:i18n": "node scripts/check-locales.mjs",
+    "test:packaging": "node --test scripts/appimage.test.mjs",
     "test:watch": "vitest",
     "electron:build": "tsc -b && vite build && electron-builder",
     "electron:build:linux": "tsc -b && vite build && electron-builder --linux",
@@ -34,6 +35,11 @@
     "productName": "Lane",
     "executableName": "lane",
     "artifactName": "Lane-${version}-${arch}.${ext}",
+    "toolsets": {
+      "appimage": "1.0.3"
+    },
+    "beforePack": "./scripts/prepare-appimage.mjs",
+    "afterAllArtifactBuild": "./scripts/appimage-zsync.mjs",
     "publish": [
       {
         "provider": "github",
@@ -89,7 +95,7 @@
           ]
         }
       ],
-      "category": "Audio",
+      "category": "AudioVideo;Audio;Player;",
       "synopsis": "Lane — music player"
     },
     "deb": {

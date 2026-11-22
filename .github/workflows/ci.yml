@@ -1,4 +1,4 @@
-# Type-check and verify translations on every push and pull request (tests are run locally, not kept in the repo).
+# Type-check, packaging/theme regression checks and translations.
 name: CI
 
 on:
@@ -24,5 +24,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc -b
+      - run: pnpm test:packaging
+      - name: Verify system theme and saved preferences
+        run: pnpm exec vitest run src/app/systemTheme.test.tsx
       - name: Check translations
         run: node scripts/check-locales.mjs
