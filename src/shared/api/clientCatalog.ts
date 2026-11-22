@@ -1,5 +1,6 @@
 import { innertubeCatalog } from "@/shared/media/innertube";
 import { loadAlbumWithFallback } from "./albumFallback";
+import { loadArtistWithFallback } from "./artistFallback";
 import { isSoundCloudCatalogId, isSoundCloudUrl, resolveSoundCloudUrl, soundcloudCatalog } from "@/shared/media/soundcloud";
 import { audiusCatalog, isAudiusId } from "@/shared/media/audius";
 import {
@@ -144,7 +145,7 @@ export const clientCatalog = {
 
   getArtist(id: string, server: () => Promise<ArtistDetails>): Promise<ArtistDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getArtist(id);
-    return preferClient("artist", () => innertubeCatalog.getArtist(id), server);
+    return loadArtistWithFallback(() => innertubeCatalog.getArtist(id), server);
   },
 
   getPlaylist(id: string, server: () => Promise<CatalogPlaylistDetails>): Promise<CatalogPlaylistDetails> {

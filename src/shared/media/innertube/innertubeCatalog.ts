@@ -138,14 +138,21 @@ async function loadAllReleases(
 ): Promise<{ albums: ArtistAlbum[]; singles: ArtistRelease[] }> {
   const albums: ArtistAlbum[] = [];
   const singles: ArtistRelease[] = [];
+  const seenTokens = new Set<string>();
   let body = await browse(ref.browseId, ref.params, signal);
   for (let page = 0; page < MAX_RELEASE_PAGES; page++) {
     const mapped = mapReleaseGrid(body, kind);
     albums.push(...mapped.albums);
     singles.push(...mapped.singles);
     const token = getGridContinuation(body);
-    if (!token) break;
-    body = await postInnertube("browse", { continuation: token }, { signal });
+    if (!token || seenTokens.has(token)) break;
+    seenTokens.add(token);
+    try {
+      body = await postInnertube("browse", { continuation: token }, { signal });
+    } catch (error) {
+      if (isAbortError(error) || signal?.aborted) throw error;
+      break;
+    }
   }
   return { albums, singles };
 }
@@ -173,12 +180,19 @@ async function loadAllTopSongs(
   signal?: AbortSignal,
 ): Promise<Track[]> {
   const pages: Track[][] = [];
+  const seenTokens = new Set<string>();
   let body = await browse(ref.browseId, ref.params, signal);
   for (let page = 0; page < 12; page++) {
     pages.push(mapInnertubeBrowseTracks(body, fallbackArtists, true));
     const token = getGridContinuation(body);
-    if (!token) break;
-    body = await postInnertube("browse", { continuation: token }, { signal });
+    if (!token || seenTokens.has(token)) break;
+    seenTokens.add(token);
+    try {
+      body = await postInnertube("browse", { continuation: token }, { signal });
+    } catch (error) {
+      if (isAbortError(error) || signal?.aborted) throw error;
+      break;
+    }
   }
   return mergeArtistTracks(...pages);
 }
