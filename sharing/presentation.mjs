@@ -1,8 +1,9 @@
-const TYPES = new Set(["track", "album", "artist", "playlist"]);
+const TYPES = new Set(["track", "album", "artist", "playlist", "profile"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUserPlaylist = id => UUID.test(id) || id.startsWith("pl-");
 export function validEntity(type, id) {
   if (typeof id !== "string" || !TYPES.has(type) || /^(?:local:|daily-mix|mix-|yt-account:)/.test(id) || id === "likes") return false;
+  if (type === "profile") return /^(liner|hyprr):[A-Za-z0-9_-]{1,200}$/.test(id);
   if (type === "track" && /^(?:sc:\d{1,20}|au:[A-Za-z0-9_-]{1,64})$/.test(id)) return true;
   if (type === "artist" && /^sc_user_\d{1,20}$/.test(id)) return true;
   if (["album", "playlist"].includes(type) && /^sc_playlist_\d{1,20}$/.test(id)) return true;
@@ -24,7 +25,7 @@ const escape = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&a
 export function renderSharePage(share, origin) {
   const { title, subtitle, coverUrl } = share.snapshot;
   const artistAvatarUrl = safeImage(share.snapshot.artistAvatarUrl);
-  const labels = { track: "Трек", album: "Альбом", artist: "Исполнитель", playlist: "Плейлист" };
+  const labels = { track: "Трек", album: "Альбом", artist: "Исполнитель", playlist: "Плейлист", profile: "Профиль" };
   const sender = share.sender.username ? `@${share.sender.username}` : share.sender.displayName;
   const description = [subtitle, `Поделился ${sender}`].filter(Boolean).join(" · ");
   const author = share.type === "track" && subtitle

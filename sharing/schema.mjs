@@ -4,7 +4,7 @@ export const schemaStatements = [
   "CREATE TABLE IF NOT EXISTS profile_customization (owner TEXT PRIMARY KEY,document_json TEXT NOT NULL)",
   `CREATE TABLE IF NOT EXISTS shared_links (
     id TEXT PRIMARY KEY, sender_id TEXT NOT NULL, sender_json TEXT NOT NULL,
-    entity_type TEXT NOT NULL CHECK(entity_type IN ('track','album','artist','playlist')),
+    entity_type TEXT NOT NULL CHECK(entity_type IN ('track','album','artist','playlist','profile')),
     entity_id TEXT NOT NULL, snapshot_json TEXT NOT NULL, created_at INTEGER NOT NULL
   )`,
   "CREATE INDEX IF NOT EXISTS shared_links_sender_created ON shared_links(sender_id,created_at)",

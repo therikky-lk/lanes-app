@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AddLine, Edit2Line, ExitLine } from "@mingcute/react";
+import { AddLine, Edit2Line, ExitLine, Share2Line } from "@mingcute/react";
 import { useAuthStore } from "@/features/auth";
 import { useTranslation } from "@/languages";
 import { onAndroidBack } from "@/shared/platform/androidBack";
@@ -8,7 +8,12 @@ import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import UserAvatar from "@/shared/ui/UserAvatar";
 import Dialog from "@/shared/ui/Dialog";
 import ToggleSwitch from "@/shared/ui/ToggleSwitch";
+import { shareEntity } from "@/shared/utils/share";
+import { showToast } from "@/shared/ui/Toast";
+import { resolveApiErrorMessage } from "@/shared/api/api";
 import AvatarEditor from "./AvatarEditor";
+import ProfileMusic from "./ProfileMusic";
+import ProfileMusicPicker from "./ProfileMusicPicker";
 import ImageCropDialog from "./ImageCropDialog";
 import { loadCropSource, type CropSource } from "./imageCrop";
 import { emptyProfile, profileOwner, profileRequest, type ProfileCustomization } from "../store/profileCustomization";
@@ -38,9 +43,11 @@ function ProfileContent() {
   const bioInput = useRef<HTMLTextAreaElement>(null);
   const [busy, setBusy] = useState(false);
   const mutation = useRef(false);
+  const [sharing, setSharing] = useState(false);
   const [error, setError] = useState("");
   const bannerInput = useRef<HTMLInputElement>(null);
   const [bannerSource, setBannerSource] = useState<CropSource | null>(null);
+  const [musicPicker, setMusicPicker] = useState(false);
   const active = useRef(true);
   const displayName = user?.displayName || user?.username || user?.email?.split("@")[0] || "Lane";
 
@@ -120,6 +127,15 @@ function ProfileContent() {
   };
 
   const unavailable = busy || loading || loadFailed || !user;
+  const shareProfile = async () => {
+    if (!user?.isPublic || !owner || sharing) return;
+    setSharing(true);
+    try {
+      const result = await shareEntity("profile", owner, { title: displayName });
+      if (result === "copied") showToast(t("sharing.copied"), "checkmark");
+    } catch (cause) { showToast(resolveApiErrorMessage(cause, t, "sharing.failed"), "error"); }
+    finally { if (active.current) setSharing(false); }
+  };
 
   return <div className="lane-profile">
     <input ref={bannerInput} type="file" accept="image/*" hidden onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; void uploadBanner(file); }} />
@@ -128,15 +144,33 @@ function ProfileContent() {
         <span className="lane-profile-upload-hint"><AddLine size={22} />{t("settings.profile.upload_banner_hint")}</span>
       </button>
       <div className="lane-profile-card-body">
-        <div className="lane-profile-identity"><AvatarEditor disabled={busy} trigger={<><UserAvatar user={user} size={96} className="lane-profile-avatar" /><span className="lane-profile-upload-hint"><AddLine size={22} /><span>{t("settings.profile.upload_avatar_hint")}</span></span></>} /><div><div className="lane-profile-name"><h2>{displayName}</h2><button className="lane-profile-icon" disabled={!user || busy} onClick={openEditor} aria-label={t("settings.profile.edit")} title={t("settings.profile.edit")}><Edit2Line size={18} /></button></div><p>{user?.username ? `@${user.username}` : user?.email}</p></div></div>
+        <div className="lane-profile-identity">
+          <AvatarEditor disabled={busy} trigger={<><UserAvatar user={user} size={96} className="lane-profile-avatar" /><span className="lane-profile-upload-hint"><AddLine size={22} /><span>{t("settings.profile.upload_avatar_hint")}</span></span></>} />
+          <div className="lane-profile-account"><h2>{displayName}</h2><p>{user?.username ? `@${user.username}` : user?.email}</p></div>
+        </div>
         {user?.bio && <button className="lane-profile-bio has-bio" disabled={busy} onClick={openEditor}><span>{user.bio}</span></button>}
+        {user && !user.isPublic && <p className="lane-profile-note">{t("settings.profile.public_profile.description")}</p>}
+        {user && <div className="lane-profile-header-actions">
+          <button type="button" className="lane-profile-button" disabled={busy} onClick={openEditor} aria-label={t("settings.profile.edit")}><Edit2Line size={18} /><span>{t("settings.profile.edit")}</span></button>
+          <button type="button" className="lane-profile-button" disabled={busy || sharing} onClick={() => { if (user.isPublic) void shareProfile(); else openEditor(); }} aria-label={t("common.share")}><Share2Line size={18} /><span>{t("common.share")}</span></button>
+        </div>}
       </div>
     </section>
     {loading && <p role="status" className="lane-profile-note">{t("settings.profile.loading")}</p>}
     {loadFailed && <div role="alert" className="lane-profile-note">{t("settings.profile.load_failed")} <button className="lane-profile-button" onClick={() => setReload(value => value + 1)}>{t("settings.profile.retry")}</button></div>}
     {error && !editor && <p role="alert" className="lane-profile-error">{error}</p>}
+    {user && <ProfileMusic artist={profile.artist} tracks={profile.tracks} disabled={unavailable} onChoose={() => setMusicPicker(true)} onRemoveArtist={() => saveCustomization({ artist: null, tracks: [] })} onRemoveTrack={() => saveCustomization({ tracks: [], artist: null })} />}
     {user && <button className="lane-profile-signout" disabled={busy} onClick={async () => { setBusy(true); try { await useAuthStore.getState().logout(); navigate("/", { replace: true }); } catch { setError(t("settings.profile.save_failed")); } finally { setBusy(false); } }}><ExitLine size={18} />{t("settings.profile.sign_out")}</button>}
     {bannerSource && <ImageCropDialog key={bannerSource.url} source={bannerSource} kind="banner" onClose={() => setBannerSource(null)} onSave={banner => saveCustomization({ banner })} />}
+    {musicPicker && <ProfileMusicPicker trackIds={profile.tracks.map(track => track.id)} onClose={() => setMusicPicker(false)}
+      onArtist={artist => {
+        if (profile.artist || profile.tracks.length) return Promise.reject(new Error("Favorite already selected"));
+        return saveCustomization({ artist, tracks: [] });
+      }}
+      onTrack={track => {
+        if (profile.artist || profile.tracks.length) return Promise.reject(new Error("Favorite already selected"));
+        return saveCustomization({ tracks: [track], artist: null });
+      }} />}
 
     <Dialog open={editor} bottomSheet={isMobile} closeOnBackdrop={false} closeOnEscape={false} aria-labelledby="lane-profile-editor-title" onOpenChange={open => { if (!busy) setEditor(open); }} maxWidth={680} maxHeight="90dvh" zIndex={220} className={`lane-profile-dialog ${isMobile ? "is-sheet" : "is-modal"}`}>
       <div data-sheet-handle={isMobile ? true : undefined} className={isMobile ? "lane-profile-sheet-handle" : undefined}>{isMobile && <div className="lane-profile-grabber" />}<div className="lane-profile-dialog-heading"><h3 id="lane-profile-editor-title">{t("settings.profile.edit")}</h3></div></div>

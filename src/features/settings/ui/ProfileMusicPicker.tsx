@@ -9,11 +9,12 @@ import { onAndroidBack } from "@/shared/platform/androidBack";
 import type { Track } from "@/shared/types";
 import type { ProfileArtist } from "../store/profileCustomization";
 
-export default function ProfileMusicPicker({ kind, trackIds, onTrack, onArtist, onClose }: {
-  kind: "artist" | "track"; trackIds: string[];
+export default function ProfileMusicPicker({ trackIds, onTrack, onArtist, onClose }: {
+  trackIds: string[];
   onTrack: (track: Track) => Promise<void>; onArtist: (artist: ProfileArtist) => Promise<void>; onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [kind, setKind] = useState<"track" | "artist">("track");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -24,8 +25,12 @@ export default function ProfileMusicPicker({ kind, trackIds, onTrack, onArtist, 
     ? tracks.tracks.filter(track => !track.id.startsWith("local:")).map(track => ({ id: track.id, title: track.title, subtitle: track.artists, cover: track.coverUrl, select: () => onTrack(track) }))
     : artists.artists.map(artist => ({ id: artist.id, title: artist.name, subtitle: t("settings.profile.favorite_artist"), cover: artist.cover?.url || "", select: () => onArtist({ id: artist.id, name: artist.name, coverUrl: artist.cover?.url || "" }) }));
   useEffect(() => onAndroidBack(() => { if (!busy) onClose(); return true; }), [onClose, busy]);
-  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }} maxWidth={520} zIndex={240} className="lane-profile-dialog">
-    <div className="lane-profile-dialog-heading"><h3>{t(kind === "artist" ? "settings.profile.choose_artist" : "settings.profile.add_song")}</h3><button className="lane-profile-icon" aria-label={t("common.close")} disabled={busy} onClick={onClose}><CloseLine size={22} /></button></div>
+  return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }} aria-labelledby="lane-profile-music-picker-title" maxWidth={520} zIndex={240} className="lane-profile-dialog">
+    <div className="lane-profile-dialog-heading"><h3 id="lane-profile-music-picker-title">{t("settings.profile.favorites")}</h3><button className="lane-profile-icon lane-profile-remove" aria-label={t("common.close")} disabled={busy} onClick={onClose}><CloseLine size={22} /></button></div>
+    <div className="lane-profile-tabs lane-profile-music-tabs" role="group" aria-label={t("settings.profile.favorites")}>
+      <button type="button" aria-pressed={kind === "track"} disabled={busy} onClick={() => { setKind("track"); setFailed(false); }}>{t("search.songs")}</button>
+      <button type="button" aria-pressed={kind === "artist"} disabled={busy} onClick={() => { setKind("artist"); setFailed(false); }}>{t("search.artists")}</button>
+    </div>
     <div className="lane-profile-search"><Search2Line size={19} /><input autoFocus aria-label={t("settings.search_placeholder")} placeholder={t("settings.search_placeholder")} value={query} onChange={event => setQuery(event.target.value)} /></div>
     <div className="lane-profile-results" aria-busy={search.loading || busy}>
       {query.trim().length < 2 ? <p>{t("settings.profile.search_hint")}</p> : search.loading ? <p>{t("settings.profile.searching")}</p> : search.error ? <p role="alert">{t("settings.profile.search_failed")}</p> : !items.length ? <p>{t("search.no_results")}</p> : items.slice(0, 20).map(item => <button key={item.id} className="lane-profile-music-row" disabled={busy || (kind === "track" && trackIds.includes(item.id))} onClick={async () => {

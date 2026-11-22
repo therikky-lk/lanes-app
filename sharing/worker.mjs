@@ -1,8 +1,9 @@
-import { profileCustomization } from "./profile-customization.mjs";
+import { profileCustomization, normalizeProfile } from "./profile-customization.mjs";
 import { integrationSession } from "./integration-sessions.mjs";
 import { schemaStatements } from "./schema.mjs";
 import { isUserPlaylist, publicPlaylistSnapshot, renderSharePage, snapshotOf, validEntity, safeImage } from "./presentation.mjs";
 import identity from "./app-identity.json" with { type: "json" };
+import { profileImage, renderProfilePage, renderUnavailableProfilePage } from "./profile-presentation.mjs";
 
 const PUBLIC_ORIGIN = "https://lane-app.site";
 const NEW_ACCOUNT_ORIGIN = "https://lane-account-api.nidenseekn.workers.dev";
@@ -12,7 +13,20 @@ async function initializeDatabase(env) {
   const db = requireDatabase(env);
   let ready = initializedDatabases.get(db);
   if (!ready) {
-    ready = db.batch(schemaStatements.map(sql => db.prepare(sql)));
+    ready = (async () => {
+      await db.batch(schemaStatements.map(sql => db.prepare(sql)));
+      const table = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='shared_links'").first();
+      if (table && !table.sql.includes("'profile'")) {
+        // D1 batches are transactional: retain all existing links while widening the CHECK constraint.
+        await db.batch([
+          db.prepare(schemaStatements.find(sql => sql.startsWith("CREATE TABLE IF NOT EXISTS shared_links ")).replace("IF NOT EXISTS shared_links", "shared_links_profile_migration")),
+          db.prepare("INSERT INTO shared_links_profile_migration SELECT * FROM shared_links"),
+          db.prepare("DROP TABLE shared_links"),
+          db.prepare("ALTER TABLE shared_links_profile_migration RENAME TO shared_links"),
+          db.prepare(schemaStatements.find(sql => sql.startsWith("CREATE INDEX IF NOT EXISTS shared_links_sender_created"))),
+        ]);
+      }
+    })();
     initializedDatabases.set(db, ready);
     ready.catch(() => initializedDatabases.delete(db));
   }
@@ -98,6 +112,34 @@ async function publicPlaylist(env, id) {
   if (!Array.isArray(list.items) || !list.items.some(item => item.id === id && item.isPublic === true)) error(404, "NOT_FOUND", "Playlist is no longer public.");
   return JSON.parse(row.document_json);
 }
+async function publicProfile(env, entityId) {
+  const [backend, id] = entityId.split(":");
+  let user;
+  try {
+    user = await accountRequest(env, `/v1/users/${encodeURIComponent(id)}`, undefined, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env));
+  } catch (cause) {
+    if (cause instanceof HttpError && [401, 403, 404].includes(cause.status)) error(404, "PROFILE_UNAVAILABLE", "Этот профиль приватный или недоступен.");
+    throw cause;
+  }
+  if (user?.id !== id || (user.isPublic ?? user.privacy?.isPublic) !== true) error(404, "PROFILE_UNAVAILABLE", "Этот профиль приватный или недоступен.");
+  const row = await requireDatabase(env).prepare("SELECT document_json FROM profile_customization WHERE owner=?").bind(JSON.stringify([backend, id])).first();
+  const customization = normalizeProfile(row ? JSON.parse(row.document_json) : {});
+  // Explicit allowlist: never expose email, privacy settings or account credentials.
+  return {
+    id, authBackend: backend, username: typeof user.username === "string" ? user.username.slice(0, 200) : "",
+    displayName: typeof user.displayName === "string" ? user.displayName.slice(0, 300) : "",
+    bio: typeof user.bio === "string" ? user.bio.slice(0, 280) : "",
+    avatarUrl: profileImage(user.avatarUrl, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env)), banner: customization.banner || null,
+    artist: customization.artist || null,
+    tracks: customization.tracks || [],
+    followersCount: Math.max(0, Number(user.followersCount) || 0),
+    listenedDurationMs: Number.isFinite(user.listenedDurationMs) ? Math.max(0, user.listenedDurationMs) : null,
+    likedTracksCount: Number.isFinite(user.likedTracksCount) ? Math.max(0, user.likedTracksCount) : null,
+  };
+}
+function profileSnapshot(profile) {
+  return snapshotOf({ title: profile.displayName || profile.username || "Lane", subtitle: [profile.username && `@${profile.username}`, profile.bio].filter(Boolean).join(" · "), coverUrl: profile.avatarUrl });
+}
 function sanitizedPlaylist(detail, ownerId) {
   const playlist = detail?.playlist;
   if (!playlist || playlist.isPublic !== true || (playlist.ownerId && playlist.ownerId !== ownerId)) error(404, "NOT_FOUND", "Only public playlists can be shared.");
@@ -128,6 +170,10 @@ async function createShare(request, env) {
   const origin = backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env);
   const senderId = backend === "liner" ? user.id : JSON.stringify([backend, user.id]);
   let snapshot = snapshotOf(body.snapshot);
+  if (body.type === "profile") {
+    if (body.entityId !== `${backend}:${user.id}` || user.isPublic !== true) error(404, "NOT_FOUND", "Only your public profile can be shared.");
+    snapshot = profileSnapshot(await publicProfile(env, body.entityId));
+  }
   let playlistDocument;
   if (body.type === "playlist" && isUserPlaylist(body.entityId)) {
     const existing = await db.prepare("SELECT * FROM public_playlists WHERE id=?").bind(body.entityId).first();
@@ -160,22 +206,42 @@ async function loadShare(env, id) {
   const row = await requireDatabase(env).prepare("SELECT * FROM shared_links WHERE id=?").bind(id).first();
   if (!row) error(404, "NOT_FOUND", "Link is unavailable.");
   let snapshot = JSON.parse(row.snapshot_json);
+  let profile;
+  if (row.entity_type === "profile") {
+    profile = await publicProfile(env, row.entity_id);
+    snapshot = profileSnapshot(profile);
+  }
   if (row.entity_type === "playlist" && isUserPlaylist(row.entity_id)) {
     const document = await publicPlaylist(env, row.entity_id);
     snapshot = publicPlaylistSnapshot({ title: document.playlist.title, description: document.playlist.description });
   }
-  return { id: row.id, type: row.entity_type, entityId: row.entity_id, snapshot, sender: JSON.parse(row.sender_json) };
+  return { id: row.id, type: row.entity_type, entityId: row.entity_id, snapshot, sender: JSON.parse(row.sender_json), ...(profile ? { profile } : {}) };
 }
 async function readShare(request, env, id, html) {
-  const share = await loadShare(env, id);
+  let share;
+  try { share = await loadShare(env, id); }
+  catch (cause) {
+    if (!html || !(cause instanceof HttpError) || cause.code !== "PROFILE_UNAVAILABLE") throw cause;
+    return new Response(request.method === "HEAD" ? null : renderUnavailableProfilePage(), { status: 404, headers: {
+      "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+    } });
+  }
   if (!html) return request.method === "HEAD" ? new Response(null, { headers: { "cache-control": "no-store" } }) : json(share);
-  return new Response(request.method === "HEAD" ? null : renderSharePage(share, PUBLIC_ORIGIN), { headers: {
+  return new Response(request.method === "HEAD" ? null : (share.type === "profile" ? renderProfilePage(share, PUBLIC_ORIGIN) : renderSharePage(share, PUBLIC_ORIGIN)), { headers: {
     "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer",
-    "content-security-policy": "default-src 'none'; img-src https:; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+    "content-security-policy": "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
   } });
 }
 async function readThumbnail(request, env, id) {
   const share = await loadShare(env, id);
+  if (share.type === "profile" && share.profile.avatarUrl.startsWith("data:")) {
+    const [header, base64] = share.profile.avatarUrl.split(",");
+    const bytes = Uint8Array.from(atob(base64), char => char.charCodeAt(0));
+    return new Response(request.method === "HEAD" ? null : bytes, { headers: {
+      "content-type": header.slice(5, header.indexOf(";")), "cache-control": "no-store", "x-content-type-options": "nosniff",
+    } });
+  }
   const source = safeImage(share.snapshot.coverUrl);
   if (!source) error(404, "NOT_FOUND", "Cover is unavailable.");
   const cacheKey = new Request(`https://lane-app.site/__thumb-cache/${id}.jpg`);

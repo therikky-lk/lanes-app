@@ -33,6 +33,7 @@ import type {
   PublicUser,
   UpdateProfileInput,
   UserProfile,
+  FollowState,
   LeaderboardResponse,
   DailyMixesResponse,
 } from "@/shared/contracts";
@@ -825,7 +826,7 @@ export const api = {
   },
 
   getUserProfile(idOrUsername: string): Promise<UserProfile> {
-    return request<UserProfile>(`/v1/users/${encodeURIComponent(idOrUsername)}`);
+    return request<UserProfile>(`/v1/users/${encodeURIComponent(idOrUsername)}`, { cache: "no-store" });
   },
 
   searchUsers(query: string): Promise<UserProfile[]> {
@@ -833,15 +834,17 @@ export const api = {
     return request<UserProfile[]>(`/v1/users/search?${params}`);
   },
 
-  followUser(idOrUsername: string): Promise<void> {
-    return request<void>(`/v1/users/${encodeURIComponent(idOrUsername)}/follow`, {
+  followUser(idOrUsername: string): Promise<FollowState | void> {
+    return request<FollowState | void>(`/v1/users/${encodeURIComponent(idOrUsername)}/follow`, {
       method: "POST",
+      body: "{}",
     });
   },
 
-  unfollowUser(idOrUsername: string): Promise<void> {
-    return request<void>(`/v1/users/${encodeURIComponent(idOrUsername)}/follow`, {
+  unfollowUser(idOrUsername: string): Promise<FollowState | void> {
+    return request<FollowState | void>(`/v1/users/${encodeURIComponent(idOrUsername)}/follow`, {
       method: "DELETE",
+      body: "{}",
     });
   },
 

@@ -8,6 +8,9 @@ import worker from "./worker.mjs";
 import { createSigner } from "./upstream-signer.mjs";
 import { sqliteD1 } from "./testing/sqlite-d1.mjs";
 import { publicPlaylistSnapshot, renderSharePage, snapshotOf, validEntity } from "./presentation.mjs";
+import { profileImage } from "./profile-presentation.mjs";
+import { profileStats } from "./account-profile-stats.mjs";
+import { profileRelation } from "./account-profile-relations.mjs";
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const module = new WebAssembly.Module(readFileSync(new URL("./signer.wasm", import.meta.url)));
 const playlistId = "12345678-1234-1234-1234-123456789abc";
@@ -16,7 +19,7 @@ const input = { type: "track", entityId: "dQw4w9WgXcQ", snapshot: { title: "Song
 function fixture(t) {
   const dir = mkdtempSync(join(tmpdir(), "lane-d1-test-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const state = { public: true, authorized: true, fail: false, owner: "owner-id", calls: [] };
+  const state = { public: true, authorized: true, fail: false, profileStatus: 200, historyVisible: false, likesVisible: false, owner: "owner-id", avatar: "https://example.test/avatar.jpg", calls: [] };
   const fetch = mock.method(globalThis, "fetch", async (url, init) => {
     const path = new URL(url).pathname;
     state.calls.push({ url: String(url), path, init });
@@ -24,7 +27,8 @@ function fixture(t) {
     if (state.fail) throw new Error("Temporary upstream failure");
     assert.ok(init.headers.get("user-agent").includes("lane/"));
     assert.ok(init.headers.get("x-liner-signature"));
-    if (path === "/v1/me") return Response.json(state.authorized ? { id: "owner-id", username: "alice", displayName: "Alice", email: "private@example.test" } : {}, { status: state.authorized ? 200 : 401 });
+    if (path === "/v1/me") return Response.json(state.authorized ? { id: "owner-id", username: "alice", displayName: "Alice", email: "private@example.test", isPublic: state.public } : {}, { status: state.authorized ? 200 : 401 });
+    if (path === "/v1/users/owner-id") return Response.json({ id: "owner-id", username: "alice", displayName: "Alice", bio: "Hello", avatarUrl: state.avatar, email: "private@example.test", isPublic: state.public, showHistory: state.historyVisible, showLikedTracks: state.likesVisible, listenedDurationMs: 5400000, likedTracksCount: 42, followersCount: 7 }, { status: state.profileStatus });
     if (path === `/v1/me/playlists/${playlistId}`) return Response.json({ playlist: { id: playlistId, title: "My public playlist", ownerId: state.owner, isPublic: state.public, description: "Hello⁣lane-local:secret-device-data⁣lane-cover:https://example.test/cover.jpg" }, items: [
       { id: "local-item", track: { id: "local:private", title: "Private file" } },
       { id: "item", position: 0, track: { id: "dQw4w9WgXcQ", title: "Song", artists: [{ id: "artist", name: "Artist" }], durationMs: 1000, privateProperty: "secret" } },
@@ -50,11 +54,181 @@ test("creates tables and links in D1 without a separate server, using verified s
   assert.equal(stored.sender_id, "owner-id"); assert.ok(!JSON.stringify(stored).includes("account-token")); assert.ok(!JSON.stringify(stored).includes("private@example.test"));
   assert.equal(state.calls[0].path, "/v1/me");
 });
+test("account profile aggregates use full-history SUM for public profiles without publishing private lists", async () => {
+  const calls = [];
+  const database = { query: async (sql, values) => {
+    calls.push({ sql, values });
+    return { rows: [{ listened_ms: "5400000", liked_count: "42" }] };
+  } };
+  const user = { id: "owner", is_public: false, show_history: false, show_liked_tracks: false };
+  assert.deepEqual(await profileStats(database, user, "owner"), { listenedDurationMs: 5400000, likedTracksCount: 42 });
+  assert.deepEqual(calls.at(-1).values, ["owner", true, true]);
+  assert.match(calls.at(-1).sql, /SUM\(played_duration_ms\)/);
+  assert.match(calls.at(-1).sql, /COUNT\(\*\) FROM liked_tracks/);
+  assert.match(calls.at(-1).sql, /CURRENT_TIMESTAMP/);
+  assert.deepEqual(await profileStats(database, user, "visitor"), { listenedDurationMs: null, likedTracksCount: null });
+  assert.deepEqual(calls.at(-1).values, ["owner", false, false]);
+  assert.deepEqual(await profileStats(database, { ...user, is_public: true }, null), { listenedDurationMs: 5400000, likedTracksCount: 42 });
+});
+
+test("public profiles show aggregate counters even when history and liked lists are hidden", async t => {
+  const { env, create, state } = fixture(t);
+  const link = await (await create({ type: "profile", entityId: "liner:owner-id" })).json();
+  const read = async () => (await worker.fetch(request(`/v1/public/shares/${link.id}`), env)).json();
+  let share = await read();
+  assert.equal(share.profile.authBackend, "liner");
+  assert.equal(share.profile.followersCount, 7);
+  assert.equal(share.profile.listenedDurationMs, 5400000);
+  assert.equal(share.profile.likedTracksCount, 42);
+  assert.equal(share.profile.history, undefined);
+  assert.equal(share.profile.likedTracks, undefined);
+  state.historyVisible = true; state.likesVisible = true;
+  share = await read();
+  assert.equal(share.profile.listenedDurationMs, 5400000);
+  assert.equal(share.profile.likedTracksCount, 42);
+});
+
+test("relationship snapshots bypass stale query caching and return real subscription state and counts", async () => {
+  const calls = [];
+  let following = false;
+  const database = { query: async (sql, values) => {
+    calls.push({ sql, values });
+    return { rows: [{ is_following: following, followers: following ? 8 : 7, following: 3, observed_at: new Date("2026-11-22T20:00:00Z") }] };
+  } };
+  assert.equal((await profileRelation(database, "owner", "viewer")).is_following, false);
+  following = true;
+  const next = await profileRelation(database, "owner", "viewer");
+  assert.equal(next.is_following, true);
+  assert.equal(next.followers, 8);
+  assert.equal(next.observedAt, "2026-11-22T20:00:00.000Z");
+  assert.match(calls[0].sql, /SELECT CURRENT_TIMESTAMP AS observed_at/);
+  assert.deepEqual(calls[0].values, ["owner", "viewer"]);
+});
 test("rejects anonymous and invalid account sessions", async t => {
   const { env, create, state } = fixture(t);
   const anonymous = await worker.fetch(request("/v1/shares", { method: "POST", body: JSON.stringify(input) }), env);
   assert.equal(anonymous.status, 401); assert.equal(state.calls.length, 0);
   state.authorized = false; assert.equal((await create(input)).status, 401);
+});
+test("shares only your public profile using verified live data and revokes access when private", async t => {
+  const { env, create, state } = fixture(t);
+  const body = { type: "profile", entityId: "liner:owner-id", snapshot: { title: "Forged profile" } };
+  assert.equal((await create({ ...body, entityId: "liner:someone-else" })).status, 404);
+  assert.equal((await create({ ...body, entityId: "hyprr:owner-id" })).status, 404);
+  const response = await create(body);
+  assert.equal(response.status, 201);
+  const link = await response.json();
+  const read = () => worker.fetch(request(`/v1/public/shares/${link.id}`), env);
+  const share = await (await read()).json();
+  assert.equal(share.type, "profile");
+  assert.equal(share.snapshot.title, "Alice");
+  assert.equal(share.profile.bio, "Hello");
+  assert.ok(!JSON.stringify(share).includes("private@example.test"));
+  assert.ok(!JSON.stringify(share).includes("account-token"));
+  const page = await (await worker.fetch(request(`/s/${link.id}`), env)).text();
+  assert.ok(page.includes('property="og:type" content="profile"'));
+  assert.ok(page.includes("Hello"));
+  state.fail = true;
+  assert.equal((await read()).status, 503);
+  state.fail = false;
+  state.public = false;
+  assert.equal((await create(body)).status, 404);
+  assert.equal((await read()).status, 404);
+  assert.equal((await worker.fetch(request(`/s/${link.id}`), env)).status, 404);
+  assert.equal((await worker.fetch(request(`/thumb/${link.id}.jpg`), env)).status, 404);
+});
+test("keeps uploaded raster avatars in public profiles and serves preview images without HTTPS fetching", async t => {
+  const { env, create, state } = fixture(t);
+  state.avatar = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  const link = await (await create({ type: "profile", entityId: "liner:owner-id" })).json();
+  const read = () => worker.fetch(request(`/v1/public/shares/${link.id}`), env);
+  const share = await (await read()).json();
+  assert.equal(share.profile.avatarUrl, state.avatar);
+  const page = await worker.fetch(request(`/s/${link.id}`), env);
+  assert.match(page.headers.get("content-security-policy"), /img-src https: data:/);
+  assert.ok((await page.text()).includes(`src="${state.avatar}"`));
+  const thumbnail = await worker.fetch(request(`/thumb/${link.id}.jpg`), env);
+  assert.equal(thumbnail.status, 200);
+  assert.equal(thumbnail.headers.get("content-type"), "image/gif");
+  assert.equal(thumbnail.headers.get("cache-control"), "no-store");
+  assert.deepEqual(new Uint8Array(await thumbnail.arrayBuffer()), Uint8Array.from(atob(state.avatar.split(",")[1]), char => char.charCodeAt(0)));
+  assert.equal(await (await worker.fetch(request(`/thumb/${link.id}.jpg`, { method: "HEAD" }), env)).text(), "");
+  state.public = false;
+  assert.equal((await worker.fetch(request(`/thumb/${link.id}.jpg`), env)).status, 404);
+});
+test("private profiles show a friendly HTML page and a meaningful API error without account details", async t => {
+  const { env, create, state } = fixture(t);
+  const link = await (await create({ type: "profile", entityId: "liner:owner-id" })).json();
+  for (const status of [200, 401, 403, 404]) {
+    state.public = false; state.profileStatus = status;
+    const page = await worker.fetch(request(`/s/${link.id}`), env);
+    assert.equal(page.status, 404);
+    assert.match(page.headers.get("content-type"), /text\/html/);
+    assert.equal(page.headers.get("cache-control"), "no-store");
+    const html = await page.text();
+    assert.ok(html.includes("Профиль приватный или недоступен"));
+    assert.ok(!html.includes("ACCOUNT_ACCESS_DENIED"));
+    assert.ok(!html.includes("private@example.test"));
+    assert.ok(!html.includes("Alice"));
+    const api = await worker.fetch(request(`/v1/public/shares/${link.id}`), env);
+    assert.equal(api.status, 404);
+    assert.deepEqual(await api.json(), { code: "PROFILE_UNAVAILABLE", message: "Этот профиль приватный или недоступен." });
+    const head = await worker.fetch(request(`/s/${link.id}`, { method: "HEAD" }), env);
+    assert.equal(head.status, 404);
+    assert.equal(await head.text(), "");
+  }
+});
+test("profile image validation allows raster data and account-relative paths but rejects executable content", () => {
+  assert.equal(profileImage("data:image/jpeg;base64,/9j/AAAA"), "data:image/jpeg;base64,/9j/AAAA");
+  assert.equal(profileImage("/avatars/alice.jpg", "https://account.example"), "https://account.example/avatars/alice.jpg");
+  for (const value of ["data:image/svg+xml;base64,PHN2Zz4=", "data:text/html;base64,PHN2Zz4=", "data:image/jpeg;base64,PHN2Zz4=", "data:image/gif;base64,broken", "javascript:alert(1)", "//evil.test/avatar.jpg", "https://user:password@example.test/image"]) {
+    assert.equal(profileImage(value, "https://account.example"), "", value);
+  }
+});
+test("profile cards show live banner and selected music without leaking history or private metadata", async t => {
+  const { env, create, state } = fixture(t);
+  const link = await (await create({ type: "profile", entityId: "liner:owner-id" })).json();
+  const track = { id: "dQw4w9WgXcQ", title: '<script>alert("track")</script>', artists: "Artist", coverUrl: "", durationMs: 1000, playCount: 12, privateProperty: "private-history" };
+  const artist = { id: "UCabcdefghijklmnopqrstuv", name: "Favorite artist", coverUrl: "https://example.test/artist.jpg" };
+  const banner = "data:image/jpeg;base64,/9j/AAAA";
+  const patch = body => worker.fetch(request("/v1/me/profile-customization/liner", { method: "PATCH", headers: { authorization: "Bearer account-token" }, body: JSON.stringify(body) }), env);
+  assert.equal((await patch({ tracks: [track], banner })).status, 200);
+  const share = await (await worker.fetch(request(`/v1/public/shares/${link.id}`), env)).json();
+  assert.equal(share.profile.tracks[0].id, track.id);
+  assert.equal(share.profile.artist, null);
+  assert.equal(share.profile.banner, banner);
+  assert.ok(!JSON.stringify(share).includes("private-history"));
+  assert.equal(share.profile.tracks[0].playCount, 0);
+  const html = await (await worker.fetch(request(`/s/${link.id}`), env)).text();
+  assert.ok(html.includes("<h2>Любимый трек</h2>"));
+  assert.ok(html.includes("Нажмите на трек, чтобы послушать его в Lane."));
+  assert.ok(html.includes(`lane://track?id=${track.id}`));
+  assert.ok(!html.includes(`lane://artist?id=${artist.id}`));
+  assert.ok(html.includes(`src="${banner}"`));
+  assert.ok(!html.includes('<script>alert("track")</script>'));
+  assert.ok(html.includes("&lt;script&gt;"));
+  assert.equal((await patch({ artist })).status, 200);
+  const artistHtml = await (await worker.fetch(request(`/s/${link.id}`), env)).text();
+  assert.ok(artistHtml.includes(`lane://artist?id=${artist.id}`));
+  assert.ok(artistHtml.includes("<h2>Любимый исполнитель</h2>"));
+  assert.ok(artistHtml.includes("Нажмите на исполнителя, чтобы открыть его музыку в Lane."));
+  assert.ok(!artistHtml.includes("Нажмите на трек"));
+  assert.ok(!artistHtml.includes(`lane://track?id=${track.id}`));
+  await patch({ artist: null, tracks: [] });
+  const emptyHtml = await (await worker.fetch(request(`/s/${link.id}`), env)).text();
+  assert.ok(emptyHtml.includes("Любимый трек или исполнитель пока не выбран."));
+  assert.ok(!emptyHtml.includes(`lane://track?id=${track.id}`));
+  state.public = false;
+  assert.equal((await worker.fetch(request(`/v1/public/shares/${link.id}`), env)).status, 404);
+});
+test("upgrades existing share storage without losing music links", async t => {
+  const { env, create } = fixture(t);
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE shared_links (id TEXT PRIMARY KEY,sender_id TEXT NOT NULL,sender_json TEXT NOT NULL,entity_type TEXT NOT NULL CHECK(entity_type IN ('track','album','artist','playlist')),entity_id TEXT NOT NULL,snapshot_json TEXT NOT NULL,created_at INTEGER NOT NULL)"),
+    env.DB.prepare("INSERT INTO shared_links VALUES(?,?,?,?,?,?,?)").bind("old-link", "owner-id", "{}", "track", input.entityId, "{}", 0),
+  ]);
+  assert.equal((await create({ type: "profile", entityId: "liner:owner-id" })).status, 201);
+  assert.equal((await env.DB.prepare("SELECT * FROM shared_links WHERE id=?").bind("old-link").first()).entity_id, input.entityId);
 });
 test("rejects private playlists and metadata from another owner", async t => {
   const { create, state } = fixture(t);
@@ -210,14 +384,42 @@ test("profile stores banner, links and favorites in D1 and merges independent ed
   assert.deepEqual(await (await read()).json(), { banner: null, links: [], artist: null, tracks: [] });
   const banner = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
   const track = { id: "song-1", title: "Song", artists: "Artist", coverUrl: "https://example.test/cover.jpg", durationMs: 10000, playCount: 0 };
-  assert.equal((await patch({ banner, artist: { id: "artist-1", name: "Artist", coverUrl: "" }, tracks: [track] })).status, 200);
+  assert.equal((await patch({ banner, tracks: [track] })).status, 200);
   assert.equal((await patch({ links: ["https://example.test/me"] })).status, 200);
-  assert.deepEqual(await (await read()).json(), { banner, artist: { id: "artist-1", name: "Artist", coverUrl: "" }, tracks: [track], links: ["https://example.test/me"] });
+  assert.deepEqual(await (await read()).json(), { banner, artist: null, tracks: [track], links: ["https://example.test/me"] });
   const stored = await env.DB.prepare("SELECT document_json FROM profile_customization WHERE owner=?").bind(JSON.stringify(["liner", "owner-id"])).first();
   assert.equal(JSON.parse(stored.document_json).banner, banner);
   const deleted = await patch({ banner: null, artist: null, tracks: [] });
   assert.equal(deleted.status, 200);
   assert.deepEqual(await (await read()).json(), { banner: null, artist: null, tracks: [], links: ["https://example.test/me"] });
+});
+
+test("profile allows exactly one track or one artist, including concurrent updates and legacy data", async t => {
+  const { env, create } = fixture(t);
+  const headers = { authorization: "Bearer account-token", "content-type": "application/json" };
+  const path = "/v1/me/profile-customization/liner";
+  const read = async () => (await worker.fetch(request(path, { headers }), env)).json();
+  const patch = body => worker.fetch(request(path, { method: "PATCH", headers, body: JSON.stringify(body) }), env);
+  const track = { id: "dQw4w9WgXcQ", title: "Song", artists: "Artist", coverUrl: "", durationMs: 10000, playCount: 0 };
+  const artist = { id: "artist-1", name: "Artist", coverUrl: "" };
+  assert.equal((await patch({ tracks: [track, { ...track, id: "another" }] })).status, 400);
+  assert.equal((await patch({ tracks: [track], artist })).status, 400);
+  assert.equal((await patch({ tracks: [track] })).status, 200);
+  assert.equal((await read()).artist, null);
+  assert.equal((await patch({ artist })).status, 200);
+  assert.deepEqual((await read()).tracks, []);
+  await Promise.all([patch({ tracks: [track] }), patch({ artist })]);
+  const current = await read();
+  assert.equal(current.tracks.length + Number(!!current.artist), 1);
+  await env.DB.batch([env.DB.prepare("UPDATE profile_customization SET document_json=? WHERE owner=?")
+    .bind(JSON.stringify({ artist, tracks: [track, { ...track, id: "another" }] }), JSON.stringify(["liner", "owner-id"]))]);
+  const legacy = await read();
+  assert.deepEqual(legacy.tracks, [track]);
+  assert.equal(legacy.artist, null);
+  const link = await (await create({ type: "profile", entityId: "liner:owner-id" })).json();
+  const shared = await (await worker.fetch(request(`/v1/public/shares/${link.id}`), env)).json();
+  assert.equal(shared.profile.tracks.length, 1);
+  assert.equal(shared.profile.artist, null);
 });
 
 test("profile rejects invalid content, excessive favorites and oversized uploads", async t => {
@@ -261,15 +463,16 @@ test("sharing uses the selected account service for tracks, artists and public p
     const target = new URL(url); calls.push(target.href);
     assert.equal(target.origin, "https://lane-account-api.nidenseekn.workers.dev");
     assert.ok(init.headers.get("x-liner-signature"));
-    if (target.pathname === "/v1/me") return Response.json({ id: "new-user", username: "listener" });
+    if (target.pathname === "/v1/me") return Response.json({ id: "new-user", username: "listener", isPublic: true });
+    if (target.pathname === "/v1/users/new-user") return Response.json({ id: "new-user", username: "listener", isPublic: true });
     if (target.pathname === `/v1/me/playlists/${playlistId}`) return Response.json({ playlist: { id: playlistId, ownerId: "new-user", title: "Public playlist", isPublic: true }, items: [] });
     if (target.pathname === "/v1/users/new-user/playlists") return Response.json({ items: [{ id: playlistId, isPublic: true }] });
     return new Response(null, { status: 404 });
   });
   t.after(() => upstream.mock.restore());
   const env = { DB: sqliteD1(join(directory, "db.sqlite")), signRequest: createSigner(module) };
-  for (const type of ["track", "artist", "album", "playlist"]) {
-    const response = await worker.fetch(request("/v1/shares", { method: "POST", headers: { authorization: "Bearer new-account-token" }, body: JSON.stringify({ type, entityId: ({ playlist: playlistId, track: "dQw4w9WgXcQ", artist: "UCabcdefghijklmnopqrstuv", album: "MPREabcdefgh" })[type], snapshot: { title: "Music" }, authBackend: "hyprr" }) }), env);
+  for (const type of ["track", "artist", "album", "playlist", "profile"]) {
+    const response = await worker.fetch(request("/v1/shares", { method: "POST", headers: { authorization: "Bearer new-account-token" }, body: JSON.stringify({ type, entityId: ({ profile: "hyprr:new-user", playlist: playlistId, track: "dQw4w9WgXcQ", artist: "UCabcdefghijklmnopqrstuv", album: "MPREabcdefgh" })[type], snapshot: { title: "Music" }, authBackend: "hyprr" }) }), env);
     assert.equal(response.status, 201, `${type}: ${await response.clone().text()}`);
     const share = await response.json();
     assert.equal((await worker.fetch(request(`/v1/public/shares/${share.id}`), env)).status, 200);

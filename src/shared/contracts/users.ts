@@ -14,6 +14,15 @@ export interface UserProfile extends PublicUser {
   isFollowing?: boolean;
   createdAt: string;
   privacy?: UserPrivacySettings;
+  listenedDurationMs?: number | null;
+  likedTracksCount?: number | null;
+  relationshipUpdatedAt?: string;
+}
+
+export interface FollowState {
+  isFollowing: boolean;
+  followersCount: number;
+  relationshipUpdatedAt?: string;
 }
 
 export interface UpdateProfileInput {

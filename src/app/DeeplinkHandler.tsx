@@ -25,6 +25,10 @@ export default function DeeplinkHandler() {
         let entity = target;
         if (entity.type === "share") {
           const shared = await api.getShare(entity.id);
+          if (shared.type === "profile") {
+            navigate(`/user?share=${encodeURIComponent(shared.id)}`);
+            return;
+          }
           entity = { type: shared.type, id: shared.entityId };
         }
         switch (entity.type) {
