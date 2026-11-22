@@ -7,13 +7,19 @@
     <script>
       try {
         const saved = localStorage.getItem("lane_theme_preset");
-        const migrations = { rose: "ruby", sapphire: "violet", sunset: "amber", emerald: "spotify" };
+        const migrations = { rose: "ruby", sapphire: "violet", sunset: "amber", emerald: "spotify", aurora: "system", dusk: "system", lagoon: "system" };
         let preset = Object.hasOwn(migrations, saved) ? migrations[saved] : saved;
         const mobile = !window.linerElectron && (window.Capacitor?.isNativePlatform?.() || window.matchMedia?.("(max-width: 720px)").matches);
         if (preset === "liquid-glass" && !mobile) preset = "dark";
-        const presets = ["system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"];
+        const presets = ["custom", "system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"];
         document.documentElement.dataset.colorTheme = presets.includes(preset) ? preset : "system";
         if (saved !== preset && presets.includes(preset)) localStorage.setItem("lane_theme_preset", preset);
+        if (preset === "custom") {
+          const color = JSON.parse(localStorage.getItem("lane_theme_sync") || "null")?.customColor;
+          if (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)) {
+            document.documentElement.style.setProperty("--lane-custom-seed", color);
+          }
+        }
       } catch {}
       if (typeof crypto !== "undefined" && typeof crypto.randomUUID !== "function" && typeof crypto.getRandomValues === "function") {
         Object.defineProperty(crypto, "randomUUID", {

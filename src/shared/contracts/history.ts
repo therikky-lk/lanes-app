@@ -55,6 +55,8 @@ export interface PopularTrackItem {
   rank: number;
   track: Track;
   playCount: number;
+  /** Sum of actual playback time within this chart's window. */
+  playedDurationMs?: number;
   uniqueListeners: number;
   score: number;
   viewer?: {

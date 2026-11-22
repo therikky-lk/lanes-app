@@ -239,7 +239,11 @@
     "allTimeBadge": "Top wszech czasów",
     "whatEveryonesOn": "Słuchane teraz",
     "mostListened": "Najczęściej słuchane wszech czasów",
-    "jumpBackIn": "Wróć do słuchania",
+    "newReleases": "Nowe wydania",
+    "newReleasesEmpty": "W ostatnim tygodniu nie było nowych wydań Twoich ulubionych wykonawców.",
+    "newReleasesError": "Nie udało się wczytać nowych wydań.",
+    "chartPlay": "{plays} odtworzenie",
+    "chartPlays": "Odtworzenia: {plays}",
     "popularAlbums": "Najlepsze albumy",
     "popularArtists": "Popularni wykonawcy",
     "popularPlaylists": "Popularne playlisty",
@@ -1007,7 +1011,13 @@
       "ruby": "Rubin",
       "amber": "Bursztyn",
       "sapphire": "Szafir",
-      "coffee": "Kawa"
+      "coffee": "Kawa",
+      "custom": "Własny kolor",
+      "custom_color": "Kolor motywu",
+      "hue": "Odcień",
+      "saturation": "Nasycenie",
+      "brightness": "Jasność",
+      "custom_color_description": "Wybierz kolor. Lane go stonuje i dopasuje resztę palety."
     },
     "branding": {
       "title": "Logo",

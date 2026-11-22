@@ -162,14 +162,16 @@ export function Select<T extends string = string>({
     menu.style.width = `${menuWidth}px`;
     menu.style.maxWidth = `${availableWidth}px`;
 
-    const menuRect = menu.getBoundingClientRect();
-    const top =
-      menuRect.bottom > window.innerHeight
-        ? trigger.top - menuRect.height - 6
-        : trigger.bottom + 6;
+    const below = window.innerHeight - trigger.bottom - 18;
+    const above = trigger.top - 18;
+    const height = menu.offsetHeight;
+    const openAbove = height > below && above > below;
+    const maxHeight = Math.max(0, Math.min(height, openAbove ? above : below));
+    const top = Math.max(12, openAbove ? trigger.top - maxHeight - 6 : trigger.bottom + 6);
 
     setMenuStyle({
       top,
+      maxHeight,
       minWidth: menuWidth,
       width: menuWidth,
       maxWidth: availableWidth,

@@ -239,7 +239,11 @@
     "allTimeBadge": "Top de todos os tempos",
     "whatEveryonesOn": "Ouvindo agora",
     "mostListened": "Mais ouvidos de todos os tempos",
-    "jumpBackIn": "Voltar a ouvir",
+    "newReleases": "Novos lançamentos",
+    "newReleasesEmpty": "Nenhum lançamento dos teus artistas favoritos na última semana.",
+    "newReleasesError": "Não foi possível carregar os novos lançamentos.",
+    "chartPlay": "{plays} reprodução",
+    "chartPlays": "{plays} reproduções",
     "popularAlbums": "Principais álbuns",
     "popularArtists": "Artistas em alta",
     "popularPlaylists": "Playlists populares",
@@ -1056,7 +1060,13 @@
       "ruby": "Rubi",
       "amber": "Âmbar",
       "sapphire": "Safira",
-      "coffee": "Café"
+      "coffee": "Café",
+      "custom": "Personalizado",
+      "custom_color": "Cor do tema",
+      "hue": "Matiz",
+      "saturation": "Saturação",
+      "brightness": "Brilho",
+      "custom_color_description": "Escolhe uma cor. O Lane suaviza a cor e adapta o resto da paleta."
     },
     "branding": {
       "title": "Marca",

@@ -13,7 +13,8 @@ import type {
   Track,
   TrackDetails,
 } from "@/shared/contracts";
-import { InnertubeError, postInnertube } from "./innertubeClient";
+import { InnertubeError, postInnertube, YOUTUBE_WEB_PROFILE } from "./innertubeClient";
+import { releaseDateFromTrackPage } from "./innertubeReleaseDate";
 import {
   getArtistReleaseBrowses,
   getArtistTopSongsBrowse,
@@ -123,6 +124,14 @@ async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDet
 
   album.tracks = tracks;
   return album;
+}
+
+async function getTrackReleaseDate(videoId: string, signal?: AbortSignal): Promise<string | undefined> {
+  const body = await postInnertube("next", { videoId: videoId.replace(/^yt:/, "") }, {
+    profile: YOUTUBE_WEB_PROFILE,
+    signal,
+  });
+  return releaseDateFromTrackPage(body);
 }
 
 async function getPlaylist(playlistId: string, signal?: AbortSignal): Promise<CatalogPlaylistDetails> {
@@ -291,6 +300,12 @@ async function getArtistImage(artistId: string, signal?: AbortSignal): Promise<s
   return mapInnertubeArtistDetails(artistId, await browse(artistId, undefined, signal))?.cover?.url;
 }
 
+async function getArtistReleaseShelves(artistId: string, signal?: AbortSignal): Promise<ArtistDetails> {
+  const artist = mapInnertubeArtistDetails(artistId, await browse(artistId, undefined, signal));
+  if (!artist) throw notFound("Artist");
+  return artist;
+}
+
 async function getArtist(artistId: string, signal?: AbortSignal, onPreview?: (artist: ArtistDetails) => void): Promise<ArtistDetails> {
   const direct = await loadArtist(artistId, signal, onPreview).catch(() => null);
   if (direct) return direct;
@@ -311,8 +326,10 @@ export const innertubeCatalog = {
   search,
   getArtist,
   getArtistImage,
+  getArtistReleaseShelves,
   getAlbum,
   getPlaylist,
   getTrack,
+  getTrackReleaseDate,
   getRadio,
 };

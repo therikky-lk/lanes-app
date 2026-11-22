@@ -11,6 +11,7 @@ export interface PopularAlbumItem {
   coverUrl: string;
   totalTracks: number;
   albumType: string;
+  releaseDate?: string;
   explicit?: boolean;
 }
 
@@ -33,10 +34,12 @@ export interface PopularPlaylistItem {
 }
 
 export type PopularItem =
-  | { type: "track"; item: PopularTrackItem; playCount: number }
-  | { type: "album"; item: PopularAlbumItem; playCount: number }
+  | { type: "track"; item: PopularTrackItem; playCount: number; playedDurationMs?: number }
+  | { type: "album"; item: PopularAlbumItem; playCount?: number }
   | { type: "artist"; item: PopularArtistItem; playCount: number }
   | { type: "playlist"; item: PopularPlaylistItem; playCount: number };
+
+type PopularTrack = Extract<PopularItem, { type: "track" }>;
 
 export const popularTracksKeys = {
   all: ["popular"] as const,
@@ -67,11 +70,12 @@ export function usePopularTracksOnly(limit = 20) {
       .getPopularTracks("7d", limit)
       .then((res) => {
         if (!active) return;
-        const rawItems: PopularItem[] = (res.items || []).map((entry) => ({
+        const rawItems = (res.items || []).map<PopularTrack>((entry) => ({
           type: "track",
           item: toClientTrack(entry.track),
           playCount: entry.playCount,
-        }));
+          playedDurationMs: entry.playedDurationMs,
+        })).sort((a, b) => b.playCount - a.playCount);
         cache.set(`tracks_7d_${limit}`, { data: rawItems, timestamp: Date.now() });
         setData(rawItems);
         setIsLoading(false);
@@ -108,11 +112,12 @@ export function usePopularTracksAllTime(limit = 20) {
       .getPopularTracks("all", limit)
       .then((res) => {
         if (!active) return;
-        const rawItems: PopularItem[] = (res.items || []).map((entry) => ({
+        const rawItems = (res.items || []).map<PopularTrack>((entry) => ({
           type: "track",
           item: toClientTrack(entry.track),
           playCount: entry.playCount,
-        }));
+          playedDurationMs: entry.playedDurationMs,
+        })).sort((a, b) => b.playCount - a.playCount);
         cache.set(`tracks_all_${limit}`, { data: rawItems, timestamp: Date.now() });
         setData(rawItems);
         setIsLoading(false);

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { flushSync } from "react-dom";
 import { useTheme } from "next-themes";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { useThemePreferences, type ThemePreset } from "@/shared/theme/themePreferences";
+import { DEFAULT_CUSTOM_COLOR, useThemePreferences, type ThemeSettings } from "@/shared/theme/themePreferences";
 import "./theme-transition.css";
 
 type Transition = { ready: Promise<void>; finished: Promise<void>; skipTransition: () => void };
@@ -38,19 +38,20 @@ export function ThemeSync() {
     return () => document.removeEventListener("pointerdown", onPointer, true);
   }, []);
   useEffect(() => {
-    const apply = (preset: ThemePreset, animate: boolean) => {
+    const apply = ({ preset, customColor }: ThemeSettings, animate: boolean) => {
       const effective = preset === "liquid-glass" && (!isMobile || window.linerElectron) ? "dark" : preset;
       const update = () => {
         document.documentElement.dataset.colorTheme = effective;
+        document.documentElement.style.setProperty("--lane-custom-seed", customColor ?? DEFAULT_CUSTOM_COLOR);
         setTheme(effective === "system" ? "system" : effective === "light" ? "light" : "dark");
       };
       if (animate && document.documentElement.dataset.colorTheme !== effective) {
         animateThemeChange(() => flushSync(update));
       } else update();
     };
-    apply(useThemePreferences.getState().preset, false);
+    apply(useThemePreferences.getState(), false);
     return useThemePreferences.subscribe((state, previous) => {
-      if (state.preset !== previous.preset) apply(state.preset, true);
+      if (state.preset !== previous.preset || state.customColor !== previous.customColor) apply(state, true);
     });
   }, [isMobile, setTheme]);
   return null;

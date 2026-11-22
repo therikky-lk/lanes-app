@@ -239,7 +239,11 @@
     "allTimeBadge": "Tüm Zamanların En İyileri",
     "whatEveryonesOn": "Şu anda dinleniyor",
     "mostListened": "Tüm zamanların en çok dinlenenleri",
-    "jumpBackIn": "Kaldığın yerden devam et",
+    "newReleases": "Yeni çıkanlar",
+    "newReleasesEmpty": "Favori sanatçılarından son bir haftada yeni yayın yok.",
+    "newReleasesError": "Yeni yayınlar yüklenemedi.",
+    "chartPlay": "{plays} dinlenme",
+    "chartPlays": "{plays} dinlenme",
     "popularAlbums": "En İyi Albümler",
     "popularArtists": "Trend Sanatçılar",
     "popularPlaylists": "Popüler Çalma Listeleri",
@@ -1007,7 +1011,13 @@
       "ruby": "Yakut",
       "amber": "Kehribar",
       "sapphire": "Safir",
-      "coffee": "Kahve"
+      "coffee": "Kahve",
+      "custom": "Özel renk",
+      "custom_color": "Tema rengi",
+      "hue": "Renk tonu",
+      "saturation": "Doygunluk",
+      "brightness": "Parlaklık",
+      "custom_color_description": "Bir renk seç. Lane rengi yumuşatır ve paletin geri kalanını uyarlar."
     },
     "branding": {
       "title": "Marka",

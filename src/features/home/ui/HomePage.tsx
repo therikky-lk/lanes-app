@@ -7,7 +7,6 @@ import PopularTracksSection from "./PopularTracksSection";
 import DailyMixesSection from "./DailyMixesSection";
 import TrendsSection from "./TrendsSection";
 import MyVibeHero from "./MyVibeHero";
-import type { Track } from "@/shared/types/track";
 import {
   usePopular,
   usePopularTracksOnly,
@@ -15,20 +14,15 @@ import {
 } from "../hooks/usePopularTracks";
 import { useRecentlyPlayed } from "../hooks/useRecentlyPlayed";
 import { useDailyMixes } from "../hooks/useDailyMixes";
+import { useNewReleases } from "../hooks/useNewReleases";
 import { useLikedTracks } from "@/features/library/hooks/useLikedTracks";
-import { playerEngine } from "@/features/player";
-import SongCard from "@/features/player/ui/SongCard";
-import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import { useTranslation } from "@/languages";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import {
   FireFill,
   TrophyFill,
-  TimeFill,
   AlbumFill,
   PlaylistFill,
-  HeartFill,
-  FlashCircleFill,
   HistoryLine,
   RightLine,
 } from "@mingcute/react";
@@ -48,17 +42,12 @@ export default function HomePage() {
   const { data: recentlyPlayed } =
     useRecentlyPlayed(20);
   const { data: dailyMixes } = useDailyMixes();
+  const { items: newReleases, isLoading: releasesLoading, hasError: releasesError } = useNewReleases(likedData.tracks, likedLoading);
 
   const popularAlbums =
     popularItems?.filter((it) => it.type === "album") ?? [];
   const popularPlaylists =
     popularItems?.filter((it) => it.type === "playlist") ?? [];
-
-  // Quick mix items: up to 5 recently played items (tracks or albums)
-  const quickRecentItems = useMemo(() => {
-    return (recentlyPlayed || []).slice(0, 5);
-  }, [recentlyPlayed]);
-
 
   // seeds for "My Vibe"
   const vibeRecent = useMemo(
@@ -141,8 +130,7 @@ export default function HomePage() {
                     ),
                     title: t("home.history"),
                     sub:
-                      [...new Set(vibeRecent.map((tr) => tr.artists.split(",")[0]?.trim()).filter(Boolean))].slice(0, 3).join(", ") ||
-                      t("home.jumpBackIn"),
+                       [...new Set(vibeRecent.map((tr) => tr.artists.split(",")[0]?.trim()).filter(Boolean))].slice(0, 3).join(", "),
                     thumbs: vibeRecent
                       .filter((tr) => Boolean(tr.coverUrl))
                       .slice(0, 3)
@@ -197,22 +185,22 @@ export default function HomePage() {
           {/* Trending: Russia / worldwide */}
           <TrendsSection />
 
+          <PopularTracksSection
+            title={t("home.newReleases")}
+            icon={<AlbumFill className="w-5 h-5 text-sky-400" />}
+            items={newReleases}
+            emptyMessage={releasesLoading
+              ? t("common.loading")
+              : releasesError ? t("home.newReleasesError") : t("home.newReleasesEmpty")}
+          />
+
           {/* Listening Right Now (Trending Chart) */}
           {popularTracksOnly && popularTracksOnly.length > 0 && (
             <PopularTracksSection
               title={t("home.whatEveryonesOn")}
               icon={<FireFill className="w-5 h-5 text-amber-500" />}
               items={popularTracksOnly}
-              headingMarginTop="mt-[22px]"
-            />
-          )}
-
-          {/* Jump Back In (History) */}
-          {recentlyPlayed && recentlyPlayed.length > 0 && (
-            <PopularTracksSection
-              title={t("home.jumpBackIn")}
-              icon={<TimeFill className="w-5 h-5 text-sky-400" />}
-              items={recentlyPlayed}
+              showTrackStats
               headingMarginTop="mt-[22px]"
             />
           )}
@@ -223,6 +211,7 @@ export default function HomePage() {
               title={t("home.mostListened")}
               icon={<TrophyFill className="w-5 h-5 text-yellow-500" />}
               items={popularTracksAllTime}
+              showTrackStats
               headingMarginTop="mt-[22px]"
             />
           )}

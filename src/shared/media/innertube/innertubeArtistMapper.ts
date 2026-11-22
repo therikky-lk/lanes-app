@@ -5,6 +5,7 @@ import { coverFromThumbnail } from "./innertubeThumbnail";
 import { hasExplicitBadge } from "./innertubeTrackMapper";
 import { mapInnertubeBrowseTracks, microformatCover } from "./innertubeCollectionMapper";
 import { isVerifiedArtist } from "./monthlyListeners";
+import { exactReleaseDate } from "./innertubeReleaseDate";
 
 const LISTENERS_PATTERN = /[\d.,]+[KMBkmb]?\s*(?:monthly (?:audience|listeners)|слушателей за месяц|слухачів за місяць)/i;
 
@@ -39,11 +40,13 @@ function mapReleaseItem(raw: unknown): ArtistAlbum | null {
     return null;
   }
   const year = yearFromRuns(item?.subtitle);
+  const releaseDate = exactReleaseDate(item?.releaseDate, ...getRuns(item?.subtitle).map((run) => run.text));
   const cover = coverFromThumbnail(item?.thumbnailRenderer);
   return {
     id: browseId,
     title,
     ...(year ? { year } : {}),
+    ...(releaseDate ? { releaseDate } : {}),
     ...(cover ? { cover } : {}),
     explicit: hasExplicitBadge(item),
   };

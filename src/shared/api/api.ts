@@ -1164,7 +1164,7 @@ export const api = {
     }
     const targets = lyricsTargets(
       getApiBaseUrl(), getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend),
-      getAuthSession()?.authBackend, token,
+      getAuthSession()?.authBackend, token, usesLocalAppTransport(),
     );
     yield* collectLyricsSources(
       targets.map(target => () => api.streamServerLyrics(id, signal, hint, target)),

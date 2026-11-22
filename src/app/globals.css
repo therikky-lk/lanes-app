@@ -246,6 +246,32 @@
   --border-tertiary: #333;
 }
 
+/* Restrict tint strength independently of the chosen color, including pure
+   black, white and neon picks. All controls inherit the same semantic tokens. */
+:root[data-color-theme="custom"], .lane-theme-preview {
+  --lane-theme-seed: var(--lane-custom-seed, #9288ad);
+  --bg-canvas: color-mix(in srgb, var(--lane-theme-seed) 5%, #0c0d10);
+  --bg-primary: color-mix(in srgb, var(--lane-theme-seed) 8%, #111216);
+  --bg-surface: var(--bg-primary);
+  --bg-elevated: color-mix(in srgb, var(--lane-theme-seed) 9%, #1a1b20);
+  --bg-panel: color-mix(in srgb, var(--lane-theme-seed) 10%, #202126);
+  --bg-overlay: color-mix(in srgb, var(--bg-primary) 96%, transparent);
+  --bg-toolbox: color-mix(in srgb, var(--accent-primary) 9%, transparent);
+  --bg-toolbox-active: color-mix(in srgb, var(--accent-primary) 19%, transparent);
+  --border-toolbox-divider: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  --border-primary: color-mix(in srgb, var(--accent-primary) 17%, var(--bg-primary));
+  --border-secondary: color-mix(in srgb, var(--accent-primary) 24%, var(--bg-primary));
+  --border-tertiary: color-mix(in srgb, var(--accent-primary) 33%, var(--bg-primary));
+  --text-primary: #f4f3f6;
+  --text-secondary: #c8c7d0;
+  --text-tertiary: #a6a5af;
+  --accent-primary: color-mix(in srgb, var(--lane-theme-seed) 25%, #bfc0c9);
+  --accent-secondary: color-mix(in srgb, var(--accent-primary) 72%, #eeeef2);
+  --accent-tertiary: color-mix(in srgb, var(--accent-primary) 42%, #eeeef2);
+  --btn-primary-bg: var(--accent-primary);
+  --btn-primary-text: #151519;
+}
+
 @theme inline {
   --color-bg-canvas: var(--bg-canvas);
   --color-bg-surface: var(--bg-surface);

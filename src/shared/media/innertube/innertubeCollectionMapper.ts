@@ -5,6 +5,7 @@ import { coverFromThumbnail } from "./innertubeThumbnail";
 import { isMusicVideo, mapInnertubeTrack, musicVideoType } from "./innertubeTrackMapper";
 import { mapYoutubePlaylistTracks } from "@/shared/media/youtube/playlist/youtubePlaylistTracks";
 import { parsePlaylistAuthor } from "@/shared/media/youtube/account/playlistAuthor";
+import { exactReleaseDate, releaseDateFromDescription } from "./innertubeReleaseDate";
 
 export function mapInnertubeBrowseTracks(
   body: unknown,
@@ -47,6 +48,12 @@ export function mapInnertubeAlbumDetails(id: string, body: unknown): AlbumDetail
   if (!title || artists.length === 0) return null;
   const cover = coverFromThumbnail(header?.thumbnail);
   const year = yearFromRuns(header?.subtitle);
+  const microformat = findFirst(body, "microformatDataRenderer");
+  const releaseDate = exactReleaseDate(
+    microformat?.releaseDate,
+    header?.releaseDate,
+    ...getRuns(header?.subtitle).map((run) => run.text),
+  ) ?? releaseDateFromDescription(stringValue(microformat?.description));
   const trackCount = trackCountFrom(header?.secondSubtitle);
   // YouTube can substitute an official video (OMV) for most songs in the
   // album's own tracklist. These are still album members, not recommendations.
@@ -61,6 +68,7 @@ export function mapInnertubeAlbumDetails(id: string, body: unknown): AlbumDetail
     title,
     artists,
     ...(year ? { year } : {}),
+    ...(releaseDate ? { releaseDate } : {}),
     ...(cover ? { cover } : {}),
     ...(trackCount ? { trackCount } : {}),
     tracks,

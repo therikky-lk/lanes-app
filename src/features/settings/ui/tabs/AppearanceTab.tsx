@@ -6,10 +6,11 @@ import { useLibraryPreferences } from "@/features/library/store/libraryPreferenc
 import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
 import { SettingRow, SettingSection } from "../controls";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import { chooseTheme, useThemePreferences, type ThemePreset } from "@/shared/theme/themePreferences";
+import { chooseCustomColor, chooseTheme, DEFAULT_CUSTOM_COLOR, useThemePreferences, type ThemePreset } from "@/shared/theme/themePreferences";
+import ThemeColorPicker from "../ThemeColorPicker";
 
 
-function presetIcon(preset: ThemePreset): ReactNode {
+function presetIcon(preset: ThemePreset, customColor?: string): ReactNode {
   const colors: Partial<Record<ThemePreset, string>> = {
     amoled: "#fff",
     violet: "#a78bfa",
@@ -18,21 +19,24 @@ function presetIcon(preset: ThemePreset): ReactNode {
     ruby: "#f87171",
     amber: "#facc15",
     coffee: "#d6b59a",
+    custom: `color-mix(in srgb, ${customColor ?? DEFAULT_CUSTOM_COLOR} 25%, #bfc0c9)`,
   };
   if (preset === "system") return <LuMonitor size={16} />;
   if (preset === "light") return <LuSun size={16} />;
   if (preset === "dark") return <LuMoon size={16} />;
   if (preset === "amoled") return <LuMoonStar size={16} />;
   if (preset === "liquid-glass") return <LuDroplets size={16} />;
-  return <span aria-hidden="true" className="inline-block h-[12px] w-[12px] rounded-full" style={{ backgroundColor: colors[preset] }} />;
+  return <span aria-hidden="true" className="inline-block h-[12px] w-[12px] rounded-full" style={{ background: colors[preset] }} />;
 }
 
 export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const { t, locale, setLocale } = useTranslation();
   const [mounted, setMounted] = useState(false);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const isMobile = useIsMobile();
   const glassAvailable = isMobile && !window.linerElectron;
   const preset = useThemePreferences((state) => state.preset);
+  const customColor = useThemePreferences((state) => state.customColor ?? DEFAULT_CUSTOM_COLOR);
   const themePreset = preset === "liquid-glass" && !glassAvailable ? "dark" : preset;
   const rememberLibraryCategory = useLibraryPreferences((state) => state.rememberCategory);
   const rememberLibraryLayout = useLibraryPreferences((state) => state.rememberLayout);
@@ -51,6 +55,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
 
   const chooseThemePreset = (value: string) => {
     const preset = value === "liquid-glass" && !glassAvailable ? "dark" : value as ThemePreset;
+    if (preset !== "custom") setColorPickerOpen(false);
     chooseTheme(preset);
   };
 
@@ -90,6 +95,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
         control={mounted ? (
           <Select
             options={[
+              { value: "custom", label: t("settings.theme.custom"), icon: presetIcon("custom", customColor) },
               { value: "system", label: t("settings.theme.system"), icon: presetIcon("system") },
               { value: "light", label: t("settings.theme.light"), icon: presetIcon("light") },
               { value: "dark", label: t("settings.theme.dark"), icon: presetIcon("dark") },
@@ -111,7 +117,35 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
         ) : <span />}
       />
 
+      {mounted && themePreset === "custom" && (
+        <SettingRow
+          title={t("settings.theme.custom_color")}
+          description={t("settings.theme.custom_color_description")}
+          titleKey="settings.theme.custom_color"
+          descKey="settings.theme.custom_color_description"
+          searchQuery={searchQuery}
+          control={
+            <button
+              type="button"
+              onClick={() => setColorPickerOpen(true)}
+              aria-haspopup="dialog"
+              aria-label={t("settings.theme.custom_color")}
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-border-secondary bg-bg-primary px-3 text-text-secondary hover:bg-bg-elevated focus-visible:ring-2 focus-visible:ring-accent-primary"
+            >
+              <span aria-hidden="true" className="size-5 rounded-md border border-border-tertiary bg-accent-primary" />
+              <span className="font-mono text-[12px]">{customColor.toUpperCase()}</span>
+            </button>
+          }
+        />
+      )}
     </SettingSection>
+    {colorPickerOpen && themePreset === "custom" && (
+      <ThemeColorPicker
+        color={customColor}
+        onClose={() => setColorPickerOpen(false)}
+        onSave={(color) => { chooseCustomColor(color); setColorPickerOpen(false); }}
+      />
+    )}
 
     <SettingSection label={t("settings.storage.library_display_title")}>
       <SettingRow title={t("library.liked_songs")} titleKey="library.liked_songs" searchQuery={searchQuery}

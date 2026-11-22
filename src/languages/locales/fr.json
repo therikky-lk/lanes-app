@@ -239,7 +239,11 @@
     "allTimeBadge": "Top de tous les temps",
     "whatEveryonesOn": "En écoute en ce moment",
     "mostListened": "Les plus écoutés de tous les temps",
-    "jumpBackIn": "Reprendre l'écoute",
+    "newReleases": "Nouvelles sorties",
+    "newReleasesEmpty": "Aucune sortie de tes artistes favoris cette semaine.",
+    "newReleasesError": "Impossible de charger les nouvelles sorties.",
+    "chartPlay": "{plays} écoute",
+    "chartPlays": "{plays} écoutes",
     "popularAlbums": "Top albums",
     "popularArtists": "Artistes tendance",
     "popularPlaylists": "Playlists populaires",
@@ -1007,7 +1011,13 @@
       "ruby": "Rubis",
       "amber": "Ambre",
       "sapphire": "Saphir",
-      "coffee": "Café"
+      "coffee": "Café",
+      "custom": "Personnalisé",
+      "custom_color": "Couleur du thème",
+      "hue": "Teinte",
+      "saturation": "Saturation",
+      "brightness": "Luminosité",
+      "custom_color_description": "Choisis une couleur. Lane l’adoucit et adapte le reste de la palette."
     },
     "branding": {
       "title": "Logo",

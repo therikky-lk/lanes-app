@@ -239,7 +239,11 @@
     "allTimeBadge": "Top histórico",
     "whatEveryonesOn": "Escuchando ahora mismo",
     "mostListened": "Más escuchado de todos los tiempos",
-    "jumpBackIn": "Vuelve a escuchar",
+    "newReleases": "Nuevos lanzamientos",
+    "newReleasesEmpty": "Tus artistas favoritos no han publicado nada nuevo en la última semana.",
+    "newReleasesError": "No se pudieron cargar los nuevos lanzamientos.",
+    "chartPlay": "{plays} reproducción",
+    "chartPlays": "{plays} reproducciones",
     "popularAlbums": "Álbumes destacados",
     "popularArtists": "Artistas en tendencia",
     "popularPlaylists": "Listas populares",
@@ -997,7 +1001,13 @@
       "ruby": "Rubí",
       "amber": "Ámbar",
       "sapphire": "Zafiro",
-      "coffee": "Café"
+      "coffee": "Café",
+      "custom": "Personalizado",
+      "custom_color": "Color del tema",
+      "hue": "Tono",
+      "saturation": "Saturación",
+      "brightness": "Brillo",
+      "custom_color_description": "Elige un color. Lane lo suaviza y adapta el resto de la paleta."
     },
     "branding": {
       "title": "Color de énfasis",

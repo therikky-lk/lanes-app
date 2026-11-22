@@ -239,7 +239,11 @@
     "allTimeBadge": "All-Time Top",
     "whatEveryonesOn": "Listening right now",
     "mostListened": "Most listened of all time",
-    "jumpBackIn": "Jump back in",
+    "newReleases": "New releases",
+    "newReleasesEmpty": "No releases this week from artists in your liked songs.",
+    "newReleasesError": "Couldn't load new releases.",
+    "chartPlay": "{plays} play",
+    "chartPlays": "{plays} plays",
     "popularAlbums": "Top Albums",
     "popularArtists": "Trending Artists",
     "popularPlaylists": "Popular Playlists",
@@ -1067,7 +1071,13 @@
       "ruby": "Ruby",
       "amber": "Amber",
       "sapphire": "Sapphire",
-      "coffee": "Coffee"
+      "coffee": "Coffee",
+      "custom": "Custom",
+      "custom_color": "Theme color",
+      "hue": "Hue",
+      "saturation": "Saturation",
+      "brightness": "Brightness",
+      "custom_color_description": "Pick a color. Lane softens it and adapts the rest of the palette."
     },
     "branding": {
       "title": "Branding",

@@ -17,6 +17,7 @@ import {
   soundCloudCover,
   soundCloudPlaylistCover,
   soundCloudReleaseType,
+  soundCloudReleaseDate,
   soundCloudYear,
 } from "./soundcloudMappers";
 import { hydrateSoundCloudStubs } from "./soundcloudStubs";
@@ -99,7 +100,8 @@ async function loadSet(setId: string, signal?: AbortSignal) {
 async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDetails> {
   const { record, summary } = await loadSet(albumId, signal);
   const artist = mapSoundCloudArtist(record.user);
-  return { type: "album", ...summary, artists: artist ? [artist] : [] };
+  const releaseDate = soundCloudReleaseDate(record);
+  return { type: "album", ...summary, artists: artist ? [artist] : [], releaseDate };
 }
 
 async function getPlaylist(playlistId: string, signal?: AbortSignal): Promise<CatalogPlaylistDetails> {

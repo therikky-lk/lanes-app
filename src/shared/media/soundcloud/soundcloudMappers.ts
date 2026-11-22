@@ -56,6 +56,11 @@ export function soundCloudYear(record: JsonRecord): number | undefined {
   return Number.isFinite(year) && year > 1900 ? year : undefined;
 }
 
+export function soundCloudReleaseDate(record: JsonRecord): string | undefined {
+  const date = trimmedString(record.release_date) ?? trimmedString(record.display_date);
+  return date?.match(/^\d{4}[-/]\d{2}[-/]\d{2}(?=$|[T ])/i)?.[0].replaceAll("/", "-");
+}
+
 export function soundCloudPlaylistCover(record: JsonRecord): Cover | undefined {
   const firstTrack = asRecord(asArray(record.tracks)[0]);
   return (
@@ -72,11 +77,13 @@ export function mapSoundCloudRelease(rawPlaylist: unknown): ArtistAlbum | null {
   if (!record || id === undefined || !title) return null;
   const cover = soundCloudPlaylistCover(record);
   const year = soundCloudYear(record);
+  const releaseDate = soundCloudReleaseDate(record);
   const trackCount = numberValue(record.track_count);
   return {
     id: soundCloudPlaylistId(id),
     title,
     ...(year ? { year } : {}),
+    ...(releaseDate ? { releaseDate } : {}),
     ...(cover ? { cover } : {}),
     ...(trackCount !== undefined ? { trackCount, totalTracks: trackCount } : {}),
   };

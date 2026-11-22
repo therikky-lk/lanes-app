@@ -239,7 +239,11 @@
     "allTimeBadge": "Топ за всё время",
     "whatEveryonesOn": "Сейчас слушают",
     "mostListened": "Самые прослушиваемые за всё время",
-    "jumpBackIn": "Продолжить прослушивание",
+    "newReleases": "Новые релизы",
+    "newReleasesEmpty": "За неделю нет новых релизов от артистов из лайкнутых треков.",
+    "newReleasesError": "Не удалось загрузить новые релизы.",
+    "chartPlay": "{plays} прослушивание",
+    "chartPlays": "Прослушивания: {plays}",
     "popularAlbums": "Топ альбомов",
     "popularArtists": "Популярные артисты",
     "popularPlaylists": "Популярные плейлисты",
@@ -1102,7 +1106,13 @@
       "ruby": "Рубиновая",
       "amber": "Янтарная",
       "sapphire": "Сапфировая",
-      "coffee": "Кофейная"
+      "coffee": "Кофейная",
+      "custom": "Свой цвет",
+      "custom_color": "Цвет темы",
+      "hue": "Оттенок",
+      "saturation": "Насыщенность",
+      "brightness": "Яркость",
+      "custom_color_description": "Выбери цвет. Lane приглушит его и подберёт остальные оттенки."
     },
     "branding": {
       "title": "Брендинг",

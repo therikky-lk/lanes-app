@@ -239,7 +239,11 @@
     "allTimeBadge": "Allzeit-Top",
     "whatEveryonesOn": "Wird gerade gehört",
     "mostListened": "Die meistgehörte Musik aller Zeiten",
-    "jumpBackIn": "Weiter geht’s",
+    "newReleases": "Neuerscheinungen",
+    "newReleasesEmpty": "Keine neuen Veröffentlichungen deiner Lieblingskünstler in dieser Woche.",
+    "newReleasesError": "Neuerscheinungen konnten nicht geladen werden.",
+    "chartPlay": "{plays} Wiedergabe",
+    "chartPlays": "{plays} Wiedergaben",
     "popularAlbums": "Top-Alben",
     "popularArtists": "Künstler im Trend",
     "popularPlaylists": "Beliebte Playlists",
@@ -948,7 +952,13 @@
       "ruby": "Rubin",
       "amber": "Bernstein",
       "sapphire": "Saphir",
-      "coffee": "Kaffee"
+      "coffee": "Kaffee",
+      "custom": "Eigene Farbe",
+      "custom_color": "Designfarbe",
+      "hue": "Farbton",
+      "saturation": "Sättigung",
+      "brightness": "Helligkeit",
+      "custom_color_description": "Wähle eine Farbe. Lane dämpft sie und passt die restliche Palette an."
     },
     "branding": {
       "title": "Branding",

@@ -45,6 +45,7 @@ export interface ArtistAlbum {
   id: string;
   title: string;
   year?: number;
+  releaseDate?: string;
   cover?: Cover;
   explicit?: boolean;
   totalTracks?: number;
@@ -83,6 +84,7 @@ export interface AlbumDetails {
   title: string;
   artists: { id: string; name: string }[];
   year?: number;
+  releaseDate?: string;
   cover?: Cover;
   trackCount?: number;
   durationMs?: number;

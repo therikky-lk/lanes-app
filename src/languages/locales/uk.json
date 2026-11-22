@@ -239,7 +239,11 @@
     "allTimeBadge": "Топ за весь час",
     "whatEveryonesOn": "Зараз слухають",
     "mostListened": "Найбільш прослуховувані за весь час",
-    "jumpBackIn": "Продовжити прослуховування",
+    "newReleases": "Нові релізи",
+    "newReleasesEmpty": "За тиждень у вибраних виконавців немає нових релізів.",
+    "newReleasesError": "Не вдалося завантажити нові релізи.",
+    "chartPlay": "{plays} прослуховування",
+    "chartPlays": "Прослуховування: {plays}",
     "popularAlbums": "Топ альбомів",
     "popularArtists": "Популярні артисти",
     "popularPlaylists": "Популярні плейлисти",
@@ -1089,7 +1093,13 @@
       "ruby": "Рубінова",
       "amber": "Бурштинова",
       "sapphire": "Сапфірова",
-      "coffee": "Кавова"
+      "coffee": "Кавова",
+      "custom": "Свій колір",
+      "custom_color": "Колір теми",
+      "hue": "Відтінок",
+      "saturation": "Насиченість",
+      "brightness": "Яскравість",
+      "custom_color_description": "Вибери колір. Lane приглушить його й добере решту відтінків."
     },
     "branding": {
       "title": "Брендинг",

@@ -1,12 +1,18 @@
 import { create } from "zustand";
 
-export const THEME_PRESETS = ["system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"] as const;
+export const THEME_PRESETS = ["custom", "system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"] as const;
+export const DEFAULT_CUSTOM_COLOR = "#9288ad";
 export type ThemePreset = typeof THEME_PRESETS[number];
 export interface ThemeSettings {
   syncEnabled: boolean;
   preferenceVersion: number;
   preset: ThemePreset;
   themeVersion: number;
+  customColor?: string;
+}
+
+function normalizeCustomColor(value: unknown): string | undefined {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined;
 }
 
 export function isThemePreset(value: unknown): value is ThemePreset {
@@ -24,6 +30,7 @@ function readInitial(): ThemeSettings {
       preset: saved?.syncEnabled === true && isThemePreset(saved?.preset)
         ? saved.preset : isThemePreset(preset) ? preset : defaults.preset,
       themeVersion: validVersion(saved?.themeVersion) ? saved.themeVersion : 0,
+      customColor: normalizeCustomColor(saved?.customColor),
     };
   } catch { return defaults; }
 }
@@ -44,6 +51,14 @@ export function chooseTheme(preset: ThemePreset) {
   const state = useThemePreferences.getState();
   if (state.preset === preset) return;
   useThemePreferences.setState({ preset, themeVersion: Math.max(Date.now(), state.themeVersion + 1) });
+  window.dispatchEvent(new Event("theme:local-change"));
+}
+
+export function chooseCustomColor(value: string) {
+  const customColor = normalizeCustomColor(value);
+  const state = useThemePreferences.getState();
+  if (!customColor || customColor === state.customColor) return;
+  useThemePreferences.setState({ customColor, themeVersion: Math.max(Date.now(), state.themeVersion + 1) });
   window.dispatchEvent(new Event("theme:local-change"));
 }
 
@@ -71,9 +86,14 @@ export function receiveThemeSettings(value: unknown) {
   const syncEnabled = newerPreference ? incoming.syncEnabled : state.syncEnabled;
   const newerTheme = incoming.themeVersion > state.themeVersion
     || (incoming.themeVersion === state.themeVersion && incoming.preset > state.preset);
+  const customColor = normalizeCustomColor(incoming.customColor);
   useThemePreferences.setState({
     ...(newerPreference ? { syncEnabled, preferenceVersion: incoming.preferenceVersion } : {}),
     ...(syncEnabled && incoming.syncEnabled && newerTheme
-      ? { preset: incoming.preset, themeVersion: incoming.themeVersion } : {}),
+      ? {
+        preset: incoming.preset,
+        themeVersion: incoming.themeVersion,
+        ...(incoming.preset === "custom" ? { customColor } : {}),
+      } : {}),
   });
 }

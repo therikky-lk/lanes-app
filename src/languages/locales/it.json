@@ -239,7 +239,11 @@
     "allTimeBadge": "I più ascoltati di sempre",
     "whatEveryonesOn": "In ascolto adesso",
     "mostListened": "I più ascoltati di sempre",
-    "jumpBackIn": "Riprendi da dove eri rimasto",
+    "newReleases": "Nuove uscite",
+    "newReleasesEmpty": "Nessuna nuova uscita dei tuoi artisti preferiti nell’ultima settimana.",
+    "newReleasesError": "Impossibile caricare le nuove uscite.",
+    "chartPlay": "{plays} ascolto",
+    "chartPlays": "{plays} ascolti",
     "popularAlbums": "Album più popolari",
     "popularArtists": "Artisti di tendenza",
     "popularPlaylists": "Playlist popolari",
@@ -1007,7 +1011,13 @@
       "ruby": "Rubino",
       "amber": "Ambra",
       "sapphire": "Zaffiro",
-      "coffee": "Caffè"
+      "coffee": "Caffè",
+      "custom": "Personalizzato",
+      "custom_color": "Colore del tema",
+      "hue": "Tonalità",
+      "saturation": "Saturazione",
+      "brightness": "Luminosità",
+      "custom_color_description": "Scegli un colore. Lane lo attenua e adatta il resto della palette."
     },
     "branding": {
       "title": "Marchio",

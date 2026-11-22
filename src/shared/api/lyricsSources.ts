@@ -3,10 +3,11 @@ import type { LyricsCandidate, LyricsStreamEvent } from "@/shared/contracts/lyri
 type LyricsSource = () => AsyncIterable<LyricsStreamEvent>;
 
 /** Account services and the Liner lyrics catalog have separate credentials. */
-export function lyricsTargets(primaryApi: string, accountApi: string, backend: unknown, token: string | null) {
-  const targets = [{ baseUrl: primaryApi, token: backend === "hyprr" ? null : token }];
-  if (backend === "hyprr" && accountApi !== primaryApi) targets.push({ baseUrl: accountApi, token });
-  return targets;
+export function lyricsTargets(primaryApi: string, accountApi: string, backend: unknown, token: string | null, localPreview = false) {
+  if (localPreview) return [{ baseUrl: primaryApi, token: backend === "hyprr" ? null : token }];
+  if (!token) return [];
+  if (backend === "hyprr") return accountApi && accountApi !== primaryApi ? [{ baseUrl: accountApi, token }] : [];
+  return [{ baseUrl: primaryApi, token }];
 }
 
 /** Keep all providers, even if a server disconnects after its first result. */

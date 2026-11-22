@@ -20,22 +20,36 @@ export interface PopularTracksSectionProps {
   badge?: React.ReactNode;
   items: PopularItem[];
   showRanks?: boolean;
+  showTrackStats?: boolean;
   headingMarginTop?: string;
   rowClassName?: string;
+  emptyMessage?: string;
 }
 
 function TrackCard({
   item,
   index,
   showRanks,
+  showTrackStats,
 }: {
   item: PopularItem & { type: "track" };
   index: number;
   showRanks?: boolean;
+  showTrackStats?: boolean;
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const listenedMs = item.playedDurationMs;
+  const seconds = typeof listenedMs === "number" && Number.isFinite(listenedMs) && listenedMs >= 0
+    ? Math.floor(listenedMs / 1000)
+    : undefined;
+  const hours = seconds === undefined ? 0 : Math.floor(seconds / 3600);
+  const listenedTime = seconds === undefined ? undefined : [
+    ...(hours ? [hours.toLocaleString(locale)] : []),
+    String(Math.floor(seconds / 60) % 60).padStart(hours ? 2 : 1, "0"),
+    String(seconds % 60).padStart(2, "0"),
+  ].join(":");
   const { toast } = useToast();
   const trackDoubleClickBehavior = usePlayerStore(
     (state) => state.trackDoubleClickBehavior,
@@ -168,6 +182,14 @@ function TrackCard({
             className="text-[13px] text-text-tertiary"
           />
         </div>
+        {showTrackStats && (
+          <span className="mt-0.5 truncate text-[12px] text-text-tertiary tabular-nums">
+            {t(item.playCount === 1 ? "home.chartPlay" : "home.chartPlays", {
+              plays: item.playCount.toLocaleString(locale),
+            })}
+            {listenedTime !== undefined && ` · ${listenedTime}`}
+          </span>
+        )}
       </div>
 
       {menuItems.length > 0 && (
@@ -194,6 +216,7 @@ function AlbumCard({
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const navigate = useNavigate();
+  const { locale } = useTranslation();
 
   const menuItems = useSongMenuItems({
     id: item.item.id,
@@ -266,6 +289,13 @@ function AlbumCard({
             {item.item.artist}
           </span>
         </div>
+        {item.item.releaseDate && (
+          <time dateTime={item.item.releaseDate} className="mt-0.5 text-[12px] text-text-tertiary">
+            {new Date(item.item.releaseDate).toLocaleDateString(locale, {
+              day: "numeric", month: "short", timeZone: "UTC",
+            })}
+          </time>
+        )}
       </div>
 
       {menuItems.length > 0 && (
@@ -461,10 +491,12 @@ function PopularItemCard({
   item,
   index,
   showRanks,
+  showTrackStats,
 }: {
   item: PopularItem;
   index: number;
   showRanks?: boolean;
+  showTrackStats?: boolean;
 }) {
   switch (item.type) {
     case "track":
@@ -473,6 +505,7 @@ function PopularItemCard({
           item={item}
           index={index}
           showRanks={showRanks}
+          showTrackStats={showTrackStats}
         />
       );
     case "album":
@@ -491,8 +524,10 @@ function PopularTracksSection({
   badge,
   items,
   showRanks = false,
+  showTrackStats = false,
   headingMarginTop = "mt-[22px]",
   rowClassName = "",
+  emptyMessage,
 }: PopularTracksSectionProps) {
   return (
     <div className="home-scroll-section flex flex-col">
@@ -516,18 +551,23 @@ function PopularTracksSection({
         </div>
       </div>
 
-      <ScrollableRow
-        className={`flex gap-[28px] pl-8 pr-8 mt-[12px] overflow-x-auto pb-[2px] ${rowClassName}`}
-      >
-        {items.map((item, index) => (
-          <PopularItemCard
-            key={`${item.type}-${item.item.id}-${index}`}
-            item={item}
-            index={index}
-            showRanks={showRanks}
-          />
-        ))}
-      </ScrollableRow>
+      {items.length > 0 ? (
+        <ScrollableRow
+          className={`flex gap-[28px] pl-8 pr-8 mt-[12px] overflow-x-auto pb-[2px] ${rowClassName}`}
+        >
+          {items.map((item, index) => (
+            <PopularItemCard
+              key={`${item.type}-${item.item.id}-${index}`}
+              item={item}
+              index={index}
+              showRanks={showRanks}
+              showTrackStats={showTrackStats}
+            />
+          ))}
+        </ScrollableRow>
+      ) : emptyMessage && (
+        <p className="m-0 mt-2 px-8 text-[13px] text-text-tertiary">{emptyMessage}</p>
+      )}
     </div>
   );
 }
