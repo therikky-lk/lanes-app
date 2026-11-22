@@ -76,6 +76,7 @@ export function LiquidGlassFilter() {
     function reconcile() {
       frame = 0;
       const enabled = root.dataset.colorTheme === "liquid-glass"
+        && root.classList.contains("lane-mobile") && !window.linerElectron
         && !reducedTransparency.matches;
       const current = new Set(enabled ? document.querySelectorAll<HTMLElement>(SURFACES) : []);
       for (const [panel, entry] of panels) {

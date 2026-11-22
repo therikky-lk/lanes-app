@@ -1557,6 +1557,8 @@
     "open_activation": "Aktivierungsseite öffnen"
   },
   "connect": {
+    "sync_theme_title": "Design auf allen Geräten synchronisieren",
+    "sync_theme_desc": "Designänderungen werden auf verbundenen Lane Connect-Geräten sanft übernommen. Der Schalter gilt für alle Geräte. Liquid Glass wird am Desktop durch das dunkle Design ersetzt.",
     "copied": "Kopiert",
     "code_section": "Paarung nach Code",
     "code_hint": "Wenn sich die Geräte nicht von selbst finden: Erstellen Sie einen Code auf dem einen und geben Sie ihn auf dem anderen ein.",

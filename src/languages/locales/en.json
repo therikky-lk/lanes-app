@@ -1488,6 +1488,8 @@
     "add_failed": "Local tracks can’t be added to playlists. They’re only available on their original device."
   },
   "connect": {
+    "sync_theme_title": "Sync theme across all devices",
+    "sync_theme_desc": "Theme changes smoothly appear on linked Lane Connect devices. Turning sync on or off applies to all devices. Liquid Glass uses the dark theme on desktop.",
     "code_section": "Pair by code",
     "code_hint": "If the devices don't find each other on their own: create a code on one and enter it on the other.",
     "use_account": "Use the account instead",

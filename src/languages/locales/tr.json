@@ -1555,6 +1555,8 @@
     "open_activation": "Aktivasyon sayfasını aç"
   },
   "connect": {
+    "sync_theme_title": "Temayı tüm cihazlarda eşitle",
+    "sync_theme_desc": "Tema değişiklikleri bağlı Lane Connect cihazlarına yumuşak bir geçişle uygulanır. Anahtar tüm cihazlar için geçerlidir. Bilgisayarda Liquid Glass yerine koyu tema kullanılır.",
     "copied": "Kopyalandı",
     "online_title": "Şu anda çevrimiçi",
     "copy": "Kopyala",

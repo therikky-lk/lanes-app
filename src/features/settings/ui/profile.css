@@ -53,7 +53,10 @@
 .lane-profile-icon { display: inline-flex; align-items: center; justify-content: center; border: 0; background: color-mix(in srgb, var(--text-primary) 7%, transparent); color: var(--text-secondary); border-radius: 10px; width: 36px; height: 36px; flex-shrink: 0; cursor: pointer; }
 .lane-profile-signout { display: flex; width: fit-content; justify-content: center; align-items: center; gap: 8px; border: 0; padding: 10px 0; margin: 24px auto 0; background: transparent; color: var(--text-tertiary); font-size: 13px !important; }
 .lane-profile-error { font-size: 13px; line-height: 1.5; color: #e86868; margin: 12px 0; }
-.lane-profile-dialog { --profile-control: color-mix(in srgb, var(--text-primary) 7%, var(--bg-primary)); align-self: flex-end; border-radius: 18px 18px 0 0 !important; padding: 0 !important; color: var(--text-primary); background: var(--bg-primary) !important; }
+.lane-profile-dialog { --profile-control: color-mix(in srgb, var(--text-primary) 7%, var(--bg-primary)); border-radius: 18px !important; padding: 0 !important; color: var(--text-primary); background: var(--bg-primary) !important; }
+.lane-profile-dialog.is-modal { align-self: center; }
+.lane-profile-dialog.is-modal .lane-profile-account-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.lane-profile-dialog.is-sheet { align-self: flex-end; margin: 0 !important; width: 100%; max-width: 100% !important; max-height: calc(94dvh - var(--lane-safe-top, 0px)) !important; border-radius: 18px 18px 0 0 !important; padding-bottom: var(--lane-safe-bottom, 0px) !important; }
 .lane-profile-dialog-heading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; padding: 22px 24px; gap: 12px; }
 .lane-profile-dialog-heading h3 { font-size: 18px; font-weight: 650; margin: 0; }
 .lane-profile-sheet-handle { touch-action: none; flex-shrink: 0; cursor: grab; }
@@ -96,7 +99,6 @@
   .lane-profile-identity h2 { font-size: 24px; }
   .lane-profile-identity p { font-size: 12px; }
   .lane-profile-favorites-card.is-empty { padding: 20px; }
-  .lane-profile-dialog { align-self: flex-end; margin: 0 !important; width: 100%; max-width: 100% !important; max-height: calc(94dvh - var(--lane-safe-top, 0px)) !important; border-radius: 18px 18px 0 0 !important; padding-bottom: var(--lane-safe-bottom, 0px) !important; }
   .lane-profile-dialog-heading { padding: 20px; }
   .lane-profile-editor-body { padding: 0 20px 20px; }
   .lane-profile-grabber { display: block; flex-shrink: 0; margin: 10px auto 0; width: 40px; height: 4px; border-radius: 4px; background: var(--text-tertiary); opacity: .5; }

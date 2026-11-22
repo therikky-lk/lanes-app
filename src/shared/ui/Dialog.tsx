@@ -16,6 +16,9 @@ export interface DialogProps {
   zIndex?: number;
   animateLayout?: boolean;
   bottomSheet?: boolean;
+  closeOnBackdrop?: boolean;
+  closeOnEscape?: boolean;
+  "aria-labelledby"?: string;
 }
 
 const activeDialogs: Array<() => void> = [];
@@ -32,6 +35,9 @@ export default function Dialog({
   zIndex,
   animateLayout = false,
   bottomSheet = false,
+  closeOnBackdrop = true,
+  closeOnEscape = true,
+  "aria-labelledby": labelledBy,
 }: DialogProps) {
   const dragControls = useDragControls();
   const reduceMotion = useReducedMotion();
@@ -59,7 +65,7 @@ export default function Dialog({
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        onOpenChange(false);
+        if (closeOnEscape) onOpenChange(false);
       }
     };
 
@@ -71,7 +77,7 @@ export default function Dialog({
         activeDialogs.splice(idx, 1);
       }
     };
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, closeOnEscape]);
 
   if (!mounted || typeof document === "undefined") return null;
 
@@ -84,6 +90,8 @@ export default function Dialog({
   };
 
   const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (!closeOnBackdrop || e.target !== e.currentTarget) return;
     if (isWindowDraggingActive()) {
       return;
     }
@@ -129,6 +137,9 @@ export default function Dialog({
           style={zIndex ? { zIndex } : undefined}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={labelledBy}
             initial={bottomSheet ? { y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 } : undefined}
             animate={bottomSheet ? { y: 0, opacity: 1 } : undefined}
             exit={bottomSheet ? { y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 } : undefined}
@@ -138,10 +149,12 @@ export default function Dialog({
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.6 }}
             onPointerDown={event => {
+              event.stopPropagation();
               if (bottomSheet && (event.target as HTMLElement).closest("[data-sheet-handle]")) dragControls.start(event);
             }}
+            onClick={event => event.stopPropagation()}
             onDragEnd={(_, info) => {
-              if (info.offset.y > 80 || (info.offset.y > 20 && info.velocity.y > 500)) onOpenChange(false);
+              if (bottomSheet && (info.offset.y > 80 || (info.offset.y > 20 && info.velocity.y > 500))) onOpenChange(false);
             }}
             className={`pointer-events-auto w-full mx-[16px] max-h-[85vh] flex flex-col rounded-xl border border-border-primary bg-bg-primary overflow-hidden relative ${
               className || "pt-[16px]"

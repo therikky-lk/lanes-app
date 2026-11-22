@@ -4,6 +4,7 @@ import { AddLine, Edit2Line, ExitLine } from "@mingcute/react";
 import { useAuthStore } from "@/features/auth";
 import { useTranslation } from "@/languages";
 import { onAndroidBack } from "@/shared/platform/androidBack";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import UserAvatar from "@/shared/ui/UserAvatar";
 import Dialog from "@/shared/ui/Dialog";
 import ToggleSwitch from "@/shared/ui/ToggleSwitch";
@@ -20,6 +21,7 @@ export default function ProfileTab() {
 }
 
 function ProfileContent() {
+  const isMobile = useIsMobile();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore(state => state.user);
@@ -78,7 +80,8 @@ function ProfileContent() {
   };
   useEffect(() => {
     if (!editor) return;
-    return onAndroidBack(() => { if (!mutation.current) setEditor(false); return true; });
+    // Keep drafts open: dismiss explicitly with Close or the sheet swipe.
+    return onAndroidBack(() => true);
   }, [editor]);
 
   const saveCustomization = async (patch: Partial<ProfileCustomization>) => {
@@ -135,15 +138,17 @@ function ProfileContent() {
     {user && <button className="lane-profile-signout" disabled={busy} onClick={async () => { setBusy(true); try { await useAuthStore.getState().logout(); navigate("/", { replace: true }); } catch { setError(t("settings.profile.save_failed")); } finally { setBusy(false); } }}><ExitLine size={18} />{t("settings.profile.sign_out")}</button>}
     {bannerSource && <ImageCropDialog key={bannerSource.url} source={bannerSource} kind="banner" onClose={() => setBannerSource(null)} onSave={banner => saveCustomization({ banner })} />}
 
-    <Dialog open={editor} bottomSheet onOpenChange={open => { if (!busy) setEditor(open); }} maxWidth={580} maxHeight="90dvh" zIndex={220} className="lane-profile-dialog">
-      <div data-sheet-handle className="lane-profile-sheet-handle"><div className="lane-profile-grabber" /><div className="lane-profile-dialog-heading"><h3>{t("settings.profile.edit")}</h3></div></div>
+    <Dialog open={editor} bottomSheet={isMobile} closeOnBackdrop={false} closeOnEscape={false} aria-labelledby="lane-profile-editor-title" onOpenChange={open => { if (!busy) setEditor(open); }} maxWidth={680} maxHeight="90dvh" zIndex={220} className={`lane-profile-dialog ${isMobile ? "is-sheet" : "is-modal"}`}>
+      <div data-sheet-handle={isMobile ? true : undefined} className={isMobile ? "lane-profile-sheet-handle" : undefined}>{isMobile && <div className="lane-profile-grabber" />}<div className="lane-profile-dialog-heading"><h3 id="lane-profile-editor-title">{t("settings.profile.edit")}</h3></div></div>
       <div className="lane-profile-editor-body"><form id="lane-profile-form" onSubmit={saveAbout}>
+        <div className="lane-profile-account-fields">
         <label className="lane-profile-field"><span>{t("settings.profile.name")}<small>{name.length}/40</small></span><input maxLength={40} value={name} disabled={busy} placeholder={displayName} onChange={event => setName(event.target.value)} /></label>
         <label className="lane-profile-field"><span>{t("settings.profile.username")}</span><input required minLength={3} maxLength={30} pattern="[a-z0-9_]{3,30}" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} disabled={busy} onChange={event => setUsername(event.target.value)} /><small>{t("settings.profile.username_hint")}</small></label>
+        </div>
         <label className="lane-profile-field"><span>{t("settings.profile.about_me")}<small>{bio.length}/280</small></span><textarea ref={bioInput} rows={3} maxLength={280} value={bio} disabled={busy} placeholder={t("settings.profile.bio_placeholder")} onChange={event => setBio(event.target.value)} /></label>
         <div className="lane-profile-privacy"><div><strong>{t("settings.profile.public_profile.title")}</strong><p>{t("settings.profile.public_profile.description")}</p></div><ToggleSwitch checked={isPublic} onChange={setIsPublic} disabled={busy} size="medium" ariaLabel={t("settings.profile.public_profile.title")} /></div>
         {error && <p role="alert" className="lane-profile-error">{error}</p>}</form></div>
-      <div className="lane-profile-editor-footer"><button form="lane-profile-form" type="submit" className="lane-profile-button is-primary" disabled={busy}>{t(busy ? "settings.profile.saving" : "settings.profile.save")}</button></div>
+      <div className="lane-profile-editor-footer"><button type="button" className="lane-profile-button" disabled={busy} onClick={() => setEditor(false)}>{t("common.close")}</button><button form="lane-profile-form" type="submit" className="lane-profile-button is-primary" disabled={busy}>{t(busy ? "settings.profile.saving" : "settings.profile.save")}</button></div>
     </Dialog>
   </div>;
 }

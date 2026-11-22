@@ -1555,6 +1555,8 @@
     "rap": "Rap"
   },
   "connect": {
+    "sync_theme_title": "Synchroniser le thème sur tous les appareils",
+    "sync_theme_desc": "Les changements de thème s’appliquent en douceur aux appareils liés via Lane Connect. Le réglage concerne tous les appareils. Sur ordinateur, Liquid Glass utilise le thème sombre.",
     "copied": "Copié",
     "code_title": "Code d'appariement",
     "code_desc": "Utilisez le même code sur tous vos appareils. Toute personne possédant le code peut contrôler votre lecture, alors gardez-le pour vous.",

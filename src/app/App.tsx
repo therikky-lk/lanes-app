@@ -15,6 +15,7 @@ import DeeplinkHandler from "./DeeplinkHandler";
 import EnvironmentWarning from "./EnvironmentWarning";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import { ConnectivityWall } from "@/features/connectivity";
+import { ThemeSync } from "./ThemeSync";
 import "./globals.css";
 import "./liquid-glass.css";
 
@@ -25,10 +26,6 @@ function AppIconSync() {
 
 function PresenceSync() {
   usePresenceSync();
-  return null;
-}
-
-function ThemeSync() {
   return null;
 }
 

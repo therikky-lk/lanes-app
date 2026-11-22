@@ -5,6 +5,8 @@ import { manualCode, setDeviceName, setManualCode, transferTo, useConnectStore }
 import { generatePairingCode, normalizePairingCode } from "@/features/connect/connectCrypto";
 import Button from "@/shared/ui/Button";
 import { SettingRow, SettingSection } from "../controls";
+import { ToggleSwitch } from "@/shared/ui";
+import { setThemeSync, useThemePreferences } from "@/shared/theme/themePreferences";
 
 export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
   const { t } = useTranslation();
@@ -13,6 +15,7 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
     return v && v !== key ? v : fallback;
   };
   const channel = useConnectStore((s) => s.code);
+  const syncTheme = useThemePreferences((s) => s.syncEnabled);
   const me = useConnectStore((s) => s.me);
   const devices = useConnectStore((s) => s.devices);
   const online = useConnectStore((s) => s.online);
@@ -31,6 +34,14 @@ export function ConnectTab({ searchQuery }: { searchQuery?: string }) {
   return (
     <div className="flex min-w-0 w-full flex-col gap-[16px]">
       <SettingSection>
+        <SettingRow
+          title={t("connect.sync_theme_title")}
+          description={t("connect.sync_theme_desc")}
+          titleKey="connect.sync_theme_title"
+          descKey="connect.sync_theme_desc"
+          searchQuery={searchQuery}
+          control={<ToggleSwitch checked={syncTheme} onChange={setThemeSync} ariaLabel={t("connect.sync_theme_title")} />}
+        />
         <SettingRow
           title={tr("connect.name_title", "Device name")}
           description={tr("connect.name_desc", "How this device shows up on your other devices.")}

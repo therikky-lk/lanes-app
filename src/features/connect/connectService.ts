@@ -21,6 +21,7 @@ import { deriveKeys, open, seal, type ConnectKeys } from "./connectCrypto";
 import { openRelay, type Relay } from "./connectTransport";
 import { useAuthStore } from "@/features/auth/store/authStore";
 import { isLocalTrackId } from "@/shared/media/local/localTracks";
+import { receiveThemeSettings, useThemePreferences, type ThemeSettings } from "@/shared/theme/themePreferences";
 
 const DEVICE_ID_KEY = "lane_connect_device_id";
 const DEVICE_NAME_KEY = "lane_connect_device_name";
@@ -71,6 +72,7 @@ type WireCommand =
 
 type Message = { clock?: number } & (
   | { t: "hello"; from: ConnectDevice }
+  | { t: "theme-settings"; from: ConnectDevice; settings: ThemeSettings }
   | { t: "bye"; from: ConnectDevice }
   /** likes / playlists changed on the sender: refresh the library */
   | { t: "library"; from: ConnectDevice }
@@ -701,6 +703,10 @@ async function onRelayMessage(text: string): Promise<void> {
   switch (message.t) {
     case "hello":
       if (!followingId) broadcastState(true);
+      sendThemeSettings();
+      break;
+    case "theme-settings":
+      receiveThemeSettings(message.settings);
       break;
     case "library":
       // the server already has the change; give it a moment, then reload
@@ -759,6 +765,10 @@ async function onRelayMessage(text: string): Promise<void> {
 // ---- lifecycle ----------------------------------------------------------------
 
 let libraryTimer: ReturnType<typeof setTimeout> | null = null;
+function sendThemeSettings(): void {
+  const settings = useThemePreferences.getState();
+  if (settings.preferenceVersion > 0) void send({ t: "theme-settings", from: me(), settings });
+}
 let remoteLibraryTimer: ReturnType<typeof setTimeout> | null = null;
 function onLibraryChange(): void {
   // several quick likes in a row: one message
@@ -810,7 +820,10 @@ export async function startConnect(): Promise<void> {
       const wasOnline = useConnectStore.getState().online;
       if (online !== wasOnline) diag(`connect: relay ${online ? "connected" : "unreachable (all relays)"}`);
       useConnectStore.setState({ online });
-      if (online && !wasOnline) void send({ t: "hello", from: me() });
+      if (online && !wasOnline) {
+        void send({ t: "hello", from: me() });
+        sendThemeSettings();
+      }
     },
   );
   installHooks();
@@ -818,6 +831,7 @@ export async function startConnect(): Promise<void> {
   if (isActive(usePlayerStore.getState().status)) becomePlayer();
   unsubscribeStore = usePlayerStore.subscribe(onPlayerChange);
   window.addEventListener("library:local-change", onLibraryChange);
+  window.addEventListener("theme:local-change", sendThemeSettings);
   heartbeat = setInterval(() => {
     const now = Date.now();
     useConnectStore.setState((s) => ({
@@ -827,6 +841,7 @@ export async function startConnect(): Promise<void> {
     if (following && !useConnectStore.getState().devices[following]) stopFollowing();
     if (!useConnectStore.getState().followingId && usePlayerStore.getState().status === "playing") broadcastState(true);
     else void send({ t: "hello", from: me() });
+    sendThemeSettings();
   }, HEARTBEAT_MS);
 }
 
@@ -840,6 +855,7 @@ export function stopConnect(sayBye = true): void {
   unsubscribeStore?.();
   unsubscribeStore = null;
   window.removeEventListener("library:local-change", onLibraryChange);
+  window.removeEventListener("theme:local-change", sendThemeSettings);
   if (libraryTimer) clearTimeout(libraryTimer);
   libraryTimer = null;
   if (remoteLibraryTimer) clearTimeout(remoteLibraryTimer);

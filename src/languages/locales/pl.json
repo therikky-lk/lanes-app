@@ -1555,6 +1555,8 @@
     "title": "Zaloguj się do YouTube, aby słuchać dalej"
   },
   "connect": {
+    "sync_theme_title": "Synchronizuj motyw na wszystkich urządzeniach",
+    "sync_theme_desc": "Zmiany motywu płynnie pojawiają się na urządzeniach połączonych przez Lane Connect. Przełącznik dotyczy wszystkich urządzeń. Na komputerze Liquid Glass używa ciemnego motywu.",
     "copied": "Skopiowano",
     "code_section": "Sparuj według kodu",
     "code_hint": "Jeśli urządzenia nie odnajdą się same: na jednym utwórz kod, a na drugim wprowadź go.",

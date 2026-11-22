@@ -117,6 +117,7 @@ const ALL_SETTING_ITEMS: { tabId: TabId; titleKey: string; descKey?: string }[] 
   { tabId: "YandexMusic", titleKey: "settings.yandex_music.hide_imported_playlist" },
 
   // Appearance
+  { tabId: "Connect", titleKey: "connect.sync_theme_title", descKey: "connect.sync_theme_desc" },
   { tabId: "Appearance", titleKey: "settings.language.label", descKey: "settings.language.description" },
   { tabId: "Appearance", titleKey: "settings.theme.title", descKey: "settings.theme.description" },
 

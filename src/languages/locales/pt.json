@@ -1557,6 +1557,8 @@
     "open_activation": "Abrir página de ativação"
   },
   "connect": {
+    "sync_theme_title": "Sincronizar o tema em todos os dispositivos",
+    "sync_theme_desc": "As alterações de tema aparecem suavemente nos dispositivos associados ao Lane Connect. O interruptor aplica-se a todos os dispositivos. No computador, Liquid Glass usa o tema escuro.",
     "code_section": "Emparelhar por código",
     "code_hint": "Se os dispositivos não se encontrarem sozinhos: crie um código em um e insira-o no outro.",
     "use_account": "Use a conta",

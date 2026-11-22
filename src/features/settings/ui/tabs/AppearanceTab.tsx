@@ -1,19 +1,13 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { useTheme } from "next-themes";
 import { LuMonitor, LuSun, LuMoon, LuMoonStar, LuDroplets } from "react-icons/lu";
 import { useTranslation, LOCALE_OPTIONS } from "@/languages";
 import { Select, ToggleSwitch } from "@/shared/ui";
 import { useLibraryPreferences } from "@/features/library/store/libraryPreferences";
 import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
 import { SettingRow, SettingSection } from "../controls";
+import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { chooseTheme, useThemePreferences, type ThemePreset } from "@/shared/theme/themePreferences";
 
-type ThemePreset = "system" | "light" | "dark" | "amoled" | "violet" | "ocean" | "spotify" | "liquid-glass" | "ruby" | "amber" | "coffee";
-const THEME_PRESET_KEY = "lane_theme_preset";
-const LEGACY_THEME_PRESETS: Record<string, ThemePreset> = {
-  rose: "ruby", sapphire: "violet", sunset: "amber", emerald: "spotify",
-};
-const themePresetMode = (preset: ThemePreset): "system" | "light" | "dark" =>
-  preset === "system" ? "system" : preset === "light" ? "light" : "dark";
 
 function presetIcon(preset: ThemePreset): ReactNode {
   const colors: Partial<Record<ThemePreset, string>> = {
@@ -36,8 +30,10 @@ function presetIcon(preset: ThemePreset): ReactNode {
 export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const { t, locale, setLocale } = useTranslation();
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
-  const [themePreset, setThemePreset] = useState<ThemePreset>("system");
+  const isMobile = useIsMobile();
+  const glassAvailable = isMobile && !window.linerElectron;
+  const preset = useThemePreferences((state) => state.preset);
+  const themePreset = preset === "liquid-glass" && !glassAvailable ? "dark" : preset;
   const rememberLibraryCategory = useLibraryPreferences((state) => state.rememberCategory);
   const rememberLibraryLayout = useLibraryPreferences((state) => state.rememberLayout);
   const setRememberLibraryCategory = useLibraryPreferences((state) => state.setRememberCategory);
@@ -50,27 +46,12 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const setShowLocalCollection = useOfflineLibraryStore((state) => state.setShowLocalCollection);
 
   useEffect(() => {
-    let saved: ThemePreset = "system";
-    try {
-      const previous = localStorage.getItem(THEME_PRESET_KEY);
-      const value = previous && Object.hasOwn(LEGACY_THEME_PRESETS, previous) ? LEGACY_THEME_PRESETS[previous] : previous;
-      if (value && ["system", "light", "dark", "amoled", "violet", "ocean", "spotify", "liquid-glass", "ruby", "amber", "coffee"].includes(value)) {
-        saved = value as ThemePreset;
-        if (previous !== saved) localStorage.setItem(THEME_PRESET_KEY, saved);
-      }
-    } catch {}
-    setThemePreset(saved);
-    document.documentElement.dataset.colorTheme = saved;
-    if (theme !== themePresetMode(saved)) setTheme(themePresetMode(saved));
     setMounted(true);
   }, []);
 
   const chooseThemePreset = (value: string) => {
-    const preset = value as ThemePreset;
-    setThemePreset(preset);
-    document.documentElement.dataset.colorTheme = preset;
-    try { localStorage.setItem(THEME_PRESET_KEY, preset); } catch {}
-    setTheme(themePresetMode(preset));
+    const preset = value === "liquid-glass" && !glassAvailable ? "dark" : value as ThemePreset;
+    chooseTheme(preset);
   };
 
   return (
@@ -112,7 +93,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
               { value: "system", label: t("settings.theme.system"), icon: presetIcon("system") },
               { value: "light", label: t("settings.theme.light"), icon: presetIcon("light") },
               { value: "dark", label: t("settings.theme.dark"), icon: presetIcon("dark") },
-              { value: "liquid-glass", label: "Liquid Glass", icon: presetIcon("liquid-glass") },
+              ...(glassAvailable ? [{ value: "liquid-glass", label: "Liquid Glass", icon: presetIcon("liquid-glass") }] : []),
               { value: "amoled", label: t("settings.theme.amoled"), icon: presetIcon("amoled") },
               { value: "violet", label: t("settings.theme.violet"), icon: presetIcon("violet") },
               { value: "ocean", label: t("settings.theme.ocean"), icon: presetIcon("ocean") },
