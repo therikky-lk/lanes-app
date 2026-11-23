@@ -225,12 +225,17 @@ const QueueList = memo(function QueueList({
 });
 
 export interface RightDrawerProps {
-  activeTab: "queue" | "lyrics";
-  onTabChange: (tab: "queue" | "lyrics") => void;
+  activeTab: RightPanelTab;
+  onTabChange: (tab: RightPanelTab) => void;
   onClose?: () => void;
 }
 
-function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
+function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDrawerProps) {
+  const isMobile = useIsMobile();
+  const commentsAccount = useTrackCommentsAccount();
+  const currentTrackId = usePlayerStore(state => state.currentTrack?.id);
+  const showComments = !isMobile && !!commentsAccount && !!currentTrackId && supportsTrackComments(currentTrackId);
+  const activeTab = requestedTab === "comments" && !showComments ? "queue" : requestedTab;
   const player = usePlayerStore(useShallow(state => ({
     queue: state.queue,
     currentIndex: state.currentIndex,
@@ -242,7 +247,6 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
     durationMs: activeTab === "lyrics" ? state.durationMs : 0,
   })));
   const { t } = useTranslation();
-  const isMobile = useIsMobile();
   const { toast } = useToast();
   const hasCustomBg = useIsContentTransparent();
   const { resolvedTheme } = useTheme();
@@ -269,7 +273,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
   }, [drawerStyle]);
 
   const queueScrollRef = useRef<HTMLDivElement>(null);
-  const activeTabRef = useRef<"queue" | "lyrics">(activeTab);
+  const activeTabRef = useRef<RightPanelTab>(activeTab);
 
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -279,7 +283,7 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
   );
   const [isQueueScrolled, setIsQueueScrolled] = useState(false);
   const [isLyricsScrolled, setIsLyricsScrolled] = useState(false);
-  const isScrolled = activeTab === "queue" ? isQueueScrolled : isLyricsScrolled;
+  const isScrolled = activeTab === "queue" ? isQueueScrolled : activeTab === "lyrics" && isLyricsScrolled;
 
   useEffect(() => {
     if (player.currentIndex >= 0) {
@@ -788,17 +792,19 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
 
         <div className="px-[16px] pb-[10px]">
           <div
-            className={`grid grid-cols-2 w-full items-center gap-[4px] rounded-xl p-[4px] ${
+            className={`grid ${showComments ? "grid-cols-3" : "grid-cols-2"} w-full items-center gap-[4px] rounded-xl p-[4px] ${
               hasCustomBg
                 ? "apple-glass-pill"
                 : "bg-bg-elevated"
             }`}
           >
-            <button
+            {(["queue", "lyrics", ...(showComments ? ["comments"] : [])] as RightPanelTab[]).map(tab => <button
+              key={tab}
               type="button"
-              onClick={() => onTabChange("queue")}
-              className={`relative inline-flex items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
-                activeTab === "queue"
+              onClick={() => onTabChange(tab)}
+              aria-pressed={activeTab === tab}
+              className={`relative inline-flex min-w-0 items-center justify-center rounded-lg px-2 py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
+                activeTab === tab
                   ? hasCustomBg
                     ? "text-white dark:text-black font-semibold"
                     : "text-text-primary"
@@ -808,10 +814,10 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
               }`}
               style={{
                 fontFamily: "var(--font-inter), sans-serif",
-                fontWeight: activeTab === "queue" ? 500 : 400,
+                fontWeight: activeTab === tab ? 500 : 400,
               }}
             >
-              {activeTab === "queue" && (
+              {activeTab === tab && (
                 <motion.div
                   layoutId="activeRightDrawerTab"
                   className={`absolute inset-0 rounded-lg ${
@@ -826,47 +832,18 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
                   }}
                 />
               )}
-              <span className="relative z-10">{t("player.queue")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onTabChange("lyrics")}
-              className={`relative inline-flex items-center justify-center rounded-lg px-[16px] py-[7px] text-[13px] leading-none transition-colors duration-150 border-0 bg-transparent cursor-pointer select-none active:scale-[0.97] ${
-                activeTab === "lyrics"
-                  ? hasCustomBg
-                    ? "text-white dark:text-black font-semibold"
-                    : "text-text-primary"
-                  : hasCustomBg
-                    ? "text-black/70 dark:text-white/70 hover:text-black dark:hover:text-white"
-                    : "text-text-secondary hover:text-text-primary"
-              }`}
-              style={{
-                fontFamily: "var(--font-inter), sans-serif",
-                fontWeight: activeTab === "lyrics" ? 500 : 400,
-              }}
-            >
-              {activeTab === "lyrics" && (
-                <motion.div
-                  layoutId="activeRightDrawerTab"
-                  className={`absolute inset-0 rounded-lg ${
-                    hasCustomBg
-                      ? "apple-glass-prominent"
-                      : "bg-border-alpha-14"
-                  }`}
-                  transition={{
-                    type: "spring",
-                    stiffness: 450,
-                    damping: 35,
-                  }}
-                />
-              )}
-              <span className="relative z-10">{t("player.lyrics")}</span>
-            </button>
+              <span className="relative z-10 truncate">{t(tab === "comments" ? "track_comments.title" : tab === "queue" ? "player.queue" : "player.lyrics")}</span>
+            </button>)}
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-hidden relative z-10">
+        {activeTab === "comments" && player.currentTrack && (
+          <div className="absolute inset-0 flex px-4 py-3">
+            <TrackCommentsPanel track={player.currentTrack} onOpenProfile={onClose} />
+          </div>
+        )}
         {activeTab === "queue" && (
           <div
             ref={queueScrollCallbackRef}
@@ -1248,3 +1225,5 @@ function RightDrawer({ activeTab, onTabChange, onClose }: RightDrawerProps) {
 }
 
 export default memo(RightDrawer);
+import { TrackCommentsPanel, supportsTrackComments, useTrackCommentsAccount } from "@/features/player/ui/TrackComments";
+import type { RightPanelTab } from "../hooks/useGlobalShortcuts";

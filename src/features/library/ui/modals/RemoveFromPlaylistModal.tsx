@@ -26,11 +26,13 @@ export default function RemoveFromPlaylistModal() {
     removeTracks.mutate({
       playlistId: detail.playlistId,
       itemId: detail.playlistItemId,
+    }, {
+      onSuccess: () => {
+        toast(t("common.removed_from_playlist"), "info", { description: detail.trackTitle || undefined });
+        close();
+      },
+      onError: () => toast(t("common.failed_to_remove_track"), "error"),
     });
-    toast(t("common.removed_from_playlist"), "info", {
-      description: detail.trackTitle || undefined,
-    });
-    close();
   }, [detail, toast, removeTracks, t, close]);
 
   return (

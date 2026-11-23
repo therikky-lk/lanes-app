@@ -15,6 +15,7 @@ export interface ImportedPlaylistMeta {
 
 const STORAGE_KEY = "lane_imported_playlists_v1";
 const pendingBySourceUrl = new Map<string, { coverUrl?: string; owner?: string }>();
+const spotifyCoverLookups = new Set<string>();
 
 function readAll(): Record<string, ImportedPlaylistMeta> {
   try {
@@ -67,4 +68,23 @@ export function saveImportedPlaylistMeta(playlistId: string, source: ImportSourc
 export function getImportedPlaylistMeta(playlistId: string | null | undefined): ImportedPlaylistMeta | null {
   if (!playlistId) return null;
   return readAll()[playlistId] ?? null;
+}
+
+/** Older imports may have the Spotify source saved but no usable cover marker. */
+export async function recoverSpotifyPlaylistCover(playlistId: string): Promise<void> {
+  const meta = getImportedPlaylistMeta(playlistId);
+  if (meta?.source !== "spotify" || meta.coverUrl || spotifyCoverLookups.has(playlistId)) return;
+  spotifyCoverLookups.add(playlistId);
+  try {
+    const { parseSpotifyUrl } = await import("./sources/spotify/spotifyUrl");
+    const { fetchSpotifyEmbed } = await import("./sources/spotify/spotifyEmbed");
+    const { id, type } = parseSpotifyUrl(meta.sourceUrl);
+    const result = await fetchSpotifyEmbed(type, id, "");
+    if (!result.coverUrl) return;
+    const all = readAll();
+    if (all[playlistId]?.sourceUrl !== meta.sourceUrl || all[playlistId]?.coverUrl) return;
+    all[playlistId] = { ...all[playlistId], coverUrl: result.coverUrl };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    window.dispatchEvent(new Event("library:changed"));
+  } catch { /* The playlist still uses its track covers if Spotify is unavailable. */ }
 }

@@ -18,7 +18,7 @@ function key(relay: string, topic: string): string {
 
 async function streamLoop(sender: WebContents, relay: string, topic: string, abort: AbortController): Promise<void> {
   let backoff = 1000;
-  let since: string | null = null;
+  let since = String(Math.floor(Date.now() / 1000));
   while (!abort.signal.aborted && !sender.isDestroyed()) {
     // a connection that dies silently (sleep, network switch) sends nothing:
     // ntfy sends a keepalive every ~45 s, so 70 s of silence means it's gone
@@ -32,8 +32,7 @@ async function streamLoop(sender: WebContents, relay: string, topic: string, abo
     };
     try {
       touch();
-      const query = since ? `?since=${encodeURIComponent(since)}` : "";
-      const res = await fetch(`${relay}/${topic}/json${query}`, { signal: attempt.signal });
+      const res = await fetch(`${relay}/${topic}/json?since=${encodeURIComponent(since)}`, { signal: attempt.signal });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       sender.send("connect:status", { relay, online: true });
       backoff = 1000;
@@ -93,7 +92,10 @@ export function registerConnectRelay(): void {
     const res = await fetch(`${request.relay}/${request.topic}`, {
       method: "POST", body: request.text, signal: AbortSignal.timeout(6000),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const retryAfter = res.headers.get("Retry-After");
+      throw new Error(`HTTP ${res.status}${retryAfter ? ` retry-after=${retryAfter}` : ""}`);
+    }
     return true;
   });
 }

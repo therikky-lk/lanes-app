@@ -1026,7 +1026,7 @@ export const api = {
     return request<{
       playlist: ApiUserPlaylist;
       items: ApiUserPlaylistItem[];
-    }>(`/v1/me/playlists/${encodeURIComponent(id)}`, options?.signal ? { signal: options.signal } : undefined);
+    }>(`/v1/me/playlists/${encodeURIComponent(id)}`, { cache: "no-store", signal: options?.signal });
   },
 
   createPlaylist(input: {

@@ -40,12 +40,16 @@ export function ThemeSync() {
   useEffect(() => {
     const apply = ({ preset, customColor }: ThemeSettings, animate: boolean) => {
       const effective = preset === "liquid-glass" && (!isMobile || window.linerElectron) ? "dark" : preset;
+      const root = document.documentElement;
+      const seed = customColor ?? DEFAULT_CUSTOM_COLOR;
+      const themeChanged = root.dataset.colorTheme !== effective
+        || (effective === "custom" && root.style.getPropertyValue("--lane-custom-seed") !== seed);
       const update = () => {
-        document.documentElement.dataset.colorTheme = effective;
-        document.documentElement.style.setProperty("--lane-custom-seed", customColor ?? DEFAULT_CUSTOM_COLOR);
+        root.dataset.colorTheme = effective;
+        root.style.setProperty("--lane-custom-seed", seed);
         setTheme(effective === "system" ? "system" : effective === "light" ? "light" : "dark");
       };
-      if (animate && document.documentElement.dataset.colorTheme !== effective) {
+      if (animate && themeChanged) {
         animateThemeChange(() => flushSync(update));
       } else update();
     };

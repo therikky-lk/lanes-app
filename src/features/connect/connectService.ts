@@ -71,7 +71,7 @@ type WireCommand =
   | { type: "load"; queue: WireTrack[]; index: number; context: string | null };
 
 type Message = { clock?: number } & (
-  | { t: "hello"; from: ConnectDevice }
+  | { t: "hello"; from: ConnectDevice; requestState?: boolean }
   | { t: "theme-settings"; from: ConnectDevice; settings: ThemeSettings }
   | { t: "bye"; from: ConnectDevice }
   /** likes / playlists changed on the sender: refresh the library */
@@ -157,12 +157,14 @@ export const useConnectStore = create<ConnectStore>(() => ({
 function toWire(track: Track): WireTrack {
   return {
     id: track.id,
-    title: track.title,
-    artists: track.artists,
-    coverUrl: track.coverUrl,
+    title: track.title.slice(0, 160),
+    artists: track.artists.slice(0, 120),
+    // Blob/data artwork cannot be opened by peers and can make ntfy turn
+    // the entire state message into an attachment instead of delivering it.
+    coverUrl: /^https?:\/\//i.test(track.coverUrl ?? "") && track.coverUrl.length <= 384 ? track.coverUrl : "",
     durationMs: track.durationMs,
     ...(track.explicit ? { explicit: true } : {}),
-    ...(track.album ? { album: track.album } : {}),
+    ...(track.album ? { album: { id: track.album.id, title: track.album.title.slice(0, 100) } } : {}),
     ...(track.artistId ? { artistId: track.artistId } : {}),
   };
 }
@@ -210,10 +212,16 @@ function isActive(status: string): boolean {
 // ntfy turns messages over 4 KB into file attachments: keep them small
 const MAX_SEALED = 3600;
 
-async function fitQueue<M>(build: (queue: WireTrack[]) => M, queue: WireTrack[]): Promise<M> {
+function fitsRelay(message: Message): boolean {
+  // AES-GCM appends a 16-byte tag; seal prepends the 12-byte IV and base64 encodes it.
+  const bytes = new TextEncoder().encode(JSON.stringify({ ...message, clock })).length;
+  return Math.ceil((bytes + 28) / 3) * 4 <= MAX_SEALED - 48; // room for seq and clock digits
+}
+
+function fitQueue(build: (queue: WireTrack[]) => Message, queue: WireTrack[], min = 1): Message {
   let q = queue;
   let message = build(q);
-  while (q.length > 1 && keys && (await seal(keys.key, message)).length > MAX_SEALED) {
+  while (q.length > min && !fitsRelay(message)) {
     q = q.slice(0, -1);
     message = build(q);
   }
@@ -231,7 +239,7 @@ let stateSeq = 0;
 const lastSeq = new Map<string, number>();
 let lastRemoteUpdate = 0;
 let lastStateNudge = 0;
-let resendTimer: ReturnType<typeof setTimeout> | null = null;
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ntfy rate-limits a chatty client (HTTP 429), after which nothing gets
 // through for a while. A track that fails and reloads flips the status many
@@ -248,8 +256,11 @@ let lastSendError = "";
 
 async function send(message: Message): Promise<void> {
   if (!relay || !keys) return;
+  const target = relay;
+  const encryptionKey = keys.key;
   const now = Date.now();
   if (message.t === "state") {
+    if (useConnectStore.getState().followingId) return;
     const wait = Math.max(lastStateSentAt + STATE_MIN_GAP_MS, rateLimitedUntil) - now;
     if (wait > 0) {
       pendingState = message; // the newest state replaces one still waiting
@@ -263,6 +274,11 @@ async function send(message: Message): Promise<void> {
       }
       return;
     }
+    // A newer state can arrive just as the timer becomes runnable. Don't send
+    // the queued older snapshot afterwards with a higher sequence number.
+    if (pendingStateTimer) clearTimeout(pendingStateTimer);
+    pendingStateTimer = null;
+    pendingState = null;
     lastStateSentAt = now;
     stateSeq = Math.max(now, stateSeq + 1);
     message = { ...message, state: { ...message.state, seq: stateSeq } };
@@ -270,9 +286,14 @@ async function send(message: Message): Promise<void> {
     return; // presence: the heartbeat repeats it anyway
   }
   try {
-    await relay.publish(await seal(keys.key, { ...message, clock }));
+    const text = await seal(encryptionKey, { ...message, clock });
+    if (target !== relay || (message.t === "state" && useConnectStore.getState().followingId)) return;
+    if (text.length > MAX_SEALED) throw new Error("message exceeds relay limit");
+    await target.publish(text);
+    if (target !== relay) return;
     lastSendError = "";
   } catch (error) {
+    if (target !== relay) return;
     const text = error instanceof Error ? error.message : String(error);
     if (/\b429\b/.test(text)) rateLimitedUntil = Date.now() + RATE_LIMIT_PAUSE_MS;
     // Log once until delivery recovers; changing transport errors are still
@@ -329,17 +350,6 @@ function broadcastState(force = false): void {
   broadcastTimer = null;
   if (urgent) {
     void sendState(state);
-    // a single dropped message must not leave the other device stuck on a
-    // stale status: repeat the settled state once shortly after
-    if (resendTimer) clearTimeout(resendTimer);
-    resendTimer = setTimeout(() => {
-      resendTimer = null;
-      if (useConnectStore.getState().followingId) return;
-      const settled = localState();
-      if (!settled.track) return;
-      lastBroadcastState = settled;
-      void sendState(settled);
-    }, 1500);
   } else {
     // a volume slider fires many times a second: send the last value
     broadcastTimer = setTimeout(() => {
@@ -352,13 +362,14 @@ function broadcastState(force = false): void {
   }
 }
 
-async function sendState(state: RemoteState): Promise<void> {
+function sendState(state: RemoteState): Promise<void> {
+  // If even the first queue entry doesn't fit, the separate `track` is enough.
   const queue = state.queue ?? [];
-  const message = await fitQueue(
+  const message = fitQueue(
     (tracks): Message => ({ t: "state", from: me(), state: { ...state, queue: tracks } }),
-    queue,
+    queue, 0,
   );
-  await send(message);
+  return send(message);
 }
 
 function onPlayerChange(
@@ -399,8 +410,7 @@ function applyRemote(state: RemoteState): void {
   if (!track) return;
   store.setDuration(track.durationMs || store.durationMs);
   store.setStatus(state.status === "idle" ? "paused" : state.status);
-  const elapsed = state.status === "playing" ? Date.now() - state.at : 0;
-  store.setPosition(Math.max(0, state.positionMs + elapsed));
+  store.setPosition(livePosition(state));
   if (Math.abs(store.volume - state.volume) > 0.001) store.setVolume(state.volume);
   // the mirrored speed / pitch (shown in this device's controls)
   if (typeof state.rate === "number" && state.rate !== store.playbackRate) store.setPlaybackRate(state.rate);
@@ -447,15 +457,15 @@ function startTicker(): void {
   if (ticker) return;
   ticker = setInterval(() => {
     const { remote, followingId } = useConnectStore.getState();
-    // the player hasn't reported for a while after a change: ask for its state
-    if (followingId && remote && remote.status === "loading" && Date.now() - lastRemoteUpdate > 3000 && Date.now() - lastStateNudge > 3000) {
+    // Recover a lost track update even when the stale snapshot still says "playing".
+    const staleAfter = remote?.status === "loading" ? 5000 : HEARTBEAT_MS * 2;
+    if (followingId && remote && Date.now() - lastRemoteUpdate > staleAfter && Date.now() - lastStateNudge > Math.max(10_000, staleAfter)) {
       lastStateNudge = Date.now();
       void send({ t: "hello", from: me() });
     }
     if (!followingId || !remote || remote.status !== "playing") return;
     const store = usePlayerStore.getState();
-    const pos = remote.positionMs + (Date.now() - remote.at);
-    store.setPosition(Math.min(pos, store.durationMs || pos));
+    store.setPosition(livePosition(remote));
   }, 500);
 }
 
@@ -466,8 +476,12 @@ function stopTicker(): void {
 
 function follow(deviceId: string, state: RemoteState): void {
   const wasFollowing = useConnectStore.getState().followingId;
+  if (pendingStateTimer) clearTimeout(pendingStateTimer);
+  pendingStateTimer = null;
+  pendingState = null;
   // mark as following first so the pause below isn't broadcast as our state
   useConnectStore.setState({ followingId: deviceId, remote: state });
+  lastRemoteUpdate = Date.now();
   if (!wasFollowing) {
     // this device was the player: go quiet, keep its volume for later
     const store = usePlayerStore.getState();
@@ -563,15 +577,17 @@ function forwardLoad(targetId: string, action: Extract<RemoteAction, { type: "lo
   useConnectStore.setState({ remote: optimistic });
   applyRemote(optimistic);
   lastRemoteUpdate = Date.now();
-  void fitQueue(
+  void send(fitQueue(
     (queue): Message => ({ t: "cmd", from: me(), to: targetId, action: { type: "load", queue, index: 0, context: action.context } }),
     upcoming.length ? upcoming : [toWire(track)],
-  ).then(send);
+  ));
   return true;
 }
 
 function livePosition(state: RemoteState): number {
-  return state.status === "playing" ? state.positionMs + (Date.now() - state.at) : state.positionMs;
+  const elapsed = state.status === "playing" ? Math.max(0, Date.now() - state.at) * (state.rate ?? 1) : 0;
+  const position = Math.max(0, state.positionMs + elapsed);
+  return Math.min(position, state.track?.durationMs || position);
 }
 
 function onLocalPlay(): void {
@@ -645,7 +661,7 @@ async function handOver(targetId: string): Promise<void> {
   const playing = isActive(store.status);
   const upcoming = queueWindow(store.queue, store.currentIndex).filter((t) => !isLocalTrackId(t.id));
   const at = Date.now();
-  const message = await fitQueue(
+  const message = fitQueue(
     (queue): Message => ({
       t: "takeover",
       from: me(),
@@ -704,8 +720,11 @@ async function onRelayMessage(text: string): Promise<void> {
 
   switch (message.t) {
     case "hello":
-      if (!followingId) broadcastState(true);
-      sendThemeSettings();
+      // Old clients omit the field and still expect a reply.
+      if (message.requestState !== false) {
+        if (!followingId) broadcastState(true);
+        sendThemeSettings();
+      }
       break;
     case "theme-settings":
       receiveThemeSettings(message.settings);
@@ -730,10 +749,12 @@ async function onRelayMessage(text: string): Promise<void> {
       const seq = message.state.seq ?? 0;
       if (seq && seq <= (lastSeq.get(message.from.id) ?? 0)) break; // older than what we have
       if (seq) lastSeq.set(message.from.id, seq);
-      lastRemoteUpdate = Date.now();
       const local = usePlayerStore.getState();
       const playingHere = !followingId && isActive(local.status);
-      const theirs = message.state;
+      const now = Date.now();
+      const transit = message.state.status === "playing" ? Math.min(5000, Math.max(0, now - message.state.at)) : 0;
+      const theirs = { ...message.state, at: now, positionMs: message.state.positionMs + transit * (message.state.rate ?? 1) };
+      if (followingId === message.from.id) lastRemoteUpdate = now;
       if (isActive(theirs.status)) {
         if (followingId === message.from.id) {
           useConnectStore.setState({ remote: theirs });
@@ -746,11 +767,11 @@ async function onRelayMessage(text: string): Promise<void> {
           follow(message.from.id, theirs);
         }
       } else if (followingId === message.from.id) {
-        useConnectStore.setState({ remote: message.state });
-        applyRemote(message.state);
+        useConnectStore.setState({ remote: theirs });
+        applyRemote(theirs);
       } else if (!playingHere && !followingId && !local.currentTrack && message.state.track) {
         // nothing here yet: show what the other device has paused
-        follow(message.from.id, message.state);
+        follow(message.from.id, theirs);
       }
       break;
     }
@@ -793,6 +814,21 @@ function accountSecret(): string | null {
 const MANUAL_CODE_KEY = "lane_connect_code";
 let connectGeneration = 0;
 
+function syncOnReconnect(): void {
+  if (!relay || syncTimer) return;
+  syncTimer = setTimeout(() => {
+    syncTimer = null;
+    if (!useConnectStore.getState().online) return;
+    void send({ t: "hello", from: me() });
+    broadcastState(true);
+    sendThemeSettings();
+  }, 300);
+}
+
+function onConnectVisible(): void {
+  if (document.visibilityState === "visible") syncOnReconnect();
+}
+
 /** a code typed on both devices wins over the account channel */
 export function manualCode(): string | null {
   return readStorage(MANUAL_CODE_KEY);
@@ -828,14 +864,12 @@ export async function startConnect(): Promise<void> {
   relay = openRelay(
     keys.topic,
     (text) => void onRelayMessage(text),
-    (online) => {
+    (online, recovered) => {
+      if (generation !== connectGeneration) return;
       const wasOnline = useConnectStore.getState().online;
       if (online !== wasOnline) diag(`connect: relay ${online ? "connected" : "unreachable (all relays)"}`);
       useConnectStore.setState({ online });
-      if (online && !wasOnline) {
-        void send({ t: "hello", from: me() });
-        sendThemeSettings();
-      }
+      if (online && (!wasOnline || recovered)) syncOnReconnect();
     },
   );
   installHooks();
@@ -844,6 +878,7 @@ export async function startConnect(): Promise<void> {
   unsubscribeStore = usePlayerStore.subscribe(onPlayerChange);
   window.addEventListener("library:local-change", onLibraryChange);
   window.addEventListener("theme:local-change", sendThemeSettings);
+  document.addEventListener("visibilitychange", onConnectVisible);
   heartbeat = setInterval(() => {
     const now = Date.now();
     useConnectStore.setState((s) => ({
@@ -851,9 +886,8 @@ export async function startConnect(): Promise<void> {
     }));
     const following = useConnectStore.getState().followingId;
     if (following && !useConnectStore.getState().devices[following]) stopFollowing();
-    if (!useConnectStore.getState().followingId && usePlayerStore.getState().status === "playing") broadcastState(true);
-    else void send({ t: "hello", from: me() });
-    sendThemeSettings();
+    if (!useConnectStore.getState().followingId && usePlayerStore.getState().currentTrack) broadcastState(true);
+    else void send({ t: "hello", from: me(), requestState: false });
   }, HEARTBEAT_MS);
 }
 
@@ -869,14 +903,15 @@ export function stopConnect(sayBye = true): void {
   unsubscribeStore = null;
   window.removeEventListener("library:local-change", onLibraryChange);
   window.removeEventListener("theme:local-change", sendThemeSettings);
+  document.removeEventListener("visibilitychange", onConnectVisible);
   if (libraryTimer) clearTimeout(libraryTimer);
   libraryTimer = null;
   if (remoteLibraryTimer) clearTimeout(remoteLibraryTimer);
   remoteLibraryTimer = null;
   if (broadcastTimer) clearTimeout(broadcastTimer);
   broadcastTimer = null;
-  if (resendTimer) clearTimeout(resendTimer);
-  resendTimer = null;
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = null;
   if (pendingStateTimer) clearTimeout(pendingStateTimer);
   pendingStateTimer = null;
   pendingState = null;

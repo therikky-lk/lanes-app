@@ -17,7 +17,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "lane-shares"
+      "database_name": "lane-shares",
+      "database_id": "c039494d-cd84-4a6f-add2-198b3a361545"
     }
   ],
   "rules": [

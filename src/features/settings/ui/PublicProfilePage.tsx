@@ -13,10 +13,13 @@ import ProfileStats from "./ProfileStats";
 import { profileOwner, profileRequest, type ProfileCustomization } from "../store/profileCustomization";
 import { showToast } from "@/shared/ui/Toast";
 import "./profile.css";
+import { getTrackCommentProfile } from "@/features/player/ui/TrackComments";
 
 export default function PublicProfilePage() {
   const [params] = useSearchParams();
   const id = params.get("share") || "";
+  const commentTrack = params.get("commentTrack") || "";
+  const commentId = Number(params.get("comment"));
   const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore(state => state.user);
@@ -43,8 +46,10 @@ export default function PublicProfilePage() {
     const revision = ++socialRevision.current;
     setShare(null); setFailed(false); setUnavailable(false);
     setSocial(null); setSocialFailed(false); setEditingMusic(false);
-    if (!/^[A-Za-z0-9_-]{22}$/.test(id)) { setFailed(true); return; }
-    void api.getShare(id).then(async result => {
+    const controller = new AbortController();
+    if (commentTrack ? !viewerOwner : !/^[A-Za-z0-9_-]{22}$/.test(id)) { setFailed(true); return; }
+    const lookup = commentTrack && viewerOwner ? getTrackCommentProfile(commentTrack, commentId, viewerOwner, controller.signal) : api.getShare(id);
+    void lookup.then(async result => {
       if (result.type !== "profile" || !result.profile) throw new Error("Profile unavailable");
       if (active) setShare(result);
       // A token is only sent to the account service where this viewer signed in.
@@ -58,8 +63,8 @@ export default function PublicProfilePage() {
       setUnavailable(!!cause && typeof cause === "object" && "status" in cause && [401, 403, 404].includes(cause.status));
       setFailed(true);
     });
-    return () => { active = false; };
-  }, [id, retry, viewerOwner]);
+    return () => { active = false; controller.abort(); };
+  }, [id, commentTrack, commentId, retry, viewerOwner]);
 
   useEffect(() => {
     const refresh = () => {

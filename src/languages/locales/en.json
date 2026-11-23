@@ -1,4 +1,7 @@
 {
+  "track_comment_photo": {"add":"Attach a photo","open":"Open photo","error":"Could not load or prepare the photo."},
+  "track_comments_input": "Write a comment…",
+  "track_comments": {"title":"Comments","close":"Close comments","loading":"Loading…","empty":"No comments yet","empty_hint":"Be the first to say what you think of this track.","placeholder":"Write a public comment…","send":"Post comment","delete":"Delete comment","cancel":"Cancel","more":"Load older comments","retry":"Try again","sign_in":"Sign in to leave a comment","load_error":"Could not load comments.","post_error":"Could not post your comment.","delete_error":"Could not delete your comment.","rate_error":"Too many comments. Try again in a minute.","auth_error":"Sign in again to post a comment."},
   "artist": {
     "no_biography": "No biography",
     "followers": "followers",

@@ -1,4 +1,7 @@
 {
+  "track_comment_photo": {"add":"Allega una foto","open":"Apri foto","error":"Impossibile caricare o preparare la foto."},
+  "track_comments_input": "Scrivi un commento…",
+  "track_comments": {"title":"Commenti","close":"Chiudi i commenti","loading":"Caricamento…","empty":"Ancora nessun commento","empty_hint":"Di’ per primo cosa pensi di questo brano.","placeholder":"Scrivi un commento pubblico…","send":"Pubblica commento","delete":"Elimina commento","cancel":"Annulla","more":"Carica i commenti precedenti","retry":"Riprova","sign_in":"Accedi per lasciare un commento","load_error":"Impossibile caricare i commenti.","post_error":"Impossibile pubblicare il commento.","delete_error":"Impossibile eliminare il commento.","rate_error":"Troppi commenti. Riprova tra un minuto.","auth_error":"Accedi di nuovo per pubblicare un commento."},
   "artist": {
     "no_biography": "Nessuna biografia",
     "followers": "follower",

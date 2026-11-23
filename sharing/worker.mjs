@@ -1,6 +1,7 @@
 import { profileCustomization, normalizeProfile } from "./profile-customization.mjs";
 import { integrationSession } from "./integration-sessions.mjs";
 import { schemaStatements } from "./schema.mjs";
+import { trackComments } from "./track-comments.mjs";
 import { isUserPlaylist, publicPlaylistSnapshot, renderSharePage, snapshotOf, validEntity, safeImage } from "./presentation.mjs";
 import identity from "./app-identity.json" with { type: "json" };
 import { profileImage, renderProfilePage, renderUnavailableProfilePage } from "./profile-presentation.mjs";
@@ -259,6 +260,28 @@ async function readThumbnail(request, env, id) {
 async function handle(request, env) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (/^\/v1\/track-comments(?:\/|$)/.test(url.pathname)) {
+    const match = url.pathname.match(/^\/v1\/track-comments\/([A-Za-z0-9_:-]{1,68})(?:\/(\d{1,16})(?:\/(photo|profile|avatar))?)?$/);
+    if (!match || !validEntity("track", match[1])) return json({ code: "NOT_FOUND" }, 404);
+    const backend = url.searchParams.get("backend") ?? "liner";
+    if (!["liner", "hyprr"].includes(backend)) error(400, "INVALID_INPUT", "Invalid account backend.");
+    const { user } = await authenticatedUser(request, env, backend);
+    await initializeDatabase(env);
+    return trackComments(request, requireDatabase(env), {
+      trackId: match[1], commentId: match[2], resource: match[3], url, readBody, json, error,
+      account: { user, owner: JSON.stringify([backend, user.id]) },
+      authorAvatar: author => {
+        const avatar = profileImage(author.avatarUrl, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env));
+        return avatar.length <= 2048 ? avatar : "";
+      },
+      authorProfile: async owner => {
+        const entityId = JSON.parse(owner).join(":");
+        if (!validEntity("profile", entityId)) error(404, "PROFILE_UNAVAILABLE", "Profile unavailable.");
+        const profile = await publicProfile(env, entityId);
+        return { id: match[2], type: "profile", entityId, snapshot: profileSnapshot(profile), sender: { username: profile.username, displayName: profile.displayName }, profile };
+      },
+    });
+  }
   const profile = url.pathname.match(/^\/v1\/me\/profile-customization\/(liner|hyprr)$/);
   if (profile) {
     const backend = profile[1];

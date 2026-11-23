@@ -1,4 +1,7 @@
 {
+  "track_comment_photo": {"add":"Foto anhängen","open":"Foto öffnen","error":"Das Foto konnte nicht geladen oder vorbereitet werden."},
+  "track_comments_input": "Kommentar schreiben…",
+  "track_comments": {"title":"Kommentare","close":"Kommentare schließen","loading":"Wird geladen…","empty":"Noch keine Kommentare","empty_hint":"Sag als Erstes, wie dir dieser Titel gefällt.","placeholder":"Öffentlichen Kommentar schreiben…","send":"Kommentar posten","delete":"Kommentar löschen","cancel":"Abbrechen","more":"Ältere Kommentare laden","retry":"Erneut versuchen","sign_in":"Anmelden, um zu kommentieren","load_error":"Kommentare konnten nicht geladen werden.","post_error":"Dein Kommentar konnte nicht gepostet werden.","delete_error":"Dein Kommentar konnte nicht gelöscht werden.","rate_error":"Zu viele Kommentare. Versuche es in einer Minute erneut.","auth_error":"Melde dich erneut an, um zu kommentieren."},
   "artist": {
     "no_biography": "Keine Biografie",
     "followers": "Follower",

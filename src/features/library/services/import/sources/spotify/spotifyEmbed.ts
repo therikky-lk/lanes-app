@@ -25,11 +25,15 @@ export function pickSpotifyCover(entity: JsonRecord): string | undefined {
     ...asArray(asRecord(entity.coverArt)?.sources),
     ...asArray(asRecord(entity.visualIdentity)?.image),
     ...asArray(entity.images),
+    ...asArray(recordAt(entity, "images")?.items).flatMap(item => asArray(asRecord(item)?.sources)),
   ];
   let best: { url: string; size: number } | undefined;
   for (const raw of candidates) {
     const img = asRecord(raw);
-    const url = trimmedString(img?.url);
+    const rawUrl = trimmedString(typeof raw === "string" ? raw : img?.url ?? img?.uri);
+    const image = rawUrl?.match(/^spotify:image:([0-9a-f]{40})$/i);
+    const mosaic = rawUrl?.match(/^spotify:mosaic:([0-9a-f]{40}(?::[0-9a-f]{40}){1,3})$/i);
+    const url = image ? `https://i.scdn.co/image/${image[1]}` : mosaic ? `https://mosaic.scdn.co/640/${mosaic[1].replaceAll(":", "")}` : rawUrl;
     if (!url || !/^https:\/\//.test(url)) continue;
     const size = numberValue(img?.width) ?? numberValue(img?.maxWidth) ?? 0;
     if (!best || size > best.size) best = { url, size };
@@ -83,8 +87,10 @@ export function parseSpotifyEmbedHtml(
   entityId: string,
   fallbackTitle: string,
 ): SpotifyEmbedData {
+  const ogImage = /<meta[^>]+property=["']og:image["'][^>]+content=["'](https:[^"']+)["']/i.exec(html)?.[1]
+    ?? /<meta[^>]+content=["'](https:[^"']+)["'][^>]+property=["']og:image["']/i.exec(html)?.[1];
   const entity = findEntity(embedJson(html));
-  if (!entity) return { tracks: [] };
+  if (!entity) return { coverUrl: ogImage, tracks: [] };
   const title = trimmedString(entity.title) || trimmedString(entity.name);
   const description = trimmedString(entity.subtitle);
   const tracks = asArray(entity.trackList)
@@ -100,7 +106,6 @@ export function parseSpotifyEmbedHtml(
       durationMs: numberValue(entity.duration),
     });
   }
-  const ogImage = /<meta[^>]+property=["']og:image["'][^>]+content=["'](https:[^"']+)["']/i.exec(html)?.[1];
   const coverUrl = pickSpotifyCover(entity) ?? ogImage;
   return { title, description, ...(coverUrl ? { coverUrl } : {}), tracks };
 }

@@ -33,7 +33,7 @@ import Sidebar from "./Sidebar";
 import WindowControls from "./WindowControls";
 import PageTransition from "./PageTransition";
 import RightDrawer from "./RightDrawer";
-import { useGlobalShortcuts } from "../hooks/useGlobalShortcuts";
+import { useGlobalShortcuts, type RightPanelTab } from "../hooks/useGlobalShortcuts";
 import { useDisableButtonFocus } from "../hooks/useDisableButtonFocus";
 import { useWindowState } from "../hooks/useWindowState";
 import {
@@ -105,7 +105,7 @@ export default function AppFrame({ children }: AppFrameProps) {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [queuePopupOpen, setQueuePopupOpen] = useState(false);
-  const [rightDrawerTab, setRightDrawerTabState] = useState<"queue" | "lyrics">(() => {
+  const [rightDrawerTab, setRightDrawerTabState] = useState<RightPanelTab>(() => {
     if (typeof window === "undefined") return "queue";
     const saved = window.localStorage.getItem("liner_right_drawer_tab");
     return saved === "queue" || saved === "lyrics" ? saved : "queue";
@@ -277,13 +277,13 @@ export default function AppFrame({ children }: AppFrameProps) {
     }
   }, [isFullscreenPlayer, hasCurrentTrack, handleCloseFullscreen]);
 
-  const setRightDrawerTab = useCallback((tab: "queue" | "lyrics") => {
+  const setRightDrawerTab = useCallback((tab: RightPanelTab) => {
     setRightDrawerTabState(tab);
-    localStorage.setItem("liner_right_drawer_tab", tab);
+    if (tab !== "comments") localStorage.setItem("liner_right_drawer_tab", tab);
   }, []);
 
   const openRightPanel = useCallback(
-    (tab: "queue" | "lyrics") => {
+    (tab: RightPanelTab) => {
       setRightDrawerTab(tab);
       setQueuePopupOpen(true);
     },

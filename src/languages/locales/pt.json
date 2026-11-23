@@ -1,4 +1,7 @@
 {
+  "track_comment_photo": {"add":"Anexar uma foto","open":"Abrir foto","error":"Não foi possível carregar ou preparar a foto."},
+  "track_comments_input": "Escreva um comentário…",
+  "track_comments": {"title":"Comentários","close":"Fechar comentários","loading":"Carregando…","empty":"Ainda não há comentários","empty_hint":"Seja a primeira pessoa a dizer o que achou desta faixa.","placeholder":"Escreva um comentário público…","send":"Publicar comentário","delete":"Excluir comentário","cancel":"Cancelar","more":"Carregar comentários anteriores","retry":"Tentar novamente","sign_in":"Entre para comentar","load_error":"Não foi possível carregar os comentários.","post_error":"Não foi possível publicar seu comentário.","delete_error":"Não foi possível excluir seu comentário.","rate_error":"Muitos comentários. Tente de novo em um minuto.","auth_error":"Entre novamente para publicar um comentário."},
   "artist": {
     "no_biography": "Sem biografia",
     "followers": "seguidores",

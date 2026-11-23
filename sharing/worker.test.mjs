@@ -27,7 +27,7 @@ function fixture(t) {
     if (state.fail) throw new Error("Temporary upstream failure");
     assert.ok(init.headers.get("user-agent").includes("lane/"));
     assert.ok(init.headers.get("x-liner-signature"));
-    if (path === "/v1/me") return Response.json(state.authorized ? { id: "owner-id", username: "alice", displayName: "Alice", email: "private@example.test", isPublic: state.public } : {}, { status: state.authorized ? 200 : 401 });
+    if (path === "/v1/me") return Response.json(state.authorized ? { id: init.headers.get("authorization") === "Bearer other-token" ? "other-id" : "owner-id", username: "alice", displayName: "Alice", email: "private@example.test", isPublic: state.public } : {}, { status: state.authorized ? 200 : 401 });
     if (path === "/v1/users/owner-id") return Response.json({ id: "owner-id", username: "alice", displayName: "Alice", bio: "Hello", avatarUrl: state.avatar, email: "private@example.test", isPublic: state.public, showHistory: state.historyVisible, showLikedTracks: state.likesVisible, listenedDurationMs: 5400000, likedTracksCount: 42, followersCount: 7 }, { status: state.profileStatus });
     if (path === `/v1/me/playlists/${playlistId}`) return Response.json({ playlist: { id: playlistId, title: "My public playlist", ownerId: state.owner, isPublic: state.public, description: "Hello⁣lane-local:secret-device-data⁣lane-cover:https://example.test/cover.jpg" }, items: [
       { id: "local-item", track: { id: "local:private", title: "Private file" } },
@@ -54,6 +54,83 @@ test("creates tables and links in D1 without a separate server, using verified s
   assert.equal(stored.sender_id, "owner-id"); assert.ok(!JSON.stringify(stored).includes("account-token")); assert.ok(!JSON.stringify(stored).includes("private@example.test"));
   assert.equal(state.calls[0].path, "/v1/me");
 });
+test("track comments require authentication to read and are removable only by their verified author", async t => {
+  const { env, state } = fixture(t);
+  const path = `/v1/track-comments/${input.entityId}`;
+  const call = (route, method = "GET", token, body) => worker.fetch(request(route, { method,
+    headers: token ? { authorization: `Bearer ${token}` } : {}, body: body && JSON.stringify(body) }), env);
+  const post = (text, token) => call(path, "POST", token, { text, author: "forged", owner: "forged" });
+  assert.equal((await post("hi")).status, 401);
+  assert.equal((await post("  ", "account-token")).status, 400);
+  assert.equal((await post("x".repeat(501), "account-token")).status, 400);
+  assert.equal((await call("/v1/track-comments/local:private")).status, 404);
+  const created = await post("  Great track!  ", "account-token");
+  assert.equal(created.status, 201);
+  const item = await created.json();
+  assert.deepEqual(item, { id: item.id, author: "Alice", text: "Great track!", createdAt: item.createdAt, mine: true });
+  const guest = await call(path);
+  assert.equal(guest.status, 401);
+  assert.ok(!(await guest.text()).includes(item.text));
+  state.authorized = false;
+  assert.equal((await call(path, "GET", "invalid-token")).status, 401);
+  state.authorized = true;
+  const member = await call(path, "GET", "other-token");
+  assert.equal(member.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await member.json(), { items: [{ ...item, mine: false }], next: null });
+  assert.deepEqual(await (await call(path, "GET", "account-token")).json(), { items: [item], next: null });
+  assert.deepEqual(await (await call("/v1/track-comments/sc:42", "GET", "account-token")).json(), { items: [], next: null });
+  assert.equal((await call(`${path}/${item.id}`, "DELETE", "other-token")).status, 404);
+  assert.equal((await call(`${path}/${item.id}`, "DELETE", "account-token")).status, 200);
+  assert.deepEqual(await (await call(path, "GET", "account-token")).json(), { items: [], next: null });
+  for (let index = 0; index < 4; index++) assert.equal((await post(`Comment ${index}`, "account-token")).status, 201);
+  assert.equal((await post("Flood", "account-token")).status, 429);
+});
+
+test("track comments use a stable cursor to load older comments", async t => {
+  const { env } = fixture(t);
+  const path = "/v1/track-comments/au:demo";
+  const get = (route, token = "account-token") => worker.fetch(request(route, { headers: token ? { authorization: `Bearer ${token}` } : {} }), env);
+  await get(path);
+  await env.DB.batch(Array.from({ length: 34 }, (_, i) => env.DB.prepare(
+    "INSERT INTO track_comments(track_id,owner,author_name,body,created_at) VALUES(?,?,?,?,?)"
+  ).bind("au:demo", "owner", "Author", String(i), 1)));
+  const first = await (await get(path)).json();
+  assert.equal(first.items.length, 30);
+  assert.equal(first.items[0].text, "33");
+  assert.equal((await get(`${path}?before=${first.next}`, null)).status, 401);
+  const second = await (await get(`${path}?before=${first.next}`)).json();
+  assert.deepEqual(second.items.map(item => item.text), ["3", "2", "1", "0"]);
+  assert.equal(second.next, null);
+  assert.equal((await get(`${path}?before=-1`)).status, 400);
+});
+
+test("square comment photos and author profiles stay behind authentication and deleted comments lose assets", async t => {
+  const { env } = fixture(t);
+  const path = "/v1/track-comments/au:demo";
+  const headers = { authorization: "Bearer account-token" };
+  const call = (path, options = {}) => worker.fetch(request(path, options), env);
+  const jpegHeader = Buffer.from([255,216,255,192,0,11,8,2,0,2,0,1,1,17,0,255,217]);
+  const photo = jpegHeader.toString("base64");
+  const post = photo => call(path, { method: "POST", headers, body: JSON.stringify({ photo }) });
+  const nonsquare = Buffer.from(jpegHeader);
+  nonsquare[9] = 1;
+  assert.equal((await post(nonsquare.toString("base64"))).status, 400);
+  const response = await post(photo);
+  assert.equal(response.status, 201);
+  const item = await response.json();
+  assert.equal(item.hasPhoto, true);
+  assert.equal(item.text, "");
+  assert.equal(item.photo, undefined);
+  const resource = `${path}/${item.id}`;
+  assert.equal((await call(`${resource}/photo`)).status, 401);
+  assert.equal((await call(`${resource}/profile`)).status, 401);
+  assert.deepEqual(await (await call(`${resource}/photo`, { headers })).json(), { photo });
+  assert.equal((await (await call(`${resource}/profile`, { headers })).json()).profile.displayName, "Alice");
+  assert.equal((await call(resource, { method: "DELETE", headers })).status, 200);
+  assert.equal((await call(`${resource}/photo`, { headers })).status, 404);
+  assert.equal(await env.DB.prepare("SELECT * FROM track_comment_assets WHERE comment_id=?").bind(item.id).first(), null);
+});
+
 test("account profile aggregates use full-history SUM for public profiles without publishing private lists", async () => {
   const calls = [];
   const database = { query: async (sql, values) => {

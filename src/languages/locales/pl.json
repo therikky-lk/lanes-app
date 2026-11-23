@@ -1,4 +1,7 @@
 {
+  "track_comment_photo": {"add":"Dołącz zdjęcie","open":"Otwórz zdjęcie","error":"Nie udało się wczytać ani przygotować zdjęcia."},
+  "track_comments_input": "Napisz komentarz…",
+  "track_comments": {"title":"Komentarze","close":"Zamknij komentarze","loading":"Ładowanie…","empty":"Brak komentarzy","empty_hint":"Napisz jako pierwszy, co sądzisz o tym utworze.","placeholder":"Napisz publiczny komentarz…","send":"Opublikuj komentarz","delete":"Usuń komentarz","cancel":"Anuluj","more":"Wczytaj starsze komentarze","retry":"Spróbuj ponownie","sign_in":"Zaloguj się, aby dodać komentarz","load_error":"Nie udało się wczytać komentarzy.","post_error":"Nie udało się opublikować komentarza.","delete_error":"Nie udało się usunąć komentarza.","rate_error":"Za dużo komentarzy. Spróbuj ponownie za minutę.","auth_error":"Zaloguj się ponownie, aby opublikować komentarz."},
   "artist": {
     "no_biography": "Brak biografii",
     "followers": "obserwujących",

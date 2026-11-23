@@ -72,7 +72,11 @@ async function loadArtistReleases(ref: ReleaseArtist, today: string, signal: Abo
 }
 
 async function lookupReleaseDate(release: ArtistAlbum, signal: AbortSignal): Promise<string | undefined> {
-  const album = await api.getAlbum(release.id);
+  // This is a best-effort background lookup for a release already sourced from
+  // its catalog. Don't additionally query the account API on a catalog miss.
+  const album = isSoundCloudCatalogId(release.id)
+    ? await api.getAlbum(release.id)
+    : await innertubeCatalog.getAlbum(release.id, signal);
   const date = exactReleaseDate(album.releaseDate);
   const firstTrack = album.tracks[0]?.id;
   if (date || !firstTrack || !/^(?:yt:)?[\w-]{11}$/.test(firstTrack)) return date;

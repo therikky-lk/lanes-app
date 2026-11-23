@@ -19,7 +19,8 @@ import {
   MenuLine,
 } from "@mingcute/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink } from "react-icons/lu";
+import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink, LuX } from "react-icons/lu";
+import { useRemovePlaylistSelection } from "../hooks/useLibraryMutations";
 import { FaSpotify } from "react-icons/fa";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
 import { useLongPress } from "@/shared/hooks/useLongPress";
@@ -160,7 +161,7 @@ const TrackItem = memo(function TrackItem({
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const { style: holdStyle, onTouchStart, onContextMenuCapture, ...hold } = useLongPress(
-    () => onSelectTrack?.(track.id),
+    () => onSelectTrack?.(track.playlistItemId ?? track.id),
     Boolean(onSelectTrack),
   );
   const handlePlay = useCallback(() => {
@@ -258,6 +259,7 @@ function LibraryPlaylistContent() {
   const [isPlaylistEditMode, setIsPlaylistEditMode] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const removeSelection = useRemovePlaylistSelection();
   const selectionDrag = useRef<{ pointerId: number; index: number; checked: boolean } | null>(null);
   const selectionOpenedByHold = useRef(false);
 
@@ -410,7 +412,7 @@ function LibraryPlaylistContent() {
   const canSelectTracks = useMemo(() => allTracks.some((track) => !track.onlyOnDevice), [allTracks]);
   const selectedTracks = useMemo(() => {
     if (!selectedIds.size) return [];
-    return [...new Map(allTracks.filter((track) => selectedIds.has(track.id) && !track.onlyOnDevice).map((track) => [track.id, track])).values()];
+    return allTracks.filter((track) => selectedIds.has(track.playlistItemId ?? track.id) && !track.onlyOnDevice);
   }, [allTracks, selectedIds]);
 
   const startSelectingTrack = useCallback((id: string) => {
@@ -421,7 +423,7 @@ function LibraryPlaylistContent() {
 
   const setSelectionRange = (start: number, end: number, checked: boolean) => {
     const ids = visibleTracks.slice(Math.min(start, end), Math.max(start, end) + 1)
-      .filter(({ track }) => !track.onlyOnDevice).map(({ track }) => track.id);
+      .filter(({ track }) => !track.onlyOnDevice).map(({ track }) => track.playlistItemId ?? track.id);
     setSelectedIds((previous) => {
       const next = new Set(previous);
       for (const id of ids) {
@@ -796,10 +798,18 @@ function LibraryPlaylistContent() {
       <span className={`px-2 text-[13px] tabular-nums text-text-secondary ${isMobile ? "mr-auto" : ""}`}>
         {t("common.tracks", { count: selectedTracks.length })}
       </span>
-      <Button type="button" size="sm" variant="outline" onClick={stopSelecting}>{t("common.cancel")}</Button>
-      <Button type="button" size="sm" disabled={!selectedTracks.length} onClick={() => {
-        useModalStore.getState().openAddSelectionToPlaylist(selectedTracks.map(toTrackSnapshot));
+      {!isLikesMode && decodedId && <Button type="button" size="sm" variant="outline" disabled={removeSelection.isPending || !selectedTracks.some(track => track.playlistItemId)} onClick={() => {
+        const itemIds = selectedTracks.flatMap(track => track.playlistItemId ? [track.playlistItemId] : []);
+        removeSelection.mutate({ playlistId: decodedId, itemIds }, { onSuccess: (failed: number) => {
+          if (failed) toast(t("common.failed_to_remove_track"), "error");
+          else { toast(t("common.removed_from_playlist"), "info"); stopSelecting(); }
+        } });
+      }}>{t("common.remove")}</Button>}
+      <Button type="button" size="sm" disabled={!selectedTracks.length || removeSelection.isPending} onClick={() => {
+        const uniqueTracks = [...new Map(selectedTracks.map(track => [track.id, track])).values()];
+        useModalStore.getState().openAddSelectionToPlaylist(uniqueTracks.map(toTrackSnapshot));
       }}>{t("common.add_to_playlist")}</Button>
+      <Button type="button" size="sm" variant="outline" className="!w-8 !p-0" disabled={removeSelection.isPending} onClick={stopSelecting} aria-label={t("common.cancel")}><LuX size={16} /></Button>
     </div>
   );
 
@@ -1458,7 +1468,7 @@ function LibraryPlaylistContent() {
 
                   if (selecting) {
                     const row = virtualRow.index;
-                    const checked = selectedIds.has(track.id);
+                    const checked = selectedIds.has(track.playlistItemId ?? track.id);
                     const disabled = Boolean(track.onlyOnDevice);
                     return (
                       <button

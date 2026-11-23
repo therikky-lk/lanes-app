@@ -55,7 +55,12 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
     return { title: undefined, description: undefined, coverUrl: undefined, tracks: [] as ClientImportedTrack[] };
   });
   const title = embed.title ?? defaultTitle(entityType);
-  rememberSourceMeta(rawUrl, { coverUrl: embed.coverUrl, owner: embed.description });
+  const remember = (tracks: ClientImportedTrack[]) => {
+    rememberSourceMeta(rawUrl, {
+      coverUrl: embed.coverUrl ?? tracks.find(track => track.coverUrl)?.coverUrl,
+      owner: embed.description,
+    });
+  };
   const base = {
     source: "spotify" as const,
     sourceUrl: rawUrl,
@@ -65,7 +70,7 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
 
   if (entityType === "playlist") {
     const tracks = pickPlaylistTracks(await tryPathfinder(entityId, signal), embed.tracks);
-    if (tracks.length > 0) return { ...base, tracks };
+    if (tracks.length > 0) { remember(tracks); return { ...base, tracks }; }
     // nothing for a guest: a personal playlist ("Your Top Songs 2022", Daily
     // Mix…) that only its owner can open; read it as the signed-in user
     if (spotifyAccountSupported() && (await spotifyHasLogin().catch(() => false))) {
@@ -74,13 +79,13 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
         log("yellow", "import", `spotify playlist as the signed-in user failed: ${String(error)}`);
         return { tracks: [] as ClientImportedTrack[], total: undefined };
       });
-      if (mine.tracks.length > 0) return { ...base, tracks: mine.tracks };
+      if (mine.tracks.length > 0) { remember(mine.tracks); return { ...base, tracks: mine.tracks }; }
     } else if (spotifyAccountSupported()) {
       throw new Error(
         "This looks like a personal Spotify playlist (like Your Top Songs or Daily Mix) that only its owner can open. Sign in to Spotify in the import dialog, then import it again.",
       );
     }
   }
-  if (embed.tracks.length > 0) return { ...base, tracks: embed.tracks };
+  if (embed.tracks.length > 0) { remember(embed.tracks); return { ...base, tracks: embed.tracks }; }
   throw new Error("No tracks found in the Spotify playlist.");
 }

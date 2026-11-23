@@ -1,4 +1,7 @@
 {
+  "track_comment_photo": {"add":"Fotoğraf ekle","open":"Fotoğrafı aç","error":"Fotoğraf yüklenemedi veya hazırlanamadı."},
+  "track_comments_input": "Yorum yaz…",
+  "track_comments": {"title":"Yorumlar","close":"Yorumları kapat","loading":"Yükleniyor…","empty":"Henüz yorum yok","empty_hint":"Bu parça hakkındaki düşünceni ilk sen paylaş.","placeholder":"Herkese açık bir yorum yaz…","send":"Yorum gönder","delete":"Yorumu sil","cancel":"İptal","more":"Eski yorumları yükle","retry":"Tekrar dene","sign_in":"Yorum yapmak için giriş yap","load_error":"Yorumlar yüklenemedi.","post_error":"Yorumun gönderilemedi.","delete_error":"Yorumun silinemedi.","rate_error":"Çok fazla yorum. Bir dakika sonra tekrar dene.","auth_error":"Yorum göndermek için tekrar giriş yap."},
   "artist": {
     "no_biography": "Biyografi yok",
     "followers": "takipçi",

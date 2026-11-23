@@ -2,7 +2,7 @@ import { compactPlaylistCover, getCustomPlaylistCover, getPlaylistCover, remembe
 import { canSyncCoverMarker, readCoverMarker, readLocalEntries, withCoverMarker, withLocalEntries } from "../services/playlistCoverMarker";
 import { buildLocalPlaylistEntry, localEntrySnapshot, localEntryToTrack } from "@/features/local/localPlaylistTracks";
 import { isLocalLikesPlaylist } from "@/features/local/localLikesSync";
-import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
+import { getImportedPlaylistMeta, recoverSpotifyPlaylistCover } from "../services/import/importedPlaylistMeta";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { api, ApiError, getAuthSession, mediaUrl, toClientTrack, type ApiUserPlaylistItem } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
@@ -418,22 +418,25 @@ export function usePlaylist(id: string | null) {
     }
     let active = true;
 
+    let requestRevision = 0;
     const fetchDetail = async (isBackground = false) => {
+      const revision = ++requestRevision;
       if (!isBackground && !queryCache.get(cacheKey)) setIsLoading(true);
       const requestStartedAt = performance.now();
       let apiMs = 0;
       try {
         const apiStartedAt = performance.now();
         let response = await api.getUserPlaylist(id);
-        if (!active || isPlaylistRemoved(id)) return;
+        if (!active || revision !== requestRevision || isPlaylistRemoved(id)) return;
         response = await migrateLocalPlaylistEntries(id, response);
         apiMs = Math.round(performance.now() - apiStartedAt);
-        if (!active || isPlaylistRemoved(id)) return;
+        if (!active || revision !== requestRevision || isPlaylistRemoved(id)) return;
 
         const covers = extractCovers(response.items);
         const syncedCover = readCoverMarker(response.playlist.description);
         rememberServerCover(id, syncedCover);
         const playlistCover = getPlaylistCover(id, response.playlist.description);
+        if (!playlistCover) void recoverSpotifyPlaylistCover(id);
         const localCover = getCustomPlaylistCover(id) ?? getImportedPlaylistMeta(id)?.coverUrl;
         if (localCover && localCover !== syncedCover) {
           void compactPlaylistCover(localCover)
@@ -473,9 +476,9 @@ export function usePlaylist(id: string | null) {
         if (isNativeApp()) diag(`playlist load: tracks=${detail.trackCount} cache=${initial ? 1 : 0} api=${apiMs}ms total=${Math.round(performance.now() - requestStartedAt)}ms`);
       } catch (err) {
         if (isNativeApp()) diag(`playlist load: failed after ${Math.round(performance.now() - requestStartedAt)}ms (${err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100)})`);
-        if (active) setError(err);
+        if (active && revision === requestRevision) setError(err);
       } finally {
-        if (active) setIsLoading(false);
+        if (active && revision === requestRevision) setIsLoading(false);
       }
     };
 

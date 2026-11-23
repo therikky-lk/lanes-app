@@ -55,12 +55,25 @@ export function useAddPlaylistTracks() {
   );
 }
 
+function removePlaylistTrack({ playlistId, itemId }: { playlistId: string; itemId: string }) {
+  return isLocalPlaylistItemId(itemId)
+    ? removeLocalTrackFromPlaylist(playlistId, itemId.slice(LOCAL_ITEM_PREFIX.length))
+    : api.removePlaylistItem(playlistId, itemId);
+}
+
 export function useRemovePlaylistTracks() {
-  return useMutation(({ playlistId, itemId }: { playlistId: string; itemId: string }) =>
-    isLocalPlaylistItemId(itemId)
-      ? removeLocalTrackFromPlaylist(playlistId, itemId.slice(LOCAL_ITEM_PREFIX.length))
-      : api.removePlaylistItem(playlistId, itemId)
-  );
+  return useMutation(removePlaylistTrack);
+}
+
+export function useRemovePlaylistSelection() {
+  return useMutation(async ({ playlistId, itemIds }: { playlistId: string; itemIds: string[] }) => {
+    let failed = 0;
+    for (const itemId of new Set(itemIds)) {
+      try { await removePlaylistTrack({ playlistId, itemId }); }
+      catch { failed++; }
+    }
+    return failed;
+  });
 }
 
 export function useReorderPlaylistTracks() {

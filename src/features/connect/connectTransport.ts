@@ -9,6 +9,13 @@ export const RELAYS = ["https://ntfy.sh", "https://ntfy.envs.net"];
 const POLL_MS = 1500;
 // ntfy normally sends a keepalive approximately every 45 seconds.
 const SOCKET_IDLE_MS = 70_000;
+const DEFAULT_RATE_LIMIT_MS = 30_000;
+
+function rateLimitDelay(error: unknown): number {
+  const hint = /\bretry-after=([^\s]+)/i.exec(String(error))?.[1];
+  const delay = hint && /^\d+$/.test(hint) ? Number(hint) * 1000 : NaN;
+  return Math.max(DEFAULT_RATE_LIMIT_MS, Number.isFinite(delay) ? delay : DEFAULT_RATE_LIMIT_MS);
+}
 
 export interface Relay {
   publish(text: string): Promise<void>;
@@ -219,7 +226,7 @@ function browserSubscribe(
   };
 }
 
-export function openRelay(topic: string, onMessage: (text: string) => void, onStatus: (online: boolean) => void): Relay {
+export function openRelay(topic: string, onMessage: (text: string) => void, onStatus: (online: boolean, recovered: boolean) => void): Relay {
   const electron = typeof window !== "undefined" ? window.linerElectron : undefined;
   const online = new Map<string, boolean>();
   const seen = new Set<string>();
@@ -238,7 +245,7 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
     const was = online.get(relay);
     online.set(relay, isOnline);
     if (was !== isOnline) diag(`connect: ${relay.replace("https://", "")} ${isOnline ? "connected" : `unreachable${error ? ` (${error})` : ""}`}`);
-    onStatus([...online.values()].some(Boolean));
+    onStatus([...online.values()].some(Boolean), isOnline && was !== true);
   };
 
   const subs: Sub[] = [];
@@ -268,15 +275,19 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
               await electron.connectPublish(relay, topic, text);
             } else {
               const response = await fetch(`${relay}/${topic}`, { method: "POST", body: text, signal: AbortSignal.timeout(6000) });
-              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              if (!response.ok) {
+                const retryAfter = response.headers.get("Retry-After");
+                throw new Error(`HTTP ${response.status}${retryAfter ? ` retry-after=${retryAfter}` : ""}`);
+              }
             }
             return;
           } catch (error) {
             lastError = error;
             if (/\b429\b/.test(String(error))) {
-              cooldowns.set(relay, Date.now() + 5 * 60_000);
+              cooldowns.set(relay, Date.now() + rateLimitDelay(error));
               break;
             }
+            if (/\bHTTP 4\d\d\b/.test(String(error))) break;
             if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
           }
         }

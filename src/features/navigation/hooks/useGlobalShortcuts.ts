@@ -22,7 +22,7 @@ const REPEATABLE_CODES = new Set([
   "ArrowRight",
 ]);
 
-export type RightPanelTab = "queue" | "lyrics";
+export type RightPanelTab = "queue" | "lyrics" | "comments";
 
 export interface GlobalShortcutsOptions {
   enabled?: boolean;

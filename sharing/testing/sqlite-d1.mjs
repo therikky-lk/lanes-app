@@ -24,6 +24,7 @@ export function sqliteD1(filename) {
         sql, values: [],
         bind(...values) { this.values = values; return this; },
         async first() { return run([this])[0].results[0] ?? null; },
+        async all() { return run([this])[0]; },
       };
     },
     async batch(commands) { return run(commands); },

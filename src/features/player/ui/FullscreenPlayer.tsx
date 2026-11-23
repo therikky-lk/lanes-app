@@ -9,7 +9,7 @@ import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
 import { applyLyricsLatency, lyricsOutputLatencyMs } from "@/features/lyrics/engine/lyricsLatency";
 import { AddLine, Edit2Line } from "@mingcute/react";
-import { LuCaptions } from "react-icons/lu";
+import { LuCaptions, LuMessageCircle } from "react-icons/lu";
 import {
   useCallback,
   useEffect,
@@ -21,6 +21,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { shouldReleaseTopPin, startsPinnedToTop } from "./lyricsTopPin";
+import { installFullscreenLyrics } from "./installFullscreenLyrics";
 import { playerEngine } from "../engine/playerEngine";
 import {
   useLyricsStore,
@@ -46,6 +47,8 @@ import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import FullscreenQueueSheet from "./FullscreenQueueSheet";
+import TrackComments, { supportsTrackComments, useTrackCommentsAccount } from "./TrackComments";
+import type { Track } from "@/shared/types";
 
 const BRACCATO_TAG = "braccato-lyrics";
 
@@ -60,6 +63,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
   const elementRef = useRef<any>(null);
   const latestLyricsRef = useRef(lyrics);
   const assignedLyricsRef = useRef<BraccatoLyricsViewProps["lyrics"] | null>(null);
+  const finishLayoutRef = useRef<(() => void) | null>(null);
   const freeScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWheelTimeRef = useRef(0);
   const isInFreeSearchRef = useRef(false);
@@ -155,8 +159,6 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
     elementRef.current = el;
     if (!el) return;
     el.theme = braccatoThemeCss;
-    el.lyrics = latestLyricsRef.current;
-    assignedLyricsRef.current = latestLyricsRef.current;
     el.source = "#liner-audio";
 
     const handleBraccatoLineClick = (e: Event) => {
@@ -193,15 +195,6 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
 
     const onUserScroll = () => {
       handleUserInteractionRef.current();
-    };
-
-    const onLyricsLoaded = () => {
-      if (waitingForAudioAfterClickRef.current) return;
-      requestAnimationFrame(() => {
-        if (!waitingForAudioAfterClickRef.current) {
-          scrollToActiveLine("auto");
-        }
-      });
     };
 
     let syncRafId: number;
@@ -243,18 +236,20 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
       applyLyricsLatency(el, lat);
     };
     syncLatency();
+    finishLayoutRef.current = installFullscreenLyrics(el, latestLyricsRef.current);
+    assignedLyricsRef.current = latestLyricsRef.current;
     const latencyTimer = setInterval(syncLatency, 2000);
 
-    el.addEventListener("braccato:lyrics-loaded", onLyricsLoaded);
     el.addEventListener("braccato:line-click", handleBraccatoLineClick);
     el.addEventListener("wheel", onUserScroll, { passive: true, capture: true });
     el.addEventListener("touchmove", onUserScroll, { passive: true, capture: true });
 
     return () => {
       cancelAnimationFrame(syncRafId);
+      finishLayoutRef.current?.();
+      finishLayoutRef.current = null;
       clearInterval(latencyTimer);
       useLyricsStore.getState().setActiveLineIndex(null);
-      el.removeEventListener("braccato:lyrics-loaded", onLyricsLoaded);
       el.removeEventListener("braccato:line-click", handleBraccatoLineClick);
       el.removeEventListener("wheel", onUserScroll, { capture: true });
       el.removeEventListener("touchmove", onUserScroll, { capture: true });
@@ -265,7 +260,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
       elementRef.current = null;
       assignedLyricsRef.current = null;
     };
-  }, [scrollToActiveLine]);
+  }, []);
 
   useEffect(() => {
     if (!animateLetters || !elementRef.current) return;
@@ -278,7 +273,8 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
     // The ref callback already installs the initial lyrics. Assigning again
     // rebuilds the entire custom element when the lyrics pane is first opened.
     if (element && assignedLyricsRef.current !== lyrics) {
-      element.lyrics = lyrics;
+      finishLayoutRef.current?.();
+      finishLayoutRef.current = installFullscreenLyrics(element, lyrics);
       assignedLyricsRef.current = lyrics;
     }
   }, [lyrics]);
@@ -292,26 +288,6 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
       returnToFollowingMode();
     }
   }, [player.status, returnToFollowingMode]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let attempts = 0;
-
-    const checkAndScroll = () => {
-      if (cancelled || waitingForAudioAfterClickRef.current || pinnedToTopRef.current) return;
-      attempts++;
-      const success = scrollToActiveLine("auto");
-      if (!success && attempts < 30) {
-        requestAnimationFrame(checkAndScroll);
-      }
-    };
-
-    const rafId = requestAnimationFrame(checkAndScroll);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
-    };
-  }, [lyrics, scrollToActiveLine]);
 
   useEffect(() => {
     if (!pinnedToTopRef.current) return;
@@ -346,7 +322,6 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
     <div className="lane-lyrics-viewport relative flex flex-col flex-1 w-full h-full min-h-0">
       {createElement(BRACCATO_TAG, {
         ref: setElement,
-        source: "#liner-audio",
         className: "block flex-1 w-full h-full px-6",
         style: {
           overflowY: "auto",
@@ -370,6 +345,7 @@ export function FullscreenPlayer({
   onClose,
 }: FullscreenPlayerProps) {
   const { t } = useTranslation();
+  const commentsAccount = useTrackCommentsAccount();
   const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, queue: s.queue, currentIndex: s.currentIndex, isEqEnabled: s.isEqEnabled, eqGains: s.eqGains })));
   const [customLyricsOpen, setCustomLyricsOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -413,6 +389,13 @@ export function FullscreenPlayer({
   const [speedOpen, setSpeedOpen] = useState(false);
   const [audioSheet, setAudioSheet] = useState<"speed" | "eq">("speed");
   const [queueOpen, setQueueOpen] = useState(false);
+  const [commentsTrack, setCommentsTrack] = useState<Track | null>(null);
+  const [commentsVisible, setCommentsVisible] = useState(false);
+  const commentsButton = useRef<HTMLButtonElement>(null);
+  const closeDiscussionSheet = () => setCommentsTrack(null);
+  useEffect(() => {
+    if (!commentsAccount) setCommentsTrack(null);
+  }, [commentsAccount]);
   const speedSheetDragControls = useDragControls();
   const speedChanged = usePlayerStore(
     (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
@@ -502,7 +485,7 @@ export function FullscreenPlayer({
           )}
         </AnimatePresence>
         {effectsReady && effects.liveBackground ? (
-           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen || customLyricsOpen)} onLoad={onKawarpLoad} onError={onError} />
+           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen || commentsVisible || customLyricsOpen)} onLoad={onKawarpLoad} onError={onError} />
         ) : null}
       </div>
 
@@ -732,6 +715,13 @@ export function FullscreenPlayer({
         )}
       </AnimatePresence>
 
+      <AnimatePresence initial={false} onExitComplete={() => {
+        setCommentsVisible(false);
+        commentsButton.current?.focus({ preventScroll: true });
+      }}>
+        {commentsAccount && commentsTrack && <TrackComments key="track-comments" track={commentsTrack} onClose={closeDiscussionSheet} onOpenProfile={() => { closeDiscussionSheet(); onClose(); }} />}
+      </AnimatePresence>
+
       <button
         type="button"
         aria-label={t("player.close_fullscreen")}
@@ -752,6 +742,23 @@ export function FullscreenPlayer({
       >
         {!isMobile && <VisualQualityPicker />}
         {showProviderIsland && (!isMobile || mobileLyrics) && <LyricsProviderIsland />}
+        {commentsAccount && player.currentTrack && supportsTrackComments(player.currentTrack.id) && (
+          <button
+            ref={commentsButton}
+            type="button"
+            onClick={() => {
+              setCommentsVisible(true);
+              setCommentsTrack(player.currentTrack);
+            }}
+            aria-label={t("track_comments.title")}
+            title={t("track_comments.title")}
+            aria-haspopup="dialog"
+            aria-expanded={!!commentsTrack}
+            className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl active:scale-[0.92] cursor-pointer"
+          >
+            <LuMessageCircle size={18} />
+          </button>
+        )}
         {isMobile && (
           <button
             type="button"
