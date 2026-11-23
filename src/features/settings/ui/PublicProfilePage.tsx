@@ -40,6 +40,7 @@ export default function PublicProfilePage() {
   const active = useRef(true);
   const currentTarget = useRef<string | null>(null);
   const socialRevision = useRef(0);
+  const followRefreshAfter = useRef(0);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const backendOf = (result: SharedEntity) => result.profile?.authBackend || result.entityId?.split(":")[0] || "liner";
 
@@ -71,7 +72,7 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     const refresh = () => {
-      if (document.visibilityState !== "hidden" && !followMutation.current && !mutation.current) setRetry(value => value + 1);
+      if (document.visibilityState !== "hidden" && !followMutation.current && !mutation.current && Date.now() >= followRefreshAfter.current) setRetry(value => value + 1);
     };
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
@@ -95,21 +96,33 @@ export default function PublicProfilePage() {
     followMutation.current = true; setFollowing(true);
     const revision = ++socialRevision.current;
     const previous = !!social.isFollowing;
+    const desired = !previous;
+    const before = social;
     const account = viewerOwner;
+    const stillCurrent = () => active.current && profileOwner() === account
+      && currentTarget.current === targetOwner && revision === socialRevision.current;
+    setSocial({ ...social, isFollowing: desired, followersCount: Math.max(0, social.followersCount + (desired ? 1 : -1)) });
     try {
       const receipt = previous ? await api.unfollowUser(profile.id) : await api.followUser(profile.id);
-      if (!active.current || profileOwner() !== account || currentTarget.current !== targetOwner) return;
-      if (receipt && typeof receipt.isFollowing === "boolean" && Number.isFinite(receipt.followersCount)) {
+      if (!stillCurrent()) return;
+      followRefreshAfter.current = Date.now() + 5000;
+      if (receipt?.isFollowing === desired && Number.isFinite(receipt.followersCount)) {
         // The mutation returns a fresh database snapshot. Do not overwrite it
         // with a separate, potentially stale read made before the write.
         setSocial(current => current ? { ...current, ...receipt } : current);
         return;
       }
-      // Legacy services acknowledge mutations with 204 instead of a snapshot.
-      setSocial(current => current ? { ...current, isFollowing: !previous, followersCount: Math.max(0, current.followersCount + (previous ? -1 : 1)) } : current);
       const next = await api.getUserProfile(profile.id).catch(() => null);
-      if (next && next.isFollowing === !previous && active.current && profileOwner() === account && currentTarget.current === targetOwner && revision === socialRevision.current) setSocial(next);
-    } catch { if (active.current) showToast(t("settings.profile.follow_failed"), "error"); }
+      if (!stillCurrent()) return;
+      if (next?.isFollowing === desired) setSocial(next);
+      else if (receipt?.isFollowing === previous) throw new Error("Follow change was not confirmed");
+      // A successful legacy 204 may be followed by a stale profile read.
+    } catch {
+      if (stillCurrent()) {
+        setSocial(before);
+        showToast(t("settings.profile.follow_failed"), "error");
+      }
+    }
     finally { followMutation.current = false; if (active.current) setFollowing(false); }
   };
   return <div className="lane-profile lane-public-profile">

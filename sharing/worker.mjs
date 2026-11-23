@@ -140,6 +140,35 @@ async function publicProfile(env, entityId, byUsername = false) {
     likedTracksCount: Number.isFinite(user.likedTracksCount) ? Math.max(0, user.likedTracksCount) : null,
   };
 }
+async function findPublicProfile(env, backend, query, exact) {
+  const unavailable = cause => cause instanceof HttpError && cause.code === "PROFILE_UNAVAILABLE";
+  if (/^[\p{L}\p{N}_.-]{1,64}$/u.test(query)) {
+    try { return await publicProfile(env, `${backend}:${query}`, true); }
+    catch (cause) { if (!unavailable(cause)) throw cause; }
+  }
+  if (!exact && query.length >= 2) {
+    const params = new URLSearchParams({ q: query });
+    const origin = backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env);
+    try {
+      const users = await accountRequest(env, `/v1/users/search?${params}`, undefined, origin);
+      const normalized = value => typeof value === "string" ? value.normalize("NFKC").trim().toLowerCase() : "";
+      const term = normalized(query);
+      const ranked = (Array.isArray(users) ? users : []).filter(user =>
+        typeof user?.id === "string" && /^[a-zA-Z0-9_-]{1,200}$/.test(user.id)
+        && (user.isPublic ?? user.privacy?.isPublic) === true)
+        .map(user => {
+          const names = [normalized(user.username), normalized(user.displayName)];
+          return { id: user.id, rank: names.includes(term) ? 2 : names.some(name => name.startsWith(term)) ? 1 : 0 };
+        }).filter(user => user.rank > 0).sort((a, b) => b.rank - a.rank);
+      if (ranked[0] && ranked[0].rank !== ranked[1]?.rank) {
+        return await publicProfile(env, `${backend}:${ranked[0].id}`);
+      }
+    } catch (cause) {
+      if (!unavailable(cause) && !(cause instanceof HttpError && [401, 403, 404].includes(cause.status))) throw cause;
+    }
+  }
+  error(404, "PROFILE_UNAVAILABLE", "Этот профиль приватный или недоступен.");
+}
 function profileSnapshot(profile) {
   return snapshotOf({ title: profile.displayName || profile.username || "Lane", subtitle: [profile.username && `@${profile.username}`, profile.bio].filter(Boolean).join(" · "), coverUrl: profile.avatarUrl });
 }
@@ -264,10 +293,10 @@ async function handle(request, env) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
   if (url.pathname === "/v1/public/profile-by-username" && request.method === "GET") {
     const backend = url.searchParams.get("backend") ?? "liner";
-    const username = url.searchParams.get("username") ?? "";
-    if (!["liner", "hyprr"].includes(backend) || !/^[\p{L}\p{N}_.-]{1,64}$/u.test(username)) error(404, "PROFILE_UNAVAILABLE", "Profile unavailable.");
+    const username = (url.searchParams.get("username") ?? "").trim();
+    if (!["liner", "hyprr"].includes(backend) || !/^[\p{L}\p{N}_. -]{1,64}$/u.test(username)) error(404, "PROFILE_UNAVAILABLE", "Profile unavailable.");
     await initializeDatabase(env);
-    const profile = await publicProfile(env, `${backend}:${username}`, true);
+    const profile = await findPublicProfile(env, backend, username, url.searchParams.get("exact") === "1");
     return json({ id: profile.id, type: "profile", entityId: `${backend}:${profile.id}`, snapshot: profileSnapshot(profile), sender: { username: profile.username, displayName: profile.displayName }, profile });
   }
   if (/^\/v1\/track-comments(?:\/|$)/.test(url.pathname)) {

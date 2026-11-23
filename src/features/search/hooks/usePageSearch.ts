@@ -11,10 +11,11 @@ const keyOf = (query: string, filter: PageSearchFilter) => `${filter}:${query.to
 
 async function fetchResults(query: string, filter: Exclude<PageSearchFilter, "library">, backend: "liner" | "hyprr"): Promise<PageSearchItem[]> {
   if (filter === "user") {
+    const exact = query.startsWith("@");
     const username = query.replace(/^@/, "");
-    if (!/^[\p{L}\p{N}_.-]{1,64}$/u.test(username)) return [];
+    if (!(exact ? /^[\p{L}\p{N}_.-]{1,64}$/u : /^[\p{L}\p{N}_. -]{1,64}$/u).test(username)) return [];
     for (const target of [backend, backend === "liner" ? "hyprr" : "liner"] as const) {
-      const result = await api.getPublicProfileByUsername(username, target).catch(error => {
+      const result = await api.getPublicProfileByUsername(username, target, exact).catch(error => {
         if (error instanceof ApiError && error.status === 404 && error.code === "PROFILE_UNAVAILABLE") return null;
         throw error;
       });

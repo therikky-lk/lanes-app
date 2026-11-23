@@ -78,6 +78,7 @@ scratch/
 .lane-security-build/
 release-security-test/
 !src/features/home/vibe/vibeController.test.ts
+!src/features/connect/connectService.test.ts
 !src/features/library/services/import/sources/spotify/spotifyAccount.test.ts
 !src/features/library/services/import/sources/spotify/spotifyCsv.test.ts
 !src/features/library/services/import/sources/spotify/spotifySource.test.ts

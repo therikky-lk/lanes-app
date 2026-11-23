@@ -237,6 +237,12 @@ function queueWindow(queue: Track[], index: number): WireTrack[] {
 let stateSeq = 0;
 /** newest state seq seen per device */
 const lastSeq = new Map<string, number>();
+type StateMessage = Extract<Message, { t: "state" }>;
+const incomingStates = new Map<string, StateMessage>();
+const INCOMING_QUIET_MS = 200;
+const INCOMING_MAX_WAIT_MS = 800;
+let incomingStateTimer: ReturnType<typeof setTimeout> | null = null;
+let incomingBatchStartedAt = 0;
 let lastRemoteUpdate = 0;
 let lastStateNudge = 0;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -707,6 +713,49 @@ async function takeOver(message: Extract<Message, { t: "takeover" }>): Promise<v
 
 // ---- incoming ---------------------------------------------------------------
 
+function queueIncomingState(message: StateMessage): void {
+  const seq = message.state.seq ?? 0;
+  if (seq && seq <= (lastSeq.get(message.from.id) ?? 0)) return;
+  if (seq) lastSeq.set(message.from.id, seq);
+  const previous = incomingStates.get(message.from.id);
+  if (!seq && previous && message.state.at < previous.state.at) return;
+  if (!incomingStates.size) incomingBatchStartedAt = Date.now();
+  incomingStates.set(message.from.id, message);
+  if (incomingStateTimer) clearTimeout(incomingStateTimer);
+  // Relays can replay a burst on reconnect. Paint only the newest snapshot
+  // per device, without delaying commands or indefinitely waiting for quiet.
+  const remaining = INCOMING_MAX_WAIT_MS - (Date.now() - incomingBatchStartedAt);
+  incomingStateTimer = setTimeout(() => {
+    incomingStateTimer = null;
+    const batch = [...incomingStates.values()].sort((a, b) => (b.state.epoch ?? 0) - (a.state.epoch ?? 0));
+    incomingStates.clear();
+    for (const latest of batch) applyIncomingState(latest);
+  }, Math.max(0, Math.min(INCOMING_QUIET_MS, remaining)));
+}
+
+function applyIncomingState(message: StateMessage): void {
+  const { followingId, remote } = useConnectStore.getState();
+  const local = usePlayerStore.getState();
+  const playingHere = !followingId && isActive(local.status);
+  const now = Date.now();
+  const transit = message.state.status === "playing" ? Math.min(5000, Math.max(0, now - message.state.at)) : 0;
+  const theirs = { ...message.state, at: now, positionMs: message.state.positionMs + transit * (message.state.rate ?? 1) };
+  if (followingId === message.from.id) {
+    lastRemoteUpdate = now;
+    useConnectStore.setState({ remote: theirs });
+    applyRemote(theirs);
+  } else if (isActive(theirs.status)) {
+    if (playingHere) {
+      if (theyWin(theirs.epoch, message.from.id)) follow(message.from.id, theirs);
+      else broadcastState(true);
+    } else if (!followingId || (theirs.epoch ?? 0) >= (remote?.epoch ?? 0)) {
+      follow(message.from.id, theirs);
+    }
+  } else if (!playingHere && !followingId && !local.currentTrack && theirs.track) {
+    follow(message.from.id, theirs);
+  }
+}
+
 async function onRelayMessage(text: string): Promise<void> {
   if (!keys) return;
   const generation = connectGeneration;
@@ -738,6 +787,7 @@ async function onRelayMessage(text: string): Promise<void> {
       }, 600);
       break;
     case "bye":
+      incomingStates.delete(message.from.id);
       if (followingId === message.from.id) stopFollowing();
       useConnectStore.setState((s) => {
         const devices = { ...s.devices };
@@ -745,42 +795,18 @@ async function onRelayMessage(text: string): Promise<void> {
         return { devices };
       });
       break;
-    case "state": {
-      const seq = message.state.seq ?? 0;
-      if (seq && seq <= (lastSeq.get(message.from.id) ?? 0)) break; // older than what we have
-      if (seq) lastSeq.set(message.from.id, seq);
-      const local = usePlayerStore.getState();
-      const playingHere = !followingId && isActive(local.status);
-      const now = Date.now();
-      const transit = message.state.status === "playing" ? Math.min(5000, Math.max(0, now - message.state.at)) : 0;
-      const theirs = { ...message.state, at: now, positionMs: message.state.positionMs + transit * (message.state.rate ?? 1) };
-      if (followingId === message.from.id) lastRemoteUpdate = now;
-      if (isActive(theirs.status)) {
-        if (followingId === message.from.id) {
-          useConnectStore.setState({ remote: theirs });
-          applyRemote(theirs);
-        } else if (playingHere) {
-          // both playing: only the newer player keeps going
-          if (theyWin(theirs.epoch, message.from.id)) follow(message.from.id, theirs);
-          else broadcastState(true);
-        } else if (!followingId || (theirs.epoch ?? 0) >= (useConnectStore.getState().remote?.epoch ?? 0)) {
-          follow(message.from.id, theirs);
-        }
-      } else if (followingId === message.from.id) {
-        useConnectStore.setState({ remote: theirs });
-        applyRemote(theirs);
-      } else if (!playingHere && !followingId && !local.currentTrack && message.state.track) {
-        // nothing here yet: show what the other device has paused
-        follow(message.from.id, theirs);
-      }
+    case "state":
+      queueIncomingState(message);
       break;
-    }
     case "cmd":
       if (message.to !== self.id || followingId) break;
       runCommand(message.action);
       break;
     case "takeover":
-      if (message.to === self.id) void takeOver(message);
+      if (message.to === self.id) {
+        incomingStates.clear();
+        void takeOver(message);
+      }
       break;
   }
 }
@@ -919,6 +945,9 @@ export function stopConnect(sayBye = true): void {
   rateLimitedUntil = 0;
   lastSendError = "";
   lastSeq.clear();
+  if (incomingStateTimer) clearTimeout(incomingStateTimer);
+  incomingStateTimer = null;
+  incomingStates.clear();
   lastBroadcast = "";
   lastBroadcastState = null;
   stopFollowing();

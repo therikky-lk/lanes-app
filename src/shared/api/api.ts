@@ -729,8 +729,9 @@ export const api = {
   getShare(id: string): Promise<SharedEntity> {
     return request(`/v1/public/shares/${encodeURIComponent(id)}`, undefined, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
   },
-  getPublicProfileByUsername(username: string, backend = getAuthSession()?.authBackend ?? "liner"): Promise<SharedEntity> {
+  getPublicProfileByUsername(username: string, backend = getAuthSession()?.authBackend ?? "liner", exact = true): Promise<SharedEntity> {
     const params = new URLSearchParams({ username, backend });
+    if (exact) params.set("exact", "1");
     return request(`/v1/public/profile-by-username?${params}`, { cache: "no-store" }, true, DEFAULT_TIMEOUT_MS, LANE_LINK_ORIGIN);
   },
   getPublicPlaylist(id: string): Promise<{ playlist: ApiUserPlaylist; items: ApiUserPlaylistItem[] }> {

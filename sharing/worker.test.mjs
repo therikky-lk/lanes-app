@@ -28,6 +28,7 @@ function fixture(t) {
     assert.ok(init.headers.get("user-agent").includes("lane/"));
     assert.ok(init.headers.get("x-liner-signature"));
     if (path === "/v1/me") return Response.json(state.authorized ? { id: init.headers.get("authorization") === "Bearer other-token" ? "other-id" : "owner-id", username: "alice", displayName: "Alice", email: "private@example.test", isPublic: state.public } : {}, { status: state.authorized ? 200 : 401 });
+    if (path === "/v1/users/search") return Response.json([{ id: "owner-id", username: "alice", displayName: "Alice in Lane", isPublic: state.public }]);
     if (path === "/v1/users/owner-id" || path === "/v1/users/alice") return Response.json({ id: "owner-id", username: "alice", displayName: "Alice", bio: "Hello", avatarUrl: state.avatar, email: "private@example.test", isPublic: state.public, showHistory: state.historyVisible, showLikedTracks: state.likesVisible, listenedDurationMs: 5400000, likedTracksCount: 42, followersCount: 7 }, { status: state.profileStatus });
     if (path === `/v1/me/playlists/${playlistId}`) return Response.json({ playlist: { id: playlistId, title: "My public playlist", ownerId: state.owner, isPublic: state.public, description: "Hello⁣lane-local:secret-device-data⁣lane-cover:https://example.test/cover.jpg" }, items: [
       { id: "local-item", track: { id: "local:private", title: "Private file" } },
@@ -56,7 +57,7 @@ test("creates tables and links in D1 without a separate server, using verified s
 });
 test("username lookup only exposes exact public profiles", async t => {
   const { state, env } = fixture(t);
-  const lookup = username => worker.fetch(request(`/v1/public/profile-by-username?${new URLSearchParams({ username })}`), env);
+  const lookup = (username, exact = "1") => worker.fetch(request(`/v1/public/profile-by-username?${new URLSearchParams({ username, exact })}`), env);
   const response = await lookup("alice");
   assert.equal(response.status, 200);
   const result = await response.json();
@@ -64,8 +65,13 @@ test("username lookup only exposes exact public profiles", async t => {
   assert.equal(result.entityId, "liner:owner-id");
   assert.equal(result.profile.email, undefined);
   assert.equal((await lookup("owner-id")).status, 404);
+  assert.equal((await lookup("Alice in")).status, 404);
+  const byName = await lookup("Alice in", "0");
+  assert.equal(byName.status, 200);
+  assert.equal((await byName.json()).profile.username, "alice");
   state.public = false;
   assert.equal((await lookup("alice")).status, 404);
+  assert.equal((await lookup("Alice in", "0")).status, 404);
 });
 
 test("track comments require authentication to read and are removable only by their verified author", async t => {
