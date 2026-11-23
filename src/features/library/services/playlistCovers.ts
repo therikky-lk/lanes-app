@@ -6,7 +6,7 @@ import { readPlaylistSource } from "./playlistCoverMarker";
 import yandexMusicCover from "@/assets/branding/yandex-music/playlist-cover.svg?inline";
 import spotifyPlaylistCover from "@/assets/branding/spotify-playlist-cover.svg?inline";
 
-export { yandexMusicCover };
+export { spotifyPlaylistCover, yandexMusicCover };
 
 const STORAGE_KEY = "lane_playlist_covers_v1";
 const MAX_SIDE = 512;

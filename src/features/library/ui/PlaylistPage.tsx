@@ -31,7 +31,7 @@ import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { addYandexPlaylistToLikes } from "../services/import/sources/yandexMusic/yandexMusicImport";
 import { canSyncCoverMarker, readCoverMarker, readPlaylistSource, stripCoverMarker, withCoverMarker, withDescriptionText } from "../services/playlistCoverMarker";
-import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
+import { compactPlaylistCover, getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover, spotifyPlaylistCover } from "../services/playlistCovers";
 import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
@@ -1265,6 +1265,18 @@ function LibraryPlaylistContent() {
                                 icon: <PicLine size={15} />,
                                 label: t("playlist.change_cover") || "Change cover",
                                 onClick: () => coverInputRef.current?.click(),
+                              },
+                              {
+                                id: "cover-spotify",
+                                icon: <FaSpotify size={15} />,
+                                label: `Spotify · ${t("playlist.change_cover")}`,
+                                onClick: () => {
+                                  if (!decodedId) return;
+                                  void compactPlaylistCover(spotifyPlaylistCover)
+                                    .then(cover => savePlaylistCover(decodedId, cover))
+                                    .then(saved => { if (!saved) toast(t("playlist.cover_failed"), "error"); })
+                                    .catch(() => toast(t("playlist.cover_failed"), "error"));
+                                },
                               },
                               ...(hasCustomPlaylistCover(decodedId)
                                 ? [

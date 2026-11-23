@@ -15,7 +15,7 @@ async function fetchResults(query: string, filter: Exclude<PageSearchFilter, "li
     if (!/^[\p{L}\p{N}_.-]{1,64}$/u.test(username)) return [];
     for (const target of [backend, backend === "liner" ? "hyprr" : "liner"] as const) {
       const result = await api.getPublicProfileByUsername(username, target).catch(error => {
-        if (error instanceof ApiError && error.status === 404) return null;
+        if (error instanceof ApiError && error.status === 404 && error.code === "PROFILE_UNAVAILABLE") return null;
         throw error;
       });
       if (result?.profile) return [{ type: "user", profile: result.profile, backend: target }];
