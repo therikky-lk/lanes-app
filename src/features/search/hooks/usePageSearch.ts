@@ -4,7 +4,7 @@ import type { SharedEntity } from "@/shared/contracts/sharing";
 import { searchCatalog, searchYoutubeVideos } from "@/shared/media/innertube";
 
 export type PageSearchFilter = SearchType | "library" | "youtube" | "user";
-type PageSearchItem = ApiSearchItem | { type: "user"; profile: NonNullable<SharedEntity["profile"]> };
+type PageSearchItem = ApiSearchItem | { type: "user"; profile: NonNullable<SharedEntity["profile"]>; backend: "liner" | "hyprr" };
 const cache = new Map<string, { items: PageSearchItem[]; at: number }>();
 const pending = new Map<string, Promise<PageSearchItem[]>>();
 const keyOf = (query: string, filter: PageSearchFilter) => `${filter}:${query.toLowerCase()}`;
@@ -13,11 +13,14 @@ async function fetchResults(query: string, filter: Exclude<PageSearchFilter, "li
   if (filter === "user") {
     const username = query.replace(/^@/, "");
     if (!/^[\p{L}\p{N}_.-]{1,64}$/u.test(username)) return [];
-    const result = await api.getPublicProfileByUsername(username, backend).catch(error => {
-      if (error instanceof ApiError && error.status === 404) return null;
-      throw error;
-    });
-    return result?.profile ? [{ type: "user", profile: result.profile }] : [];
+    for (const target of [backend, backend === "liner" ? "hyprr" : "liner"] as const) {
+      const result = await api.getPublicProfileByUsername(username, target).catch(error => {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      });
+      if (result?.profile) return [{ type: "user", profile: result.profile, backend: target }];
+    }
+    return [];
   }
   if (filter !== "youtube") return (await api.search(query, filter)).items;
   const results = await Promise.allSettled([searchCatalog(query, "all"), searchYoutubeVideos(query)]);

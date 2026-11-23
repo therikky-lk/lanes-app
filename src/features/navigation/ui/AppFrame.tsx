@@ -46,6 +46,9 @@ import {
   useSearchYoutube,
 } from "@/features/search/hooks";
 import { mediaUrl, toClientTrack, toMaxQualityAvatarUrl } from "@/shared/api";
+import { getAuthSession } from "@/shared/api/auth-session";
+import UserAvatar from "@/shared/ui/UserAvatar";
+import { usePageSearch } from "@/features/search/hooks/usePageSearch";
 import {
   FullscreenPlayer,
   playerEngine,
@@ -217,9 +220,10 @@ export default function AppFrame({ children }: AppFrameProps) {
   const searchScrollRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  type SearchFilterKey = "all" | "library" | "tracks" | "youtube" | "artists" | "albums" | "playlists";
+  type SearchFilterKey = "all" | "user" | "library" | "tracks" | "youtube" | "artists" | "albums" | "playlists";
   const filterKeys: SearchFilterKey[] = [
     "all",
+    "user",
     "library",
     "tracks",
     "youtube",
@@ -229,6 +233,7 @@ export default function AppFrame({ children }: AppFrameProps) {
   ];
   const filterLabels: Record<SearchFilterKey, string> = {
     all: t("common.all"),
+    user: t("search.user_profiles"),
     library: t("search.library"),
     tracks: t("common.songs"),
     youtube: t("search.youtube"),
@@ -238,13 +243,18 @@ export default function AppFrame({ children }: AppFrameProps) {
   };
 
   const [activeFilter, setActiveFilter] = useState<SearchFilterKey>("all");
-  const isAllSearchFilter = activeFilter === "all";
-  const isTrackSearchFilter = activeFilter === "tracks";
-  const isYoutubeSearchFilter = activeFilter === "youtube";
-  const isArtistSearchFilter = activeFilter === "artists";
-  const isAlbumSearchFilter = activeFilter === "albums";
-  const isPlaylistSearchFilter = activeFilter === "playlists";
-  const isLibrarySearchFilter = activeFilter === "library";
+  const effectiveFilter = searchQuery.trimStart().startsWith("@") ? "user" : activeFilter;
+  const isUserSearchFilter = effectiveFilter === "user";
+  const isAllSearchFilter = effectiveFilter === "all";
+  const isTrackSearchFilter = effectiveFilter === "tracks";
+  const isYoutubeSearchFilter = effectiveFilter === "youtube";
+  const isArtistSearchFilter = effectiveFilter === "artists";
+  const isAlbumSearchFilter = effectiveFilter === "albums";
+  const isPlaylistSearchFilter = effectiveFilter === "playlists";
+  const isLibrarySearchFilter = effectiveFilter === "library";
+  const profileBackend = getAuthSession()?.authBackend ?? "liner";
+  const userSearch = usePageSearch(searchOpen && isUserSearchFilter ? searchQuery : "", "user", profileBackend);
+  const matchedUser = userSearch.items.find(item => item.type === "user");
   const hasSearchQuery = searchQuery.trim().length > 0;
   const isFullscreenRoute = pathname === "/player";
   const isFullscreenPlayer = isFullscreenRoute || fullscreenPlayerOpen;
@@ -546,7 +556,7 @@ export default function AppFrame({ children }: AppFrameProps) {
     ];
   }, [isAllSearchFilter, isLibrarySearchFilter, isYoutubeSearchFilter, libraryResults, catalogResults, t]);
 
-  const searchLoading = isLibrarySearchFilter
+  const searchLoading = isUserSearchFilter ? userSearch.loading : isLibrarySearchFilter
     ? false
     : isAllSearchFilter
     ? allLoading
@@ -560,7 +570,7 @@ export default function AppFrame({ children }: AppFrameProps) {
           ? albumLoading
           : playlistLoading;
 
-  const searchHasLoaded = isLibrarySearchFilter
+  const searchHasLoaded = isUserSearchFilter ? !userSearch.loading : isLibrarySearchFilter
     ? true
     : isAllSearchFilter
     ? allHasLoaded
@@ -575,12 +585,13 @@ export default function AppFrame({ children }: AppFrameProps) {
           : playlistHasLoaded;
 
   const isSearchEmpty =
-    searchQuery.trim().length >= 2 &&
+    searchQuery.trim().length >= (isUserSearchFilter ? 1 : 2) &&
     !searchLoading &&
     searchHasLoaded &&
-    searchResults.length === 0;
+    (isUserSearchFilter ? !matchedUser : searchResults.length === 0);
 
   const runSearchNow = () => {
+    if (isUserSearchFilter) { void userSearch.runNow(); return; }
     if (isLibrarySearchFilter) return;
     if (isAllSearchFilter) {
       runAllSearchNow();
@@ -1222,12 +1233,12 @@ export default function AppFrame({ children }: AppFrameProps) {
                   <div className="flex gap-[6px] px-[14px] pt-[12px] pb-[6px] shrink-0 overflow-x-auto">
                     {filterKeys.map((key) => {
                       const label = filterLabels[key];
-                      const isActive = activeFilter === key;
+                      const isActive = effectiveFilter === key;
                       let Icon = GridFill;
                       if (key === "tracks") Icon = Music2Fill;
                       else if (key === "youtube") Icon = YoutubeFill;
                       else if (key === "library") Icon = BookmarksFill;
-                      else if (key === "artists") Icon = User2Fill;
+                      else if (key === "artists" || key === "user") Icon = User2Fill;
                       else if (key === "albums") Icon = AlbumFill;
                       else if (key === "playlists") Icon = PlaylistFill;
 
@@ -1235,7 +1246,13 @@ export default function AppFrame({ children }: AppFrameProps) {
                         <button
                           key={key}
                           type="button"
-                          onClick={() => setActiveFilter(key)}
+                           aria-pressed={isActive}
+                           onClick={() => {
+                             if (key !== "user" && searchQuery.trimStart().startsWith("@")) {
+                               setSearchQuery(searchQuery.trimStart().slice(1));
+                             }
+                             setActiveFilter(key);
+                           }}
                           className={`
                             relative flex items-center gap-[7px] px-[13px] py-[7px] rounded-[6px] text-[13.5px] font-normal transition-colors border-none bg-transparent cursor-pointer select-none shrink-0
                             ${
@@ -1271,7 +1288,22 @@ export default function AppFrame({ children }: AppFrameProps) {
 
                   <div className="relative flex-1 min-h-0 overflow-hidden">
                     <AnimatePresence mode="wait">
-                      {isSearchEmpty ? (
+                       {isUserSearchFilter && matchedUser ? (
+                         <motion.div key="search-user" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-[14px] pt-2">
+                           <button type="button" className="flex w-full min-w-0 items-center gap-3 rounded-xl border-0 bg-transparent p-3 text-left text-text-primary hover:bg-border-alpha-14"
+                             onClick={() => {
+                               submitSearchQuery(searchQuery);
+                               closeSearch();
+                               navigate(`/user?${new URLSearchParams({ username: matchedUser.profile.username, backend: matchedUser.backend })}`);
+                             }}>
+                             <UserAvatar user={matchedUser.profile} size={44} />
+                             <span className="min-w-0">
+                               <strong className="block truncate">{matchedUser.profile.displayName || matchedUser.profile.username}</strong>
+                               <span className="block truncate text-text-secondary">@{matchedUser.profile.username}</span>
+                             </span>
+                           </button>
+                         </motion.div>
+                       ) : isSearchEmpty ? (
                         <motion.div
                           key="search-empty"
                           initial={{ opacity: 0 }}
@@ -1286,7 +1318,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                               fontFamily: "var(--font-inter), sans-serif",
                             }}
                           >
-                            {t("common.no_results")}
+                             {t(isUserSearchFilter && userSearch.error ? "common.error_network" : "common.no_results")}
                           </p>
                           <p
                             className="m-0 text-[12px] text-text-tertiary"
@@ -1294,10 +1326,10 @@ export default function AppFrame({ children }: AppFrameProps) {
                               fontFamily: "var(--font-inter), sans-serif",
                             }}
                           >
-                            {t("common.try_another_search")}
+                             {t("common.try_another_search")}
                           </p>
                         </motion.div>
-                      ) : searchResults.length > 0 ? (
+                       ) : !isUserSearchFilter && searchResults.length > 0 ? (
                         <motion.div
                           key={`search-results-${activeFilter}`}
                           initial={{ opacity: 0 }}

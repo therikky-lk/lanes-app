@@ -47,7 +47,7 @@ export default function SearchPage() {
   const deferredQuery = useDeferredValue(query);
   const signedIn = useAuthStore(state => !!state.user);
   const backend = signedIn ? getAuthSession()?.authBackend ?? "liner" : "liner";
-  const activeFilter = filter === "all" && query.trimStart().startsWith("@") ? "user" : filter;
+  const activeFilter = query.trimStart().startsWith("@") ? "user" : filter;
   const search = usePageSearch(query, activeFilter, backend);
   const foundUser = search.items.find(item => item.type === "user");
   const local = useLibrarySearch(deferredQuery, (activeFilter === "all" || activeFilter === "library") && deferredQuery.trim().length >= 2);
@@ -109,7 +109,10 @@ export default function SearchPage() {
           {hasQuery && <button type="button" aria-label={t("common.clear_search")} className="flex h-[36px] w-[36px] shrink-0 items-center justify-center border-0 bg-transparent text-text-secondary" onClick={() => { setQuery(""); input.current?.focus(); }}><CloseLine size={20} /></button>}
         </form>
         {hasQuery && <div className="mt-[12px] flex gap-[6px] overflow-x-auto pb-[2px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t("common.search")}>
-          {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={key === activeFilter} onClick={() => setFilter(key)} className={`h-[32px] shrink-0 rounded-[10px] border-0 px-[12px] text-[13px] ${key === activeFilter ? "bg-text-primary text-bg-primary" : "bg-bg-panel text-text-secondary"}`}>{t(label)}</button>)}
+          {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={key === activeFilter} onClick={() => {
+            if (key !== "user" && query.trimStart().startsWith("@")) setQuery(query.trimStart().slice(1));
+            setFilter(key);
+          }} className={`h-[32px] shrink-0 rounded-[10px] border-0 px-[12px] text-[13px] ${key === activeFilter ? "bg-text-primary text-bg-primary" : "bg-bg-panel text-text-secondary"}`}>{t(label)}</button>)}
         </div>}
       </header>
       <div className="relative min-h-0 flex-1">
@@ -121,7 +124,7 @@ export default function SearchPage() {
             onClick={() => {
               rememberQuery(query);
               input.current?.blur();
-              navigate(`/user?${new URLSearchParams({ username: foundUser.profile.username, backend })}`);
+              navigate(`/user?${new URLSearchParams({ username: foundUser.profile.username, backend: foundUser.backend })}`);
             }}>
             <UserAvatar user={foundUser.profile} size={44} />
             <span className="min-w-0">
