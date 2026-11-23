@@ -4,6 +4,7 @@ import { finalizeImportedPlaylist } from "./finalizeImport";
 import { saveImportedPlaylistMeta } from "../importedPlaylistMeta";
 import { registerImportedPlaylist } from "../../../hooks/usePlaylists";
 import { playlistLibraryOwner } from "../../playlistRemovals";
+import { importedPlaylistDescription } from "../../playlistCoverMarker";
 
 interface LocalImportRecord {
   job: ImportJob;
@@ -62,9 +63,10 @@ export async function finalizeLocalImport(
   const owner = playlistLibraryOwner();
   updateLocalImportJob(jobId, { status: "finalizing" });
   try {
+    const text = description ?? record.job.description;
     const { playlistId, saved, playlist } = await finalizeImportedPlaylist(
       title || record.job.title || "Imported playlist",
-      description ?? record.job.description,
+      record.job.source === "spotify" ? importedPlaylistDescription("spotify", text) : text,
       tracks,
     );
     saveImportedPlaylistMeta(playlistId, record.job.source, record.job.sourceUrl);

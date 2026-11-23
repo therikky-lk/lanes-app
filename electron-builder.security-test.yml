@@ -1,0 +1,19 @@
+appId: com.therikky.lane.securitytest
+productName: Lane Security Test
+executableName: lane-security-test
+extraMetadata:
+  name: lane-security-test
+  desktopName: lane-security-test.desktop
+directories:
+  output: release-security-test
+publish: null
+npmRebuild: false
+files:
+  - package.json
+  - from: .lane-security-build/dist
+    to: dist
+  - from: .lane-security-build/dist-electron
+    to: dist-electron
+linux:
+  icon: build/icons
+  target: dir

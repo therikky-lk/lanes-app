@@ -165,7 +165,7 @@ export const usePlayerStore = create<PlayerStore>()(
       fullscreen: false,
       playbackRate: 1,
       pitchSemitones: 0,
-      isPitchLinked: true,
+      isPitchLinked: false,
       keepSpeedAcrossTracks: true,
       isReverbEnabled: false,
       reverbLevel: 0.35,

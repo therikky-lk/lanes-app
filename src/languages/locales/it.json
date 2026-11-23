@@ -617,6 +617,7 @@
     "reorder_track": "Riordina brano"
   },
   "playlist": {
+    "likes_downloaded": "{done} di {total} scaricati",
     "select_tracks": "Seleziona brani",
     "playlist": "Elenco brani",
     "liked_songs": "Brani che ti piacciono",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Esporta i brani preferiti o una playlist in Exportify e importa qui il CSV.",
+      "unavailable": "L’accesso a Spotify non è disponibile su questa piattaforma.",
+      "waiting": "Verifica dell’accesso a Spotify…",
+      "account_error": "Impossibile aggiornare l’accesso a Spotify. Riprova.",
+      "import_liked": "Importa brani preferiti",
+      "hide_imported": "Nascondi le importazioni da Spotify nella libreria",
+      "profile_unavailable": "Hai effettuato l’accesso, ma Spotify non ha inviato i dati del profilo.",
+      "rate_limit": "Spotify sta limitando le richieste. Riprova dopo le {time}."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Importa i brani che ti piacciono su Yandex Music.",

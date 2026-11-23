@@ -19,7 +19,9 @@ import {
   MenuLine,
 } from "@mingcute/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink, LuX } from "react-icons/lu";
+import { LuPencil, LuTrash2, LuText, LuShuffle, LuExternalLink, LuX, LuMusic, LuDownload } from "react-icons/lu";
+import { useAuthStore } from "@/features/auth";
+import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
 import { useRemovePlaylistSelection } from "../hooks/useLibraryMutations";
 import { FaSpotify } from "react-icons/fa";
 import DropdownMenu from "@/shared/ui/DropdownMenu";
@@ -281,6 +283,18 @@ function LibraryPlaylistContent() {
   } = usePlaylist(isLikesMode ? null : decodedId);
 
   const { data: likesData, isLoading: likesLoading } = useLikedTracksProgressively();
+  const likesOwner = useAuthStore(state => state.user?.username || state.user?.displayName);
+  const downloads = useOfflineLibraryStore(state => state.downloads);
+  const downloadsLoaded = useOfflineLibraryStore(state => state.loaded);
+  useEffect(() => {
+    if (isLikesMode) void useOfflineLibraryStore.getState().refresh().catch(() => {});
+  }, [isLikesMode]);
+  const downloadedLikes = useMemo(() => {
+    if (!isLikesMode) return 0;
+    const likedIds = new Set(likesData.tracks.map(track => track.id));
+    return downloads.filter(entry => entry.byteSize > 0 && likedIds.has(entry.track.id)).length;
+  }, [downloads, isLikesMode, likesData]);
+  const totalLikes = Math.max(likesData.total, likesData.tracks.length);
 
   const isLoading = isLikesMode ? likesLoading : playlistLoading;
 
@@ -1022,7 +1036,7 @@ function LibraryPlaylistContent() {
                     </h1>
                   }
                   subtitle={
-                    isLikesMode ? undefined : viewData.bio || isEditingDescription ? (
+                    isLikesMode ? (likesOwner ? <p className={SIDEBAR_SUBTITLE_CLASS}>{likesOwner}</p> : undefined) : viewData.bio || isEditingDescription ? (
                       <p
                         ref={descriptionRef}
                         className={`${SIDEBAR_SUBTITLE_CLASS} cursor-text outline-none transition-colors empty:min-h-[21px] ${
@@ -1075,8 +1089,8 @@ function LibraryPlaylistContent() {
                     )
                   }
                   meta={
-                    <div className={`flex ${isLikesMode ? "flex-col items-start gap-[4px]" : "flex-row flex-wrap items-center gap-[6px]"}`}>
-                      {importMeta?.source === "spotify" && (
+                    <div className="flex flex-row flex-wrap items-center gap-[6px]">
+                      {importMeta?.source === "spotify" && importMeta.sourceUrl && (
                         <button
                           type="button"
                           onClick={() => window.open(importMeta.sourceUrl, "_blank", "noopener,noreferrer")}
@@ -1094,17 +1108,6 @@ function LibraryPlaylistContent() {
                       {decodedId && readPlaylistSource(playlistDetail?.description) === "yandex" && (
                         <YandexPlaylistLikesButton key={decodedId} id={decodedId} disabled={allTracks.length === 0} />
                       )}
-                      {isLikesMode && (
-                        <div
-                          className={`inline-flex h-[26px] items-center rounded-md px-[8px] text-[12px] font-[400] select-none ${
-                            hasCustomBg
-                              ? "apple-glass-pill"
-                              : "bg-bg-panel border border-border-primary/40 text-text-tertiary"
-                          }`}
-                        >
-                          {viewData.tracks.length} {t("playlist.tracks")}
-                        </div>
-                      )}
                       <div
                         className={`inline-flex h-[26px] items-center gap-[6px] rounded-md px-[8px] text-[12px] font-[400] select-none ${
                           hasCustomBg
@@ -1112,6 +1115,13 @@ function LibraryPlaylistContent() {
                             : "bg-bg-panel border border-border-primary/40 text-text-tertiary"
                         }`}
                       >
+                        {isLikesMode && (
+                          <>
+                            <LuMusic size={13} aria-hidden="true" />
+                            <span>{t("common.tracks", { count: totalLikes })}</span>
+                            <span aria-hidden="true" className="opacity-60">·</span>
+                          </>
+                        )}
                         <span>
                           {(() => {
                             const totalMs = viewData.tracks.reduce(
@@ -1120,13 +1130,21 @@ function LibraryPlaylistContent() {
                             );
                             const totalMins = Math.floor(totalMs / 60000);
                             const totalSecs = Math.floor((totalMs % 60000) / 1000);
-                            const duration = totalMins > 60
+                            const duration = totalMins >= 60
                               ? `${Math.floor(totalMins / 60)} ${t("playlist.hr")} ${totalMins % 60} ${t("playlist.min")}`
                               : `${totalMins} ${t("playlist.min")} ${totalSecs} ${t("playlist.sec")}`;
                             return duration;
                           })()}
                         </span>
                       </div>
+                      {isLikesMode && downloadsLoaded && (
+                        <div className={`inline-flex h-[26px] items-center gap-[6px] rounded-md px-[8px] text-[12px] select-none ${
+                          hasCustomBg ? "apple-glass-pill" : "bg-bg-panel border border-border-primary/40 text-text-tertiary"
+                        }`}>
+                          <LuDownload size={13} aria-hidden="true" />
+                          <span>{t("playlist.likes_downloaded", { done: downloadedLikes, total: totalLikes })}</span>
+                        </div>
+                      )}
                     </div>
                   }
                   primaryAction={

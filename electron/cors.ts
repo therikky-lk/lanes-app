@@ -47,6 +47,7 @@ export function withOpenCors(
   headers: ResponseHeaders | undefined,
   method: string,
   ownCors = false,
+  exposeRetryAfter = false,
 ): CorsResponse {
   if (ownCors && headers && allowsCredentials(headers)) return { responseHeaders: headers };
   const responseHeaders: ResponseHeaders = {};
@@ -56,6 +57,7 @@ export function withOpenCors(
   responseHeaders["access-control-allow-origin"] = ["*"];
   responseHeaders["access-control-allow-headers"] = ["*, authorization"];
   responseHeaders["access-control-allow-methods"] = ["GET, HEAD, POST, OPTIONS"];
+  if (exposeRetryAfter) responseHeaders["access-control-expose-headers"] = ["Retry-After"];
   return method === "OPTIONS"
     ? { responseHeaders, statusLine: PREFLIGHT_STATUS_LINE }
     : { responseHeaders };

@@ -164,7 +164,8 @@ export interface LinerElectronApi {
   spotifyLogin?: () => Promise<boolean>;
   yandexMusicSignIn?: () => Promise<YandexMusicSignInResult>;
   spotifyLogout?: () => Promise<boolean>;
-  spotifyFetch?: (request: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ status: number; body: string }>;
+  spotifyOAuthRead?: (target: string) => Promise<{ status: number; body: string; retryAfter?: string | null }>;
+  spotifyFetch?: (request: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => Promise<{ status: number; body: string; retryAfter?: string | null }>;
   /** keep the app (not the screen) from being suspended while a long job runs */
   keepAwake?: (on: boolean) => Promise<boolean>;
 }
@@ -424,6 +425,7 @@ const api: LinerElectronApi = {
   spotifyLogin: () => ipcRenderer.invoke("spotify:login"),
   yandexMusicSignIn: () => ipcRenderer.invoke("yandex-music:sign-in"),
   spotifyLogout: () => ipcRenderer.invoke("spotify:logout"),
+  spotifyOAuthRead: __LANE_SECURITY_TEST__ ? (target) => ipcRenderer.invoke("spotify:oauth-read", target) : undefined,
   spotifyFetch: (request) => ipcRenderer.invoke("spotify:fetch", request),
   keepAwake: (on) => ipcRenderer.invoke("power:keep-awake", on),
 };
@@ -433,3 +435,4 @@ if (location.hostname === "www.youtube.com") {
 } else {
   contextBridge.exposeInMainWorld("linerElectron", api);
 }
+declare const __LANE_SECURITY_TEST__: boolean;

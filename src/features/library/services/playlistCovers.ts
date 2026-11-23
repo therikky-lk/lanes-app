@@ -4,6 +4,7 @@ import { getImportedPlaylistMeta } from "./import/importedPlaylistMeta";
 import { diag } from "@/shared/platform/diag";
 import { readPlaylistSource } from "./playlistCoverMarker";
 import yandexMusicCover from "@/assets/branding/yandex-music/playlist-cover.svg?inline";
+import spotifyPlaylistCover from "@/assets/branding/spotify-playlist-cover.svg?inline";
 
 export { yandexMusicCover };
 
@@ -40,8 +41,10 @@ export function rememberServerCover(playlistId: string, coverUrl: string | undef
 
 export function getPlaylistCover(playlistId: string | null | undefined, description?: string): string | undefined {
   if (!playlistId) return undefined;
-  return readAll()[playlistId] ?? getImportedPlaylistMeta(playlistId)?.coverUrl ?? serverCovers.get(playlistId)
-    ?? (readPlaylistSource(description) === "yandex" ? yandexMusicCover : undefined);
+  const imported = getImportedPlaylistMeta(playlistId);
+  const source = readPlaylistSource(description);
+  return readAll()[playlistId] ?? imported?.coverUrl ?? serverCovers.get(playlistId)
+    ?? (source === "yandex" ? yandexMusicCover : imported?.source === "spotify" || source === "spotify" ? spotifyPlaylistCover : undefined);
 }
 
 export function hasCustomPlaylistCover(playlistId: string | null | undefined): boolean {

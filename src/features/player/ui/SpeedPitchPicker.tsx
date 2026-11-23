@@ -47,6 +47,7 @@ function SliderRow({
   const [isDragging, setIsDragging] = useState(false);
   const [dragValue, setDragValue] = useState<number | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const pointerRef = useRef<number | null>(null);
 
   const currentValue = isDragging && dragValue !== null ? dragValue : value;
   const clampedValue = Math.max(min, Math.min(max, currentValue));
@@ -74,41 +75,18 @@ function SliderRow({
     [clampedValue, min, max, step, neutralValue],
   );
 
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (disabled || e.button !== 0) return;
-      e.stopPropagation();
-      e.preventDefault();
-      setIsDragging(true);
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  const updateFromPointer = (clientX: number) => {
+    const nextVal = calculateValueFromPointer(clientX);
+    setDragValue(nextVal);
+    onChange(nextVal);
+  };
 
-      const nextVal = calculateValueFromPointer(e.clientX);
-      setDragValue(nextVal);
-      onChange(nextVal);
-
-      const onPointerMove = (ev: PointerEvent) => {
-        const val = calculateValueFromPointer(ev.clientX);
-        setDragValue(val);
-        onChange(val);
-      };
-
-      const onPointerUp = (ev: PointerEvent) => {
-        setIsDragging(false);
-        setDragValue(null);
-        try {
-          (e.target as HTMLElement).releasePointerCapture?.(ev.pointerId);
-        } catch {}
-        window.removeEventListener("pointermove", onPointerMove);
-        window.removeEventListener("pointerup", onPointerUp);
-        window.removeEventListener("pointercancel", onPointerUp);
-      };
-
-      window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", onPointerUp);
-      window.addEventListener("pointercancel", onPointerUp);
-    },
-    [calculateValueFromPointer, disabled, onChange],
-  );
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerRef.current !== event.pointerId) return;
+    pointerRef.current = null;
+    setIsDragging(false);
+    setDragValue(null);
+  };
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
@@ -127,9 +105,11 @@ function SliderRow({
       if (disabled) return;
       if (e.key === "ArrowRight" || e.key === "ArrowUp") {
         e.preventDefault();
+        e.stopPropagation();
         onStepUp();
       } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
         e.preventDefault();
+        e.stopPropagation();
         onStepDown();
       }
     },
@@ -165,14 +145,30 @@ function SliderRow({
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={clampedValue}
+        aria-valuetext={valueText}
         aria-disabled={disabled}
         tabIndex={disabled ? -1 : 0}
         onKeyDown={handleKeyDown}
-        onPointerDown={handlePointerDown}
+        onPointerDown={event => {
+          if (disabled || event.button !== 0 || pointerRef.current !== null) return;
+          event.stopPropagation();
+          event.preventDefault();
+          pointerRef.current = event.pointerId;
+          event.currentTarget.focus({ preventScroll: true });
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setIsDragging(true);
+          updateFromPointer(event.clientX);
+        }}
+        onPointerMove={event => {
+          if (!disabled && pointerRef.current === event.pointerId) updateFromPointer(event.clientX);
+        }}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
         onWheel={handleWheel}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className="group relative flex h-[38px] w-full items-end cursor-pointer select-none outline-none"
+        className="group relative flex h-[38px] w-full touch-none items-end cursor-pointer select-none rounded-md outline-none focus-visible:ring-1 focus-visible:ring-white/50"
       >
         <div
           ref={trackRef}
@@ -221,7 +217,7 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
 
   const playbackRate = player.playbackRate ?? 1;
   const pitchSemitones = player.pitchSemitones ?? 0;
-  const isPitchLinked = player.isPitchLinked ?? true;
+  const isPitchLinked = player.isPitchLinked ?? false;
   const keepSpeedAcrossTracks = player.keepSpeedAcrossTracks ?? true;
   const isReverbEnabled = player.isReverbEnabled ?? false;
   const reverbLevel = player.reverbLevel ?? 0.35;
@@ -297,6 +293,20 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
         })}
       </div>
 
+      <div className="flex items-center justify-between gap-[8px]">
+        <div className="flex flex-col">
+          <span className="text-[12px] font-medium text-text-primary">{t("player.link_speed_pitch")}</span>
+          <span className="text-[10px] text-text-tertiary leading-tight">
+            {isPitchLinked ? t("player.link_speed_pitch_hint") : t("player.key_lock_hint")}
+          </span>
+        </div>
+        <ToggleSwitch
+          checked={isPitchLinked}
+          onChange={checked => playerEngine.setIsPitchLinked(checked)}
+          ariaLabel={t("player.link_speed_pitch")}
+        />
+      </div>
+
       {/* Speed Slider */}
       <SliderRow
         label={t("player.speed")}
@@ -332,25 +342,6 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
 
       {/* Options (without separator above) */}
       <div className="flex flex-col gap-[12px] pt-[2px]">
-        {/* Link speed to pitch toggle */}
-        <div className="flex items-center justify-between gap-[8px]">
-          <div className="flex flex-col">
-            <span className="text-[12px] font-medium text-text-primary">
-              {t("player.link_speed_pitch")}
-            </span>
-            <span className="text-[10px] text-text-tertiary leading-tight">
-              {isPitchLinked
-                ? t("player.link_speed_pitch_hint")
-                : t("player.key_lock_hint")}
-            </span>
-          </div>
-          <ToggleSwitch
-            checked={isPitchLinked}
-            onChange={(checked) => playerEngine.setIsPitchLinked(checked)}
-            ariaLabel={t("player.link_speed_pitch")}
-          />
-        </div>
-
         {/* Keep across tracks toggle */}
         <div className="flex items-center justify-between gap-[8px]">
           <div className="flex flex-col">

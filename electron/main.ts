@@ -258,9 +258,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
-      devTools: true,
+      devTools: !app.isPackaged && !SECURITY_TEST,
       backgroundThrottling: false, // keeps audio timer and playback ticks running when app is in background or another workspace
-      webSecurity: false,
+      webSecurity: true,
     },
   });
 
@@ -300,7 +300,7 @@ function createWindow() {
   mainWindow.on("show", broadcastWindowState);
 
   const isTrustedAppUrl = (url: string) =>
-    isAppUrl(url, process.env.VITE_DEV_SERVER_URL, [
+    isAppUrl(url, SECURITY_TEST ? undefined : process.env.VITE_DEV_SERVER_URL, [
       RENDERER_DIST,
       path.join(app.getPath("userData"), "bundles"),
     ]);
@@ -363,10 +363,10 @@ function createWindow() {
     }
   });
 
-  if (process.env.VITE_DEV_SERVER_URL) {
+  if (!SECURITY_TEST && process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    if (LANE_FORK_UPDATES_DISABLED) {
+    if (OTA_DISABLED) {
       // Lane fork: always run the renderer shipped in this package. Liner's OTA
       // bundles (and any already downloaded into the shared profile) would replace
       // the Lane UI with upstream's.
@@ -418,19 +418,28 @@ function createWindow() {
   mainWindow.on("restore", () => thumbar?.refresh());
 }
 
-// Single instance lock
-// Updates are served from this application's release feed configured in package.json.
-const LANE_FORK_UPDATES_DISABLED = false;
+declare const __LANE_SECURITY_TEST__: boolean;
+const SECURITY_TEST = __LANE_SECURITY_TEST__;
+// Do not load upstream Liner bundles. Binary updates use Lane's own release feed.
+const UPSTREAM_OTA_DISABLED = true;
+const OTA_DISABLED = SECURITY_TEST || UPSTREAM_OTA_DISABLED;
+const APP_UPDATES_DISABLED = SECURITY_TEST;
 let lanePurgedInjectedIcons = false;
 
 // The name media controls show (MPRIS on Linux, the Windows media flyout) and
 // the window class: never the npm package name.
-app.setName("Lane");
-if (process.platform === "win32") app.setAppUserModelId("com.therikky.lane");
+app.setName(SECURITY_TEST ? "Lane Security Test" : "Lane");
+if (process.platform === "win32") {
+  app.setAppUserModelId(SECURITY_TEST ? "com.therikky.lane.securitytest" : "com.therikky.lane");
+}
 
 // Keep using the profile the app had while it was called "Liner" (login, settings,
 // cache), instead of starting fresh in ~/.config/Lane.
-{
+if (SECURITY_TEST) {
+  const profile = path.join(app.getPath("appData"), "Lane Security Test");
+  fs.mkdirSync(profile, { recursive: true });
+  app.setPath("userData", profile);
+} else {
   const legacyProfile = path.join(app.getPath("appData"), "Liner");
   const laneProfile = path.join(app.getPath("appData"), "Lane");
   if (!fs.existsSync(laneProfile) && fs.existsSync(legacyProfile)) {
@@ -475,7 +484,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     // Register Lane's current scheme and keep the old scheme for existing links.
     // (on linux the packaged .desktop carries the mime handler too)
-    for (const scheme of DEEP_LINK_SCHEMES) {
+    for (const scheme of SECURITY_TEST ? [] : DEEP_LINK_SCHEMES) {
       if (process.defaultApp && process.argv.length >= 2) {
         app.setAsDefaultProtocolClient(scheme, process.execPath, [path.resolve(process.argv[1]!)]);
       } else {
@@ -486,7 +495,7 @@ if (!gotTheLock) {
       path.join(__dirname, "preload.cjs"),
       RENDERER_DIST,
     );
-    touchBarManager.registerShortcut();
+    if (!SECURITY_TEST) touchBarManager.registerShortcut();
 
     const updateSleepBlocker = createSleepBlocker(powerSaveBlocker);
     thumbar = new ThumbarController(
@@ -503,6 +512,7 @@ if (!gotTheLock) {
     overlayManager = new OverlayManager(
       path.join(__dirname, "preload.cjs"),
       RENDERER_DIST,
+      SECURITY_TEST,
     );
     overlayManager.setIndexPathResolver(
       () => bundleManager?.getEffectiveIndexPath() ?? path.join(RENDERER_DIST, "index.html"),
@@ -522,7 +532,7 @@ if (!gotTheLock) {
       void nativeSnap.fromOverlay(overlay.getWindow(), () => {}, () => overlay.closeOverlay(), true);
       return true;
     });
-    overlayManager.registerShortcut();
+    if (!SECURITY_TEST) overlayManager.registerShortcut();
 
     discordRpcManager = new DiscordRpcManager();
     poTokenService = new PoTokenService(path.join(__dirname, "preload.cjs"));
@@ -796,6 +806,7 @@ if (!gotTheLock) {
         details.responseHeaders,
         details.method,
         keepsOwnCors(details.url, allowLoopback),
+        new URL(details.url).hostname === "api.spotify.com",
       ));
     });
 
@@ -809,7 +820,7 @@ if (!gotTheLock) {
       });
     });
 
-    registerSpotifyAccount(() => mainWindow);
+    registerSpotifyAccount(() => mainWindow, SECURITY_TEST);
     registerYandexMusicAccount(() => mainWindow);
     // long jobs (importing thousands of liked songs) keep running with the
     // window hidden or the laptop idle: the system must not suspend the app
@@ -1633,7 +1644,7 @@ if (!gotTheLock) {
     });
 
     handleTrusted("updater:check-for-updates", async () => {
-      if (!app.isPackaged || LANE_FORK_UPDATES_DISABLED) {
+      if (!app.isPackaged || APP_UPDATES_DISABLED) {
         return { available: false, error: "Updater is disabled in this build" };
       }
       try {
@@ -1649,8 +1660,8 @@ if (!gotTheLock) {
     });
 
     handleTrusted("updater:download-update", async () => {
-      if (!app.isPackaged) {
-        return { success: false, error: "Updater is disabled in dev mode" };
+      if (!app.isPackaged || APP_UPDATES_DISABLED) {
+        return { success: false, error: "Updater is disabled in this build" };
       }
       try {
         await autoUpdater.downloadUpdate();
@@ -1661,6 +1672,7 @@ if (!gotTheLock) {
     });
 
     handleTrusted("updater:quit-and-install", () => {
+      if (APP_UPDATES_DISABLED) return false;
       setImmediate(() => {
         autoUpdater.quitAndInstall(false, true);
       });
@@ -1670,14 +1682,14 @@ if (!gotTheLock) {
     // OTA bundle updater IPC handlers
     handleTrusted("bundle:check", async () => {
       if (!bundleManager) {
-        return { available: false, error: "Bundle updater inactive (dev mode)" };
+        return { available: false, error: "Bundle updater inactive in this build" };
       }
       return await bundleManager.checkForUpdates();
     });
 
     handleTrusted("bundle:download-and-install", async (_event, manifest) => {
       if (!bundleManager) {
-        return { success: false, error: "Bundle updater inactive (dev mode)" };
+        return { success: false, error: "Bundle updater inactive in this build" };
       }
       return await bundleManager.downloadAndInstall(manifest);
     });
@@ -1704,13 +1716,15 @@ if (!gotTheLock) {
     });
 
     // automatic update check after window initialization (packaged app only)
-    if (app.isPackaged && !LANE_FORK_UPDATES_DISABLED) {
+    if (app.isPackaged && !APP_UPDATES_DISABLED) {
       setTimeout(() => {
         autoUpdater.checkForUpdates().catch((err) => {
           console.error("\x1b[31m updater \x1b[0m background check error:", err?.message || err);
         });
       }, 4000);
+    }
 
+    if (app.isPackaged && !OTA_DISABLED) {
       // check for OTA bundles every 15 minutes silently in background
       setInterval(() => {
         bundleManager?.checkForUpdates().catch(() => {});

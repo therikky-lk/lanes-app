@@ -70,10 +70,14 @@ export function getImportedPlaylistMeta(playlistId: string | null | undefined): 
   return readAll()[playlistId] ?? null;
 }
 
+export function getImportedPlaylistIds(source: ImportSource): Set<string> {
+  return new Set(Object.entries(readAll()).filter(([, meta]) => meta?.source === source).map(([id]) => id));
+}
+
 /** Older imports may have the Spotify source saved but no usable cover marker. */
 export async function recoverSpotifyPlaylistCover(playlistId: string): Promise<void> {
   const meta = getImportedPlaylistMeta(playlistId);
-  if (meta?.source !== "spotify" || meta.coverUrl || spotifyCoverLookups.has(playlistId)) return;
+  if (meta?.source !== "spotify" || !meta.sourceUrl || meta.coverUrl || spotifyCoverLookups.has(playlistId)) return;
   spotifyCoverLookups.add(playlistId);
   try {
     const { parseSpotifyUrl } = await import("./sources/spotify/spotifyUrl");

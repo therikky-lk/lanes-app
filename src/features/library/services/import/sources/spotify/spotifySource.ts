@@ -1,4 +1,4 @@
-import { fetchSpotifyLikedTracks, spotifyAccountSupported, spotifyHasLogin, spotifyUserToken } from "./spotifyAccount";
+import { fetchSpotifyAccountAlbum, fetchSpotifyLikedTracks, fetchSpotifyOAuthPlaylist, SpotifyRequestError, spotifyAccountSupported, spotifyHasLogin, spotifyUserToken, spotifyUsesOAuth } from "./spotifyAccount";
 import type { ClientImportedPlaylist, ClientImportedTrack } from "../../importTypes";
 import { rethrowIfAborted } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
@@ -47,6 +47,18 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
   }
   const resolvedUrl = await resolveSpotifyUrl(rawUrl, signal);
   const { type: entityType, id: entityId } = parseSpotifyUrl(resolvedUrl);
+  const accountSupported = entityType !== "track" && spotifyAccountSupported();
+  const signedIn = accountSupported ? await spotifyHasLogin().catch(() => null) : false;
+  if (signedIn && entityType === "album") {
+    const album = await fetchSpotifyAccountAlbum(entityId, signal).catch(() => {
+      rethrowIfAborted(signal);
+      return null;
+    });
+    if (album?.tracks.length) {
+      rememberSourceMeta(rawUrl, { coverUrl: album.coverUrl });
+      return { source: "spotify", sourceUrl: rawUrl, title: album.title ?? defaultTitle(entityType), tracks: album.tracks };
+    }
+  }
   // personal playlists have no public embed: carry on without it
   const embed = await fetchSpotifyEmbed(entityType, entityId, defaultTitle(entityType), signal).catch((error) => {
     rethrowIfAborted(signal);
@@ -69,23 +81,43 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
   };
 
   if (entityType === "playlist") {
-    const tracks = pickPlaylistTracks(await tryPathfinder(entityId, signal), embed.tracks);
-    if (tracks.length > 0) { remember(tracks); return { ...base, tracks }; }
-    // nothing for a guest: a personal playlist ("Your Top Songs 2022", Daily
-    // Mix…) that only its owner can open; read it as the signed-in user
-    if (spotifyAccountSupported() && (await spotifyHasLogin().catch(() => false))) {
+    const oauth = spotifyUsesOAuth();
+    let accountError: unknown;
+    if (oauth && signedIn) {
+      try {
+        const tracks = await fetchSpotifyOAuthPlaylist(entityId, signal);
+        if (tracks.length > 0 && tracks.length >= embed.tracks.length) { remember(tracks); return { ...base, tracks }; }
+      } catch (error) {
+        rethrowIfAborted(signal);
+        accountError = error;
+      }
+    }
+    const full = await tryPathfinder(entityId, signal);
+    const tracks = pickPlaylistTracks(full, embed.tracks);
+    if (!oauth && signedIn && (!tracks.length || (embed.tracks.length >= EMBED_TRACK_CAP && tracks.length === embed.tracks.length)
+      || (full.total !== undefined && tracks.length < full.total))) {
       const mine = await fetchSpotifyPlaylistTracks(entityId, signal, () => spotifyUserToken(signal)).catch((error) => {
         rethrowIfAborted(signal);
         log("yellow", "import", `spotify playlist as the signed-in user failed: ${String(error)}`);
         return { tracks: [] as ClientImportedTrack[], total: undefined };
       });
-      if (mine.tracks.length > 0) { remember(mine.tracks); return { ...base, tracks: mine.tracks }; }
-    } else if (spotifyAccountSupported()) {
+      if (mine.tracks.length > 0 && mine.tracks.length >= tracks.length) { remember(mine.tracks); return { ...base, tracks: mine.tracks }; }
+    }
+    if (tracks.length > 0) { remember(tracks); return { ...base, tracks }; }
+    if (accountError instanceof SpotifyRequestError && (accountError.status === 403 || accountError.status === 404)) {
+      throw new Error("Spotify didn’t share this playlist. For Wrapped, copy its tracks into a new playlist you own and import that link.");
+    }
+    if (accountError instanceof SpotifyRequestError && accountError.status === 401) {
+      throw new Error("Spotify rejected the session. Reconnect your account in Settings → Spotify.");
+    }
+    if (accountError) throw accountError;
+    if (signedIn === null) throw new Error("Could not check your Spotify session. Try again.");
+    if (!signedIn && accountSupported) {
       throw new Error(
-        "This looks like a personal Spotify playlist (like Your Top Songs or Daily Mix) that only its owner can open. Sign in to Spotify in the import dialog, then import it again.",
+        "This looks like a personal Spotify playlist. Sign in under Settings → Spotify, then try importing it again.",
       );
     }
   }
   if (embed.tracks.length > 0) { remember(embed.tracks); return { ...base, tracks: embed.tracks }; }
-  throw new Error("No tracks found in the Spotify playlist.");
+  throw new Error(`No tracks found in the Spotify ${entityType}.`);
 }

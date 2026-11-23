@@ -1,7 +1,7 @@
 import type { ShareEntityType, ShareSnapshot, SharedEntity } from "@/shared/contracts/sharing";
 import { usesLocalAppTransport } from "./localAppTransport";
 import { decodeLyricsStream } from "./lyricsStream";
-import { collectLyricsSources, lyricsTargets } from "./lyricsSources";
+import { collectLyricsSources, getPublicLyricsCatalog, lyricsTargets, type LyricsTarget } from "./lyricsSources";
 import {
   getAccessToken,
   getAuthSession,
@@ -1169,6 +1169,7 @@ export const api = {
     const targets = lyricsTargets(
       getApiBaseUrl(), getApiBaseUrlForAuthBackend(getAuthSession()?.authBackend),
       getAuthSession()?.authBackend, token, usesLocalAppTransport(),
+      getPublicLyricsCatalog(),
     );
     yield* collectLyricsSources(
       targets.map(target => () => api.streamServerLyrics(id, signal, hint, target)),
@@ -1181,7 +1182,7 @@ export const api = {
     id: string,
     signal?: AbortSignal,
     hint?: { title: string; artist: string; durationMs?: number },
-    target?: { baseUrl: string; token: string | null },
+    target?: LyricsTarget,
   ): AsyncGenerator<LyricsStreamEvent> {
     const hintParams =
       hint?.title.trim() && hint.artist.trim()
@@ -1194,7 +1195,7 @@ export const api = {
     const path = `/v1/tracks/${encodeURIComponent(id)}/lyrics${hintParams ? `?${hintParams}` : ""}`;
     const accessToken = target ? target.token : getAuthSession()?.authBackend === "hyprr" ? null : await getValidAccessToken();
     const baseUrl = target?.baseUrl ?? getApiBaseUrl();
-    const signedHeaders = await signApiRequest("GET", path);
+    const signedHeaders = target?.publicCatalog ? {} : await signApiRequest("GET", path);
     const requestId =
       typeof crypto !== "undefined" && crypto.randomUUID
         ? crypto.randomUUID()
@@ -1211,17 +1212,18 @@ export const api = {
     const connect = new AbortController();
     const connectTimer = setTimeout(() => connect.abort(), 20_000);
     try {
-      const localPreview = usesLocalAppTransport() && baseUrl === getApiBaseUrl();
+      const localPreview = !target?.publicCatalog && usesLocalAppTransport() && baseUrl === getApiBaseUrl();
       res = await fetch(
         localPreview
           ? `/__lane/lyrics/${encodeURIComponent(id)}${hintParams ? `?${hintParams}` : ""}`
           : `${baseUrl}${path}`,
         {
           signal: signal ? AbortSignal.any([signal, connect.signal]) : connect.signal,
+          ...(target?.publicCatalog ? { credentials: "omit", redirect: "error" } as const : {}),
           headers: {
             Accept: "application/json, text/event-stream",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-            ...correlationHeaders,
+            ...(!target?.publicCatalog && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            ...(target?.publicCatalog ? {} : correlationHeaders),
             ...signedHeaders,
           },
         },
@@ -1231,7 +1233,7 @@ export const api = {
     }
 
     const lyricsDateHeader = res.headers?.get?.("date");
-    if (lyricsDateHeader) {
+    if (lyricsDateHeader && !target?.publicCatalog) {
       syncServerTime(lyricsDateHeader);
     }
 

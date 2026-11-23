@@ -75,3 +75,10 @@ scratch/
 /dist-web
 
 !/build/entitlements.mac.plist
+.lane-security-build/
+release-security-test/
+!src/features/home/vibe/vibeController.test.ts
+!src/features/library/services/import/sources/spotify/spotifyAccount.test.ts
+!src/features/library/services/import/sources/spotify/spotifyCsv.test.ts
+!src/features/library/services/import/sources/spotify/spotifySource.test.ts
+!src/shared/api/lyricsSources.test.ts

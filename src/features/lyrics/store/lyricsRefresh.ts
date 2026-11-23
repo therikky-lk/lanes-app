@@ -1,7 +1,8 @@
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
+import { getPublicLyricsCatalog } from "@/shared/api/lyricsSources";
 
 export function getLyricsCacheSource(): string {
-  return `${getApiBaseUrl()}#lyrics-sources-v3`;
+  return `${getApiBaseUrl()}|${getPublicLyricsCatalog() ?? ""}#lyrics-sources-v4`;
 }
 
 import type { LyricsCandidate } from "@/shared/contracts/lyrics";

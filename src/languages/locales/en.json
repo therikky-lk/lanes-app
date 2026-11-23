@@ -628,6 +628,7 @@
     "reorder_track": "Reorder track"
   },
   "playlist": {
+    "likes_downloaded": "{done} of {total} downloaded",
     "select_tracks": "Select tracks",
     "playlist": "Playlist",
     "liked_songs": "Liked songs",
@@ -681,6 +682,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Export your Liked Songs or a playlist in Exportify, then import the CSV here.",
+      "unavailable": "Spotify sign-in is not available on this platform.",
+      "waiting": "Checking Spotify sign-in…",
+      "account_error": "Could not update your Spotify sign-in. Try again.",
+      "import_liked": "Import Liked Songs",
+      "hide_imported": "Hide Spotify imports from the library",
+      "profile_unavailable": "Signed in, but Spotify didn’t send your profile details.",
+      "rate_limit": "Spotify is limiting requests. Try again after {time}."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Import your liked tracks from Yandex Music.",

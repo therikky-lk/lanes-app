@@ -114,6 +114,7 @@ export function toClientTrack(source: any): Track {
     durationMs: source.durationMs ?? source.duration_ms ?? 0,
     playCount: source.playCount ?? 0,
     explicit: source.explicit,
+    musicVideoType: typeof source.musicVideoType === "string" ? source.musicVideoType : undefined,
     album: album && (album.id || album.title) ? album : undefined,
   };
 }
@@ -128,5 +129,6 @@ export function toTrackSnapshot(track: Track): TrackSnapshot {
     ...(track.coverUrl ? { cover: { url: track.coverUrl, width: 480, height: 480 } } : {}),
     ...(track.album ? { album: track.album } : {}),
     ...(track.explicit !== undefined ? { explicit: track.explicit } : {}),
+    ...(track.musicVideoType ? { musicVideoType: track.musicVideoType } : {}),
   };
 }

@@ -1,4 +1,6 @@
 import { useYandexMusicPreferences } from "../store/yandexMusicPreferences";
+import { useSpotifyPreferences } from "../store/spotifyPreferences";
+import { getImportedPlaylistIds } from "../services/import/importedPlaylistMeta";
 import { readPlaylistSource } from "../services/playlistCoverMarker";
 import OfflineCover from "./OfflineCover";
 import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
@@ -229,11 +231,15 @@ export default function LibraryPage() {
   const hasCustomBg = useIsContentTransparent();
 
   const hideYandexPlaylist = useYandexMusicPreferences((state) => state.hideImportedPlaylist);
+  const hideSpotifyPlaylists = useSpotifyPreferences((state) => state.hideImportedPlaylists);
   const playlistItems: LibraryItemViewModel[] = useMemo(() => {
     if (!playlistsData) return [];
-    const list = hideYandexPlaylist
-      ? playlistsData.playlists.filter((playlist) => readPlaylistSource(playlist.description) !== "yandex")
-      : playlistsData.playlists;
+    const spotifyIds = hideSpotifyPlaylists ? getImportedPlaylistIds("spotify") : null;
+    const list = playlistsData.playlists.filter((playlist) => {
+      const source = readPlaylistSource(playlist.description);
+      return (!hideYandexPlaylist || source !== "yandex")
+        && (!hideSpotifyPlaylists || (source !== "spotify" && !spotifyIds?.has(playlist.id)));
+    });
     return list.map((playlist) => ({
       id: playlist.id,
       title: playlist.title,
@@ -246,7 +252,7 @@ export default function LibraryPage() {
       addedAt:
         playlist.createdAt || playlist.updatedAt || new Date().toISOString(),
     }));
-  }, [playlistsData, hideYandexPlaylist, t]);
+  }, [playlistsData, hideYandexPlaylist, hideSpotifyPlaylists, t]);
 
   const initialLoading = playlistsLoading;
 

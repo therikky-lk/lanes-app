@@ -3,7 +3,8 @@ import type { ImportJob, ImportReview } from "@/shared/api";
 import type { ImportSource, Track } from "@/shared/contracts";
 import { notifyLibraryChanged } from "../hooks/usePlaylists";
 import { detectImportSource } from "../services/import";
-import { runClientImport, type ImportProgress } from "../services/import/manager/clientImportManager";
+import { matchPlaylist, runClientImport, type ImportProgress } from "../services/import/manager/clientImportManager";
+import type { ClientImportedPlaylist } from "../services/import/importTypes";
 import {
   createLocalImportJob,
   finalizeLocalImport,
@@ -21,6 +22,7 @@ export interface ActiveImportState {
   reviewItems: ImportReview[] | null;
   approvedTracks: Track[] | null;
   startImport: (url: string, pendingTrack?: TrackDetail | null) => Promise<ImportJob>;
+  startFileImport: (playlist: ClientImportedPlaylist) => Promise<ImportJob>;
   cancelPolling: () => void;
   reset: () => void;
 }
@@ -45,34 +47,9 @@ function errorMessage(error: unknown): string {
   return error instanceof Error && error.message ? error.message : "Import failed";
 }
 
-export const useImportStore = create<ActiveImportState>((set, get) => ({
-  job: null,
-  isPolling: false,
-  error: null,
-  pendingTrack: null,
-  reviewItems: null,
-  approvedTracks: null,
-
-  reset: () => {
-    cleanupActiveImport();
-    set({ job: null, isPolling: false, error: null, pendingTrack: null, reviewItems: null, approvedTracks: null });
-  },
-
-  cancelPolling: () => {
-    cleanupActiveImport();
-    set({ isPolling: false });
-  },
-
-  startImport: async (url: string, pendingTrack: TrackDetail | null = null) => {
+export const useImportStore = create<ActiveImportState>((set, get) => {
+  async function startJob(source: ImportSource, url: string, pendingTrack: TrackDetail | null, playlist?: ClientImportedPlaylist) {
     get().cancelPolling();
-    let source: ImportSource;
-    try {
-      source = detectImportSource(url);
-    } catch (error) {
-      set({ error: errorMessage(error), isPolling: false, pendingTrack: null });
-      throw error;
-    }
-
     const job = createLocalImportJob(source, url.trim());
     const controller = new AbortController();
     activeAbortController = controller;
@@ -80,10 +57,11 @@ export const useImportStore = create<ActiveImportState>((set, get) => ({
 
     void (async () => {
       try {
-        const outcome = await runClientImport(url, {
+        const options = {
           signal: controller.signal,
-          onProgress: (progress) => updateLocalImportJob(job.id, progressPatch(progress)),
-        });
+          onProgress: (progress: ImportProgress) => updateLocalImportJob(job.id, progressPatch(progress)),
+        };
+        const outcome = await (playlist ? matchPlaylist(playlist, options) : runClientImport(url, options));
         if (controller.signal.aborted) return;
         const meta = { title: outcome.title, description: outcome.description, result: outcome.result };
 
@@ -110,9 +88,21 @@ export const useImportStore = create<ActiveImportState>((set, get) => ({
     })();
 
     return job;
-  },
-
-}));
+  }
+  return {
+    job: null, isPolling: false, error: null, pendingTrack: null, reviewItems: null, approvedTracks: null,
+    reset: () => {
+      cleanupActiveImport();
+      set({ job: null, isPolling: false, error: null, pendingTrack: null, reviewItems: null, approvedTracks: null });
+    },
+    cancelPolling: () => {
+      cleanupActiveImport();
+      set({ isPolling: false });
+    },
+    startImport: async (url, pendingTrack = null) => startJob(detectImportSource(url), url, pendingTrack),
+    startFileImport: playlist => startJob(playlist.source, playlist.sourceUrl, null, playlist),
+  };
+});
 
 onLocalImportJobChange((job) => {
   if (useImportStore.getState().job?.id === job.id) useImportStore.setState({ job });

@@ -263,7 +263,7 @@ async function nextBatch(
   ]);
   poolsMs = Math.round(performance.now() - phaseAt);
   phaseAt = performance.now();
-  const fits = (t: Track) => !session.skipped.has(t.id);
+  const fits = (t: Track) => isVibeTrack(t) && !session.skipped.has(t.id);
 
   // the pool that defines the stream, if any: mood first, then the others
   // (for "no vocals" the instrumental search only seeds the radio: every pick
@@ -364,7 +364,7 @@ async function nextBatch(
       // nothing at all yet: the language's own playlists carry the start
       inLanguage = pool.filter((t) => !speaks.known(t) || speaks(t));
     }
-    const selected = selectFresh(inLanguage, taste, {
+    const selected = selectFresh(inLanguage.filter(fits), taste, {
       count: BATCH,
       exclude: taken,
       moodIds: poolIds,

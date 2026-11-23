@@ -57,8 +57,9 @@ export function readPlaylistSource(description: string | null | undefined): stri
   return readMarker(description, "source");
 }
 
-export function importedPlaylistDescription(source: "yandex"): string {
-  return build("", undefined, undefined, source);
+export function importedPlaylistDescription(source: "yandex" | "spotify", text = ""): string {
+  const available = MAX_PLAYLIST_DESCRIPTION_LENGTH - `${SEP}lane-source:${source}`.length - 2;
+  return build(stripCoverMarker(text).slice(0, available), undefined, undefined, source);
 }
 
 export function withCoverMarker(description: string | null | undefined, coverUrl: string | undefined): string {

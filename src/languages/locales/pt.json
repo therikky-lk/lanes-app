@@ -617,6 +617,7 @@
     "reorder_track": "Reordenar faixa"
   },
   "playlist": {
+    "likes_downloaded": "{done} de {total} baixadas",
     "select_tracks": "Selecionar faixas",
     "playlist": "Lista de reprodução",
     "liked_songs": "Curtidas",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Exporte suas músicas favoritas ou uma playlist no Exportify e importe o CSV aqui.",
+      "unavailable": "Não é possível entrar no Spotify nesta plataforma.",
+      "waiting": "Verificando o login no Spotify…",
+      "account_error": "Não foi possível atualizar o login no Spotify. Tente novamente.",
+      "import_liked": "Importar músicas favoritas",
+      "hide_imported": "Ocultar importações do Spotify na biblioteca",
+      "profile_unavailable": "Você entrou na conta, mas o Spotify não enviou os dados do perfil.",
+      "rate_limit": "O Spotify está limitando as solicitações. Tente novamente após {time}."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Importe as faixas de que gostou no Yandex Music.",

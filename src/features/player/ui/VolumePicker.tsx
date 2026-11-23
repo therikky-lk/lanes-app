@@ -17,6 +17,7 @@ export interface VolumePickerProps {
   style?: React.CSSProperties;
   showIcon?: boolean;
   showValue?: boolean;
+  showThumb?: boolean;
   orientation?: "horizontal" | "vertical";
   size?: "sm" | "md" | "lg";
   trackClassName?: string;
@@ -35,6 +36,7 @@ export const VolumePicker = memo(function VolumePicker({
   style,
   showIcon = true,
   showValue = false,
+  showThumb = true,
   orientation = "horizontal",
   size = "md",
   trackClassName = "",
@@ -347,7 +349,7 @@ export const VolumePicker = memo(function VolumePicker({
             style={{ width: `${percentage}%`, ...(fillColor ? { backgroundColor: fillColor } : {}) }}
           />
         </motion.div>
-        <div
+        {showThumb && <div
           aria-hidden
           className={`pointer-events-none absolute top-1/2 w-[4px] rounded-full shadow-[0_0_6px_rgba(0,0,0,0.35)] transition-[height,left] ease-out ${
             isDragging ? "duration-0" : "duration-100"
@@ -358,7 +360,7 @@ export const VolumePicker = memo(function VolumePicker({
             transform: "translate(-50%, -50%)",
             ...(fillColor ? { backgroundColor: fillColor } : {}),
           }}
-        />
+        />}
       </div>
 
       {showValue && (

@@ -36,10 +36,11 @@ export async function spotifyLogout(): Promise<void> {
   if (isNativeApp()) await LaneSpotify.logout();
   else await window.linerElectron?.spotifyLogout?.();
   cachedToken = null;
+  cachedProfile = null;
 }
 
 /** GET with the Spotify login cookies attached */
-async function fetchWithLogin(url: string): Promise<{ status: number; text: string }> {
+async function fetchWithLogin(url: string): Promise<{ status: number; text: string; retryAfter?: string | null }> {
   if (isNativeApp()) {
     const res = await laneHttp!.request({ url, method: "GET", headers: { accept: "application/json" }, withCookies: true });
     const bin = atob(res.body);
@@ -49,7 +50,7 @@ async function fetchWithLogin(url: string): Promise<{ status: number; text: stri
   }
   const res = await window.linerElectron?.spotifyFetch?.({ url, headers: { accept: "application/json" } });
   if (!res) throw new Error("Spotify login isn't available here");
-  return { status: res.status, text: res.body };
+  return { status: res.status, text: res.body, retryAfter: res.retryAfter };
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -83,31 +84,56 @@ export class SpotifyRateLimitError extends Error {
   }
 }
 
-/** short waits are taken here; a longer one is handed to the caller */
-const INLINE_WAIT_LIMIT_MS = 30_000;
+export class SpotifyRequestError extends Error {
+  constructor(what: string, readonly status: number) {
+    super(`${what} failed (${status})`);
+  }
+}
 
-/** Spotify answers 429 when asked too fast: wait as told (or back off) and retry */
+export const spotifyUsesOAuth = () => typeof window !== "undefined" && Boolean(window.linerElectron?.spotifyOAuthRead);
+const COOLDOWN_KEY = spotifyUsesOAuth() ? "lane_spotify_oauth_retry_at" : "lane_spotify_retry_at";
+const cooldownListeners = new Set<() => void>();
+let retryAt = 0;
+try { retryAt = Number(localStorage.getItem(COOLDOWN_KEY)) || 0; } catch { /* storage unavailable */ }
+
+export const spotifyRetryAt = () => retryAt;
+export function subscribeSpotifyRetryAt(listener: () => void) {
+  cooldownListeners.add(listener);
+  return () => { cooldownListeners.delete(listener); };
+}
+
+function pauseSpotify(retryAfter: string | null | undefined) {
+  const now = Date.now();
+  const seconds = retryAfter?.trim() ? Number(retryAfter) : NaN;
+  const date = retryAfter && !Number.isFinite(seconds) ? Date.parse(retryAfter) : NaN;
+  const delay = Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : date - now;
+  retryAt = Math.max(retryAt, now + (Number.isFinite(delay) && delay > 0 ? delay : 60_000));
+  try { localStorage.setItem(COOLDOWN_KEY, String(retryAt)); } catch { /* storage unavailable */ }
+  cooldownListeners.forEach(listener => listener());
+  return retryAt - now;
+}
+
 async function withRateLimit<T>(
   run: () => Promise<{ status: number; retryAfter?: string | null; value?: T }>,
   what: string,
   signal?: AbortSignal,
 ): Promise<T> {
   for (let attempt = 0; ; attempt++) {
+    signal?.throwIfAborted();
+    const remaining = retryAt - Date.now();
+    if (remaining > 0) throw new SpotifyRateLimitError(what, remaining);
     const res = await run();
+    if (res.status === 429) throw new SpotifyRateLimitError(what, pauseSpotify(res.retryAfter));
     if (res.status !== 429 && res.status < 500) {
-      if (res.value === undefined) throw new Error(`${what} failed (${res.status})`);
+      if (res.value === undefined) throw new SpotifyRequestError(what, res.status);
       return res.value;
     }
     const told = Number(res.retryAfter);
     const toldMs = Number.isFinite(told) && told > 0 ? told * 1000 : undefined;
-    if (res.status === 429) {
-      // asked to wait long, or still blocked after a few tries: don't keep
-      // knocking (every early request extends Spotify's block)
-      if ((toldMs ?? 0) > INLINE_WAIT_LIMIT_MS || attempt >= 3) throw new SpotifyRateLimitError(what, toldMs);
-    } else if (attempt >= 4) {
+    if (attempt >= 4 || (toldMs ?? 0) > 30_000) {
       throw new Error(`${what} failed (${res.status})`);
     }
-    const wait = toldMs ?? Math.min(3000 * 2 ** attempt, INLINE_WAIT_LIMIT_MS);
+    const wait = toldMs ?? Math.min(3000 * 2 ** attempt, 30_000);
     await sleep(wait + Math.random() * 500, signal);
   }
 }
@@ -122,7 +148,7 @@ async function userToken(signal?: AbortSignal): Promise<string> {
   const text = await withRateLimit(
     async () => {
       const res = await fetchWithLogin(await buildSpotifyTokenUrl(signal));
-      return { status: res.status, value: res.status === 200 ? res.text : undefined };
+      return { status: res.status, retryAfter: res.retryAfter, value: res.status === 200 ? res.text : undefined };
     },
     "Spotify sign-in token",
     signal,
@@ -144,14 +170,26 @@ interface SavedTrackItem {
   } | null;
 }
 
+async function readSpotifyApi(path: string, signal?: AbortSignal): Promise<Response> {
+  signal?.throwIfAborted();
+  if (window.linerElectron?.spotifyOAuthRead) {
+    const res = await window.linerElectron.spotifyOAuthRead(path);
+    signal?.throwIfAborted();
+    return new Response([204, 205, 304].includes(res.status) ? null : res.body, {
+      status: res.status,
+      headers: res.retryAfter ? { "retry-after": res.retryAfter } : undefined,
+    });
+  }
+  const token = await userToken(signal);
+  return fetch(`https://api.spotify.com/v1${path}`, {
+    headers: { authorization: `Bearer ${token}`, accept: "application/json" }, signal,
+  });
+}
+
 async function likedPage(offset: number, limit: number, signal?: AbortSignal): Promise<{ total: number; items: SavedTrackItem[] }> {
   const data = await withRateLimit(
     async () => {
-      const token = await userToken(signal);
-      const res = await fetch(`https://api.spotify.com/v1/me/tracks?limit=${limit}&offset=${offset}`, {
-        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
-        signal,
-      });
+      const res = await readSpotifyApi(`/me/tracks?limit=${limit}&offset=${offset}`, signal);
       if (res.status === 401) cachedToken = null;
       return {
         status: res.status,
@@ -183,6 +221,58 @@ function mapSavedTrack(item: SavedTrackItem, position: number): ClientImportedTr
   };
 }
 
+export async function fetchSpotifyAccountAlbum(id: string, signal?: AbortSignal) {
+  type Track = NonNullable<SavedTrackItem["track"]>;
+  type Page = { items?: Track[]; next?: string | null };
+  type Album = { name?: string; images?: { url?: string }[]; tracks?: Page };
+
+  async function read<T>(suffix: string): Promise<T> {
+    return withRateLimit(async () => {
+      const response = await readSpotifyApi(`/albums/${encodeURIComponent(id)}${suffix}`, signal);
+      if (response.status === 401) cachedToken = null;
+      return {
+        status: response.status,
+        retryAfter: response.headers.get("retry-after"),
+        value: response.ok ? await response.json() as T : undefined,
+      };
+    }, "Spotify album request", signal);
+  }
+
+  const album = await read<Album>("");
+  const tracks: ClientImportedTrack[] = [];
+  let page = album.tracks;
+  let offset = 0;
+  while (page?.items?.length) {
+    for (const track of page.items) {
+      const mapped = mapSavedTrack({ track: { ...track, album } }, offset++);
+      if (mapped) tracks.push(mapped);
+    }
+    if (!page.next) break;
+    page = await read<Page>(`/tracks?limit=50&offset=${offset}`);
+  }
+  return { title: album.name, coverUrl: album.images?.[0]?.url, tracks };
+}
+
+export async function fetchSpotifyOAuthPlaylist(id: string, signal?: AbortSignal) {
+  type Item = SavedTrackItem & { item?: SavedTrackItem["track"] };
+  type Page = { items?: Item[]; next?: string | null };
+  const tracks: ClientImportedTrack[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await withRateLimit(async () => {
+      const res = await readSpotifyApi(`/playlists/${encodeURIComponent(id)}/items?limit=50&offset=${offset}`, signal);
+      return { status: res.status, retryAfter: res.headers.get("retry-after"), value: res.ok ? await res.json() as Page : undefined };
+    }, "Spotify playlist request", signal);
+    const items = page.items ?? [];
+    for (const item of items) {
+      const mapped = mapSavedTrack({ track: item.item ?? item.track }, offset++);
+      if (mapped) tracks.push(mapped);
+    }
+    if (!page.next || !items.length) return tracks;
+    await sleep(350, signal);
+  }
+}
+
 /** one page of Liked Songs (newest first), mapped for import */
 export async function fetchSpotifyLikedPage(
   offset: number,
@@ -200,24 +290,34 @@ export async function fetchSpotifyLikedPage(
 
 /** the signed-in Spotify account id, so a saved import is resumed for the same account */
 export async function spotifyAccountId(signal?: AbortSignal): Promise<string> {
+  return (await fetchSpotifyAccountProfile(signal)).id;
+}
+
+let cachedProfile: { id: string; displayName: string; avatarUrl?: string } | null = null;
+
+export async function fetchSpotifyAccountProfile(signal?: AbortSignal) {
+  signal?.throwIfAborted();
+  if (cachedProfile) return cachedProfile;
   const data = await withRateLimit(
     async () => {
-      const token = await userToken(signal);
-      const res = await fetch("https://api.spotify.com/v1/me", {
-        headers: { authorization: `Bearer ${token}`, accept: "application/json" },
-        signal,
-      });
+      const res = await readSpotifyApi("/me", signal);
       if (res.status === 401) cachedToken = null;
       return {
         status: res.status,
         retryAfter: res.headers.get("retry-after"),
-        value: res.ok ? ((await res.json()) as { id?: string }) : undefined,
+        value: res.ok ? ((await res.json()) as {
+          id?: string;
+          display_name?: string | null;
+          images?: { url?: string }[];
+        }) : undefined,
       };
     },
     "Spotify account request",
     signal,
   );
-  return data.id ?? "";
+  const image = data.images?.find(item => item.url?.startsWith("https://"));
+  signal?.throwIfAborted();
+  return cachedProfile = { id: data.id ?? "", displayName: data.display_name?.trim() || data.id || "", avatarUrl: image?.url };
 }
 
 export async function fetchSpotifyLikedTracks(signal?: AbortSignal): Promise<ClientImportedTrack[]> {

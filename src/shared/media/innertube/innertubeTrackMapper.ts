@@ -130,6 +130,7 @@ export function mapInnertubeTrack(raw: unknown, fallbackArtists: TrackArtist[] =
     durationMs: durationFromRuns([...metadataRuns, ...fixedRuns(renderer)]),
     cover: coverFromThumbnail(renderer.thumbnail),
     explicit: hasExplicitBadge(renderer),
+    musicVideoType: musicVideoType(renderer),
   };
 }
 

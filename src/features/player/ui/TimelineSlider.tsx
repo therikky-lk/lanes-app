@@ -16,6 +16,7 @@ export interface TimelineSliderProps {
   trackActiveBg?: string;
   fillColor?: string;
   showTime?: boolean;
+  layout?: "inline" | "stacked";
   onScrub?: (positionMs: number) => void;
 }
 
@@ -40,6 +41,7 @@ export const TimelineSlider = memo(function TimelineSlider({
   trackActiveBg,
   fillColor,
   showTime = false,
+  layout = "inline",
   onScrub,
 }: TimelineSliderProps) {
   const { t } = useTranslation();
@@ -161,19 +163,20 @@ export const TimelineSlider = memo(function TimelineSlider({
   const thumbHeights = { xs: [11, 14], sm: [13, 16], md: [15, 19], lg: [17, 21] }[size];
 
   const isActive = isHovered || isDragging;
+  const stacked = layout === "stacked";
 
   const defaultTrackBg = trackBg ?? "rgba(255, 255, 255, 0.16)";
   const defaultTrackActiveBg = trackActiveBg ?? "rgba(255, 255, 255, 0.30)";
 
   return (
     <div
-      className={`group relative flex ${containerHeights} items-center select-none prevent-seek ${className}`}
+      className={`group relative select-none prevent-seek ${stacked ? "grid grid-cols-2 items-center" : `flex ${containerHeights} items-center`} ${className}`}
       style={style}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {showTime && (
-        <span className="text-[11px] tabular-nums text-text-tertiary w-[36px] text-right shrink-0 pr-[8px]">
+        <span className={stacked ? "col-start-1 row-start-2 text-[12px] tabular-nums text-white/65" : "text-[11px] tabular-nums text-text-tertiary w-[36px] text-right shrink-0 pr-[8px]"}>
           {formatPlaybackTime(currentPosition)}
         </span>
       )}
@@ -190,7 +193,7 @@ export const TimelineSlider = memo(function TimelineSlider({
         // phones: the finger drags the slider, the page / player sheet doesn't
         // pan or scroll under it (that cancelled every seek)
         style={{ touchAction: "none" }}
-        className="relative flex h-full flex-1 items-center cursor-pointer outline-none"
+        className={`relative flex items-center cursor-pointer outline-none ${stacked ? "col-span-2 col-start-1 row-start-1 h-7 focus-visible:ring-1 focus-visible:ring-white/60 rounded-lg" : "h-full flex-1"}`}
       >
         <motion.div
           ref={trackRef}
@@ -204,7 +207,7 @@ export const TimelineSlider = memo(function TimelineSlider({
             damping: 30,
             mass: 0.8,
           }}
-          className={`relative w-full rounded-full overflow-hidden origin-center ${baseTrackHeights} ${trackClassName}`}
+          className={`relative w-full rounded-full overflow-hidden origin-center ${stacked ? "h-[6px]" : baseTrackHeights} ${trackClassName}`}
         >
           <div
             className={`absolute inset-0 origin-left rounded-full transition-transform ease-out ${
@@ -218,12 +221,12 @@ export const TimelineSlider = memo(function TimelineSlider({
         </motion.div>
         <div
           aria-hidden
-          className={`pointer-events-none absolute top-1/2 w-[4px] rounded-full shadow-[0_0_6px_rgba(0,0,0,0.35)] transition-[height,left] ease-out ${
+          className={`pointer-events-none absolute top-1/2 ${stacked ? "w-[6px]" : "w-[4px] shadow-[0_0_6px_rgba(0,0,0,0.35)]"} rounded-full transition-[height,left] ease-out ${
             isDragging ? "duration-0" : "duration-100"
           } ${fillClassName || "bg-text-primary"}`}
           style={{
-            left: `${percentage}%`,
-            height: isActive ? thumbHeights[1] : thumbHeights[0],
+            left: stacked ? `clamp(3px, ${percentage}%, calc(100% - 3px))` : `${percentage}%`,
+            height: stacked ? 6 : isActive ? thumbHeights[1] : thumbHeights[0],
             transform: "translate(-50%, -50%)",
             ...(fillColor ? { backgroundColor: fillColor } : {}),
           }}
@@ -231,7 +234,7 @@ export const TimelineSlider = memo(function TimelineSlider({
       </div>
 
       {showTime && (
-        <span className="text-[11px] tabular-nums text-text-tertiary w-[36px] shrink-0 pl-[8px]">
+        <span className={stacked ? "col-start-2 row-start-2 text-right text-[12px] tabular-nums text-white/65" : "text-[11px] tabular-nums text-text-tertiary w-[36px] shrink-0 pl-[8px]"}>
           {formatPlaybackTime(duration)}
         </span>
       )}

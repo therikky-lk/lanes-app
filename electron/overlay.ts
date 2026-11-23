@@ -111,7 +111,7 @@ export class OverlayManager {
   private indexPathResolver: (() => string) | null = null;
   private loadedIndexPath: string | null = null;
 
-  constructor(preloadPath: string, rendererDist: string) {
+  constructor(preloadPath: string, rendererDist: string, private readonly securityTest = false) {
     this.preloadPath = preloadPath;
     this.rendererDist = rendererDist;
     this.loadPersistedSettings();
@@ -842,7 +842,7 @@ export class OverlayManager {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        devTools: true,
+        devTools: !app.isPackaged && !this.securityTest,
       },
     });
 
@@ -862,7 +862,7 @@ export class OverlayManager {
     confineToApp(
       win.webContents,
       (url) => { void shell.openExternal(url); },
-      (url) => isAppUrl(url, process.env.VITE_DEV_SERVER_URL, [
+      (url) => isAppUrl(url, this.securityTest ? undefined : process.env.VITE_DEV_SERVER_URL, [
         this.rendererDist,
         path.join(app.getPath("userData"), "bundles"),
       ]),
@@ -878,7 +878,7 @@ export class OverlayManager {
       }, LEGACY_READY_FALLBACK_MS);
     });
 
-    if (process.env.VITE_DEV_SERVER_URL) {
+    if (!this.securityTest && process.env.VITE_DEV_SERVER_URL) {
       this.loadedIndexPath = null;
       void win.loadURL(`${process.env.VITE_DEV_SERVER_URL}#/overlay`);
     } else {

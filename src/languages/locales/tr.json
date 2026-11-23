@@ -617,6 +617,7 @@
     "reorder_track": "Parçayı taşı"
   },
   "playlist": {
+    "likes_downloaded": "{total} parçadan {done} tanesi indirildi",
     "select_tracks": "Parçaları seç",
     "playlist": "Çalma listesi",
     "liked_songs": "Beğenilen şarkılar",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Beğenilen şarkıları veya bir çalma listesini Exportify ile dışa aktar, ardından CSV dosyasını burada içe aktar.",
+      "unavailable": "Bu platformda Spotify oturumu açılamıyor.",
+      "waiting": "Spotify oturumu kontrol ediliyor…",
+      "account_error": "Spotify oturumu güncellenemedi. Tekrar dene.",
+      "import_liked": "Beğenilen şarkıları içe aktar",
+      "hide_imported": "Spotify içe aktarmalarını kitaplıkta gizle",
+      "profile_unavailable": "Oturum açık, ancak Spotify profil bilgilerini göndermedi.",
+      "rate_limit": "Spotify istekleri sınırlıyor. {time} sonrasında tekrar dene."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Yandex Music’te beğendiğin parçaları içe aktar.",

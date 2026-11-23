@@ -1,13 +1,27 @@
 import type { LyricsCandidate, LyricsStreamEvent } from "@/shared/contracts/lyrics";
 
 type LyricsSource = () => AsyncIterable<LyricsStreamEvent>;
+export type LyricsTarget = { baseUrl: string; token: string | null; publicCatalog?: true };
+
+export function getPublicLyricsCatalog(raw = import.meta.env.VITE_PUBLIC_LYRICS_CATALOG_URL): string | undefined {
+  if (!raw?.trim()) return undefined;
+  try {
+    const url = new URL(raw.trim());
+    if (url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash && url.pathname === "/") {
+      return url.origin;
+    }
+  } catch { /* invalid catalog configuration */ }
+  return undefined;
+}
 
 /** Account services and the Liner lyrics catalog have separate credentials. */
-export function lyricsTargets(primaryApi: string, accountApi: string, backend: unknown, token: string | null, localPreview = false) {
-  if (localPreview) return [{ baseUrl: primaryApi, token: backend === "hyprr" ? null : token }];
-  if (!token) return [];
-  if (backend === "hyprr") return accountApi && accountApi !== primaryApi ? [{ baseUrl: accountApi, token }] : [];
-  return [{ baseUrl: primaryApi, token }];
+export function lyricsTargets(primaryApi: string, accountApi: string, backend: unknown, token: string | null, localPreview = false, publicCatalog?: string): LyricsTarget[] {
+  const targets: LyricsTarget[] = [];
+  if (publicCatalog) targets.push({ baseUrl: publicCatalog, token: null, publicCatalog: true });
+  if (localPreview) targets.push({ baseUrl: primaryApi, token: backend === "hyprr" ? null : token });
+  else if (token && backend !== "hyprr") targets.push({ baseUrl: primaryApi, token });
+  else if (token && accountApi && accountApi !== primaryApi) targets.push({ baseUrl: accountApi, token });
+  return targets;
 }
 
 /** Keep all providers, even if a server disconnects after its first result. */

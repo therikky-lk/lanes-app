@@ -86,7 +86,7 @@ export async function matchWithRetry(track: ClientImportedTrack, signal?: AbortS
   }
 }
 
-async function matchPlaylist(playlist: ClientImportedPlaylist, options: RunImportOptions): Promise<ClientImportOutcome> {
+export async function matchPlaylist(playlist: ClientImportedPlaylist, options: RunImportOptions): Promise<ClientImportOutcome> {
   const total = playlist.tracks.length;
   const result: ImportResult = { total, imported: 0, skipped: 0 };
   const header = { title: playlist.title, description: playlist.description };

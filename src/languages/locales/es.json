@@ -617,6 +617,7 @@
     "reorder_track": "Reordenar canción"
   },
   "playlist": {
+    "likes_downloaded": "{done} de {total} descargadas",
     "select_tracks": "Seleccionar canciones",
     "playlist": "Lista de reproducción",
     "liked_songs": "Canciones que te gustan",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Exporta tus canciones favoritas o una lista en Exportify e importa aquí el CSV.",
+      "unavailable": "No se puede iniciar sesión en Spotify en esta plataforma.",
+      "waiting": "Comprobando la sesión de Spotify…",
+      "account_error": "No se pudo actualizar la sesión de Spotify. Inténtalo de nuevo.",
+      "import_liked": "Importar canciones favoritas",
+      "hide_imported": "Ocultar las importaciones de Spotify en la biblioteca",
+      "profile_unavailable": "Has iniciado sesión, pero Spotify no envió los datos del perfil.",
+      "rate_limit": "Spotify está limitando las solicitudes. Vuelve a intentarlo después de las {time}."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Importa las canciones que te gustaron en Yandex Music.",

@@ -3,6 +3,7 @@ import { handleTrusted, onTrusted } from "./ipc-guard.js";
 // its own persistent session; requests that need the login go through that
 // session so its cookies are attached (the page itself never sees them).
 import { BrowserWindow, session } from "electron";
+import { spotifyOAuthHasLogin, spotifyOAuthLogin, spotifyOAuthLogout, spotifyOAuthRead } from "./spotify-oauth.js";
 
 const PARTITION = "persist:lane-spotify";
 const ALLOWED_HOSTS = new Set(["open.spotify.com", "api.spotify.com", "clienttoken.spotify.com", "api-partner.spotify.com"]);
@@ -45,7 +46,14 @@ function login(parent: BrowserWindow | null): Promise<boolean> {
   });
 }
 
-export function registerSpotifyAccount(getWindow: () => BrowserWindow | null): void {
+export function registerSpotifyAccount(getWindow: () => BrowserWindow | null, oauthEnabled = false): void {
+  if (oauthEnabled) {
+    handleTrusted("spotify:has-login", spotifyOAuthHasLogin);
+    handleTrusted("spotify:login", spotifyOAuthLogin);
+    handleTrusted("spotify:logout", spotifyOAuthLogout);
+    handleTrusted("spotify:oauth-read", (_event, target) => spotifyOAuthRead(target));
+    return;
+  }
   handleTrusted("spotify:has-login", () => hasLogin());
   handleTrusted("spotify:login", () => login(getWindow()));
   handleTrusted("spotify:logout", async () => {
@@ -62,7 +70,7 @@ export function registerSpotifyAccount(getWindow: () => BrowserWindow | null): v
         headers: request.headers,
         body: request.body,
       });
-      return { status: response.status, body: await response.text() };
+      return { status: response.status, body: await response.text(), retryAfter: response.headers.get("retry-after") };
     },
   );
 }

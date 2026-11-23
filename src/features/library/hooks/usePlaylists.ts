@@ -105,9 +105,10 @@ export function registerImportedPlaylist(
 ) {
   if (!owner || owner !== playlistLibraryOwner()) return;
   const coverUrls = [...new Set(tracks.map(track => track.cover?.url ? mediaUrl(track.cover.url) : "").filter(Boolean))].slice(0, 4);
+  const playlistCover = getPlaylistCover(playlist.id, playlist.description);
   const summary: LibraryPlaylistSummary = {
-    ...playlist, trackCount: tracks.length, coverUrl: getPlaylistCover(playlist.id, playlist.description) || coverUrls[0] || "",
-    coverUrls, revision: playlist.revision ?? 0,
+    ...playlist, trackCount: tracks.length, coverUrl: playlistCover || coverUrls[0] || "",
+    coverUrls: playlistCover ? [playlistCover] : coverUrls, revision: playlist.revision ?? 0,
   };
   confirmedImports.set(playlist.id, { owner, playlist: summary, expires: Date.now() + 5 * 60_000 });
   const playlists = withConfirmedImports(cache.playlists.filter(item => item.id !== playlist.id), owner);

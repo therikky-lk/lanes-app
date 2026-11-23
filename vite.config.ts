@@ -14,6 +14,10 @@ export default defineConfig(({ command, mode }) => {
 
   // `LANE_TARGET=android vite build`: renderer only, for the Capacitor app
   const android = process.env.LANE_TARGET === "android";
+  const securityTest = mode === "security-test";
+  const electronBuild = securityTest
+    ? { outDir: ".lane-security-build/dist-electron", emptyOutDir: true }
+    : {};
 
   return {
   base: android ? "./" : undefined,
@@ -27,11 +31,19 @@ export default defineConfig(({ command, mode }) => {
     !android && electron({
       main: {
         entry: "electron/main.ts",
+        vite: {
+          define: { __LANE_SECURITY_TEST__: JSON.stringify(securityTest) },
+          build: electronBuild,
+        },
       },
       preload: {
         input: "electron/preload.ts",
         vite: {
+          define: { __LANE_SECURITY_TEST__: JSON.stringify(securityTest) },
           build: {
+            ...electronBuild,
+            // Main and preload share the directory; do not erase either output.
+            ...(securityTest ? { emptyOutDir: false } : {}),
             rollupOptions: {
               output: {
                 format: "cjs",
@@ -87,7 +99,7 @@ export default defineConfig(({ command, mode }) => {
     strictPort: true,
   },
   build: {
-    outDir: "dist",
+    outDir: securityTest ? ".lane-security-build/dist" : "dist",
     emptyOutDir: true,
   },
   };

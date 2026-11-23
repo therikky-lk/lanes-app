@@ -13,7 +13,7 @@ import {
   RepeatOne,
   Shuffle,
 } from "@solar-icons/react";
-import { HeartFill, HeartLine, Music2Fill } from "@mingcute/react";
+import { CheckLine, HeartFill, HeartLine, Music2Fill } from "@mingcute/react";
 import {
   PlayerMorphIcon,
   ICON_PLAY,
@@ -26,7 +26,6 @@ import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "
 import { ArtistLink } from "@/features/artist";
 import { useCoverReady, CoverImage, preloadCoverArt } from "@/features/covers";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
-import SourceBadge from "@/shared/ui/SourceBadge";
 import { VolumePicker } from "./VolumePicker";
 import { TimelineSlider } from "./TimelineSlider";
 
@@ -74,7 +73,7 @@ interface PlayerUiElementsProps {
 function PlaybackTimeline({ width }: { width: string }) {
   const state = usePlayerStore(useShallow(s => ({ positionMs: s.positionMs, durationMs: s.durationMs, fallbackDuration: s.currentTrack?.durationMs ?? 0 })));
   return <TimelineSlider positionMs={state.positionMs} durationMs={state.durationMs > 0 ? state.durationMs : state.fallbackDuration}
-    onSeek={playerEngine.seek.bind(playerEngine)} showTime size="lg" className="text-[12px]" style={{ width }} />;
+    onSeek={playerEngine.seek.bind(playerEngine)} showTime layout="stacked" size="lg" fillColor="#fff" style={{ width }} />;
 }
 
 export const PlayerUiElements = memo(function PlayerUiElements({
@@ -195,43 +194,19 @@ export const PlayerUiElements = memo(function PlayerUiElements({
 
   const { t } = useTranslation();
 
-  const S = isMobile ? "min(84vw, 44vh)" : "clamp(300px, min(36vw, 52vh), 460px)";
-  const controlsWidth = `min(calc(${S} + 72px), 92vw)`;
-  const heartLayerClass = `absolute inset-0 flex items-center ${isMobile ? "justify-end" : "justify-center"}`;
-  const heartSize = isMobile ? 24 : 30;
+  const S = isMobile
+    ? "min(calc(100cqw - 44px), 45dvh, 460px)"
+    : "min(calc(100cqw - 44px), 54dvh, 460px)";
   const likeButton = (
     <button
       type="button"
       aria-label={isLiked ? t("common.unlike") : t("common.like")}
       aria-pressed={isLiked}
       disabled={!track}
-      className={`inline-flex shrink-0 rounded-full border-none cursor-pointer transition-[opacity,transform,background-color] duration-200 ease-out active:scale-[0.92] ${
-        isMobile
-          ? "relative h-[44px] w-[44px] bg-transparent opacity-95 disabled:opacity-40"
-          : "pointer-events-none absolute inset-0 z-10 m-auto h-[72px] w-[72px] bg-black/55 opacity-0 backdrop-blur-[2px] hover:bg-black/65 group-hover/cover:pointer-events-auto group-hover/cover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
-      } ${isLiked ? "text-[#ff3b5c]" : "text-white/85 hover:text-white"}`}
+      className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-[12px] border-0 bg-white/15 text-white transition hover:bg-white/25 active:scale-95 disabled:opacity-40"
       onClick={handleLikeToggle}
     >
-      <motion.span
-        initial={false}
-        animate={{ scale: isLiked ? 0.85 : 1, opacity: isLiked ? 0 : 1 }}
-        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-        className={heartLayerClass}
-      >
-        <HeartLine size={heartSize} />
-      </motion.span>
-      <motion.span
-        initial={false}
-        animate={{ scale: isLiked ? 1 : 0.75, opacity: isLiked ? 1 : 0 }}
-        transition={
-          isLiked
-            ? { type: "spring", stiffness: 500, damping: 30, mass: 0.6 }
-            : { duration: 0.16, ease: "easeOut" }
-        }
-        className={heartLayerClass}
-      >
-        <HeartFill size={heartSize} />
-      </motion.span>
+      {isLiked ? <CheckLine size={20} /> : <HeartLine size={20} />}
     </button>
   );
 
@@ -285,7 +260,6 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             </motion.div>;
           })}
         </motion.div>
-        {!isMobile && track && likeButton}
         {/* double-tap burst (phones) */}
         <AnimatePresence>
           {burst > 0 && (
@@ -304,8 +278,8 @@ export const PlayerUiElements = memo(function PlayerUiElements({
       </div>
 
       {/* Track info */}
-      <div style={{ width: isMobile ? S : controlsWidth }} className="mt-[4px] flex min-w-0 items-center gap-3">
-        <div className={`flex min-w-0 flex-1 flex-col gap-[2px] ${isMobile ? "text-left" : "items-center text-center"}`}>
+      <div style={{ width: S }} className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-[2px] text-left">
           <p
             className="m-0 text-[22px] leading-[1.2] font-[650] text-white flex items-center gap-[6px] max-w-full"
             style={{ letterSpacing: "-0.03em" }}
@@ -313,7 +287,6 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             <span className="min-w-0 truncate">{trackTitle}</span>
           </p>
           <p className="m-0 mt-[2px] flex items-center gap-[5px] text-[15px] text-white/65 leading-snug max-w-full overflow-hidden">
-            {track && <SourceBadge trackId={track.id} size={15} />}
             <ArtistAvatars name={trackArtists} artistId={track?.artistId} artistList={track?.artistList} />
             <ArtistLink
               name={trackArtists}
@@ -331,14 +304,14 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             )}
           </p>
         </div>
-        {isMobile && likeButton}
+        {track && likeButton}
       </div>
 
       {/* Timeline (Compact, with smooth spring pill, no thumb) */}
-      <PlaybackTimeline width={controlsWidth} />
+      <PlaybackTimeline width={S} />
 
       {/* Primary Playback Controls */}
-      <div className={`flex items-center ${isMobile ? "gap-[clamp(8px,3.5vw,16px)]" : "gap-[26px]"}`}>
+      <div className="flex items-center gap-[clamp(5px,2.5cqw,15px)]">
         <button
           type="button"
           aria-label={player.shuffle ? t("player.shuffle_on") : t("player.shuffle_off")}
@@ -363,7 +336,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           type="button"
           aria-label={player.status === "playing" ? t("common.pause") : t("common.play")}
           onClick={() => void playerEngine.togglePlayPause()}
-          className="inline-flex h-[60px] w-[60px] items-center justify-center rounded-full bg-white text-black transition-all duration-150 ease-out hover:scale-[1.05] active:scale-[0.94] shrink-0 border-none cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.35)]"
+          className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-white transition hover:scale-110 active:scale-95"
         >
           <span className="flex scale-[1.35]">
             <PlayPauseIcon status={player.status} />
@@ -402,7 +375,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
       </div>
 
       {/* Volume (Compact smooth slider, size sm) */}
-      {!isMobile && <VolumePicker className="mt-[2px]" size="md" style={{ width: `calc(${S} * 0.62)` }} />}
+      <VolumePicker size="md" showThumb={false} trackClassName="!h-[6px]" fillColor="#fff" style={{ width: `calc(${S} * 0.60)` }} />
     </>
   );
 });

@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User3Line, CloseLine, Search2Line, CloseCircleFill, DiscordFill, KeyboardLine, DeviceLine, YoutubeFill, RightLine } from "@mingcute/react";
 import { ConnectTab } from "./tabs/ConnectTab";
+import { SpotifyTab } from "./tabs/SpotifyTab";
 import {
   Play,
   Palette,
@@ -15,6 +16,7 @@ import {
 } from "@solar-icons/react";
 import Dialog from "@/shared/ui/Dialog";
 import YandexMusicIcon from "@/shared/ui/YandexMusicIcon";
+import SpotifyIcon from "@/shared/ui/SpotifyIcon";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { isNativeApp } from "@/shared/platform/native";
 import { ArrowLeftLine } from "@mingcute/react";
@@ -34,7 +36,7 @@ import {
   YandexMusicTab,
 } from "./tabs";
 
-type TabId = "Profile" | "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Appearance" | "Audio" | "Storage" | "About";
+type TabId = "Profile" | "Playback" | "Connect" | "Shortcuts" | "Overlay" | "Discord" | "Youtube" | "YandexMusic" | "Spotify" | "Appearance" | "Audio" | "Storage" | "About";
 
 const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Profile: User3Line,
@@ -45,6 +47,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<any>> = {
   Discord: DiscordFill,
   Youtube: YoutubeFill,
   YandexMusic: (props) => <YandexMusicIcon {...props} monochrome />,
+  Spotify: SpotifyIcon,
   Appearance: Palette,
   Audio: HeadphonesRound,
   Storage: Database,
@@ -56,7 +59,7 @@ const DESKTOP_ONLY_TABS = new Set<TabId>(["Shortcuts", "Overlay", "Discord"]);
 const TAB_GROUPS: { labelKey: "player" | "interface" | "integrations" | "application"; ids: TabId[] }[] = [
   { labelKey: "player", ids: ["Playback", "Audio", "Shortcuts"] },
   { labelKey: "interface", ids: ["Appearance", "Overlay"] },
-  { labelKey: "integrations", ids: ["Youtube", "YandexMusic", "Connect", "Discord"] },
+  { labelKey: "integrations", ids: ["Youtube", "YandexMusic", "Spotify", "Connect", "Discord"] },
   { labelKey: "application", ids: ["Profile", "Storage", "About"] },
 ].map((group) => ({
   ...group,
@@ -174,6 +177,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     Discord: t("settings.tabs.discord") || "Discord RPC",
     Youtube: t("settings.tabs.youtube") || "YouTube",
     YandexMusic: t("settings.yandex_music.title"),
+    Spotify: t("settings.spotify.title"),
     Appearance: t("settings.tabs.appearance"),
     Audio: t("settings.tabs.audio"),
     Storage: t("settings.tabs.storage"),
@@ -189,6 +193,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
     Discord: t("settings.discord.description") || "Show what you're listening to on Discord with artwork, artist badge and progress bar.",
     Youtube: t("settings.youtube.description") || "Sign in to your YouTube account to prevent playback errors.",
     YandexMusic: t("settings.yandex_music.description"),
+    Spotify: t("settings.spotify.description"),
     Appearance: t("settings.theme.description"),
     Audio: t("settings.audio.description"),
     Storage: t("settings.storage.description"),
@@ -209,6 +214,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
       Discord: "settings.tabs.discord",
       Youtube: "settings.tabs.youtube",
       YandexMusic: "settings.yandex_music.title",
+      Spotify: "settings.spotify.title",
       Appearance: "settings.theme.title",
       Audio: "settings.tabs.audio",
       Storage: "settings.tabs.storage",
@@ -224,6 +230,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
       Discord: "settings.discord.description",
       Youtube: "settings.youtube.description",
       YandexMusic: "settings.yandex_music.description",
+      Spotify: "settings.spotify.description",
       Appearance: "settings.theme.description",
       Audio: "settings.audio.description",
       Storage: "settings.storage.description",
@@ -472,6 +479,7 @@ export default function SettingsModal({ page = false }: { page?: boolean }) {
             {activeTab === "Discord" && <DiscordTab searchQuery={searchQuery} />}
             {activeTab === "Youtube" && <YoutubeTab searchQuery={searchQuery} />}
             {activeTab === "YandexMusic" && <YandexMusicTab />}
+            {activeTab === "Spotify" && <SpotifyTab />}
             {activeTab === "Appearance" && (
               <div className="flex flex-col gap-[28px]">
                 <AppearanceTab searchQuery={searchQuery} />

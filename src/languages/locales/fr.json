@@ -617,6 +617,7 @@
     "reorder_track": "Réorganiser le titre"
   },
   "playlist": {
+    "likes_downloaded": "{done} sur {total} téléchargés",
     "select_tracks": "Sélectionner des titres",
     "playlist": "Liste de lecture",
     "liked_songs": "Titres aimés",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Exportez vos titres favoris ou une playlist avec Exportify, puis importez le CSV ici.",
+      "unavailable": "La connexion à Spotify n’est pas disponible sur cette plateforme.",
+      "waiting": "Vérification de la connexion à Spotify…",
+      "account_error": "Impossible de mettre à jour la connexion à Spotify. Réessayez.",
+      "import_liked": "Importer les titres favoris",
+      "hide_imported": "Masquer les imports Spotify dans la bibliothèque",
+      "profile_unavailable": "Vous êtes connecté, mais Spotify n’a pas envoyé les données du profil.",
+      "rate_limit": "Spotify limite les requêtes. Réessayez après {time}."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Importez les titres que vous avez aimés dans Yandex Music.",

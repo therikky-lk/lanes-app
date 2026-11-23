@@ -5,11 +5,9 @@ import { useVisualQualityStore, visualEffects } from "../store/visualQualityStor
 import { usePlayerStore } from "../store/playerStore";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
-import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
 import { applyLyricsLatency, lyricsOutputLatencyMs } from "@/features/lyrics/engine/lyricsLatency";
-import { AddLine, Edit2Line } from "@mingcute/react";
-import { LuCaptions, LuMessageCircle } from "react-icons/lu";
+import { LuCaptions } from "react-icons/lu";
 import {
   useCallback,
   useEffect,
@@ -47,8 +45,6 @@ import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import FullscreenQueueSheet from "./FullscreenQueueSheet";
-import TrackComments, { supportsTrackComments, useTrackCommentsAccount } from "./TrackComments";
-import type { Track } from "@/shared/types";
 
 const BRACCATO_TAG = "braccato-lyrics";
 
@@ -345,9 +341,7 @@ export function FullscreenPlayer({
   onClose,
 }: FullscreenPlayerProps) {
   const { t } = useTranslation();
-  const commentsAccount = useTrackCommentsAccount();
   const player = usePlayerStore(useShallow(s => ({ currentTrack: s.currentTrack, queue: s.queue, currentIndex: s.currentIndex, isEqEnabled: s.isEqEnabled, eqGains: s.eqGains })));
-  const [customLyricsOpen, setCustomLyricsOpen] = useState(false);
   const isMobile = useIsMobile();
   const fullscreenRoot = useRef<HTMLDivElement>(null);
   const toolbar = useRef<HTMLDivElement>(null);
@@ -389,13 +383,6 @@ export function FullscreenPlayer({
   const [speedOpen, setSpeedOpen] = useState(false);
   const [audioSheet, setAudioSheet] = useState<"speed" | "eq">("speed");
   const [queueOpen, setQueueOpen] = useState(false);
-  const [commentsTrack, setCommentsTrack] = useState<Track | null>(null);
-  const [commentsVisible, setCommentsVisible] = useState(false);
-  const commentsButton = useRef<HTMLButtonElement>(null);
-  const closeDiscussionSheet = () => setCommentsTrack(null);
-  useEffect(() => {
-    if (!commentsAccount) setCommentsTrack(null);
-  }, [commentsAccount]);
   const speedSheetDragControls = useDragControls();
   const speedChanged = usePlayerStore(
     (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
@@ -485,7 +472,7 @@ export function FullscreenPlayer({
           )}
         </AnimatePresence>
         {effectsReady && effects.liveBackground ? (
-           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen || commentsVisible || customLyricsOpen)} onLoad={onKawarpLoad} onError={onError} />
+           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen)} onLoad={onKawarpLoad} onError={onError} />
         ) : null}
       </div>
 
@@ -498,7 +485,7 @@ export function FullscreenPlayer({
         className={`lane-fs-content absolute inset-0 z-10 flex ${isMobile ? "flex-col" : ""}`}
         style={isMobile ? { paddingTop: "calc(var(--lane-safe-top, 0px) + 48px)", paddingBottom: "var(--lane-safe-bottom, 0px)" } : undefined}
       >
-        <div className={`flex-1 flex flex-col items-center justify-center gap-5 ${isMobile && mobileLyrics ? "hidden" : ""}`}>
+        <div className={`[container-type:inline-size] min-w-0 flex-1 flex flex-col items-center justify-center gap-[clamp(10px,3dvh,24px)] ${isMobile && mobileLyrics ? "hidden" : ""}`}>
           <PlayerUiElements onClose={onClose} />
         </div>
 
@@ -595,27 +582,12 @@ export function FullscreenPlayer({
                   >
                     {lyricsError || t("player.no_lyrics_found")}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setCustomLyricsOpen(true)}
-                    className="mt-[4px] inline-flex h-[34px] items-center gap-[6px] rounded-lg border-0 bg-white/10 px-[14px] text-[13px] font-[500] text-white/90 backdrop-blur-md hover:bg-white/20 active:scale-[0.97] transition-all cursor-pointer"
-                  >
-                    <AddLine size={15} />
-                    {t("player.custom_lyrics_add") || "Add your lyrics"}
-                  </button>
                 </div>
               </motion.div>
             ) : null}
           </AnimatePresence>
         </div>
       </div>
-
-      <CustomLyricsDialog
-        open={customLyricsOpen}
-        onOpenChange={setCustomLyricsOpen}
-        trackId={player.currentTrack?.id ?? null}
-        trackTitle={player.currentTrack?.title}
-      />
 
       <AnimatePresence>
         {isMobile && speedOpen && (
@@ -715,12 +687,6 @@ export function FullscreenPlayer({
         )}
       </AnimatePresence>
 
-      <AnimatePresence initial={false} onExitComplete={() => {
-        setCommentsVisible(false);
-        commentsButton.current?.focus({ preventScroll: true });
-      }}>
-        {commentsAccount && commentsTrack && <TrackComments key="track-comments" track={commentsTrack} onClose={closeDiscussionSheet} onOpenProfile={() => { closeDiscussionSheet(); onClose(); }} />}
-      </AnimatePresence>
 
       <button
         type="button"
@@ -742,23 +708,6 @@ export function FullscreenPlayer({
       >
         {!isMobile && <VisualQualityPicker />}
         {showProviderIsland && (!isMobile || mobileLyrics) && <LyricsProviderIsland />}
-        {commentsAccount && player.currentTrack && supportsTrackComments(player.currentTrack.id) && (
-          <button
-            ref={commentsButton}
-            type="button"
-            onClick={() => {
-              setCommentsVisible(true);
-              setCommentsTrack(player.currentTrack);
-            }}
-            aria-label={t("track_comments.title")}
-            title={t("track_comments.title")}
-            aria-haspopup="dialog"
-            aria-expanded={!!commentsTrack}
-            className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl active:scale-[0.92] cursor-pointer"
-          >
-            <LuMessageCircle size={18} />
-          </button>
-        )}
         {isMobile && (
           <button
             type="button"
@@ -768,17 +717,6 @@ export function FullscreenPlayer({
             className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border-none backdrop-blur-xl active:scale-[0.92] transition-[transform,background-color] duration-150 cursor-pointer ${queueOpen ? "bg-white text-black" : "bg-black/45 text-white/85"}`}
           >
             <Sidebar size={18} weight="Bold" />
-          </button>
-        )}
-        {hasLyrics && !isMobile && (
-          <button
-            type="button"
-            onClick={() => setCustomLyricsOpen(true)}
-            title={t("player.custom_lyrics_edit") || "Edit lyrics"}
-            aria-label={t("player.custom_lyrics_edit") || "Edit lyrics"}
-            className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-lg border-none bg-black/50 text-white/70 backdrop-blur-md cursor-pointer"
-          >
-            <Edit2Line size={16} />
           </button>
         )}
         {isMobile && (

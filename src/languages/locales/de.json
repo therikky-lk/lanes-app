@@ -617,6 +617,7 @@
     "reorder_track": "Titel verschieben"
   },
   "playlist": {
+    "likes_downloaded": "{done} von {total} heruntergeladen",
     "select_tracks": "Titel auswählen",
     "playlist": "Wiedergabeliste",
     "liked_songs": "Lieblingstitel",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Exportiere Lieblingssongs oder eine Playlist mit Exportify und importiere hier die CSV-Datei.",
+      "unavailable": "Die Spotify-Anmeldung ist auf dieser Plattform nicht verfügbar.",
+      "waiting": "Spotify-Anmeldung wird geprüft…",
+      "account_error": "Die Spotify-Anmeldung konnte nicht aktualisiert werden. Versuche es erneut.",
+      "import_liked": "Lieblingssongs importieren",
+      "hide_imported": "Spotify-Importe in der Mediathek ausblenden",
+      "profile_unavailable": "Du bist angemeldet, aber Spotify hat keine Profildaten gesendet.",
+      "rate_limit": "Spotify begrenzt Anfragen. Versuche es nach {time} erneut."
+    },
     "yandex_music": {
       "title": "Yandex Music",
       "description": "Importiere deine Lieblingstitel aus Yandex Music.",

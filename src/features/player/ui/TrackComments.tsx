@@ -79,7 +79,7 @@ export default function TrackComments({ track, onClose, onOpenProfile }: { track
   useEffect(() => { if (!isMobile) closeButton.current?.focus({ preventScroll: true }); }, [isMobile]);
 
   if (!isMobile) return (
-    <div className="absolute inset-0 z-50 flex justify-end overflow-hidden" data-no-sheet-drag>
+    <div className="absolute inset-x-0 bottom-0 top-[var(--lane-fs-chrome-height,36px)] z-50 flex justify-end overflow-hidden" data-no-sheet-drag>
       <motion.div className="absolute inset-0 bg-black/20" onClick={onClose} aria-hidden="true"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={slide} />
       <motion.div role="dialog" aria-modal="true" aria-labelledby="track-comments-title"

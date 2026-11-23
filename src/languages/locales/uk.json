@@ -617,6 +617,7 @@
     "reorder_track": "Перетягнути трек"
   },
   "playlist": {
+    "likes_downloaded": "Завантажено {done} з {total}",
     "select_tracks": "Вибрати треки",
     "playlist": "Плейліст",
     "liked_songs": "Вподобані",
@@ -670,6 +671,17 @@
     }
   },
   "settings": {
+    "spotify": {
+      "title": "Spotify",
+      "description": "Експортуйте улюблені треки або плейліст в Exportify та імпортуйте сюди CSV-файл.",
+      "unavailable": "Вхід у Spotify недоступний на цій платформі.",
+      "waiting": "Перевіряємо вхід у Spotify…",
+      "account_error": "Не вдалося оновити стан входу в Spotify. Спробуйте ще раз.",
+      "import_liked": "Імпортувати улюблені треки",
+      "hide_imported": "Приховати імпорт зі Spotify в медіатеці",
+      "profile_unavailable": "Вхід виконано, але Spotify не надав даних профілю.",
+      "rate_limit": "Spotify обмежив запити. Спробуйте після {time}."
+    },
     "yandex_music": {
       "title": "Яндекс Музика",
       "description": "Імпортуйте вподобані треки з Яндекс Музики.",
