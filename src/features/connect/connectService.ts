@@ -693,7 +693,9 @@ async function takeOver(message: Extract<Message, { t: "takeover" }>): Promise<v
 
 async function onRelayMessage(text: string): Promise<void> {
   if (!keys) return;
+  const generation = connectGeneration;
   const message = await open<Message>(keys.key, text);
+  if (generation !== connectGeneration) return;
   if (!message || !message.from || message.from.id === useConnectStore.getState().me.id) return;
   observe(message.clock);
   if (message.t === "state") observe(message.state.epoch);
@@ -789,6 +791,7 @@ function accountSecret(): string | null {
 }
 
 const MANUAL_CODE_KEY = "lane_connect_code";
+let connectGeneration = 0;
 
 /** a code typed on both devices wins over the account channel */
 export function manualCode(): string | null {
@@ -801,17 +804,26 @@ export async function setManualCode(code: string | null): Promise<void> {
 }
 
 export async function startConnect(): Promise<void> {
+  const manual = manualCode();
+  const code = manual ? `lane-code:${manual}` : accountSecret();
+  if (relay && useConnectStore.getState().code === code) return;
   stopConnect(false);
   if (typeof crypto === "undefined" || !crypto.subtle) {
     useConnectStore.setState({ code: null, online: false, fingerprint: null, devices: {} });
     diag("connect: unavailable because this page does not have Web Crypto (HTTPS required)");
     return;
   }
-  const manual = manualCode();
-  const code = manual ? `lane-code:${manual}` : accountSecret();
-  useConnectStore.setState({ code });
+  useConnectStore.setState({ code, fingerprint: null });
   if (!code) return;
-  keys = await deriveKeys(code);
+  const generation = connectGeneration;
+  try {
+    const derived = await deriveKeys(code);
+    if (generation !== connectGeneration) return;
+    keys = derived;
+  } catch (error) {
+    if (generation === connectGeneration) diag(`connect: could not initialize session (${String(error)})`);
+    return;
+  }
   useConnectStore.setState({ fingerprint: keys.topic.slice(5, 11) });
   relay = openRelay(
     keys.topic,
@@ -846,6 +858,7 @@ export async function startConnect(): Promise<void> {
 }
 
 export function stopConnect(sayBye = true): void {
+  connectGeneration += 1;
   if (sayBye && relay) void send({ t: "bye", from: me() });
   relay?.close();
   relay = null;
@@ -867,6 +880,8 @@ export function stopConnect(sayBye = true): void {
   if (pendingStateTimer) clearTimeout(pendingStateTimer);
   pendingStateTimer = null;
   pendingState = null;
+  lastStateSentAt = 0;
+  rateLimitedUntil = 0;
   lastSendError = "";
   lastSeq.clear();
   lastBroadcast = "";

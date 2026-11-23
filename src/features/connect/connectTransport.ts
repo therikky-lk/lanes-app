@@ -7,6 +7,8 @@ import { diag } from "@/shared/platform/diag";
 
 export const RELAYS = ["https://ntfy.sh", "https://ntfy.envs.net"];
 const POLL_MS = 1500;
+// ntfy normally sends a keepalive approximately every 45 seconds.
+const SOCKET_IDLE_MS = 70_000;
 
 export interface Relay {
   publish(text: string): Promise<void>;
@@ -39,7 +41,21 @@ function browserSubscribe(
   let failures = 0;
   let pollFailures = 0;
   let pollController: AbortController | null = null;
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastSocketActivity = 0;
   let since = String(Math.floor(Date.now() / 1000));
+
+  const clearIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = null;
+  };
+
+  const resetSocket = () => {
+    clearIdle();
+    const ws = socket;
+    socket = null;
+    ws?.close();
+  };
 
   const handle = (data: NtfyMessage) => {
     if (data.event && data.event !== "message") return;
@@ -60,10 +76,11 @@ function browserSubscribe(
     try {
       const res = await fetch(`${relay}/${topic}/json?poll=1&since=${encodeURIComponent(since)}`, { signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      if (closed || !networkOnline()) return;
+      const body = await res.text();
+      if (closed || controller.signal.aborted || !networkOnline()) return;
       pollFailures = 0;
       if (!socketOpen()) status(true);
-      for (const line of (await res.text()).split("\n")) {
+      for (const line of body.split("\n")) {
         if (!line.trim()) continue;
         try {
           handle(JSON.parse(line) as NtfyMessage);
@@ -75,8 +92,8 @@ function browserSubscribe(
     } finally {
       clearTimeout(timeout);
       if (pollController === controller) pollController = null;
+      schedulePoll();
     }
-    schedulePoll();
   };
 
   const schedulePoll = () => {
@@ -97,13 +114,28 @@ function browserSubscribe(
     }
     socket = ws;
     let opened = false;
+    const touch = () => {
+      clearIdle();
+      lastSocketActivity = Date.now();
+      idleTimer = setTimeout(() => {
+        if (socket !== ws) return;
+        resetSocket();
+        status(false, "socket idle");
+        reconnect();
+      }, SOCKET_IDLE_MS);
+    };
     // a socket stuck connecting counts as a failure
     const guard = setTimeout(() => {
-      if (!opened && socket === ws) ws.close();
+      if (!opened && socket === ws) {
+        resetSocket();
+        reconnect();
+      }
     }, 6000);
     ws.onopen = () => {
       opened = true;
       clearTimeout(guard);
+      if (closed || socket !== ws) return;
+      touch();
       failures = 0;
       pollFailures = 0;
       pollController?.abort();
@@ -112,6 +144,8 @@ function browserSubscribe(
       status(true);
     };
     ws.onmessage = (event) => {
+      if (closed || socket !== ws) return;
+      touch();
       try {
         handle(JSON.parse(String(event.data)) as NtfyMessage);
       } catch {}
@@ -120,6 +154,7 @@ function browserSubscribe(
     ws.onclose = () => {
       clearTimeout(guard);
       if (socket !== ws) return;
+      clearIdle();
       socket = null;
       if (closed) return;
       if (opened) status(false, "socket closed");
@@ -138,18 +173,22 @@ function browserSubscribe(
   };
 
   // phones suspend sockets in the background: reconnect as soon as we're back
-  const onVisible = () => {
-    if (closed || !networkOnline() || document.visibilityState !== "visible") return;
-    if (!socketOpen()) {
+  const wake = () => {
+    if (closed || !networkOnline()) return;
+    if (!socketOpen() || Date.now() - lastSocketActivity >= SOCKET_IDLE_MS) {
+      const wasOpen = socketOpen();
       if (retry) clearTimeout(retry);
       retry = null;
-      socket?.close();
-      socket = null;
+      resetSocket();
+      if (wasOpen) status(false, "socket idle");
       failures = 0;
       pollFailures = 0;
       void poll();
       connect();
     }
+  };
+  const onVisible = () => {
+    if (document.visibilityState === "visible") wake();
   };
   const onOffline = () => {
     if (retry) clearTimeout(retry);
@@ -157,12 +196,11 @@ function browserSubscribe(
     if (pollTimer) clearTimeout(pollTimer);
     pollTimer = null;
     pollController?.abort();
-    socket?.close();
-    socket = null;
+    resetSocket();
     if (!closed) status(false, "network offline");
   };
   document.addEventListener("visibilitychange", onVisible);
-  window.addEventListener("online", onVisible);
+  window.addEventListener("online", wake);
   window.addEventListener("offline", onOffline);
 
   connect();
@@ -171,14 +209,12 @@ function browserSubscribe(
     close() {
       closed = true;
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("online", onVisible);
+      window.removeEventListener("online", wake);
       window.removeEventListener("offline", onOffline);
       pollController?.abort();
       if (retry) clearTimeout(retry);
       if (pollTimer) clearTimeout(pollTimer);
-      const ws = socket;
-      socket = null;
-      ws?.close();
+      resetSocket();
     },
   };
 }
@@ -192,12 +228,13 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
 
   const deliver = (text: string) => {
     // the same message comes from every relay: handle it once
-    if (seen.has(text)) return;
+    if (closed || seen.has(text)) return;
     seen.add(text);
     if (seen.size > 300) seen.delete(seen.values().next().value as string);
     onMessage(text);
   };
   const status = (relay: string, isOnline: boolean, error?: string) => {
+    if (closed) return;
     const was = online.get(relay);
     online.set(relay, isOnline);
     if (was !== isOnline) diag(`connect: ${relay.replace("https://", "")} ${isOnline ? "connected" : `unreachable${error ? ` (${error})` : ""}`}`);
@@ -246,11 +283,11 @@ export function openRelay(topic: string, onMessage: (text: string) => void, onSt
         throw lastError instanceof Error ? lastError : new Error(String(lastError));
       };
       const available = RELAYS.filter(relay => Date.now() >= (cooldowns.get(relay) ?? 0));
-      const reachable = available.filter(relay => online.get(relay));
       if (available.length === 0) throw new Error("HTTP 429 (relays cooling down)");
       try {
-        // One delivered copy is enough; a failed mirror must not delay controls.
-        await Promise.any((reachable.length ? reachable : available).map(publishOne));
+        // A peer may only receive from a different relay than this device.
+        // Try every available mirror, but don't wait for a slow one to succeed.
+        await Promise.any(available.map(publishOne));
       } catch (error) {
         const reason = error instanceof AggregateError ? error.errors[0] : error;
         throw reason instanceof Error ? reason : new Error(String(reason));

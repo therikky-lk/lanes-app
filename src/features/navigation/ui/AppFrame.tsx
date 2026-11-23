@@ -886,8 +886,8 @@ export default function AppFrame({ children }: AppFrameProps) {
   const connectUserId = useAuthStore((s) => s.user?.id ?? null);
   useEffect(() => {
     void startConnect();
-    return () => stopConnect(false);
   }, [connectUserId]);
+  useEffect(() => () => stopConnect(false), []);
   useEffect(() => {
     document.documentElement.classList.toggle("lane-mobile", isMobile);
   }, [isMobile]);

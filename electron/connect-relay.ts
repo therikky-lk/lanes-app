@@ -90,7 +90,9 @@ export function registerConnectRelay(): void {
   });
   handleTrusted("connect:publish", async (_event, request: { relay: string; topic: string; text: string }) => {
     if (!ALLOWED_RELAYS.has(request.relay) || !TOPIC.test(request.topic)) throw new Error("not allowed");
-    const res = await fetch(`${request.relay}/${request.topic}`, { method: "POST", body: request.text });
+    const res = await fetch(`${request.relay}/${request.topic}`, {
+      method: "POST", body: request.text, signal: AbortSignal.timeout(6000),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return true;
   });
