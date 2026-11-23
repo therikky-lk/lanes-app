@@ -649,6 +649,7 @@
     "save_order": "Enregistrer l’ordre"
   },
   "search": {
+    "user_profiles": "Utilisateurs",
     "recommended_artists": "Artistes recommandés",
     "placeholder": "Rechercher des titres, artistes, albums...",
     "all": "Tout",

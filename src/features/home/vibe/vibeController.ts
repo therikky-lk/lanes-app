@@ -8,6 +8,7 @@ import { isNativeApp } from "@/shared/platform/native";
 import { diag } from "@/shared/platform/diag";
 import { languageFilter } from "./trackLanguage";
 import { collectAvailable, within } from "./vibeRequests";
+import { isVibeTrack } from "./vibeTrack";
 import {
   affinity,
   buildTaste,
@@ -181,15 +182,14 @@ function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<
   const cached = moodPools.get(key);
   let pool = cached && cached.expires > Date.now() ? cached.promise : undefined;
   if (!pool) {
-    const songsOnly = (tracks: Track[]) => tracks.filter(t => !/ytimg\.com/.test(t.coverUrl || ""));
     // Direct song results race playlist discovery. A single slow playlist must
     // not hold the first song hostage, and an empty pool must be retryable.
     const requests = queries[mood].slice(0, 2).flatMap(q => [
-      api.search(q, "track").then(r => songsOnly(r.items.flatMap(item =>
-        item.type === "track" ? [toClientTrack(item as ApiTrackInput)] : []))),
+      api.search(q, "track").then(r => r.items.flatMap(item =>
+        item.type === "track" ? [toClientTrack(item as ApiTrackInput)] : []).filter(isVibeTrack)),
       within(api.search(q, "playlist"), 2000, { items: [] }).then(async r => {
         const playlists = r.items.filter(item => item.type === "playlist").slice(0, 2);
-        return collectAvailable(playlists.map(p => api.getPlaylist(p.id).then(d => songsOnly(d.tracks.map(t => toClientTrack(t))))), 2500, 30);
+        return collectAvailable(playlists.map(p => api.getPlaylist(p.id).then(d => d.tracks.map(t => toClientTrack(t)).filter(isVibeTrack))), 2500, 30);
       }),
     ]);
     pool = collectAvailable(requests, 4500, 20);
@@ -211,7 +211,7 @@ interface Fallback {
 async function radioFor(seed: Track, k = 25): Promise<Track[]> {
   return api
     .getRadio(seed.id, { k })
-    .then((r) => (r.items || []).map((item) => toClientTrack(item)))
+    .then((r) => (r.items || []).map((item) => toClientTrack(item)).filter(isVibeTrack))
     .catch(() => []);
 }
 
@@ -237,8 +237,9 @@ async function nextBatch(
     : await within(loadSignals(), runKind === "start" ? 1500 : 5000, { liked: [] as Track[], history: [] as Track[] });
   signalsMs = Math.round(performance.now() - phaseAt);
   phaseAt = performance.now();
-  const liked = loaded.liked.length ? loaded.liked : fallback?.liked ?? [];
-  const history = loaded.history.length ? loaded.history : [...(fallback?.recent ?? [])];
+  const liked = (loaded.liked.length ? loaded.liked : fallback?.liked ?? []).filter(isVibeTrack);
+  const history = (loaded.history.length ? loaded.history : fallback?.recent ?? []).filter(isVibeTrack);
+  const trending = (fallback?.trending ?? []).filter(isVibeTrack);
   const likedIds = new Set(liked.map((t) => t.id));
   const taste: TasteProfile = buildTaste({
     liked,
@@ -248,7 +249,7 @@ async function nextBatch(
   });
   // a listener with no history yet still gets a stream
   if (taste.seeds.length === 0) {
-    for (const t of fallback?.trending ?? []) taste.seeds.push({ track: t, weight: 1 });
+    for (const t of trending) taste.seeds.push({ track: t, weight: 1 });
   }
   const avoid = new Set(recentSeeds());
 
@@ -311,7 +312,7 @@ async function nextBatch(
     ? [...pool]
     : [...await collectAvailable(seeds.map(s => radioFor(s)), runKind === "start" ? 3000 : 7000, BATCH), ...pool, ...extra];
   if (!candidates.length && !mood && !language && character !== "unfamiliar") {
-    candidates = [...liked, ...history, ...(fallback?.trending ?? [])].filter(fits);
+    candidates = [...liked, ...history, ...trending].filter(fits);
   }
   radioMs = Math.round(performance.now() - phaseAt);
   phaseAt = performance.now();

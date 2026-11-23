@@ -113,16 +113,18 @@ async function publicPlaylist(env, id) {
   if (!Array.isArray(list.items) || !list.items.some(item => item.id === id && item.isPublic === true)) error(404, "NOT_FOUND", "Playlist is no longer public.");
   return JSON.parse(row.document_json);
 }
-async function publicProfile(env, entityId) {
-  const [backend, id] = entityId.split(":");
+async function publicProfile(env, entityId, byUsername = false) {
+  const [backend, identifier] = entityId.split(":");
   let user;
   try {
-    user = await accountRequest(env, `/v1/users/${encodeURIComponent(id)}`, undefined, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env));
+    user = await accountRequest(env, `/v1/users/${encodeURIComponent(identifier)}`, undefined, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env));
   } catch (cause) {
     if (cause instanceof HttpError && [401, 403, 404].includes(cause.status)) error(404, "PROFILE_UNAVAILABLE", "Этот профиль приватный или недоступен.");
     throw cause;
   }
-  if (user?.id !== id || (user.isPublic ?? user.privacy?.isPublic) !== true) error(404, "PROFILE_UNAVAILABLE", "Этот профиль приватный или недоступен.");
+  const id = user?.id;
+  const matches = byUsername ? user?.username?.toLowerCase() === identifier.toLowerCase() : id === identifier;
+  if (typeof id !== "string" || !matches || (user.isPublic ?? user.privacy?.isPublic) !== true) error(404, "PROFILE_UNAVAILABLE", "Этот профиль приватный или недоступен.");
   const row = await requireDatabase(env).prepare("SELECT document_json FROM profile_customization WHERE owner=?").bind(JSON.stringify([backend, id])).first();
   const customization = normalizeProfile(row ? JSON.parse(row.document_json) : {});
   // Explicit allowlist: never expose email, privacy settings or account credentials.
@@ -260,6 +262,14 @@ async function readThumbnail(request, env, id) {
 async function handle(request, env) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
+  if (url.pathname === "/v1/public/profile-by-username" && request.method === "GET") {
+    const backend = url.searchParams.get("backend") ?? "liner";
+    const username = url.searchParams.get("username") ?? "";
+    if (!["liner", "hyprr"].includes(backend) || !/^[\p{L}\p{N}_.-]{1,64}$/u.test(username)) error(404, "PROFILE_UNAVAILABLE", "Profile unavailable.");
+    await initializeDatabase(env);
+    const profile = await publicProfile(env, `${backend}:${username}`, true);
+    return json({ id: profile.id, type: "profile", entityId: `${backend}:${profile.id}`, snapshot: profileSnapshot(profile), sender: { username: profile.username, displayName: profile.displayName }, profile });
+  }
   if (/^\/v1\/track-comments(?:\/|$)/.test(url.pathname)) {
     const match = url.pathname.match(/^\/v1\/track-comments\/([A-Za-z0-9_:-]{1,68})(?:\/(\d{1,16})(?:\/(photo|profile|avatar))?)?$/);
     if (!match || !validEntity("track", match[1])) return json({ code: "NOT_FOUND" }, 404);
@@ -270,9 +280,9 @@ async function handle(request, env) {
     return trackComments(request, requireDatabase(env), {
       trackId: match[1], commentId: match[2], resource: match[3], url, readBody, json, error,
       account: { user, owner: JSON.stringify([backend, user.id]) },
-      authorAvatar: author => {
+      authorAvatar: (author, maxLength = 2048) => {
         const avatar = profileImage(author.avatarUrl, backend === "hyprr" ? NEW_ACCOUNT_ORIGIN : accountOrigin(env));
-        return avatar.length <= 2048 ? avatar : "";
+        return avatar.length <= maxLength ? avatar : "";
       },
       authorProfile: async owner => {
         const entityId = JSON.parse(owner).join(":");

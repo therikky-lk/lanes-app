@@ -7,6 +7,9 @@ import { artistHref } from "@/shared/media/artistIdentity";
 import { playerEngine } from "@/features/player";
 import Button from "@/shared/ui/Button";
 import { debouncedStorage } from "@/shared/utils/storage";
+import { useAuthStore } from "@/features/auth";
+import { getAuthSession } from "@/shared/api/auth-session";
+import UserAvatar from "@/shared/ui/UserAvatar";
 import { useLibrarySearch } from "../hooks/useLibrarySearch";
 import { usePageSearch, type PageSearchFilter } from "../hooks/usePageSearch";
 import { useSearchPageStore } from "../store/searchPageStore";
@@ -15,7 +18,7 @@ import RecommendedArtists from "./RecommendedArtists";
 import SearchResultsList from "./SearchResultsList";
 import SearchHistoryList from "./SearchHistoryList";
 
-const filters: [PageSearchFilter, string][] = [["all", "common.all"], ["library", "search.library"], ["track", "common.songs"], ["youtube", "search.youtube"], ["artist", "common.artists"], ["album", "common.albums"], ["playlist", "common.playlists"]];
+const filters: [PageSearchFilter, string][] = [["all", "common.all"], ["library", "search.library"], ["track", "common.songs"], ["youtube", "search.youtube"], ["artist", "common.artists"], ["album", "common.albums"], ["playlist", "common.playlists"], ["user", "search.user_profiles"]];
 
 function displayItem(item: any) {
   const coverUrl = item.cover ? mediaUrl(item.cover.url) : item.coverUrl ?? "";
@@ -42,11 +45,15 @@ export default function SearchPage() {
   }, [searchParams]);
   const addHistory = useSearchHistoryStore((state) => state.addItem);
   const deferredQuery = useDeferredValue(query);
-  const search = usePageSearch(query, filter);
-  const local = useLibrarySearch(deferredQuery, (filter === "all" || filter === "library") && deferredQuery.trim().length >= 2);
+  const signedIn = useAuthStore(state => !!state.user);
+  const backend = signedIn ? getAuthSession()?.authBackend ?? "liner" : "liner";
+  const activeFilter = filter === "all" && query.trimStart().startsWith("@") ? "user" : filter;
+  const search = usePageSearch(query, activeFilter, backend);
+  const foundUser = search.items.find(item => item.type === "user");
+  const local = useLibrarySearch(deferredQuery, (activeFilter === "all" || activeFilter === "library") && deferredQuery.trim().length >= 2);
   const hasQuery = query.trim().length > 0;
   const results = useMemo(() => {
-    const catalog = search.items.map(displayItem);
+    const catalog = search.items.filter(item => item.type !== "user").map(displayItem);
     if (filter === "library") return local;
     if (filter !== "all") return catalog;
     const seen = new Set(local.map((item) => `${item._type}:${item.id}`));
@@ -102,14 +109,27 @@ export default function SearchPage() {
           {hasQuery && <button type="button" aria-label={t("common.clear_search")} className="flex h-[36px] w-[36px] shrink-0 items-center justify-center border-0 bg-transparent text-text-secondary" onClick={() => { setQuery(""); input.current?.focus(); }}><CloseLine size={20} /></button>}
         </form>
         {hasQuery && <div className="mt-[12px] flex gap-[6px] overflow-x-auto pb-[2px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t("common.search")}>
-          {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={key === filter} onClick={() => setFilter(key)} className={`h-[32px] shrink-0 rounded-[10px] border-0 px-[12px] text-[13px] ${key === filter ? "bg-text-primary text-bg-primary" : "bg-bg-panel text-text-secondary"}`}>{t(label)}</button>)}
+          {filters.map(([key, label]) => <button key={key} type="button" aria-pressed={key === activeFilter} onClick={() => setFilter(key)} className={`h-[32px] shrink-0 rounded-[10px] border-0 px-[12px] text-[13px] ${key === activeFilter ? "bg-text-primary text-bg-primary" : "bg-bg-panel text-text-secondary"}`}>{t(label)}</button>)}
         </div>}
       </header>
       <div className="relative min-h-0 flex-1">
         {!hasQuery ? <div className="h-full overflow-y-auto">
           {historyCount > 0 && <SearchHistoryList onSelectQuery={(value) => { setQuery(value); rememberQuery(value); input.current?.blur(); }} onPlayTrack={play} onNavigateItem={open} onOpenArtist={rememberArtist} />}
           <RecommendedArtists />
-        </div> : query.trim().length < 2 ? null : <>
+        </div> : query.trim().length < (activeFilter === "user" ? 1 : 2) ? null : foundUser ? (
+          <button type="button" className="mx-4 flex items-center gap-3 rounded-xl border-0 bg-bg-panel p-3 text-left text-text-primary"
+            onClick={() => {
+              rememberQuery(query);
+              input.current?.blur();
+              navigate(`/user?${new URLSearchParams({ username: foundUser.profile.username, backend })}`);
+            }}>
+            <UserAvatar user={foundUser.profile} size={44} />
+            <span className="min-w-0">
+              <strong className="block truncate">{foundUser.profile.displayName || foundUser.profile.username}</strong>
+              <span className="block truncate text-text-secondary">@{foundUser.profile.username}</span>
+            </span>
+          </button>
+        ) : <>
           {results.length > 0 ? <SearchResultsList items={results} isArtistSearchFilter={filter === "artist"} isPlaylistSearchFilter={filter === "playlist"} onPlayFromSearch={play} onNavigateItem={open} onOpenArtist={rememberArtist} /> : search.loading ? <div role="status" className="flex h-full items-center justify-center gap-[10px] text-[14px] text-text-secondary"><span className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-text-secondary border-t-transparent" />{t("common.loading")}</div> : <div className="flex h-full flex-col items-center justify-center gap-[12px] px-[24px] text-center text-text-secondary"><p>{search.error ? t("common.error_network") : t("common.no_results")}</p>{search.error && <Button variant="secondary" onClick={() => void search.runNow()}><SearchLine size={18} />{t("common.search")}</Button>}</div>}
         </>}
       </div>

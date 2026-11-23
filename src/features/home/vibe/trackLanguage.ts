@@ -7,11 +7,9 @@
 // track and summed up per artist), never the lyrics. Tracks LRCLIB doesn't know
 // fall back to their artist's verdict, then to the title / artist script.
 import type { Track } from "@/shared/types/track";
-import { normalizeForMatch, primaryArtist, scoreLrclibRecord } from "@/shared/media/lyrics/fallbackLyrics";
+import { fetchLrclibJson, LRCLIB_BASE, normalizeForMatch, primaryArtist, scoreLrclibRecord, type LrclibRecord } from "@/shared/media/lyrics/fallbackLyrics";
 import type { VibeLanguage } from "./vibeTaste";
 
-const LRCLIB = "https://lrclib.net/api";
-const HEADERS = { "Lrclib-Client": "Lane (https://github.com/therikky-lk)" };
 // v2: Cyrillic that isn't Russian (Ukrainian, Belarusian, Kazakh…) has its own verdict
 // v3: Ukrainian and English have verdicts of their own
 const CACHE_KEY = "lane_track_language_v3";
@@ -32,15 +30,6 @@ const RUSSIAN_ONLY = /[ыэъёЫЭЪЁ]/g;
 
 /** "other": sung in a language none of the filters stands for (Kazakh, Spanish…) */
 type Verdict = VibeLanguage | "unknown" | "other";
-
-interface Rec {
-  trackName: string;
-  artistName: string;
-  duration?: number;
-  instrumental?: boolean;
-  plainLyrics?: string | null;
-  syncedLyrics?: string | null;
-}
 
 let cache: Record<string, Verdict> = (() => {
   try {
@@ -90,25 +79,17 @@ export function scriptVerdict(text: string, minLetters = 20): Verdict {
   return "russian";
 }
 
-async function getJson<T>(url: string, signal: AbortSignal): Promise<T | null> {
-  try {
-    const res = await fetch(url, { headers: HEADERS, signal });
-    return res.ok ? ((await res.json()) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
 async function lookup(track: Track, signal: AbortSignal): Promise<Verdict> {
   const hint = { title: track.title, artist: track.artists, durationMs: track.durationMs };
   const params = new URLSearchParams({ track_name: track.title, artist_name: primaryArtist(track.artists) });
   if (track.durationMs > 0) params.set("duration", String(Math.round(track.durationMs / 1000)));
-  let rec = await getJson<Rec>(`${LRCLIB}/get?${params}`, signal);
-  if (!rec || scoreLrclibRecord(rec as never, hint) < 0.6) {
-    const q = new URLSearchParams({ track_name: track.title, artist_name: primaryArtist(track.artists) });
-    const list = (await getJson<Rec[]>(`${LRCLIB}/search?${q}`, signal)) ?? [];
-    rec = list
-      .map((r) => ({ r, s: scoreLrclibRecord(r as never, hint) }))
+  let rec = await fetchLrclibJson<LrclibRecord>(`${LRCLIB_BASE}/get?${params}`, signal);
+  if (!rec || scoreLrclibRecord(rec, hint) < 0.6) {
+    const q = new URLSearchParams(params);
+    q.delete("duration");
+    const list = await fetchLrclibJson<LrclibRecord[]>(`${LRCLIB_BASE}/search?${q}`, signal);
+    rec = (Array.isArray(list) ? list : [])
+      .map((r) => ({ r, s: scoreLrclibRecord(r, hint) }))
       .filter((x) => x.s >= 0.6)
       .sort((a, b) => b.s - a.s)[0]?.r ?? null;
   }
@@ -147,21 +128,22 @@ export async function languageFilter(
   known: Track[] = [],
   budgetMs = 7000,
 ): Promise<((t: Track, strict?: boolean) => boolean) & { known: (t: Track) => boolean }> {
-  const todo = [...new Map(tracks.filter(t => !(t.id in cache) && !t.id.startsWith("local:")).map(t => [t.id, t])).values()];
+  const todo = [...new Map(tracks.filter(t => (!cache[t.id] || cache[t.id] === "unknown") && !t.id.startsWith("local:")).map(t => [t.id, t])).values()];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
   let next = 0;
   const worker = async () => {
     while (next < todo.length && !controller.signal.aborted) {
       const t = todo[next++];
-      const v = await lookup(t, controller.signal);
-      if (!controller.signal.aborted) remember(t.id, v);
+      const v = await lookup(t, controller.signal).catch(() => "unknown" as const);
+      // A temporary rate limit or timeout must not become a permanent verdict.
+      if (!controller.signal.aborted && v !== "unknown") remember(t.id, v);
     }
   };
   // Native HTTP implementations may ignore AbortSignal. Release the caller
   // at the shared deadline even if an individual lyrics request never settles.
   await Promise.race([
-    Promise.all(Array.from({ length: budgetMs > 0 ? 6 : 0 }, worker)),
+    Promise.all(Array.from({ length: budgetMs > 0 ? 2 : 0 }, worker)),
     new Promise<void>(resolve => controller.signal.addEventListener("abort", () => resolve(), { once: true })),
   ]);
   controller.abort();

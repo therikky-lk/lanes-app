@@ -11,7 +11,7 @@ export interface FallbackLyricsHint {
   durationMs?: number;
 }
 
-interface LrclibRecord {
+export interface LrclibRecord {
   id: number;
   trackName: string;
   artistName: string;
@@ -22,7 +22,7 @@ interface LrclibRecord {
   syncedLyrics?: string | null;
 }
 
-const LRCLIB_BASE = "https://lrclib.net/api";
+export const LRCLIB_BASE = "https://lrclib.net/api";
 const LRCLIB_HEADERS = { "Lrclib-Client": "Lane (https://github.com/therikky-lk)" };
 let lrclibRetryAt = 0;
 const lyricResponses = new Map<string, { data: unknown; expiresAt: number }>();
@@ -80,7 +80,7 @@ export function scoreLrclibRecord(rec: LrclibRecord, hint: FallbackLyricsHint): 
   return titleScore * 0.5 + artistScore * 0.3 + durationScore * 0.2 + syncBonus;
 }
 
-async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T | null> {
+export async function fetchLrclibJson<T>(url: string, signal?: AbortSignal): Promise<T | null> {
   signal?.throwIfAborted();
   const cached = lyricResponses.get(url);
   if (cached && cached.expiresAt > Date.now()) return cached.data as T | null;
@@ -89,7 +89,12 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T | null
     const timeout = AbortSignal.timeout(8_000);
     const res = await fetch(url, { headers: LRCLIB_HEADERS, signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
     if (res.status === 429 || res.status >= 500) {
-      lrclibRetryAt = Date.now() + 60_000;
+      const now = Date.now();
+      const header = res.headers.get("Retry-After");
+      const retryAt = header === null ? NaN : /^\d+$/.test(header)
+        ? now + Number(header) * 1000
+        : Date.parse(header);
+      lrclibRetryAt = Math.max(lrclibRetryAt, now + 60_000, Number.isFinite(retryAt) ? retryAt : 0);
       return null;
     }
     if (!res.ok && res.status !== 404) return null;
@@ -99,7 +104,7 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T | null
     return data as T | null;
   } catch (err) {
     if (signal?.aborted) throw err;
-    lrclibRetryAt = Date.now() + 60_000;
+    lrclibRetryAt = Math.max(lrclibRetryAt, Date.now() + 60_000);
     return null;
   }
 }
@@ -119,7 +124,7 @@ export async function findLrclibLyrics(
   if (artist) {
     const params = new URLSearchParams({ track_name: title, artist_name: primaryArtist(artist) });
     if (hint.durationMs && hint.durationMs > 0) params.set("duration", String(Math.round(hint.durationMs / 1000)));
-    const exact = await fetchJson<LrclibRecord>(`${LRCLIB_BASE}/get?${params}`, signal);
+    const exact = await fetchLrclibJson<LrclibRecord>(`${LRCLIB_BASE}/get?${params}`, signal);
     if (usable(exact) && scoreLrclibRecord(exact, hint) >= 0.6) return exact;
   }
 
@@ -130,7 +135,7 @@ export async function findLrclibLyrics(
   ];
   let best: { rec: LrclibRecord; score: number } | null = null;
   for (const q of queries) {
-    const list = await fetchJson<LrclibRecord[]>(`${LRCLIB_BASE}/search?${q}`, signal);
+    const list = await fetchLrclibJson<LrclibRecord[]>(`${LRCLIB_BASE}/search?${q}`, signal);
     for (const rec of Array.isArray(list) ? list : []) {
       if (!usable(rec)) continue;
       const score = scoreLrclibRecord(rec, hint);

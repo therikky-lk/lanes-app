@@ -18,6 +18,8 @@ import { getTrackCommentProfile } from "@/features/player/ui/TrackComments";
 export default function PublicProfilePage() {
   const [params] = useSearchParams();
   const id = params.get("share") || "";
+  const username = params.get("username") || "";
+  const backend = params.get("backend") === "hyprr" ? "hyprr" : "liner";
   const commentTrack = params.get("commentTrack") || "";
   const commentId = Number(params.get("comment"));
   const { t } = useTranslation();
@@ -47,8 +49,9 @@ export default function PublicProfilePage() {
     setShare(null); setFailed(false); setUnavailable(false);
     setSocial(null); setSocialFailed(false); setEditingMusic(false);
     const controller = new AbortController();
-    if (commentTrack ? !viewerOwner : !/^[A-Za-z0-9_-]{22}$/.test(id)) { setFailed(true); return; }
-    const lookup = commentTrack && viewerOwner ? getTrackCommentProfile(commentTrack, commentId, viewerOwner, controller.signal) : api.getShare(id);
+    if (commentTrack ? !viewerOwner : !username && !/^[A-Za-z0-9_-]{22}$/.test(id)) { setFailed(true); return; }
+    const lookup = commentTrack && viewerOwner ? getTrackCommentProfile(commentTrack, commentId, viewerOwner, controller.signal)
+      : username ? api.getPublicProfileByUsername(username, backend) : api.getShare(id);
     void lookup.then(async result => {
       if (result.type !== "profile" || !result.profile) throw new Error("Profile unavailable");
       if (active) setShare(result);
@@ -64,7 +67,7 @@ export default function PublicProfilePage() {
       setFailed(true);
     });
     return () => { active = false; controller.abort(); };
-  }, [id, commentTrack, commentId, retry, viewerOwner]);
+  }, [id, username, backend, commentTrack, commentId, retry, viewerOwner]);
 
   useEffect(() => {
     const refresh = () => {

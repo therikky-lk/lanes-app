@@ -28,7 +28,7 @@ function fixture(t) {
     assert.ok(init.headers.get("user-agent").includes("lane/"));
     assert.ok(init.headers.get("x-liner-signature"));
     if (path === "/v1/me") return Response.json(state.authorized ? { id: init.headers.get("authorization") === "Bearer other-token" ? "other-id" : "owner-id", username: "alice", displayName: "Alice", email: "private@example.test", isPublic: state.public } : {}, { status: state.authorized ? 200 : 401 });
-    if (path === "/v1/users/owner-id") return Response.json({ id: "owner-id", username: "alice", displayName: "Alice", bio: "Hello", avatarUrl: state.avatar, email: "private@example.test", isPublic: state.public, showHistory: state.historyVisible, showLikedTracks: state.likesVisible, listenedDurationMs: 5400000, likedTracksCount: 42, followersCount: 7 }, { status: state.profileStatus });
+    if (path === "/v1/users/owner-id" || path === "/v1/users/alice") return Response.json({ id: "owner-id", username: "alice", displayName: "Alice", bio: "Hello", avatarUrl: state.avatar, email: "private@example.test", isPublic: state.public, showHistory: state.historyVisible, showLikedTracks: state.likesVisible, listenedDurationMs: 5400000, likedTracksCount: 42, followersCount: 7 }, { status: state.profileStatus });
     if (path === `/v1/me/playlists/${playlistId}`) return Response.json({ playlist: { id: playlistId, title: "My public playlist", ownerId: state.owner, isPublic: state.public, description: "Hello⁣lane-local:secret-device-data⁣lane-cover:https://example.test/cover.jpg" }, items: [
       { id: "local-item", track: { id: "local:private", title: "Private file" } },
       { id: "item", position: 0, track: { id: "dQw4w9WgXcQ", title: "Song", artists: [{ id: "artist", name: "Artist" }], durationMs: 1000, privateProperty: "secret" } },
@@ -54,6 +54,20 @@ test("creates tables and links in D1 without a separate server, using verified s
   assert.equal(stored.sender_id, "owner-id"); assert.ok(!JSON.stringify(stored).includes("account-token")); assert.ok(!JSON.stringify(stored).includes("private@example.test"));
   assert.equal(state.calls[0].path, "/v1/me");
 });
+test("username lookup only exposes exact public profiles", async t => {
+  const { state, env } = fixture(t);
+  const lookup = username => worker.fetch(request(`/v1/public/profile-by-username?${new URLSearchParams({ username })}`), env);
+  const response = await lookup("alice");
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.profile.username, "alice");
+  assert.equal(result.entityId, "liner:owner-id");
+  assert.equal(result.profile.email, undefined);
+  assert.equal((await lookup("owner-id")).status, 404);
+  state.public = false;
+  assert.equal((await lookup("alice")).status, 404);
+});
+
 test("track comments require authentication to read and are removable only by their verified author", async t => {
   const { env, state } = fixture(t);
   const path = `/v1/track-comments/${input.entityId}`;
@@ -67,7 +81,7 @@ test("track comments require authentication to read and are removable only by th
   const created = await post("  Great track!  ", "account-token");
   assert.equal(created.status, 201);
   const item = await created.json();
-  assert.deepEqual(item, { id: item.id, author: "Alice", text: "Great track!", createdAt: item.createdAt, mine: true });
+  assert.deepEqual(item, { id: item.id, author: "Alice", text: "Great track!", createdAt: item.createdAt, mine: true, legacyAvatar: true });
   const guest = await call(path);
   assert.equal(guest.status, 401);
   assert.ok(!(await guest.text()).includes(item.text));
@@ -104,17 +118,17 @@ test("track comments use a stable cursor to load older comments", async t => {
   assert.equal((await get(`${path}?before=-1`)).status, 400);
 });
 
-test("square comment photos and author profiles stay behind authentication and deleted comments lose assets", async t => {
+test("rectangular comment photos and author profiles stay behind authentication and deleted comments lose assets", async t => {
   const { env } = fixture(t);
   const path = "/v1/track-comments/au:demo";
   const headers = { authorization: "Bearer account-token" };
   const call = (path, options = {}) => worker.fetch(request(path, options), env);
-  const jpegHeader = Buffer.from([255,216,255,192,0,11,8,2,0,2,0,1,1,17,0,255,217]);
+  const jpegHeader = Buffer.from([255,216,255,192,0,11,8,2,0,1,0,1,1,17,0,255,217]);
   const photo = jpegHeader.toString("base64");
   const post = photo => call(path, { method: "POST", headers, body: JSON.stringify({ photo }) });
-  const nonsquare = Buffer.from(jpegHeader);
-  nonsquare[9] = 1;
-  assert.equal((await post(nonsquare.toString("base64"))).status, 400);
+  const oversized = Buffer.from(jpegHeader);
+  oversized[8] = 1;
+  assert.equal((await post(oversized.toString("base64"))).status, 400);
   const response = await post(photo);
   assert.equal(response.status, 201);
   const item = await response.json();

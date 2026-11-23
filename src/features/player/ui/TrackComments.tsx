@@ -3,6 +3,7 @@ import { LuCheck, LuImagePlus, LuMessageCircle, LuSend, LuTrash2, LuX } from "re
 import { Link } from "react-router-dom";
 import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { useCoverSrc } from "@/features/covers";
+import { useLocalAvatar } from "@/features/auth/store/localAvatarStore";
 import { useTranslation } from "@/languages";
 import { getAuthSession, getValidAccessToken } from "@/shared/api/auth-session";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
@@ -69,44 +70,56 @@ export function TrackCommentsPanel({ track, onOpenProfile }: { track: Track; onO
 export default function TrackComments({ track, onClose, onOpenProfile }: { track: Track; onClose: () => void; onOpenProfile?: () => void }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const handle = useRef<HTMLDivElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
   const y = useMotionValue("100%");
-  const swiped = useRef(false);
   const panOrigin = useRef(0);
   const reduceMotion = useReducedMotion();
   const slide = { duration: reduceMotion ? 0 : 0.26, ease: [0.22, 1, 0.36, 1] as const };
-  useEffect(() => { if (!isMobile) handle.current?.focus({ preventScroll: true }); }, [isMobile]);
+  useEffect(() => { if (!isMobile) closeButton.current?.focus({ preventScroll: true }); }, [isMobile]);
+
+  if (!isMobile) return (
+    <div className="absolute inset-0 z-50 flex justify-end overflow-hidden" data-no-sheet-drag>
+      <motion.div className="absolute inset-0 bg-black/20" onClick={onClose} aria-hidden="true"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={slide} />
+      <motion.div role="dialog" aria-modal="true" aria-labelledby="track-comments-title"
+        initial={{ x: reduceMotion ? "0%" : "100%" }} animate={{ x: "0%" }} exit={{ x: "100%" }} transition={slide}
+        className="relative flex h-full w-[min(100%,440px)] min-w-0 flex-col border-l border-white/10 bg-[#191b20] px-[18px] pb-4 pt-4 shadow-2xl"
+        onKeyDown={event => {
+          if (event.key === "Escape" && !event.nativeEvent.isComposing) { event.stopPropagation(); onClose(); }
+        }}
+      >
+        <button ref={closeButton} type="button" aria-label={t("track_comments.close")} onClick={onClose}
+          className="absolute right-[18px] top-3 z-10 grid size-8 place-items-center rounded-full border-0 bg-white/10 text-white hover:bg-white/20">
+          <LuX size={17} />
+        </button>
+        <div className="flex min-h-0 flex-1">
+          <SheetDiscussion track={track} onOpenProfile={onOpenProfile} />
+        </div>
+      </motion.div>
+    </div>
+  );
 
   return (
     <div className="absolute inset-0 z-50 flex items-end overflow-hidden" data-no-sheet-drag>
-      <motion.div className="lane-sheet-dimmer absolute inset-0" onClick={isMobile ? undefined : onClose} aria-hidden="true"
+      <motion.div className="lane-sheet-dimmer absolute inset-0" aria-hidden="true"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={slide} />
       <motion.div ref={sheet} role="dialog" aria-modal="true" aria-labelledby="track-comments-title"
         initial={{ y: reduceMotion ? "0%" : "100%" }} animate={{ y: "0%" }} exit={{ y: "100%" }} transition={slide}
         style={{ y }} className="relative flex max-h-[calc(100%_-_var(--lane-safe-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border-t border-white/10 bg-[#191b20]/95 px-[18px] pb-[calc(var(--lane-safe-bottom,0px)+16px)] pt-2 will-change-transform"
-        onKeyDown={event => {
-          if (!isMobile && event.key === "Escape" && !event.nativeEvent.isComposing) { event.stopPropagation(); onClose(); }
-        }}
       >
-        <motion.div ref={handle} role={isMobile ? undefined : "button"} tabIndex={isMobile ? undefined : 0} aria-label={isMobile ? undefined : t("track_comments.close")}
+        <motion.div
           className="mx-auto mb-1 flex h-8 w-20 shrink-0 touch-none cursor-grab items-center justify-center rounded-full border-0 bg-transparent focus-visible:outline-2 focus-visible:outline-white/60 active:cursor-grabbing"
-          onPointerDown={() => { swiped.current = false; }}
           onPanStart={() => {
             y.stop();
             panOrigin.current = parseFloat(y.get());
           }}
           onPan={(_, info) => {
-            swiped.current = true;
             if (!reduceMotion && sheet.current?.offsetHeight) y.set(`${Math.max(0, panOrigin.current + info.offset.y / sheet.current.offsetHeight * 100)}%`);
           }}
           onPanEnd={(_, info) => {
             if (info.offset.y > 90 || (info.offset.y > 12 && info.velocity.y > 650)) onClose();
             else animate(y, "0%", slide);
-          }}
-          onClick={() => { if (!isMobile && !swiped.current) onClose(); }}
-          onKeyDown={event => {
-            if (!isMobile && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClose(); }
           }}
         >
           <span className="h-1 w-9 rounded-full bg-white/35" />
@@ -120,17 +133,21 @@ export default function TrackComments({ track, onClose, onOpenProfile }: { track
 }
 
 function CommentAvatar({ item, trackId, owner, locale }: { item: Comment; trackId: string; owner: string; locale: string }) {
-  const [avatar, setAvatar] = useState(item.avatar);
-  const [failed, setFailed] = useState(false);
+  const user = item.mine ? getAuthSession()?.user : undefined;
+  const ownAvatar = useLocalAvatar(user?.id, user?.avatarUrl);
+  const [fallback, setFallback] = useState<string>();
+  const [failed, setFailed] = useState<string[]>([]);
+  const preferred = [ownAvatar, item.avatar].find(url => url && !failed.includes(url));
   useEffect(() => {
-    if (!item.legacyAvatar) return;
+    if (preferred || !(item.mine || item.legacyAvatar || item.avatar)) return;
     const controller = new AbortController();
     void request<{ avatar: string }>(trackId, owner, controller.signal, { resource: { id: item.id, kind: "avatar" } })
-      .then(result => { if (!controller.signal.aborted) setAvatar(result.avatar); }).catch(() => {});
+      .then(result => { if (!controller.signal.aborted) setFallback(result.avatar); }).catch(() => {});
     return () => controller.abort();
-  }, [item.id, item.legacyAvatar, trackId, owner]);
-  return avatar && !failed
-    ? <img className="size-full object-cover" src={avatar} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+  }, [item.id, item.mine, item.legacyAvatar, item.avatar, preferred, trackId, owner]);
+  const avatar = preferred || (fallback && !failed.includes(fallback) ? fallback : undefined);
+  return avatar
+    ? <img className="size-full object-cover" src={avatar} alt="" referrerPolicy="no-referrer" onError={() => setFailed(previous => [...previous, avatar])} />
     : <span aria-hidden="true">{Array.from(item.author)[0]?.toLocaleUpperCase(locale)}</span>;
 }
 

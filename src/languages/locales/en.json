@@ -660,6 +660,7 @@
     "save_order": "Save order"
   },
   "search": {
+    "user_profiles": "People",
     "recommended_artists": "Recommended artists",
     "placeholder": "Search tracks, artists, albums...",
     "all": "All",
