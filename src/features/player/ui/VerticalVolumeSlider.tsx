@@ -9,27 +9,6 @@ export function VolumeLevelIcon({ level, size }: { level: number; size: number }
   return <Icon size={size} weight="Bold" />;
 }
 
-export function FullscreenVolumeControl() {
-  const { t } = useTranslation();
-  const level = usePlayerStore(s => toVolumeLevel(s.volume));
-
-  return (
-    <details className="relative z-20" onKeyDown={event => {
-      if (event.key !== "Escape" || !event.currentTarget.open) return;
-      event.stopPropagation();
-      event.currentTarget.open = false;
-      event.currentTarget.querySelector("summary")?.focus();
-    }}>
-      <summary aria-label={t("player.volume")} title={t("player.volume")} className="grid size-10 cursor-pointer list-none place-items-center rounded-lg text-white/75 hover:bg-white/10 hover:text-white [&::-webkit-details-marker]:hidden">
-        <VolumeLevelIcon level={level} size={22} />
-      </summary>
-      <div className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2">
-        <VerticalVolumeSlider />
-      </div>
-    </details>
-  );
-}
-
 export function VerticalVolumeSlider() {
   const { t } = useTranslation();
   const level = usePlayerStore(s => toVolumeLevel(s.volume));

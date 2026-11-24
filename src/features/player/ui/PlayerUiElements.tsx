@@ -26,7 +26,7 @@ import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "
 import { ArtistLink } from "@/features/artist";
 import { useCoverReady, CoverImage, preloadCoverArt } from "@/features/covers";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
-import { FullscreenVolumeControl } from "./VerticalVolumeSlider";
+import { VolumePicker } from "./VolumePicker";
 import { TimelineSlider } from "./TimelineSlider";
 
 import { useTranslation } from "@/languages";
@@ -194,7 +194,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
   const S = isMobile
     ? "min(80cqw, 40dvh, 336px)"
     : "min(calc(100cqw - 44px), 54dvh, 460px)";
-  const iconButtonClass = `inline-flex ${isMobile ? "size-11" : "size-[clamp(48px,15cqw,60px)]"} items-center justify-center text-white opacity-70 transition-all duration-150 ease-out hover:opacity-100 active:scale-[0.94] shrink-0 border-none bg-transparent cursor-pointer`;
+  const iconButtonClass = "inline-flex size-11 items-center justify-center text-white opacity-70 transition-all duration-150 ease-out hover:opacity-100 active:scale-[0.94] shrink-0 border-none bg-transparent cursor-pointer";
   const likeButton = (
     <button
       type="button"
@@ -318,7 +318,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
             player.shuffle ? "!text-white !opacity-100" : "!text-white/40"
           }`}
         >
-          <Shuffle size={isMobile ? 24 : 32} weight="Outline" />
+          <Shuffle size={isMobile ? 24 : 26} weight="Outline" />
         </button>
 
         <button
@@ -327,16 +327,16 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           onClick={() => void playerEngine.skipPrevious()}
           className={iconButtonClass}
         >
-          <SkipPrevious size={isMobile ? 30 : 42} weight="Bold" />
+          <SkipPrevious size={isMobile ? 30 : 34} weight="Bold" />
         </button>
 
         <button
           type="button"
           aria-label={player.status === "playing" ? t("common.pause") : t("common.play")}
           onClick={() => void playerEngine.togglePlayPause()}
-          className={`inline-flex ${isMobile ? "size-14" : "size-[clamp(64px,20cqw,80px)]"} shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-white transition hover:scale-110 active:scale-95`}
+          className="inline-flex size-14 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-white transition hover:scale-110 active:scale-95"
         >
-          <span className={`flex ${isMobile ? "scale-[1.6]" : "scale-[2.3]"}`}>
+          <span className={`flex ${isMobile ? "scale-[1.6]" : "scale-[1.75]"}`}>
             <PlayPauseIcon status={player.status} />
           </span>
         </button>
@@ -347,7 +347,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           onClick={() => void playerEngine.skipNext()}
           className={iconButtonClass}
         >
-          <SkipNext size={isMobile ? 30 : 42} weight="Bold" />
+          <SkipNext size={isMobile ? 30 : 34} weight="Bold" />
         </button>
 
         <button
@@ -364,15 +364,19 @@ export const PlayerUiElements = memo(function PlayerUiElements({
           }`}
         >
           {player.repeat === "one" ? (
-            <RepeatOne size={isMobile ? 24 : 32} />
+            <RepeatOne size={isMobile ? 24 : 26} />
           ) : (
-            <Repeat size={isMobile ? 24 : 32} />
+            <Repeat size={isMobile ? 24 : 26} />
           )}
         </button>
 
       </div>
 
-      {!isMobile && <FullscreenVolumeControl />}
+      {!isMobile && (
+        <VolumePicker size="md" showThumb={false} trackClassName="!h-[6px]" fillColor="#fff"
+          iconClassName="text-white/80 outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/70"
+          style={{ width: `min(204px, calc(${S} * 0.6))` }} />
+      )}
     </>
   );
 });
