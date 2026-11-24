@@ -7,7 +7,7 @@ import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/librar
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
 import { applyLyricsLatency, lyricsOutputLatencyMs } from "@/features/lyrics/engine/lyricsLatency";
-import { LuCaptions } from "react-icons/lu";
+import { LuCaptions, LuMessageCircle } from "react-icons/lu";
 import {
   useCallback,
   useEffect,
@@ -45,6 +45,7 @@ import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import FullscreenQueueSheet from "./FullscreenQueueSheet";
+import TrackComments, { supportsTrackComments, useTrackCommentsAccount } from "./TrackComments";
 
 const BRACCATO_TAG = "braccato-lyrics";
 
@@ -383,6 +384,11 @@ export function FullscreenPlayer({
   const [speedOpen, setSpeedOpen] = useState(false);
   const [audioSheet, setAudioSheet] = useState<"speed" | "eq">("speed");
   const [queueOpen, setQueueOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const commentsAccount = useTrackCommentsAccount();
+  const commentsTrack = isMobile && commentsAccount && player.currentTrack && supportsTrackComments(player.currentTrack.id)
+    ? player.currentTrack
+    : null;
   const speedSheetDragControls = useDragControls();
   const speedChanged = usePlayerStore(
     (s) => Math.abs((s.playbackRate ?? 1) - 1) > 0.001 || Math.abs(s.pitchSemitones ?? 0) > 0.001,
@@ -472,7 +478,7 @@ export function FullscreenPlayer({
           )}
         </AnimatePresence>
         {effectsReady && effects.liveBackground ? (
-           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen)} onLoad={onKawarpLoad} onError={onError} />
+           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen || (commentsOpen && !!commentsTrack))} onLoad={onKawarpLoad} onError={onError} />
         ) : null}
       </div>
 
@@ -687,6 +693,11 @@ export function FullscreenPlayer({
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {commentsOpen && commentsTrack && (
+          <TrackComments key="track-comments" track={commentsTrack} onClose={() => setCommentsOpen(false)} onOpenProfile={onClose} />
+        )}
+      </AnimatePresence>
 
       <button
         type="button"
@@ -702,7 +713,7 @@ export function FullscreenPlayer({
           desktop the devices button sits right next to the window controls */}
       <div
         ref={toolbar}
-        className={`absolute z-30 flex max-w-[calc(100vw-64px)] flex-wrap items-center justify-end gap-[8px] ${isMobile ? "" : "lane-fs-toolbar"}`}
+        className={`absolute z-30 flex max-w-[calc(100vw-64px)] flex-wrap items-center justify-end ${isMobile ? "gap-[6px]" : "lane-fs-toolbar gap-[8px]"}`}
         style={isMobile ? { top: "calc(var(--lane-safe-top, 0px) + 10px)", right: 12, touchAction: "none" } : { top: 0, left: "50%", transform: "translateX(-50%)" }}
         data-no-window-drag
       >
@@ -731,6 +742,17 @@ export function FullscreenPlayer({
             }`}
           >
             <LuCaptions size={19} />
+          </button>
+        )}
+        {commentsTrack && (
+          <button
+            type="button"
+            onClick={() => setCommentsOpen(true)}
+            aria-label={t("track_comments.title")}
+            aria-expanded={commentsOpen}
+            className="inline-flex size-[34px] items-center justify-center rounded-lg border-none bg-black/45 text-white/85 backdrop-blur-xl transition-transform active:scale-[0.92] cursor-pointer"
+          >
+            <LuMessageCircle size={18} />
           </button>
         )}
         {isMobile && (

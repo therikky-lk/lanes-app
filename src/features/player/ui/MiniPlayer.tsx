@@ -39,7 +39,7 @@ import { useTranslation } from "@/languages";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { usePlayerStore } from "../store/playerStore";
 import { toVolumeGain, toVolumeLevel } from "../engine/volume";
-import { VolumePicker } from "./VolumePicker";
+import { VerticalVolumeSlider, VolumeLevelIcon } from "./VerticalVolumeSlider";
 import { SpeedPitchPicker } from "./SpeedPitchPicker";
 import { TimelineSlider } from "./TimelineSlider";
 import { useTheme } from "next-themes";
@@ -444,7 +444,7 @@ function MiniPlayer({
       toggle.closest<HTMLElement>(".bg-bg-toolbox") || toggle.parentElement;
     const barRect = bar?.getBoundingClientRect();
 
-    const popupW = 38;
+    const popupW = 46;
     const btnW = toggleRect.width;
     const right = rootRect.right - toggleRect.right + (btnW - popupW) / 2;
     const targetTop = barRect ? barRect.top : toggleRect.top;
@@ -873,19 +873,20 @@ function MiniPlayer({
                   />
                 </motion.div>
               </button>
-              {/* volume right in the bar: icon ── slider ── 100% */}
-              <div
-                ref={volumeToggleRef}
-                className="flex items-center px-[4px]"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <VolumePicker
-                  size="sm"
-                  showIcon
-                  style={{ width: 112 }}
-                  iconClassName="text-text-secondary hover:text-text-primary"
-                />
+               <div
+                 ref={volumeToggleRef}
+                 onMouseEnter={handleVolumeMouseEnter}
+                 onMouseLeave={handleVolumeMouseLeave}
+               >
+                 <button
+                   type="button"
+                   aria-label={t("player.volume")}
+                   aria-expanded={volumeOpen}
+                   className={`${iconButtonClass} ${volumeOpen ? activeToggleClass : ""}`}
+                   onClick={handleVolumeMouseEnter}
+                 >
+                   <VolumeLevelIcon level={volumeLevel} size={18} />
+                 </button>
               </div>
               <ConnectDevicesButton className={iconButtonClass} />
               <button
@@ -993,6 +994,18 @@ function MiniPlayer({
           </div>
         </div>
       </div>
+      {volumeOpen && (
+        <div
+          ref={volumePopupRef}
+          style={volumePopupStyle}
+          className="prevent-seek pointer-events-auto absolute z-50"
+          onMouseEnter={clearVolumeHoverTimer}
+          onMouseLeave={handleVolumeMouseLeave}
+          onPointerDown={event => event.stopPropagation()}
+        >
+          <VerticalVolumeSlider />
+        </div>
+      )}
     </div>
   );
 }
