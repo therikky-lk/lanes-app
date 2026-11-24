@@ -720,7 +720,7 @@ function MiniPlayer({
               <CoverImage
                 key={coverUrl}
                 src={coverUrl}
-                alt="Track artwork"
+                alt=""
                 width={38}
                 height={38}
                 priority

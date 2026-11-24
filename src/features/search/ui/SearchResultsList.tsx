@@ -28,7 +28,7 @@ export const SearchResultsList = memo(function SearchResultsList({
   partialWarning,
   scrollRef,
 }: SearchResultsListProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const internalRef = useRef<HTMLDivElement>(null);
   const containerRef = scrollRef ?? internalRef;
 
@@ -95,12 +95,12 @@ export const SearchResultsList = memo(function SearchResultsList({
             it._type === "playlist" ||
             it._type === "album";
 
+          const totalTracks = it.totalTracks ?? it.total_tracks;
           const subtitle =
             isArtist && it.followers
-              ? t("common.followers", { count: it.followers.toLocaleString() })
-              : isAlbumOrPlaylist &&
-                  (it.totalTracks !== undefined || it.total_tracks !== undefined)
-                ? `${it.totalTracks ?? it.total_tracks} ${t("common.tracks")}`
+              ? t("common.followers", { count: it.followers.toLocaleString(locale) })
+              : isAlbumOrPlaylist && totalTracks != null
+                ? t("common.tracks", { count: totalTracks })
                 : it.artists || it.artist || it.owner || "";
 
           const durationMs = it.durationMs ?? it.duration_ms;

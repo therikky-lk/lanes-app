@@ -94,7 +94,7 @@ function ArtistFallback({ id, name }: { id: string | null; name: string | null }
 }
 
 function ArtistContent() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
   const [searchParams] = useSearchParams();
@@ -292,7 +292,7 @@ function ArtistContent() {
                       className="m-0 mt-[6px] text-[14px] text-text-secondary font-[400]"
                       style={{ fontFamily: "var(--font-inter), sans-serif" }}
                     >
-                      {Intl.NumberFormat("en-US", { notation: "compact" }).format(
+                      {Intl.NumberFormat(locale, { notation: "compact" }).format(
                         data.followers,
                       )}{" "}
                       {t("artist.followers")}

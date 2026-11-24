@@ -163,7 +163,7 @@ export function AboutTab({ searchQuery }: { searchQuery?: string }) {
           <div className="flex flex-col items-start">
             <img
               src={logo}
-              alt="Lane Logo"
+              alt=""
               width={48}
               height={48}
               className="h-[48px] w-[48px] theme-logo"

@@ -20,7 +20,7 @@
     "no_singles_available": "No singles available.",
     "artist_not_found": "Artist not found",
     "added_to_queue": "Added artist tracks to queue",
-    "monthly_audience": "{count} monthly audience",
+    "monthly_audience": "{count} monthly listeners",
     "listeners": "{count} listeners",
     "show_all": "Show all",
     "show_less": "Show less",
@@ -31,8 +31,8 @@
     "single": "Single",
     "all_releases": "All",
     "discography": "Discography",
-    "your_tracks": "In your liked songs: {count}",
-    "open": "Open artist",
+    "your_tracks": "Liked tracks: {count}",
+    "open": "Open artist profile",
     "verified": "Verified"
   },
   "collection": {
@@ -206,7 +206,7 @@
     "error_something_wrong": "Something went wrong. Try again.",
     "tracks_plural": "{count} tracks",
     "songs_plural": "{count} songs",
-    "env_warning": "App should run inside Electron — deeplinks, offline checks and sharing need the desktop bridge.",
+    "env_warning": "Open Lane in Electron. App links, offline checks, and sharing require the desktop version.",
     "env_skip": "Skip",
     "grid": "Grid",
     "list": "List",
@@ -459,7 +459,7 @@
     "waiting_verification": "Waiting for Telegram verification...",
     "back": "Back",
     "cancel": "Cancel",
-    "error_handle_required": "handle is required",
+    "error_handle_required": "Enter your username.",
     "error_password_required": "password is required",
     "error_passwords_no_match": "Passwords do not match",
     "error_wrong_password": "Wrong password",
@@ -632,13 +632,14 @@
     "reorder_track": "Reorder track"
   },
   "playlist": {
+    "description_too_long": "The playlist description is too long.",
     "likes_downloaded": "{done} of {total} downloaded",
     "select_tracks": "Select tracks",
     "playlist": "Playlist",
     "liked_songs": "Liked songs",
     "untitled_playlist": "Untitled Playlist",
     "play_all": "Play all",
-    "add_to_queue": "Add playlist to a queue",
+    "add_to_queue": "Add playlist to queue",
     "added_to_queue": "Added playlist to queue",
     "import": "Import",
     "error_loading": "Error loading playlist",
@@ -768,6 +769,7 @@
       "description": "Queue behavior, click actions and audio output."
     },
     "shortcuts": {
+      "reset_all_success": "All shortcuts reset to their defaults.",
       "description": "Customize global system-wide and player keyboard shortcuts.",
       "global_section": "Global Shortcuts (System-wide)",
       "global_desc": "Work from any application across your computer, even when Lane is minimized or not focused.",
@@ -808,7 +810,7 @@
       "focus_main_window": "Switch to main window",
       "focus_main_window_desc": "Focus and bring the main application window to front.",
       "reset_all": "Reset all shortcuts",
-      "reset_all_desc": "Restore factory default shortcuts for all sections.",
+      "reset_all_desc": "Restore the default keyboard shortcuts in every section.",
       "reset_all_button": "Reset defaults",
       "reset_tooltip": "Reset to default ({shortcut})",
       "conflict_error": "Already used by \"{action}\"",
@@ -906,7 +908,7 @@
       }
     },
     "customization": {
-      "description": "Window background wallpaper, transparency and block blur effects.",
+      "description": "Window background, transparency, and panel blur.",
       "apply_to_overlay": "Apply to overlay mini player",
       "apply_to_overlay_desc": "Render the custom background and glass styling on the floating mini player.",
       "dark_theme_only": "Customization is only available for dark theme",
@@ -1366,6 +1368,8 @@
     }
   },
   "toast": {
+    "track_liked": "Added to Liked Songs",
+    "track_unliked": "Removed from Liked Songs",
     "playlist_created": "Playlist created",
     "playlist_imported": "Imported {name} ({count} songs)",
     "importing_playlist": "Importing {name}: {done} / {total} songs",
@@ -1584,7 +1588,7 @@
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} tracks",
-    "just_tracks": "Just tracks",
+    "just_tracks": "Individual tracks",
     "tracks_count_few": "{count} tracks",
     "tracks_count_many": "{count} tracks",
     "songs_played_two": "{count} songs played",
@@ -1593,6 +1597,7 @@
     "songs_played_zero": "{count} songs played"
   },
   "trends": {
+    "cached_chart": "Showing the last saved chart. The source is temporarily unavailable.",
     "title": "Trending",
     "russia": "Russia",
     "world": "Worldwide",

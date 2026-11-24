@@ -50,11 +50,11 @@
     "aka": "Cunoscut și ca",
     "genius_profile": "Profil de geniu",
     "album": "Album",
-    "single": "singur",
+    "single": "Single",
     "all_releases": "Toate",
     "discography": "Discografie",
-    "your_tracks": "În melodiile tale preferate: {count}",
-    "open": "Artist deschis",
+    "your_tracks": "Piese apreciate: {count}",
+    "open": "Deschide profilul artistului",
     "verified": "Verificat"
   },
   "collection": {
@@ -67,7 +67,7 @@
     "playlist": "Lista de redare",
     "album": "Album",
     "ep": "EP",
-    "single": "singur",
+    "single": "Single",
     "tracks_count": "urme",
     "hr": "hr",
     "min": "min",
@@ -228,7 +228,7 @@
     "error_something_wrong": "Ceva a mers prost. Încearcă din nou.",
     "tracks_plural": "{count} piese",
     "songs_plural": "{count} cântece",
-    "env_warning": "Aplicația ar trebui să ruleze în interiorul Electron - legăturile profunde, verificările offline și partajarea au nevoie de bridge-ul desktop.",
+    "env_warning": "Deschide Lane în Electron. Linkurile către aplicație, verificările offline și partajarea necesită versiunea pentru desktop.",
     "env_skip": "Sari peste",
     "grid": "Grilă",
     "list": "Lista",
@@ -243,7 +243,7 @@
     "tracks_other": "{count} piese",
     "decrease": "Scade",
     "increase": "Creșteți",
-    "mute": "Mut",
+    "mute": "Oprește sunetul",
     "unmute": "Activați sunetul",
     "play": "Joacă",
     "cache_track": "Salvați piesa în cache",
@@ -388,7 +388,7 @@
     "sort_by": "Sortați după",
     "sort_recent": "Adăugat recent",
     "sort_title": "Alfabetic (A-Z)",
-    "sort_creator": "De către creator / artist",
+    "sort_creator": "După autor sau artist",
     "view_grid": "Grilă",
     "view_list": "Lista",
     "find_music": "Caută",
@@ -590,11 +590,11 @@
     "track_unavailable": "„{title}” este indisponibil, se omite...",
     "track_unavailable_title": "Pista indisponibilă",
     "playback_stopped_too_many_errors": "Redarea sa oprit — prea multe piese nu s-au încărcat.",
-    "speed_pitch": "Viteză și pas",
+    "speed_pitch": "Viteză și înălțimea sunetului",
     "speed": "Viteza",
-    "pitch": "Pitch",
-    "link_speed_pitch": "Legați viteza la pitch",
-    "link_speed_pitch_hint": "Stilul de vinil și bandă: viteza modifică înălțimea",
+    "pitch": "Înălțimea sunetului",
+    "link_speed_pitch": "Leagă înălțimea sunetului de viteză",
+    "link_speed_pitch_hint": "Ca la discurile de vinil sau casete, viteza schimbă înălțimea sunetului",
     "key_lock": "Blocare cheie",
     "key_lock_hint": "Păstrează cheia originală în timp ce schimbă viteza",
     "keep_speed_across_tracks": "Păstrați peste piste",
@@ -635,8 +635,8 @@
     "eq_preset_headphones": "Căști",
     "eq_preset_laptop": "Laptop",
     "eq_preset_night": "noaptea",
-    "eq_preset_punch": "Pumn",
-    "eq_preset_smooth": "Netedă",
+    "eq_preset_punch": "Sunet puternic",
+    "eq_preset_smooth": "Sunet domol",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "stâncă",
     "eq_preset_hiphop": "Hip-hop",
@@ -660,10 +660,11 @@
     "reorder_track": "Reordonați piesa"
   },
   "playlist": {
+    "description_too_long": "Descrierea playlistului este prea lungă.",
     "likes_downloaded": "{done} din {total} descărcat",
     "select_tracks": "Selectați piese",
     "playlist": "Lista de redare",
-    "liked_songs": "Cântecele care au plăcut",
+    "liked_songs": "Melodii preferate",
     "untitled_playlist": "Playlist fără titlu",
     "play_all": "Joacă toate",
     "add_to_queue": "Adăugați playlist la o coadă",
@@ -796,11 +797,12 @@
       "description": "Comportament în coadă, acțiuni de clic și ieșire audio."
     },
     "shortcuts": {
+      "reset_all_success": "Toate comenzile rapide au fost readuse la setările implicite.",
       "description": "Personalizați comenzile rapide de la tastatură la nivel global de sistem și de jucător.",
       "global_section": "Comenzi rapide globale (la nivelul întregului sistem)",
       "global_desc": "Lucrați din orice aplicație de pe computer, chiar și atunci când Lane este redus la minimum sau nu este concentrat.",
       "main_app_section": "Aplicația principală",
-      "main_app_desc": "Activ atunci când fereastra principală a benzii este deschisă și focalizată.",
+      "main_app_desc": "Funcționează când fereastra principală Lane este activă.",
       "miniplayer_section": "Modul Miniplayer",
       "miniplayer_desc": "Activ atunci când miniplayerul suprapus de pe desktop este focalizat.",
       "toggle_overlay": "Comutați suprapunerea miniplayerului",
@@ -899,14 +901,14 @@
         "song": "Titlul cântecului",
         "artist_song": "Artist - Cântec",
         "song_artist": "Cântec - Artist",
-        "app": "Bandă (implicit)"
+        "app": "Lane (implicit)"
       },
       "show_timeline": {
         "title": "Cronologie de redare",
         "description": "Afișează bara de progres interactivă cu timpul scurs și rămas pe pistă."
       },
       "show_artwork": {
-        "title": "Urmăriți opera de artă",
+        "title": "Coperta piesei",
         "description": "Afișați melodia sau coperta albumului în cardul de activitate Discord."
       },
       "show_artist_image": {
@@ -934,7 +936,7 @@
       }
     },
     "customization": {
-      "description": "Tapet de fundal pentru fereastră, transparență și blocați efectele de estompare.",
+      "description": "Fundalul ferestrei, transparența și estomparea panourilor.",
       "apply_to_overlay": "Aplicați pentru suprapunerea mini playerului",
       "apply_to_overlay_desc": "Redați fundalul personalizat și stilul de sticlă pe mini player-ul plutitor.",
       "dark_theme_only": "Personalizarea este disponibilă numai pentru tema întunecată",
@@ -963,7 +965,7 @@
       "reset_block": "Resetați",
       "block_reset": "Resetarea setărilor de blocare",
       "reset_all": "Resetați toate personalizările",
-      "reset_all_desc": "Restabiliți aspectul implicit, imaginea de fundal clară și efectele blocate de sticlă.",
+      "reset_all_desc": "Revino la aspectul implicit și elimină imaginea de fundal și efectele de sticlă.",
       "all_reset": "Toate personalizările sunt resetate",
       "applied": "Tapet aplicat",
       "removed": "Tapetul a fost eliminat",
@@ -1394,6 +1396,8 @@
     }
   },
   "toast": {
+    "track_liked": "Adăugată la melodiile preferate",
+    "track_unliked": "Eliminată din melodiile preferate",
     "playlist_created": "Lista de redare creată",
     "playlist_imported": "{name} importat (melodii {count})",
     "importing_playlist": "Importul {name}: melodii {done} / {total}",
@@ -1508,8 +1512,8 @@
     "status_skip": "sari peste",
     "check_device": "Dispozitiv online",
     "check_api": "Sănătatea API",
-    "check_covers": "Huse accesibile",
-    "check_link": "Partajați linkuri accesibile",
+    "check_covers": "Disponibilitatea coperților",
+    "check_link": "Disponibilitatea linkurilor de partajare",
     "check_dns": "DNS",
     "check_tcp": "TCP 443",
     "check_tls": "Strângere de mână TLS",
@@ -1612,7 +1616,7 @@
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} de piese",
-    "just_tracks": "Doar urme",
+    "just_tracks": "Piese individuale",
     "tracks_count_few": "{count} piese",
     "tracks_count_many": "{count} piese",
     "songs_played_two": "Cântece {count} redate",
@@ -1621,6 +1625,7 @@
     "songs_played_zero": "Cântece {count} redate"
   },
   "trends": {
+    "cached_chart": "Afișăm ultimul clasament salvat. Sursa este temporar indisponibilă.",
     "title": "Trending",
     "russia": "Rusia",
     "world": "La nivel mondial",
@@ -1663,6 +1668,6 @@
     "failed": "Nu s-a putut distribui. Verificați conexiunea și vizibilitatea articolului.",
     "make_public": "Faceți public",
     "make_private": "Faceți privat",
-    "open_failed": "Nu s-a putut deschide acest link. Este posibil ca articolul să nu mai fie disponibil."
+    "open_failed": "Linkul nu s-a putut deschide. Conținutul s-ar putea să nu mai fie disponibil."
   }
 }

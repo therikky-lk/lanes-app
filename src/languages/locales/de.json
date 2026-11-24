@@ -14,7 +14,7 @@
     "play": "Abspielen",
     "remove_from_library": "Aus der Mediathek entfernen",
     "save_to_library": "Zur Mediathek hinzufügen",
-    "add_to_queue": "Als Nächstes abspielen",
+    "add_to_queue": "Zur Warteschlange hinzufügen",
     "share": "Teilen",
     "no_popular_songs": "Noch keine beliebten Titel.",
     "no_singles_available": "Noch keine Singles verfügbar.",
@@ -28,11 +28,11 @@
     "aka": "Auch bekannt als",
     "genius_profile": "Genius-Profil",
     "album": "Album",
-    "single": "Einzeln",
+    "single": "Single",
     "all_releases": "Alle",
     "discography": "Diskographie",
-    "your_tracks": "In deinen Lieblingsliedern: {count}",
-    "open": "Offener Künstler",
+    "your_tracks": "Titel in deinen Favoriten: {count}",
+    "open": "Künstlerprofil öffnen",
     "verified": "Verifiziert"
   },
   "collection": {
@@ -45,7 +45,7 @@
     "playlist": "Wiedergabeliste",
     "album": "Album",
     "ep": "EP",
-    "single": "Einzeln",
+    "single": "Single",
     "tracks_count": "Titel",
     "hr": "Std.",
     "min": "Min.",
@@ -202,7 +202,7 @@
     "error_something_wrong": "Etwas ist schiefgelaufen. Versuche es erneut.",
     "tracks_plural": "{count} Titel",
     "songs_plural": "{count} Songs",
-    "env_warning": "Die App sollte in Electron laufen – Deeplinks, Offline-Prüfungen und Teilen benötigen die Desktop-Bridge.",
+    "env_warning": "Öffne Lane in Electron. Links zur App, Offline-Prüfungen und das Teilen funktionieren nur in der Desktop-Version.",
     "env_skip": "Überspringen",
     "grid": "Raster",
     "list": "Liste",
@@ -342,9 +342,9 @@
       "start": "Übertragung starten",
       "restart": "Beginnen Sie von vorne",
       "restart_confirm": "Diese Übertragung vergessen und von vorne beginnen? Bereits hinzugefügte Titel bleiben in deinen Likes.",
-      "collecting": "Beim Lesen von Spotify gefällt: {read} von {total}",
-      "batch": "Charge {n} von {of} · Spuren {from}–{to}",
-      "batch_retry": "Versuchen Sie Batch {n} von {of} erneut",
+      "collecting": "Lieblingstitel von Spotify werden geladen: {read} von {total}",
+      "batch": "Gruppe {n} von {of} · Titel {from}–{to}",
+      "batch_retry": "Gruppe {n} von {of} erneut versuchen",
       "progress": "{done} von {total} verarbeitet",
       "stat_liked": "Hinzugefügt",
       "stat_duplicate": "Bereits gemocht",
@@ -621,6 +621,7 @@
     "reorder_track": "Titel verschieben"
   },
   "playlist": {
+    "description_too_long": "Die Beschreibung der Playlist ist zu lang.",
     "likes_downloaded": "{done} von {total} heruntergeladen",
     "select_tracks": "Titel auswählen",
     "playlist": "Wiedergabeliste",
@@ -751,7 +752,7 @@
       "privacy": "Datenschutz",
       "youtube": "YouTube",
       "discord": "Discord RPC",
-      "shortcuts": "Verknüpfungen"
+      "shortcuts": "Tastenkürzel"
     },
     "playback": {
       "description": "Verhalten der Warteschlange, Klickaktionen und Audioausgabe."
@@ -956,8 +957,8 @@
         "limit": "Download-Limit erreicht · {count} verbleibend",
         "offline": "Downloads werden fortgesetzt, wenn eine Verbindung besteht"
       },
-      "saved_items_one": "{count} gespart",
-      "saved_items_other": "{count} gespart"
+      "saved_items_one": "{count} gespeichert",
+      "saved_items_other": "{count} gespeichert"
     },
     "theme": {
       "title": "Design",
@@ -1203,6 +1204,7 @@
       "signed_in": "Verbunden"
     },
     "shortcuts": {
+      "reset_all_success": "Alle Tastenkürzel wurden auf die Standardeinstellungen zurückgesetzt.",
       "play_pause": "Wiedergabe / Pause",
       "search": "Musik suchen",
       "toggle_queue": "Warteschlange",
@@ -1211,10 +1213,10 @@
       "tab_overlay": "Überlagerung",
       "scope_overlay": "Überlagerung",
       "description": "Passen Sie globale systemweite und Player-Tastaturkürzel an.",
-      "global_section": "Globale Verknüpfungen (systemweit)",
+      "global_section": "Systemweite Tastenkürzel",
       "global_desc": "Arbeiten Sie aus jeder Anwendung auf Ihrem Computer, auch wenn Lane minimiert oder nicht fokussiert ist.",
       "main_app_section": "Hauptanwendung",
-      "main_app_desc": "Aktiv, wenn das Hauptfenster der Spur geöffnet und fokussiert ist.",
+      "main_app_desc": "Aktiv, wenn das Hauptfenster von Lane geöffnet und im Vordergrund ist.",
       "miniplayer_section": "Miniplayer-Modus",
       "miniplayer_desc": "Aktiv, wenn der Desktop-Overlay-Miniplayer fokussiert ist.",
       "toggle_overlay": "Miniplayer-Overlay umschalten",
@@ -1246,15 +1248,15 @@
       "like_track_desc": "Titel zu Lieblingstiteln hinzufügen oder daraus entfernen.",
       "focus_main_window": "Wechseln Sie zum Hauptfenster",
       "focus_main_window_desc": "Fokussieren Sie das Hauptanwendungsfenster und holen Sie es nach vorne.",
-      "reset_all": "Alle Verknüpfungen zurücksetzen",
-      "reset_all_desc": "Stellen Sie die werkseitigen Standardverknüpfungen für alle Abschnitte wieder her.",
+      "reset_all": "Alle Tastenkürzel zurücksetzen",
+      "reset_all_desc": "Stellt die Standard-Tastenkürzel für alle Bereiche wieder her.",
       "reset_all_button": "Standardeinstellungen zurücksetzen",
       "reset_tooltip": "Auf Standard zurücksetzen ({shortcut})",
       "conflict_error": "Bereits verwendet von „{action}“",
       "modifier_required": "Globale Tastenkombinationen erfordern Strg, Alt oder Umschalt",
       "recording_hint": "Zum Zuweisen Tasten drücken (Esc zum Abbrechen)",
       "press_keys": "Tasten drücken...",
-      "search_placeholder": "Suchverknüpfungen...",
+      "search_placeholder": "Tastenkürzel suchen …",
       "tab_main_app": "Haupt-App",
       "scope_main_app": "Haupt-App",
       "tab_global": "Global",
@@ -1276,7 +1278,7 @@
         "song": "Songtitel",
         "artist_song": "Künstler - Lied",
         "song_artist": "Lied - Künstler",
-        "app": "Spur (Standard)"
+        "app": "Lane (Standard)"
       },
       "show_timeline": {
         "title": "Wiedergabezeitleiste",
@@ -1295,11 +1297,11 @@
         "description": "Halten Sie den Status auf Discord mit einer Pausenanzeige sichtbar, wenn die Musik pausiert ist."
       },
       "show_button": {
-        "title": "Schaltfläche „Auf Spur hören“.",
+        "title": "Schaltfläche zum Anhören auf Lane",
         "description": "Fügen Sie eine interaktive Schaltfläche hinzu, die mit dem Song auf Lane verknüpft ist."
       },
       "show_download_button": {
-        "title": "Schaltfläche „Spur holen“.",
+        "title": "Schaltfläche zum Lane-Discord",
         "description": "Fügen Sie eine Schaltfläche hinzu, die Personen zum Lane Discord-Server einlädt."
       },
       "status": {
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Zu deinen Lieblingstiteln hinzugefügt",
+    "track_unliked": "Aus deinen Lieblingstiteln entfernt",
     "playlist_created": "Playlist erstellt",
     "playlist_imported": "{name} importiert ({count} Titel)",
     "importing_playlist": "{name} wird importiert: {done} / {total} Titel",
@@ -1508,7 +1512,7 @@
     "clear": "Suche löschen"
   },
   "local": {
-    "title": "Meine Spuren",
+    "title": "Meine Titel",
     "subtitle": "Ihre eigenen Audiodateien. Sie bleiben auf diesem Gerät.",
     "upload": "Dateien hochladen",
     "uploading": "Hinzufügen…",
@@ -1532,7 +1536,7 @@
     "daily_mix": "Tagesmischung",
     "radio": "Radio: {title}",
     "expand": "Titel anzeigen",
-    "collapse": "Spuren ausblenden",
+    "collapse": "Titel ausblenden",
     "empty": "Alles, was Sie hören, wird hier angezeigt",
     "more": "Mehr anzeigen",
     "songs_played_zero": "{count} Songs gehört",
@@ -1548,11 +1552,12 @@
     "today_tracks": "Tracks heute",
     "hours_minutes": "{h} Std. {m} Min",
     "minutes": "{m} Min",
-    "just_tracks": "Nur Gleise",
+    "just_tracks": "Einzeltitel",
     "tracks_count_few": "{count} Titel",
     "tracks_count_many": "{count} Titel"
   },
   "trends": {
+    "cached_chart": "Wir zeigen die zuletzt gespeicherten Charts an. Die Quelle ist vorübergehend nicht erreichbar.",
     "title": "Im Trend",
     "russia": "Russland",
     "world": "Weltweit",

@@ -180,7 +180,7 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
 
           <AppImage
             src={logo}
-            alt="Logo"
+            alt="Lane"
             width={34}
             height={34}
             className="w-[34px] h-[34px] theme-logo"

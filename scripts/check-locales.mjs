@@ -28,6 +28,12 @@ const invariantText = new Set([
   "settings.about.tech_react",
 ]);
 const placeholders = value => [...value.matchAll(/\{([^{}]+)\}/g)].map(match => match[1]).sort().join(",");
+const laneBrandKeys = [
+  "common.app.name",
+  "settings.about.liner",
+  "settings.discord.status_display.app",
+  "settings.shortcuts.main_app_desc",
+];
 for (const [locale, dictionary] of Object.entries(dictionaries)) {
   for (const [key, template] of Object.entries(base)) {
     const value = dictionary[key];
@@ -36,6 +42,9 @@ for (const [locale, dictionary] of Object.entries(dictionaries)) {
     else if (locale !== "en" && value === template && template.length > 15 && /[A-Za-z]/.test(template) && !invariantText.has(key)) {
       errors.push(`${locale}: untranslated English text for ${key}`);
     }
+  }
+  for (const key of laneBrandKeys) {
+    if (!/\bLane\b/.test(dictionary[key] ?? "")) errors.push(`${locale}: keep the Lane name in ${key}`);
   }
   // Plural forms specific to a locale must retain their count parameter too.
   for (const [key, value] of Object.entries(dictionary)) {

@@ -5,6 +5,7 @@ import DropdownMenu from "@/shared/ui/DropdownMenu";
 import type { DropdownMenuItem } from "@/shared/ui/DropdownMenu";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
 import CoverImage from "@/features/covers/ui/CoverImage";
+import { useTranslation } from "@/languages";
 
 export interface AlbumCardProps {
   id: string;
@@ -27,6 +28,8 @@ function AlbumCard({
   className = "",
   menuItems,
 }: AlbumCardProps) {
+  const { t } = useTranslation();
+  const hasTrackCount = typeof trackCount === "number" && trackCount > 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{
     x: number;
@@ -90,10 +93,10 @@ function AlbumCard({
           <span className="flex items-center gap-[5px] truncate text-[13px] text-text-tertiary">
             {explicit && <ExplicitBadge />}
             {year && <span>{year}</span>}
-            {year && trackCount && (
+            {year && hasTrackCount && (
               <span className="w-[3px] h-[3px] rounded-full bg-text-tertiary/40 shrink-0" aria-hidden />
             )}
-            {trackCount && <span>{trackCount} tracks</span>}
+            {hasTrackCount && <span>{t("common.tracks", { count: trackCount })}</span>}
           </span>
         </div>
       </Link>

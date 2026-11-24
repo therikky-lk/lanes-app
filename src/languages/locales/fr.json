@@ -9,7 +9,7 @@
     "tracks": "titres",
     "popular_songs": "Titres populaires",
     "albums": "Albums",
-    "singles": "Célibataires",
+    "singles": "Singles",
     "reposts": "Rediffusions",
     "play": "Lecture",
     "remove_from_library": "Retirer de la bibliothèque",
@@ -28,11 +28,11 @@
     "aka": "Également connu sous le nom de",
     "genius_profile": "Profil Genius",
     "album": "Album",
-    "single": "Unique",
+    "single": "Single",
     "all_releases": "Tout",
     "discography": "Discographie",
-    "your_tracks": "Dans vos chansons préférées : {count}",
-    "open": "Artiste ouvert",
+    "your_tracks": "Titres favoris : {count}",
+    "open": "Ouvrir le profil de l’artiste",
     "verified": "Vérifié"
   },
   "collection": {
@@ -44,8 +44,8 @@
     "not_found": "Introuvable",
     "playlist": "Liste de lecture",
     "album": "Album",
-    "ep": "PE",
-    "single": "Unique",
+    "ep": "EP",
+    "single": "Single",
     "tracks_count": "titres",
     "hr": "h",
     "min": "min",
@@ -67,7 +67,7 @@
       "settings": "Paramètres",
       "pin": "Épingler au menu",
       "unpin": "Désépingler du menu",
-      "liked": "J'ai aimé"
+      "liked": "Favoris"
     },
     "loading": "Chargement",
     "signed_in": "Connecté",
@@ -173,7 +173,7 @@
     "imported_playlist": "Playlist importée",
     "liked_songs": "J'aime",
     "start_radio": "Lancer une station",
-    "play_next": "Lire ensuite",
+    "play_next": "Lire juste après",
     "like": "J'aime",
     "unlike": "Je n'aime plus",
     "add_to_playlist": "Ajouter à la playlist",
@@ -204,7 +204,7 @@
     "songs_many": "{count} titres",
     "songs_other": "{count} titres",
     "songs_plural": "{count} titres",
-    "env_warning": "L'application doit être exécutée dans Electron : les liens profonds, les vérifications hors ligne et le partage nécessitent le pont de bureau.",
+    "env_warning": "Ouvre Lane dans Electron. Les liens vers l’application, les vérifications hors ligne et le partage nécessitent la version de bureau.",
     "env_skip": "Ignorer",
     "grid": "Grille",
     "list": "Liste",
@@ -251,7 +251,7 @@
     "popularArtists": "Artistes tendance",
     "popularPlaylists": "Playlists populaires",
     "dailyMixes": "Mix quotidiens",
-    "dailyMixesSubtitle": "Des playlists fraîches composées autour de vos artistes et genres préférés",
+    "dailyMixesSubtitle": "De nouvelles playlists inspirées de tes artistes et genres préférés",
     "vibe": {
       "start_failed": "Aucun titre disponible trouvé. Essayez un autre filtre ou vérifiez votre connexion.",
       "title": "Mon ambiance",
@@ -459,7 +459,7 @@
     "waiting_verification": "En attente de la vérification Telegram...",
     "back": "Retour",
     "cancel": "Annuler",
-    "error_handle_required": "l'identifiant est obligatoire",
+    "error_handle_required": "Saisis ton nom d’utilisateur.",
     "error_password_required": "le mot de passe est obligatoire",
     "error_passwords_no_match": "Les mots de passe ne correspondent pas",
     "error_wrong_password": "Mot de passe incorrect",
@@ -543,11 +543,11 @@
     "track_unavailable": "« {title} » est indisponible, passage au suivant...",
     "track_unavailable_title": "Titre indisponible",
     "playback_stopped_too_many_errors": "Lecture arrêtée : trop de titres n'ont pas pu être chargés.",
-    "speed_pitch": "Vitesse et tonalité",
+    "speed_pitch": "Vitesse et hauteur du son",
     "speed": "Vitesse",
-    "pitch": "Tonalité",
-    "link_speed_pitch": "Lier la vitesse à la tonalité",
-    "link_speed_pitch_hint": "Style vinyle et cassette : la vitesse modifie la tonalité",
+    "pitch": "Hauteur du son",
+    "link_speed_pitch": "Lier la hauteur du son à la vitesse",
+    "link_speed_pitch_hint": "Comme avec un vinyle ou une cassette, la vitesse modifie la hauteur du son",
     "key_lock": "Conserver la tonalité",
     "key_lock_hint": "Conserve la tonalité d'origine quand la vitesse change",
     "keep_speed_across_tracks": "Conserver entre les titres",
@@ -589,7 +589,7 @@
     "eq_preset_laptop": "Ordinateur portable",
     "eq_preset_night": "Nuit",
     "eq_preset_punch": "Percutant",
-    "eq_preset_smooth": "Lisse",
+    "eq_preset_smooth": "Son doux",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "Rock",
     "eq_preset_hiphop": "Hip-hop",
@@ -609,7 +609,7 @@
     "visual_quality_lite_hint": "Fond fixe, paroles simples",
     "volume": "Volume",
     "previous": "Précédent",
-    "open_player": "Lecteur ouvert",
+    "open_player": "Ouvrir le lecteur",
     "next": "Suivant",
     "repeat": "Répéter",
     "instrumental_hint": "Ce morceau est instrumental",
@@ -621,6 +621,7 @@
     "reorder_track": "Réorganiser le titre"
   },
   "playlist": {
+    "description_too_long": "La description de la playlist est trop longue.",
     "likes_downloaded": "{done} sur {total} téléchargés",
     "select_tracks": "Sélectionner des titres",
     "playlist": "Liste de lecture",
@@ -757,6 +758,7 @@
       "description": "Comportement de la file d'attente, actions au clic et sortie audio."
     },
     "shortcuts": {
+      "reset_all_success": "Tous les raccourcis clavier ont été réinitialisés.",
       "description": "Personnalisez les raccourcis clavier globaux et ceux du lecteur.",
       "global_section": "Raccourcis globaux (système)",
       "global_desc": "Fonctionnent depuis n'importe quelle application, même quand Lane est réduit ou n'a pas le focus.",
@@ -1275,14 +1277,14 @@
         "song": "Titre de la chanson",
         "artist_song": "Artiste - Chanson",
         "song_artist": "Chanson - Artiste",
-        "app": "Voie (par défaut)"
+        "app": "Lane (par défaut)"
       },
       "show_timeline": {
         "title": "Chronologie de lecture",
         "description": "Afficher la barre de progression interactive avec le temps de piste écoulé et restant."
       },
       "show_artwork": {
-        "title": "Illustration de la piste",
+        "title": "Pochette du titre",
         "description": "Afficher la couverture du morceau ou de l'album dans la carte d'activité Discord."
       },
       "show_artist_image": {
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Ajouté aux favoris",
+    "track_unliked": "Retiré des favoris",
     "playlist_created": "Playlist créée",
     "playlist_imported": "{name} importée ({count} titres)",
     "importing_playlist": "Importation de {name} : {done} / {total} titres",
@@ -1506,7 +1510,7 @@
     "clear": "Effacer la recherche"
   },
   "local": {
-    "title": "Mes traces",
+    "title": "Mes titres",
     "subtitle": "Vos propres fichiers audio. Ils restent sur cet appareil.",
     "upload": "Télécharger des fichiers",
     "uploading": "Ajout…",
@@ -1514,7 +1518,7 @@
     "skipped": "Sauté {count} — ce n'est pas un fichier audio ou est trop volumineux",
     "empty_title": "Déposez les fichiers MP3 ici",
     "empty_desc": "ou cliquez pour choisir. Le titre, l'artiste et la couverture sont lus à partir des balises du fichier.",
-    "drop_here": "Déposer pour ajouter à Mes traces",
+    "drop_here": "Dépose les fichiers ici pour les ajouter à « Mes titres »",
     "unknown_artist": "Artiste inconnu",
     "only_on_device": "Uniquement sur «{device}»",
     "only_on_device_toast": "Cette piste est diffusée uniquement sur «{device}»",
@@ -1546,11 +1550,12 @@
     "today_tracks": "Pistes aujourd'hui",
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
-    "just_tracks": "Juste des pistes",
+    "just_tracks": "Titres individuels",
     "tracks_count_few": "{count} titres",
     "tracks_count_many": "{count} titres"
   },
   "trends": {
+    "cached_chart": "Dernier classement enregistré : la source est temporairement indisponible.",
     "title": "Tendance",
     "russia": "Russie",
     "world": "Dans le monde entier",

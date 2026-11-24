@@ -31,7 +31,7 @@
     "tracks": "rajad",
     "popular_songs": "Populaarsed laulud",
     "albums": "Albumid",
-    "singles": "Vallalised",
+    "singles": "Singlid",
     "reposts": "Korduspostitused",
     "play": "Mängi",
     "remove_from_library": "Eemalda teegist",
@@ -50,16 +50,16 @@
     "aka": "Tuntud ka kui",
     "genius_profile": "Geeniuse profiil",
     "album": "Album",
-    "single": "Vallaline",
+    "single": "Singel",
     "all_releases": "Kõik",
     "discography": "Diskograafia",
-    "your_tracks": "Teie meeldivates lauludes: {count}",
-    "open": "Avatud kunstnik",
+    "your_tracks": "Lemmiklood: {count}",
+    "open": "Ava esitaja profiil",
     "verified": "Kinnitatud"
   },
   "collection": {
     "unknown_album": "Tundmatu album",
-    "unknown_artist": "Tundmatu kunstnik",
+    "unknown_artist": "Tundmatu esitaja",
     "unknown_playlist": "Tundmatu esitusloend",
     "unknown_owner": "Tundmatu omanik",
     "added_to_queue": "Lisatud järjekorda",
@@ -67,7 +67,7 @@
     "playlist": "Esitusloend",
     "album": "Album",
     "ep": "EP",
-    "single": "Vallaline",
+    "single": "Singel",
     "tracks_count": "rajad",
     "hr": "hr",
     "min": "min",
@@ -163,7 +163,7 @@
     "all": "Kõik",
     "songs": "Laulud",
     "youtube": "YouTube",
-    "artists": "Kunstnikud",
+    "artists": "Esitajad",
     "albums": "Albumid",
     "playlists": "Esitusloendid",
     "tracks": "rajad",
@@ -228,7 +228,7 @@
     "error_something_wrong": "Midagi läks valesti. Proovi uuesti.",
     "tracks_plural": "{count} rajad",
     "songs_plural": "{count} laulud",
-    "env_warning": "Rakendus peaks töötama Electronis – süvalingid, võrguühenduseta kontrollid ja jagamine vajavad töölauasilda.",
+    "env_warning": "Ava Lane Electronis. Rakenduse linkide avamiseks, võrguühenduseta kontrollideks ja jagamiseks on vaja töölauaversiooni.",
     "env_skip": "Jäta vahele",
     "grid": "Võre",
     "list": "Nimekiri",
@@ -331,7 +331,7 @@
       "retry": "Logige uuesti sisse",
       "unsupported": "Saadaval lauaarvuti ja Androidi rakenduses Lane.",
       "menu": "Spotifyst meeldivad lood",
-      "how": "Rajad lähevad teie Lane'i meeldimiste hulka {size} partiidena, vanim enne, nii et järjekord jääb nagu Spotifys. Edenemine on salvestatud: saate selle akna või rakenduse sulgeda ja hiljem jätkata.",
+      "how": "Lood lisatakse Lane’i lemmikutesse {size} kaupa, alustades vanimatest, et säiliks Spotify järjekord. Võid akna või rakenduse sulgeda ja hiljem jätkata.",
       "start": "Alusta ülekandmist",
       "continue": "Jätka",
       "pause": "Paus",
@@ -381,14 +381,14 @@
     "tracks": "rajad",
     "tab_playlists": "Esitusloendid",
     "tab_albums": "Albumid",
-    "tab_artists": "Kunstnikud",
+    "tab_artists": "Esitajad",
     "search_playlists": "Otsige esitusloendeid",
     "search_albums": "Otsige albumeid",
-    "search_artists": "Otsige kunstnikke",
+    "search_artists": "Otsi esitajaid",
     "sort_by": "Sorteeri",
     "sort_recent": "Hiljuti lisatud",
     "sort_title": "Tähestikuline (A–Z)",
-    "sort_creator": "Looja/kunstniku järgi",
+    "sort_creator": "Autori või esitaja järgi",
     "view_grid": "Võre",
     "view_list": "Nimekiri",
     "find_music": "Otsi",
@@ -561,7 +561,7 @@
     "lyrics": "Laulusõnad",
     "volume": "Helitugevus",
     "previous": "Eelmine",
-    "open_player": "Avage mängija",
+    "open_player": "Ava pleier",
     "next": "Edasi",
     "repeat": "Korda",
     "lyrics_upgraded": "Laulusõnad uuendatud!",
@@ -590,9 +590,9 @@
     "track_unavailable": "\"{title}\" pole saadaval, jäetakse vahele...",
     "track_unavailable_title": "Rada pole saadaval",
     "playback_stopped_too_many_errors": "Taasesitus peatati – liiga paljude lugude laadimine ebaõnnestus.",
-    "speed_pitch": "Kiirus ja kõrgus",
+    "speed_pitch": "Kiirus ja helikõrgus",
     "speed": "Kiirus",
-    "pitch": "Pitch",
+    "pitch": "Helikõrgus",
     "link_speed_pitch": "Seo kiirus ja helikõrgus",
     "link_speed_pitch_hint": "Vinüül- ja lindi stiil: kiirus muudab helikõrgust",
     "key_lock": "Klahvilukk",
@@ -660,10 +660,11 @@
     "reorder_track": "Tee ümber"
   },
   "playlist": {
+    "description_too_long": "Esitusloendi kirjeldus on liiga pikk.",
     "likes_downloaded": "{done}/{total} on alla laaditud",
     "select_tracks": "Valige rajad",
     "playlist": "Esitusloend",
-    "liked_songs": "Laulud meeldisid",
+    "liked_songs": "Lemmiklood",
     "untitled_playlist": "Pealkirjata esitusloend",
     "play_all": "Esita kõik",
     "add_to_queue": "Esitusloendi lisamine järjekorda",
@@ -699,7 +700,7 @@
     "all": "Kõik",
     "songs": "Laulud",
     "youtube": "YouTube",
-    "artists": "Kunstnikud",
+    "artists": "Esitajad",
     "albums": "Albumid",
     "playlists": "Esitusloendid",
     "no_results": "Tulemusi ei leitud",
@@ -708,7 +709,7 @@
     "section": {
       "library": "Teie raamatukogus",
       "tracks": "Laulud",
-      "artists": "Kunstnikud",
+      "artists": "Esitajad",
       "albums": "Albumid",
       "playlists": "Esitusloendid"
     }
@@ -796,7 +797,8 @@
       "description": "Järjekorra käitumine, klõpsamistoimingud ja heliväljund."
     },
     "shortcuts": {
-      "description": "Kohandage globaalseid kogu süsteemi ja mängija klaviatuuri otseteid.",
+      "reset_all_success": "Kõigi kiirklahvide vaikeseaded on taastatud.",
+      "description": "Kohanda süsteemiüleseid ja pleieri kiirklahve.",
       "global_section": "Globaalsed otseteed (üle süsteemi)",
       "global_desc": "Töötage kõigist arvutirakendustest, isegi kui Lane on minimeeritud või fokuseerimata.",
       "main_app_section": "Peamine rakendus",
@@ -830,13 +832,13 @@
       "toggle_lyrics": "Laulusõnad",
       "toggle_lyrics_desc": "Avage või sulgege sünkroonitud laulusõnade paneel.",
       "toggle_fullscreen": "Täisekraan / pleieri vaade",
-      "toggle_fullscreen_desc": "Lülitage kaasahaarav täisekraanimängija vaade sisse/välja.",
+      "toggle_fullscreen_desc": "Ava või sulge pleieri täisekraanivaade.",
       "like_track": "Meeldib / erinevalt",
       "like_track_desc": "Lisage või eemaldage lugu lemmiklugudest.",
       "focus_main_window": "Lülitage peaaknale",
       "focus_main_window_desc": "Keskenduge ja tooge rakenduse peamine aken ette.",
       "reset_all": "Lähtestage kõik otseteed",
-      "reset_all_desc": "Taastage kõigi jaotiste tehase vaikeotseteed.",
+      "reset_all_desc": "Taastab kõigi jaotiste vaikimisi kiirklahvid.",
       "reset_all_button": "Lähtestage vaikeseaded",
       "reset_tooltip": "Lähtestage vaikeseadetele ({shortcut})",
       "conflict_error": "\"{action}\" juba kasutanud",
@@ -895,23 +897,23 @@
       "status_display": {
         "title": "Olekuvorming",
         "description": "Valige, mis kuvatakse Discordi olekupäises „Kuulamine...”.",
-        "artist": "Kunstnik",
+        "artist": "Esitaja",
         "song": "Laulu pealkiri",
-        "artist_song": "Kunstnik – laul",
+        "artist_song": "Esitaja – lugu",
         "song_artist": "Laul – Artist",
-        "app": "Rada (vaikimisi)"
+        "app": "Lane (vaikimisi)"
       },
       "show_timeline": {
         "title": "Taasesituse ajaskaala",
         "description": "Interaktiivse edenemisriba kuvamine kulunud ja järelejäänud loo ajaga."
       },
       "show_artwork": {
-        "title": "Loo kunstiteos",
+        "title": "Loo kaanepilt",
         "description": "Kuva lugu või albumi kaas Discordi tegevuskaardil."
       },
       "show_artist_image": {
-        "title": "Kunstniku fotomärk",
-        "description": "Näidake kunstniku fotot väikese ringikujulise märgina allnurgas."
+        "title": "Esitaja foto",
+        "description": "Kuva esitaja fotot väikeses ringis alanurgas."
       },
       "show_paused": {
         "title": "Näita, kui peatatud",
@@ -934,7 +936,7 @@
       }
     },
     "customization": {
-      "description": "Akna taustapilt, läbipaistvus ja blokeerivad hägususe efektid.",
+      "description": "Akna taustapilt, läbipaistvus ja paneelide hägustus.",
       "apply_to_overlay": "Rakenda ülekattega minipleierile",
       "apply_to_overlay_desc": "Renderdage ujuval minipleieril kohandatud taust ja klaasistiil.",
       "dark_theme_only": "Kohandamine on saadaval ainult tumeda teema jaoks",
@@ -963,7 +965,7 @@
       "reset_block": "Lähtesta",
       "block_reset": "Blokeerimisseadete lähtestamine",
       "reset_all": "Lähtestage kõik kohandused",
-      "reset_all_desc": "Taastage vaikevälimus, selge taustpilt ja ploki klaasiefektid.",
+      "reset_all_desc": "Taastab vaikevälimuse ning eemaldab taustapildi ja klaasiefektid.",
       "all_reset": "Kõik kohandused lähtestatakse",
       "applied": "Taustapilt on rakendatud",
       "removed": "Tapeet eemaldatud",
@@ -1087,7 +1089,7 @@
       "downloads_limit": "Ruumi allalaadimiseks",
       "downloads_limit_hint": "{count} laulude kohta. Allalaadimised peatuvad, kui need on täis.",
       "downloads_limit_unlimited": "Allalaadimised kasutavad teie seadme vaba ruumi.",
-      "cache_row_title": "Laulud, sõnad ja kunstiteos",
+      "cache_row_title": "Lood, laulusõnad ja kaanepildid",
       "cache_row_desc": "Salvestatud kuulamise ajal. Pärast tühjendamist saab need uuesti alla laadida.",
       "cache_limit_hint": "{count} laulude kohta. Esmalt eemaldatakse viimati mängitud lood.",
       "cache_limit_unlimited": "Vahemällu salvestatud lugudele pole suurusepiirangut seatud.",
@@ -1241,7 +1243,7 @@
       "favorites": "Lemmikud",
       "music_question": "Mida sa armastad kuulata?",
       "music_hint": "Lisage ainult üks laul või üks esitaja. Enne teise valimist eemaldage praegune valik.",
-      "choose_artist": "Valige kunstnik",
+      "choose_artist": "Vali esitaja",
       "add_song": "Lisage laul",
       "favorite_artist": "Lemmik artist",
       "favorite_track": "Lemmik laul",
@@ -1356,7 +1358,7 @@
       "signed_in": "Ühendatud"
     },
     "miniplayer": {
-      "description": "Ujuv minimängija käitumine, ajaskaala ja välimus.",
+      "description": "Hõljuva minipleieri käitumine, edenemisriba ja välimus.",
       "always_on_top": {
         "title": "Alati peal",
         "description": "Hoidke minipleierit teiste akende ja rakenduste kohal."
@@ -1394,6 +1396,8 @@
     }
   },
   "toast": {
+    "track_liked": "Lisatud lemmiklugude hulka",
+    "track_unliked": "Lemmiklugude hulgast eemaldatud",
     "playlist_created": "Esitusloend on loodud",
     "playlist_imported": "Imporditud {name} ({count} laulud)",
     "importing_playlist": "{name}: {done} / {total} lugude importimine",
@@ -1509,7 +1513,7 @@
     "check_device": "Seade võrgus",
     "check_api": "API tervis",
     "check_covers": "Kaaned on ligipääsetavad",
-    "check_link": "Jaga lingid kättesaadavad",
+    "check_link": "Jagamislinkide kättesaadavus",
     "check_dns": "DNS",
     "check_tcp": "TCP 443",
     "check_tls": "TLS käepigistus",
@@ -1554,7 +1558,7 @@
     "empty_title": "Lohistage MP3-failid siia",
     "empty_desc": "või klõpsake valimiseks. Pealkiri, esitaja ja kaas loetakse faili siltidelt.",
     "drop_here": "Lohistage, et lisada jaotisesse Minu rajad",
-    "unknown_artist": "Tundmatu kunstnik",
+    "unknown_artist": "Tundmatu esitaja",
     "only_on_device": "Ainult mudelitel \"{device}\"",
     "only_on_device_toast": "Seda lugu esitatakse ainult \"{device}\"",
     "added_from_device": "Teie fail sellest seadmest",
@@ -1612,15 +1616,16 @@
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} lugu",
-    "just_tracks": "Lihtsalt rajad",
-    "tracks_count_few": "{count} rajad",
-    "tracks_count_many": "{count} rajad",
+    "just_tracks": "Üksikud lood",
+    "tracks_count_few": "{count} lugu",
+    "tracks_count_many": "{count} lugu",
     "songs_played_two": "Esitati {count} lugusid",
     "songs_played_few": "Esitati {count} lugusid",
     "songs_played_many": "Esitati {count} lugusid",
     "songs_played_zero": "Esitati {count} lugusid"
   },
   "trends": {
+    "cached_chart": "Kuvame viimati salvestatud edetabelit. Allikas pole ajutiselt kättesaadav.",
     "title": "Trendikas",
     "russia": "Venemaa",
     "world": "Ülemaailmne",
@@ -1663,6 +1668,6 @@
     "failed": "Ei saanud jagada. Kontrollige ühendust ja üksuse nähtavust.",
     "make_public": "Tee avalikuks",
     "make_private": "Muuda privaatseks",
-    "open_failed": "Seda linki ei saanud avada. Üksus ei pruugi enam saadaval olla."
+    "open_failed": "Linki ei õnnestunud avada. Sisu ei pruugi enam saadaval olla."
   }
 }

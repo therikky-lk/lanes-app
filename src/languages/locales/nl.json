@@ -31,8 +31,8 @@
     "tracks": "sporen",
     "popular_songs": "Populaire liedjes",
     "albums": "Albums",
-    "singles": "Alleenstaanden",
-    "reposts": "Opnieuw posten",
+    "singles": "Singles",
+    "reposts": "Opnieuw gedeeld",
     "play": "Spelen",
     "remove_from_library": "Verwijderen uit bibliotheek",
     "save_to_library": "Opslaan in bibliotheek",
@@ -50,11 +50,11 @@
     "aka": "Ook bekend als",
     "genius_profile": "Geniaal profiel",
     "album": "Album",
-    "single": "Enkel",
+    "single": "Single",
     "all_releases": "Allemaal",
     "discography": "Discografie",
     "your_tracks": "In je favoriete nummers: {count}",
-    "open": "Open kunstenaar",
+    "open": "Artiestenprofiel openen",
     "verified": "Geverifieerd"
   },
   "collection": {
@@ -67,7 +67,7 @@
     "playlist": "Afspeellijst",
     "album": "Album",
     "ep": "EP",
-    "single": "Enkel",
+    "single": "Single",
     "tracks_count": "sporen",
     "hr": "uur",
     "min": "min",
@@ -228,7 +228,7 @@
     "error_something_wrong": "Er is iets misgegaan. Probeer het opnieuw.",
     "tracks_plural": "{count}-sporen",
     "songs_plural": "{count}-nummers",
-    "env_warning": "De app zou binnen Electron moeten draaien – deeplinks, offline controles en delen hebben de desktopbridge nodig.",
+    "env_warning": "Open Lane in Electron. Voor links naar de app, offline controles en delen heb je de desktopversie nodig.",
     "env_skip": "Overslaan",
     "grid": "Raster",
     "list": "Lijst",
@@ -388,7 +388,7 @@
     "sort_by": "Sorteer op",
     "sort_recent": "Recent toegevoegd",
     "sort_title": "Alfabetisch (A-Z)",
-    "sort_creator": "Door maker/kunstenaar",
+    "sort_creator": "Op maker of artiest",
     "view_grid": "Raster",
     "view_list": "Lijst",
     "find_music": "Zoeken",
@@ -592,7 +592,7 @@
     "playback_stopped_too_many_errors": "Afspelen gestopt — te veel nummers konden niet worden geladen.",
     "speed_pitch": "Snelheid en toonhoogte",
     "speed": "Snelheid",
-    "pitch": "Standplaats",
+    "pitch": "Toonhoogte",
     "link_speed_pitch": "Koppel snelheid aan toonhoogte",
     "link_speed_pitch_hint": "Vinyl- en tapestijl: snelheid verandert de toonhoogte",
     "key_lock": "Sleutelvergrendeling",
@@ -635,8 +635,8 @@
     "eq_preset_headphones": "Koptelefoon",
     "eq_preset_laptop": "Laptop",
     "eq_preset_night": "Nacht",
-    "eq_preset_punch": "Pons",
-    "eq_preset_smooth": "Glad",
+    "eq_preset_punch": "Krachtig geluid",
+    "eq_preset_smooth": "Zacht geluid",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "Rots",
     "eq_preset_hiphop": "Hiphop",
@@ -645,7 +645,7 @@
     "eq_preset_classical": "Klassiek",
     "eq_preset_bass": "Bas",
     "eq_preset_vocal": "Vocaal",
-    "eq_preset_treble": "Drievoudig",
+    "eq_preset_treble": "Hoge tonen",
     "visual_quality": "Visuele kwaliteit",
     "visual_quality_hint": "Kies effecten op volledig scherm. Lichtere modi gebruiken minder stroom en werken soepeler.",
     "visual_quality_all": "Alle effecten",
@@ -660,10 +660,11 @@
     "reorder_track": "Nummer opnieuw ordenen"
   },
   "playlist": {
+    "description_too_long": "De beschrijving van de afspeellijst is te lang.",
     "likes_downloaded": "{done} of {total} gedownload",
     "select_tracks": "Selecteer nummers",
     "playlist": "Afspeellijst",
-    "liked_songs": "Vond liedjes leuk",
+    "liked_songs": "Favoriete nummers",
     "untitled_playlist": "Naamloze afspeellijst",
     "play_all": "Speel alles",
     "add_to_queue": "Voeg een afspeellijst toe aan een wachtrij",
@@ -786,7 +787,7 @@
       "account": "Rekening",
       "about": "Over",
       "playback": "Afspelen",
-      "shortcuts": "Snelkoppelingen",
+      "shortcuts": "Sneltoetsen",
       "overlay": "Overlay",
       "discord": "Onenigheid RPC",
       "privacy": "Privacy",
@@ -796,8 +797,9 @@
       "description": "Wachtrijgedrag, klikacties en audio-uitvoer."
     },
     "shortcuts": {
+      "reset_all_success": "Alle sneltoetsen zijn teruggezet naar de standaardinstellingen.",
       "description": "Pas algemene systeembrede sneltoetsen en sneltoetsen voor de speler aan.",
-      "global_section": "Globale snelkoppelingen (systeembreed)",
+      "global_section": "Systeembrede sneltoetsen",
       "global_desc": "Werk vanuit elke toepassing op uw computer, zelfs wanneer Lane is geminimaliseerd of niet gefocust.",
       "main_app_section": "Hoofdtoepassing",
       "main_app_desc": "Actief wanneer het hoofdvenster van Lane open en gefocust is.",
@@ -829,21 +831,21 @@
       "toggle_queue_desc": "Open of sluit het afspeelwachtrijpaneel.",
       "toggle_lyrics": "Songteksten",
       "toggle_lyrics_desc": "Open of sluit het gesynchroniseerde songtekstpaneel.",
-      "toggle_fullscreen": "Volledig scherm / Spelerweergave",
-      "toggle_fullscreen_desc": "Schakel over naar een meeslepende spelerweergave op volledig scherm.",
+      "toggle_fullscreen": "Speler op volledig scherm",
+      "toggle_fullscreen_desc": "Open of sluit de speler op volledig scherm.",
       "like_track": "Vind ik leuk/niet leuk",
       "like_track_desc": "Voeg een nummer toe aan of verwijder een nummer van favoriete nummers.",
       "focus_main_window": "Schakel over naar het hoofdvenster",
       "focus_main_window_desc": "Focus en breng het hoofdtoepassingsvenster naar voren.",
-      "reset_all": "Reset alle snelkoppelingen",
-      "reset_all_desc": "Herstel de standaard fabriekssnelkoppelingen voor alle secties.",
+      "reset_all": "Alle sneltoetsen herstellen",
+      "reset_all_desc": "Zet de sneltoetsen in alle onderdelen terug naar hun standaardinstellingen.",
       "reset_all_button": "Standaardwaarden opnieuw instellen",
       "reset_tooltip": "Terugzetten naar standaard ({shortcut})",
       "conflict_error": "Al gebruikt door \"{action}\"",
       "modifier_required": "Voor globale sneltoetsen is Ctrl, Alt of Shift vereist",
       "recording_hint": "Druk op de toetsen om toe te wijzen (Esc om te annuleren)",
       "press_keys": "Toetsen indrukken...",
-      "search_placeholder": "Snelkoppelingen zoeken...",
+      "search_placeholder": "Sneltoetsen zoeken…",
       "tab_all": "Allemaal",
       "tab_main_app": "Hoofd-app",
       "tab_overlay": "Overlay",
@@ -852,10 +854,10 @@
       "scope_main_app": "Hoofd-app",
       "scope_overlay": "Overlay",
       "reset_section": "Sectie opnieuw instellen",
-      "filter_scopes": "Snelkoppelingsbereiken filteren"
+      "filter_scopes": "Filteren op type sneltoets"
     },
     "overlay": {
-      "description": "Gedrag van bureaubladoverlay, algemene snelkoppeling en positie-instellingen.",
+      "description": "Stel het zwevende venster, de systeembrede sneltoets en de positie in.",
       "enabled": {
         "title": "Schakel overlay in",
         "description": "Toon een zwevende miniatuurspeler boven andere vensters."
@@ -868,10 +870,10 @@
         "top_right": "Rechtsboven"
       },
       "shortcut": {
-        "title": "Globale snelkoppeling",
+        "title": "Systeembrede sneltoets",
         "description": "Schakel de bureaubladoverlay in vanuit elke toepassing op het hele systeem.",
         "recording": "Toetscombinatie indrukken...",
-        "need_modifier": "De snelkoppeling moet Ctrl, Alt of Shift bevatten",
+        "need_modifier": "Gebruik Ctrl, Alt of Shift in de sneltoets",
         "reset": "Opnieuw instellen op Alt+Shift+O",
         "reset_label": "Opnieuw instellen"
       },
@@ -899,18 +901,18 @@
         "song": "Titel van het nummer",
         "artist_song": "Artiest - Lied",
         "song_artist": "Lied - Artiest",
-        "app": "Rijstrook (standaard)"
+        "app": "Lane (standaard)"
       },
       "show_timeline": {
         "title": "Afspeeltijdlijn",
         "description": "Geef een interactieve voortgangsbalk weer met verstreken en resterende tracktijd."
       },
       "show_artwork": {
-        "title": "Volg illustraties",
+        "title": "Hoesafbeelding van het nummer",
         "description": "Toon nummer of albumhoes op de Discord-activiteitenkaart."
       },
       "show_artist_image": {
-        "title": "Fotobadge van kunstenaar",
+        "title": "Artiestenfoto",
         "description": "Toon de artiestenfoto in een kleine ronde badge in de benedenhoek."
       },
       "show_paused": {
@@ -934,7 +936,7 @@
       }
     },
     "customization": {
-      "description": "Vensterachtergrondbehang, transparantie en blokvervagingseffecten.",
+      "description": "Vensterachtergrond, transparantie en vervaging van panelen.",
       "apply_to_overlay": "Toepassen op overlay-minispeler",
       "apply_to_overlay_desc": "Geef de aangepaste achtergrond- en glasstijl weer op de zwevende minispeler.",
       "dark_theme_only": "Aanpassing is alleen beschikbaar voor het donkere thema",
@@ -963,7 +965,7 @@
       "reset_block": "Opnieuw instellen",
       "block_reset": "Blokinstellingen gereset",
       "reset_all": "Reset alle aanpassingen",
-      "reset_all_desc": "Herstel het standaard uiterlijk, maak de achtergrondafbeelding helder en blokkeer glaseffecten.",
+      "reset_all_desc": "Herstel de standaardweergave en verwijder de achtergrondafbeelding en glaseffecten.",
       "all_reset": "Alle aanpassingen worden gereset",
       "applied": "Behang aangebracht",
       "removed": "Behang verwijderd",
@@ -1394,6 +1396,8 @@
     }
   },
   "toast": {
+    "track_liked": "Toegevoegd aan je favoriete nummers",
+    "track_unliked": "Verwijderd uit je favoriete nummers",
     "playlist_created": "Afspeellijst gemaakt",
     "playlist_imported": "Geïmporteerde {name} ({count}-nummers)",
     "importing_playlist": "{name} importeren: {done} / {total}-nummers",
@@ -1509,7 +1513,7 @@
     "check_device": "Apparaat online",
     "check_api": "API-gezondheid",
     "check_covers": "Covers bereikbaar",
-    "check_link": "Deel links die bereikbaar zijn",
+    "check_link": "Beschikbaarheid van deellinks",
     "check_dns": "DNS",
     "check_tcp": "TCP-443",
     "check_tls": "TLS-handdruk",
@@ -1612,15 +1616,16 @@
     "hours_minutes": "{h} u {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} nummers",
-    "just_tracks": "Gewoon sporen",
-    "tracks_count_few": "{count}-sporen",
-    "tracks_count_many": "{count}-sporen",
+    "just_tracks": "Losse nummers",
+    "tracks_count_few": "{count} nummers",
+    "tracks_count_many": "{count} nummers",
     "songs_played_two": "{count}-nummers afgespeeld",
     "songs_played_few": "{count}-nummers afgespeeld",
     "songs_played_many": "{count}-nummers afgespeeld",
     "songs_played_zero": "{count}-nummers afgespeeld"
   },
   "trends": {
+    "cached_chart": "Je ziet de laatst opgeslagen hitlijst. De bron is tijdelijk niet beschikbaar.",
     "title": "Populair",
     "russia": "Rusland",
     "world": "Wereldwijd",
@@ -1663,6 +1668,6 @@
     "failed": "Kan niet delen. Controleer uw verbinding en itemzichtbaarheid.",
     "make_public": "Openbaar maken",
     "make_private": "Maak privé",
-    "open_failed": "Kon deze link niet openen. Mogelijk is het artikel niet meer verkrijgbaar."
+    "open_failed": "Deze link kan niet worden geopend. De inhoud is mogelijk niet meer beschikbaar."
   }
 }

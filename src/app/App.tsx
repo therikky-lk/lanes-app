@@ -62,10 +62,10 @@ export default function App() {
         <AppIconSync />
         <PresenceSync />
         <TouchBarSync />
-        {window.linerElectron?.overlayUpdateState && <OverlaySync />}
         <DiscordSync />
         <AppleEmojiProvider>
           <I18nProvider>
+            {window.linerElectron?.overlayUpdateState && <OverlaySync />}
             <ToastProvider>
               <RootErrorBoundary>
                 <WindowAnimationContainer>

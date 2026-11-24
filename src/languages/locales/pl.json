@@ -31,8 +31,8 @@
     "single": "Singiel",
     "all_releases": "Wszystko",
     "discography": "Dyskografia",
-    "your_tracks": "Liczba Twoich ulubionych utworów: {count}",
-    "open": "Otwórz artystę",
+    "your_tracks": "Polubione utwory: {count}",
+    "open": "Otwórz profil artysty",
     "verified": "Zweryfikowano"
   },
   "collection": {
@@ -206,7 +206,7 @@
     "songs_many": "{count} utworów",
     "songs_other": "{count} utworu",
     "songs_plural": "{count} utworów",
-    "env_warning": "Aplikacja powinna działać w Electronie: deeplinki, sprawdzanie trybu offline i udostępnianie wymagają mostu desktopowego.",
+    "env_warning": "Otwórz Lane w Electronie. Otwieranie linków do aplikacji, sprawdzanie w trybie offline i udostępnianie wymagają wersji na komputer.",
     "env_skip": "Pomiń",
     "grid": "Siatka",
     "list": "Lista",
@@ -459,7 +459,7 @@
     "waiting_verification": "Oczekiwanie na weryfikację w Telegramie...",
     "back": "Wstecz",
     "cancel": "Anuluj",
-    "error_handle_required": "identyfikator jest wymagany",
+    "error_handle_required": "Wpisz nazwę użytkownika.",
     "error_password_required": "hasło jest wymagane",
     "error_passwords_no_match": "Hasła nie są zgodne",
     "error_wrong_password": "Nieprawidłowe hasło",
@@ -543,10 +543,10 @@
     "track_unavailable": "„{title}” jest niedostępny, pomijam...",
     "track_unavailable_title": "Utwór niedostępny",
     "playback_stopped_too_many_errors": "Odtwarzanie zatrzymane: zbyt wielu utworów nie udało się wczytać.",
-    "speed_pitch": "Tempo i wysokość",
+    "speed_pitch": "Tempo i wysokość dźwięku",
     "speed": "Tempo",
-    "pitch": "Wysokość",
-    "link_speed_pitch": "Powiąż tempo z wysokością",
+    "pitch": "Wysokość dźwięku",
+    "link_speed_pitch": "Powiąż tempo z wysokością dźwięku",
     "link_speed_pitch_hint": "Styl winylu i kasety: tempo zmienia wysokość dźwięku",
     "key_lock": "Zachowaj tonację",
     "key_lock_hint": "Zachowuje oryginalną tonację przy zmianie tempa",
@@ -589,7 +589,7 @@
     "eq_preset_laptop": "Laptop",
     "eq_preset_night": "Noc",
     "eq_preset_punch": "Wyraziste uderzenie",
-    "eq_preset_smooth": "Gładka",
+    "eq_preset_smooth": "Łagodne brzmienie",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "Rock",
     "eq_preset_hiphop": "Hip-hop",
@@ -621,6 +621,7 @@
     "reorder_track": "Przeciągnij utwór"
   },
   "playlist": {
+    "description_too_long": "Opis playlisty jest za długi.",
     "likes_downloaded": "Pobrano {done} z {total}",
     "select_tracks": "Wybierz utwory",
     "playlist": "Playlista",
@@ -757,6 +758,7 @@
       "description": "Działanie kolejki, akcje po kliknięciu i wyjście audio."
     },
     "shortcuts": {
+      "reset_all_success": "Przywrócono domyślne ustawienia wszystkich skrótów klawiszowych.",
       "description": "Dostosuj globalne skróty systemowe i skróty odtwarzacza.",
       "global_section": "Skróty globalne (systemowe)",
       "global_desc": "Działają w każdej aplikacji na komputerze, nawet gdy Lane jest zminimalizowany lub nieaktywny.",
@@ -1276,14 +1278,14 @@
         "song": "Tytuł utworu",
         "artist_song": "Artysta - Piosenka",
         "song_artist": "Piosenka - Artysta",
-        "app": "Pas (domyślny)"
+        "app": "Lane (domyślnie)"
       },
       "show_timeline": {
         "title": "Oś czasu odtwarzania",
         "description": "Wyświetla interaktywny pasek postępu z upływającym i pozostałym czasem utworu."
       },
       "show_artwork": {
-        "title": "Śledź grafikę",
+        "title": "Okładka utworu",
         "description": "Pokaż okładkę utworu lub albumu na karcie aktywności Discord."
       },
       "show_artist_image": {
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Dodano do polubionych utworów",
+    "track_unliked": "Usunięto z polubionych utworów",
     "playlist_created": "Utworzono playlistę",
     "playlist_imported": "Zaimportowano {name} (utwory: {count})",
     "importing_playlist": "Importowanie {name}: {done} / {total} utworów",
@@ -1506,7 +1510,7 @@
     "clear": "Wyczyść wyszukiwanie"
   },
   "local": {
-    "title": "Moje ślady",
+    "title": "Moje utwory",
     "subtitle": "Twoje własne pliki audio. Pozostają na tym urządzeniu.",
     "upload": "Prześlij pliki",
     "uploading": "Dodawanie…",
@@ -1514,7 +1518,7 @@
     "skipped": "Pominięto {count} — nie jest to plik audio lub jest za duży",
     "empty_title": "Upuść tutaj pliki MP3",
     "empty_desc": "lub kliknij aby wybrać. Tytuł, wykonawca i okładka są odczytywane ze znaczników pliku.",
-    "drop_here": "Upuść, aby dodać do Moich tras",
+    "drop_here": "Upuść pliki tutaj, aby dodać je do „Moich utworów”",
     "unknown_artist": "Artysta nieznany",
     "only_on_device": "Tylko na „{device}”",
     "only_on_device_toast": "Ten utwór jest odtwarzany tylko na „{device}”",
@@ -1551,6 +1555,7 @@
     "tracks_count_many": "{count} utworów"
   },
   "trends": {
+    "cached_chart": "Wyświetlamy ostatnie zapisane notowanie. Źródło jest chwilowo niedostępne.",
     "title": "Na czasie",
     "russia": "Rosja",
     "world": "Na całym świecie",
@@ -1562,7 +1567,7 @@
     "all": "Wszystkie {n}",
     "less": "Pokaż mniej",
     "source": "Apple Music · codziennie",
-    "source_hint": "Najczęściej odtwarzane utwory w Apple Music, aktualizowane codziennie. Świat: połączone wykresy 10 dużych krajów."
+    "source_hint": "Najczęściej odtwarzane utwory w Apple Music, aktualizowane codziennie. Ranking światowy łączy listy przebojów z 10 krajów."
   },
   "human_check": {
     "retry": "Ponów",

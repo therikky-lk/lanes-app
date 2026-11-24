@@ -110,18 +110,18 @@ function albumTitleOf(track: Track): string {
   return "";
 }
 
-function formatLikedDate(value: Track["likedAt"]): string | undefined {
+function formatLikedDate(value: Track["likedAt"], locale: string): string | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return undefined;
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
   }).format(date);
 }
 
-function formatLikedDateRelative(value: Track["likedAt"]): string | undefined {
+function formatLikedDateRelative(value: Track["likedAt"], locale: string): string | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return undefined;
@@ -140,7 +140,7 @@ function formatLikedDateRelative(value: Track["likedAt"]): string | undefined {
             : absolute >= 60
               ? ["minute", 60]
               : ["second", 1];
-  return new Intl.RelativeTimeFormat(navigator.language, { numeric: "auto" }).format(Math.round(seconds / divisor), unit);
+  return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(Math.round(seconds / divisor), unit);
 }
 
 const TrackItem = memo(function TrackItem({
@@ -161,7 +161,7 @@ const TrackItem = memo(function TrackItem({
   onSelectTrack,
 }: TrackItemProps) {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const isMobile = useIsMobile();
   const { style: holdStyle, onTouchStart, onContextMenuCapture, ...hold } = useLongPress(
     () => onSelectTrack?.(track.playlistItemId ?? track.id),
@@ -207,9 +207,9 @@ const TrackItem = memo(function TrackItem({
         highlight={highlight}
         isCurrent={isCurrent}
         albumTitle={albumTitleOf(track)}
-        addedDate={showLikedDate ? formatLikedDate(track.likedAt) : undefined}
-        addedDateTooltip={showLikedDate ? formatLikedDateRelative(track.likedAt) : undefined}
-        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt) : undefined}
+        addedDate={showLikedDate ? formatLikedDate(track.likedAt, locale) : undefined}
+        addedDateTooltip={showLikedDate ? formatLikedDateRelative(track.likedAt, locale) : undefined}
+        addedDateLabel={showLikedDateInMenu ? formatLikedDate(track.likedAt, locale) : undefined}
         duration={
           track.durationMs
             ? `${Math.floor(track.durationMs / 60000)}:${String(
@@ -1083,10 +1083,10 @@ function LibraryPlaylistContent() {
                               if (nextDescription.length <= 2_000) {
                                 void api.updatePlaylist(decodedId, { description: nextDescription }).then(() => window.dispatchEvent(new Event("library:changed")));
                               } else {
-                                toast(t("playlist.cover_failed") || "Description is too long", "error");
+                                toast(t("playlist.description_too_long"), "error");
                               }
                             } catch {
-                              toast(t("playlist.cover_failed") || "Description is too long", "error");
+                              toast(t("playlist.description_too_long"), "error");
                             }
                           }
                           setIsEditingDescription(false);

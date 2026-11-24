@@ -72,11 +72,8 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
   const handleConfirmResetAll = useCallback(() => {
     resetAll();
     setIsResetModalOpen(false);
-    toast(
-      isRu ? "Все горячие клавиши сброшены" : "All shortcuts have been reset",
-      "info"
-    );
-  }, [resetAll, toast, isRu]);
+    toast(t("settings.shortcuts.reset_all_success"), "info");
+  }, [resetAll, toast, t]);
 
   // Labels for Global Actions
   const globalLabels: Record<keyof GlobalShortcutsSettings, { title: string; desc: string }> = {
@@ -770,15 +767,13 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
               className="text-[15px] font-[600] text-text-primary m-0 leading-tight"
               style={{ fontFamily: "var(--font-inter), sans-serif", letterSpacing: "-0.01em" }}
             >
-              {isRu ? "Все горячие клавиши будут сброшены" : "All shortkeys will be reset"}
+              {t("settings.shortcuts.reset_all")}
             </h3>
             <p
               className="text-[12.5px] text-text-tertiary m-0 mt-[4px] leading-snug"
               style={{ fontFamily: "var(--font-inter), sans-serif" }}
             >
-              {isRu
-                ? "Все комбинации клавиш вернутся к значениям по умолчанию. Это действие нельзя отменить."
-                : "All customized shortcut keys will be restored to their factory defaults. This action cannot be undone."}
+              {t("settings.shortcuts.reset_all_desc")}
             </p>
           </div>
 
@@ -790,7 +785,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
               onClick={() => setIsResetModalOpen(false)}
               className="flex-1 !h-[34px] text-[13px] !rounded-lg"
             >
-              {t("common.cancel") || (isRu ? "Отмена" : "Cancel")}
+              {t("common.cancel")}
             </Button>
 
             <Button
@@ -799,7 +794,7 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
               onClick={handleConfirmResetAll}
               className="flex-1 !h-[34px] text-[13px] !rounded-lg !bg-accent-secondary !text-bg-primary hover:!opacity-90"
             >
-              {isRu ? "Продолжить" : "Continue"}
+              {t("settings.shortcuts.reset_all_button")}
             </Button>
           </div>
         </div>

@@ -23,7 +23,7 @@ function StatusDot({ status }: { status: DiagCheck["status"] }) {
 }
 
 export default function ConnectivityWall() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { toast } = useToast();
   const [showChecks, setShowChecks] = useState(false);
   const visible = useConnectivityStore((s) => s.visible);
@@ -153,7 +153,7 @@ export default function ConnectivityWall() {
                   ? t("connectivity.check_ok_count", { ok: okCount, total: checks.length })
                   : t("connectivity.checks_title")}
               {!running && lastRunAt
-                ? ` · ${new Date(lastRunAt).toLocaleTimeString()}`
+                ? ` · ${new Date(lastRunAt).toLocaleTimeString(locale)}`
                 : !running
                   ? ` · ${t("connectivity.never_run")}`
                   : ""}

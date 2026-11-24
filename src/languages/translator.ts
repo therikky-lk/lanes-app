@@ -72,6 +72,7 @@ export function createTranslatorSync(locale: Locale): TFunction {
   const currentDict = getFlatDict(locale);
   const fallbackDict = locale === "en" ? currentDict : getFlatDict("en");
   const rules = getPluralRules(locale);
+  const fallbackRules = getPluralRules("en");
 
   return (key: string, vars?: Record<string, string | number>): string => {
     let template: string | undefined;
@@ -81,8 +82,11 @@ export function createTranslatorSync(locale: Locale): TFunction {
       const category = rules.select(vars.count);
       template =
         currentDict[`${key}_${category}`] ??
+        currentDict[`${key}_other`] ??
         currentDict[`${key}_plural`] ??
-        fallbackDict[`${key}_${category}`] ??
+        currentDict[key] ??
+        fallbackDict[`${key}_${fallbackRules.select(vars.count)}`] ??
+        fallbackDict[`${key}_other`] ??
         fallbackDict[`${key}_plural`];
     }
 

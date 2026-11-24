@@ -9,7 +9,7 @@
     "tracks": "parça",
     "popular_songs": "Popüler Şarkılar",
     "albums": "Albümler",
-    "singles": "Single'lar",
+    "singles": "Tekliler",
     "reposts": "Yeniden paylaşımlar",
     "play": "Çal",
     "remove_from_library": "Kitaplıktan kaldır",
@@ -28,11 +28,11 @@
     "aka": "Diğer adları",
     "genius_profile": "Genius Profili",
     "album": "Albüm",
-    "single": "Tek",
+    "single": "Tekli",
     "all_releases": "Tümü",
     "discography": "Diskografi",
-    "your_tracks": "Beğendiğiniz şarkılarda: {count}",
-    "open": "Açık sanatçı",
+    "your_tracks": "Beğenilen şarkılar: {count}",
+    "open": "Sanatçı profilini aç",
     "verified": "Doğrulanmış"
   },
   "collection": {
@@ -45,7 +45,7 @@
     "playlist": "Çalma listesi",
     "album": "Albüm",
     "ep": "EP",
-    "single": "Tek",
+    "single": "Tekli",
     "tracks_count": "parça",
     "hr": "sa",
     "min": "dk",
@@ -173,7 +173,7 @@
     "imported_playlist": "İçe aktarılan çalma listesi",
     "liked_songs": "Beğeniler",
     "start_radio": "İstasyon başlat",
-    "play_next": "Sonra çal",
+    "play_next": "Sıradaki olarak çal",
     "like": "Beğen",
     "unlike": "Beğenmekten vazgeç",
     "add_to_playlist": "Çalma listesine ekle",
@@ -202,7 +202,7 @@
     "songs_one": "{count} şarkı",
     "songs_other": "{count} şarkı",
     "songs_plural": "{count} şarkı",
-    "env_warning": "Uygulama Electron içinde çalışmalı: derin bağlantılar, çevrimdışı kontroller ve paylaşım masaüstü köprüsünü gerektirir.",
+    "env_warning": "Lane'i Electron'da aç. Uygulama bağlantılarını açmak, çevrimdışı kontrolleri yapmak ve paylaşmak için masaüstü sürümü gerekir.",
     "env_skip": "Atla",
     "grid": "Izgara",
     "list": "Liste",
@@ -251,7 +251,7 @@
     "popularArtists": "Trend Sanatçılar",
     "popularPlaylists": "Popüler Çalma Listeleri",
     "dailyMixes": "Günlük Mixler",
-    "dailyMixesSubtitle": "Sevdiğin sanatçılar ve türler etrafında hazırlanan taze çalma listeleri",
+    "dailyMixesSubtitle": "Sevdiğin sanatçı ve türlerden ilham alan yeni çalma listeleri",
     "vibe": {
       "start_failed": "Çalınabilir parça bulunamadı. Başka bir etiket deneyin veya bağlantınızı kontrol edin.",
       "title": "Benim Ortamım",
@@ -359,7 +359,7 @@
       "restart": "Yeniden başla",
       "restart_confirm": "Bu aktarımı unutup sıfırdan mı başlayacaksınız? Zaten eklenen parçalar beğenilerinizde kalsın.",
       "collecting": "Spotify beğenilerini okumak: {read} / {total}",
-      "batch": "{of}'nin {n} grubu · {from}–{to}'yi izler",
+      "batch": "{n}/{of}. grup · {from}–{to}. parçalar",
       "batch_retry": "{of}'nin {n} grubunu yeniden deneyin",
       "progress": "{total}'nin {done}'si işlendi",
       "stat_liked": "Eklendi",
@@ -459,7 +459,7 @@
     "waiting_verification": "Telegram doğrulaması bekleniyor...",
     "back": "Geri",
     "cancel": "İptal",
-    "error_handle_required": "tanıtıcı gerekli",
+    "error_handle_required": "Kullanıcı adını gir.",
     "error_password_required": "şifre gerekli",
     "error_passwords_no_match": "Şifreler eşleşmiyor",
     "error_wrong_password": "Yanlış şifre",
@@ -621,6 +621,7 @@
     "reorder_track": "Parçayı taşı"
   },
   "playlist": {
+    "description_too_long": "Çalma listesinin açıklaması çok uzun.",
     "likes_downloaded": "{total} parçadan {done} tanesi indirildi",
     "select_tracks": "Parçaları seç",
     "playlist": "Çalma listesi",
@@ -757,6 +758,7 @@
       "description": "Sıra davranışı, tıklama eylemleri ve ses çıkışı."
     },
     "shortcuts": {
+      "reset_all_success": "Tüm klavye kısayolları varsayılan ayarlarına döndürüldü.",
       "description": "Sistem genelindeki ve oynatıcıdaki klavye kısayollarını özelleştir.",
       "global_section": "Genel Kısayollar (Sistem genelinde)",
       "global_desc": "Lane simge durumundayken veya odakta değilken bile bilgisayarındaki her uygulamadan çalışır.",
@@ -1299,7 +1301,7 @@
         "song": "Şarkı Adı",
         "artist_song": "Sanatçı - Şarkı",
         "song_artist": "Şarkı - Sanatçı",
-        "app": "Şerit (Varsayılan)"
+        "app": "Lane (varsayılan)"
       },
       "show_timeline": {
         "title": "Oynatma Zaman Çizelgesi",
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Beğenilen şarkılara eklendi",
+    "track_unliked": "Beğenilen şarkılardan çıkarıldı",
     "playlist_created": "Çalma listesi oluşturuldu",
     "playlist_imported": "İçe aktarıldı: {name} ({count} şarkı)",
     "importing_playlist": "İçe aktarılıyor: {name} ({done} / {total} şarkı)",
@@ -1546,11 +1550,12 @@
     "today_tracks": "Bugünkü parçalar",
     "hours_minutes": "{h} sa {m} dk",
     "minutes": "{m} dk",
-    "just_tracks": "Sadece izler",
+    "just_tracks": "Tek tek dinlenen parçalar",
     "tracks_count_few": "{count} parça",
     "tracks_count_many": "{count} parça"
   },
   "trends": {
+    "cached_chart": "Son kaydedilen listeyi gösteriyoruz. Kaynağa geçici olarak ulaşılamıyor.",
     "title": "Trend",
     "russia": "Rusya",
     "world": "Dünya çapında",
@@ -1562,7 +1567,7 @@
     "all": "Hepsi {n}",
     "less": "Daha az göster",
     "source": "Apple Music · günlük",
-    "source_hint": "Apple Music'te her gün güncellenen, en çok çalınan şarkılar. Dünya: 10 büyük ülkenin haritaları birleştirildi."
+    "source_hint": "Apple Music’te en çok çalınan şarkılar. Dünya listesi, 10 ülkenin listelerini birleştirir ve her gün güncellenir."
   },
   "human_check": {
     "retry": "Tekrar dene",

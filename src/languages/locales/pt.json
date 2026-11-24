@@ -9,7 +9,7 @@
     "tracks": "faixas",
     "popular_songs": "Músicas populares",
     "albums": "Álbuns",
-    "singles": "Solteiros",
+    "singles": "Singles",
     "reposts": "Repostagens",
     "play": "Reproduzir",
     "remove_from_library": "Remover da biblioteca",
@@ -28,11 +28,11 @@
     "aka": "Também conhecido como",
     "genius_profile": "Perfil no Genius",
     "album": "Álbum",
-    "single": "Solteiro",
+    "single": "Single",
     "all_releases": "Tudo",
     "discography": "Discografia",
-    "your_tracks": "Nas suas músicas favoritas: {count}",
-    "open": "Artista aberto",
+    "your_tracks": "Músicas curtidas: {count}",
+    "open": "Abrir perfil do artista",
     "verified": "Verificado"
   },
   "collection": {
@@ -45,7 +45,7 @@
     "playlist": "Lista de reprodução",
     "album": "Álbum",
     "ep": "EP",
-    "single": "Solteiro",
+    "single": "Single",
     "tracks_count": "faixas",
     "hr": "h",
     "min": "min",
@@ -208,7 +208,7 @@
     "songs_one": "{count} música",
     "songs_other": "{count} músicas",
     "songs_plural": "{count} músicas",
-    "env_warning": "O app deve rodar dentro do Electron — deeplinks, verificações offline e compartilhamento precisam da ponte do desktop.",
+    "env_warning": "Abra o Lane no Electron. Para abrir links no app, fazer verificações offline e compartilhar, use a versão para computador.",
     "env_skip": "Pular",
     "grid": "Grade",
     "list": "Lista",
@@ -459,7 +459,7 @@
     "waiting_verification": "Aguardando verificação no Telegram...",
     "back": "Voltar",
     "cancel": "Cancelar",
-    "error_handle_required": "handle é obrigatório",
+    "error_handle_required": "Informe seu nome de usuário.",
     "error_password_required": "senha é obrigatória",
     "error_passwords_no_match": "As senhas não coincidem",
     "error_wrong_password": "Senha incorreta",
@@ -621,6 +621,7 @@
     "reorder_track": "Reordenar faixa"
   },
   "playlist": {
+    "description_too_long": "A descrição da playlist é longa demais.",
     "likes_downloaded": "{done} de {total} baixadas",
     "select_tracks": "Selecionar faixas",
     "playlist": "Lista de reprodução",
@@ -757,6 +758,7 @@
       "description": "Comportamento da fila, ações de clique e saída de áudio."
     },
     "shortcuts": {
+      "reset_all_success": "Todos os atalhos de teclado foram restaurados para o padrão.",
       "description": "Personalize os atalhos globais do sistema e os do player.",
       "global_section": "Atalhos globais (em todo o sistema)",
       "global_desc": "Funcionam a partir de qualquer aplicativo do seu computador, mesmo com o Lane minimizado ou fora de foco.",
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Adicionada às músicas curtidas",
+    "track_unliked": "Removida das músicas curtidas",
     "playlist_created": "Playlist criada",
     "playlist_imported": "Importada a playlist {name} ({count} músicas)",
     "importing_playlist": "Importando {name}: {done} / {total} músicas",
@@ -1508,7 +1512,7 @@
     "clear": "Limpar pesquisa"
   },
   "local": {
-    "title": "Minhas trilhas",
+    "title": "Minhas faixas",
     "subtitle": "Seus próprios arquivos de áudio. Eles ficam neste dispositivo.",
     "upload": "Carregar arquivos",
     "uploading": "Adicionando…",
@@ -1516,7 +1520,7 @@
     "skipped": "Ignorado {count} — não é um arquivo de áudio ou é muito grande",
     "empty_title": "Solte os arquivos MP3 aqui",
     "empty_desc": "ou clique para escolher. Título, artista e capa são lidos nas tags do arquivo.",
-    "drop_here": "Solte para adicionar em Minhas trilhas",
+    "drop_here": "Solte os arquivos aqui para adicionar a «Minhas faixas»",
     "unknown_artist": "Artista desconhecido",
     "only_on_device": "Somente em “{device}”",
     "only_on_device_toast": "Esta faixa só toca em “{device}”",
@@ -1553,6 +1557,7 @@
     "tracks_count_many": "{count} faixas"
   },
   "trends": {
+    "cached_chart": "Mostrando a última parada salva. A fonte está temporariamente indisponível.",
     "title": "Em alta",
     "russia": "Rússia",
     "world": "Em todo o mundo",

@@ -228,7 +228,7 @@ function LibraryItemRow({ item }: { item: LibraryItemViewModel }) {
           >
             {item.trackCount === 1
               ? `1 ${t("library.track")}`
-              : `${item.trackCount.toLocaleString()} ${t("library.tracks")}`}
+              : t("common.tracks", { count: item.trackCount })}
           </span>
         )}
 

@@ -31,8 +31,8 @@
     "single": "Singolo",
     "all_releases": "Tutto",
     "discography": "Discografia",
-    "your_tracks": "Nelle canzoni che ti sono piaciute: {count}",
-    "open": "Artista aperto",
+    "your_tracks": "Brani tra i preferiti: {count}",
+    "open": "Apri il profilo dell’artista",
     "verified": "Verificato"
   },
   "collection": {
@@ -173,7 +173,7 @@
     "imported_playlist": "Playlist importata",
     "liked_songs": "Mi piace",
     "start_radio": "Avvia stazione",
-    "play_next": "Riproduci dopo",
+    "play_next": "Riproduci subito dopo",
     "like": "Mi piace",
     "unlike": "Non mi piace più",
     "add_to_playlist": "Aggiungi alla playlist",
@@ -202,7 +202,7 @@
     "songs_one": "{count} brano",
     "songs_other": "{count} brani",
     "songs_plural": "{count} brani",
-    "env_warning": "L'app deve essere eseguita in Electron: deeplink, controlli offline e condivisione richiedono il bridge desktop.",
+    "env_warning": "Apri Lane in Electron. Per aprire i link nell’app, eseguire i controlli offline e condividere serve la versione desktop.",
     "env_skip": "Salta",
     "grid": "Griglia",
     "list": "Elenco",
@@ -459,7 +459,7 @@
     "waiting_verification": "In attesa della verifica di Telegram...",
     "back": "Indietro",
     "cancel": "Annulla",
-    "error_handle_required": "l'handle è obbligatorio",
+    "error_handle_required": "Inserisci il nome utente.",
     "error_password_required": "la password è obbligatoria",
     "error_passwords_no_match": "Le password non corrispondono",
     "error_wrong_password": "Password errata",
@@ -543,11 +543,11 @@
     "track_unavailable": "\"{title}\" non è disponibile, lo salto...",
     "track_unavailable_title": "Brano non disponibile",
     "playback_stopped_too_many_errors": "Riproduzione interrotta: non è stato possibile caricare troppi brani.",
-    "speed_pitch": "Velocità e tonalità",
+    "speed_pitch": "Velocità e altezza del suono",
     "speed": "Velocità",
-    "pitch": "Tonalità",
-    "link_speed_pitch": "Collega velocità e tonalità",
-    "link_speed_pitch_hint": "Stile vinile e nastro: la velocità modifica la tonalità",
+    "pitch": "Altezza del suono",
+    "link_speed_pitch": "Collega l’altezza del suono alla velocità",
+    "link_speed_pitch_hint": "Come con un vinile o una cassetta, la velocità cambia l’altezza del suono",
     "key_lock": "Mantieni tonalità",
     "key_lock_hint": "Mantiene la tonalità originale quando cambi la velocità",
     "keep_speed_across_tracks": "Mantieni tra i brani",
@@ -589,7 +589,7 @@
     "eq_preset_laptop": "Computer portatile",
     "eq_preset_night": "Notte",
     "eq_preset_punch": "Incisivo",
-    "eq_preset_smooth": "Liscio",
+    "eq_preset_smooth": "Suono morbido",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "Rock",
     "eq_preset_hiphop": "Hip-hop",
@@ -609,7 +609,7 @@
     "visual_quality_lite_hint": "Ancora sottofondo, testo semplice",
     "volume": "Volume",
     "previous": "Precedente",
-    "open_player": "Giocatore aperto",
+    "open_player": "Apri il lettore",
     "next": "Avanti",
     "repeat": "Ripeti",
     "instrumental_hint": "Questo brano è strumentale",
@@ -621,6 +621,7 @@
     "reorder_track": "Riordina brano"
   },
   "playlist": {
+    "description_too_long": "La descrizione della playlist è troppo lunga.",
     "likes_downloaded": "{done} di {total} scaricati",
     "select_tracks": "Seleziona brani",
     "playlist": "Elenco brani",
@@ -757,6 +758,7 @@
       "description": "Comportamento della coda, azioni al clic e uscita audio."
     },
     "shortcuts": {
+      "reset_all_success": "Tutte le scorciatoie da tastiera sono state ripristinate.",
       "description": "Personalizza le scorciatoie da tastiera globali e del player.",
       "global_section": "Scorciatoie globali (di sistema)",
       "global_desc": "Funzionano da qualsiasi applicazione sul tuo computer, anche quando Lane è ridotto a icona o non è in primo piano.",
@@ -1270,7 +1272,7 @@
         "song": "Titolo del brano",
         "artist_song": "Artista - Canzone",
         "song_artist": "Canzone - Artista",
-        "app": "Corsia (predefinito)",
+        "app": "Lane (predefinito)",
         "title": "Formato stato",
         "description": "Scegli cosa appare nell'intestazione di stato \"Ascolto...\" di Discord.",
         "artist": "Artista"
@@ -1280,7 +1282,7 @@
         "description": "Visualizza la barra di avanzamento interattiva con il tempo trascorso e rimanente della traccia."
       },
       "show_artwork": {
-        "title": "Traccia grafica",
+        "title": "Copertina del brano",
         "description": "Mostra la copertina del brano o dell'album nella scheda attività Discord."
       },
       "show_artist_image": {
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Aggiunto ai brani preferiti",
+    "track_unliked": "Rimosso dai brani preferiti",
     "playlist_created": "Playlist creata",
     "playlist_imported": "{name} importata ({count} brani)",
     "importing_playlist": "Importazione di {name}: {done} / {total} brani",
@@ -1551,6 +1555,7 @@
     "tracks_count_many": "{count} brani"
   },
   "trends": {
+    "cached_chart": "È visibile l’ultima classifica salvata. La fonte è temporaneamente non disponibile.",
     "title": "Di tendenza",
     "russia": "Russia",
     "world": "In tutto il mondo",

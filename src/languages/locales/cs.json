@@ -31,7 +31,7 @@
     "tracks": "stopy",
     "popular_songs": "Populární písně",
     "albums": "alba",
-    "singles": "Svobodní",
+    "singles": "Singly",
     "reposts": "Reposts",
     "play": "hrát",
     "remove_from_library": "Odebrat z knihovny",
@@ -50,11 +50,11 @@
     "aka": "Také známý jako",
     "genius_profile": "Geniální profil",
     "album": "Album",
-    "single": "Svobodný",
+    "single": "Singl",
     "all_releases": "všechny",
     "discography": "Diskografie",
-    "your_tracks": "Ve vašich oblíbených skladbách: {count}",
-    "open": "Otevřený umělec",
+    "your_tracks": "Oblíbené skladby: {count}",
+    "open": "Otevřít profil interpreta",
     "verified": "Ověřeno"
   },
   "collection": {
@@ -67,7 +67,7 @@
     "playlist": "Seznam skladeb",
     "album": "Album",
     "ep": "EP",
-    "single": "Svobodný",
+    "single": "Singl",
     "tracks_count": "stopy",
     "hr": "hr",
     "min": "min",
@@ -228,7 +228,7 @@
     "error_something_wrong": "Něco se pokazilo. Zkuste to znovu.",
     "tracks_plural": "Skladby {count}",
     "songs_plural": "Písně {count}",
-    "env_warning": "Aplikace by měla běžet uvnitř Electronu – přímé odkazy, offline kontroly a sdílení potřebují desktopový most.",
+    "env_warning": "Spusťte Lane v Electronu. Odkazy do aplikace, kontroly offline a sdílení vyžadují desktopovou verzi.",
     "env_skip": "Přeskočit",
     "grid": "Mřížka",
     "list": "Seznam",
@@ -388,7 +388,7 @@
     "sort_by": "Seřadit podle",
     "sort_recent": "Nedávno přidáno",
     "sort_title": "abecedně (A–Z)",
-    "sort_creator": "Autorem/umělcem",
+    "sort_creator": "Podle autora nebo interpreta",
     "view_grid": "Mřížka",
     "view_list": "Seznam",
     "find_music": "Hledat",
@@ -590,10 +590,10 @@
     "track_unavailable": "\"{title}\" není k dispozici, přeskakuje...",
     "track_unavailable_title": "Stopa není k dispozici",
     "playback_stopped_too_many_errors": "Přehrávání se zastavilo – nepodařilo se načíst příliš mnoho skladeb.",
-    "speed_pitch": "Rychlost a rozteč",
+    "speed_pitch": "Rychlost a výška tónu",
     "speed": "Rychlost",
-    "pitch": "Rozteč",
-    "link_speed_pitch": "Propojit rychlost s nadhozem",
+    "pitch": "Výška tónu",
+    "link_speed_pitch": "Propojit rychlost s výškou tónu",
     "link_speed_pitch_hint": "Styl vinylu a pásky: rychlost mění výšku tónu",
     "key_lock": "Zámek kláves",
     "key_lock_hint": "Zachovává původní klíč při změně rychlosti",
@@ -635,7 +635,7 @@
     "eq_preset_headphones": "Sluchátka",
     "eq_preset_laptop": "Přenosný počítač",
     "eq_preset_night": "Noc",
-    "eq_preset_punch": "Punč",
+    "eq_preset_punch": "Úderný zvuk",
     "eq_preset_smooth": "Hladký",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "Rock",
@@ -660,6 +660,7 @@
     "reorder_track": "Změnit pořadí skladby"
   },
   "playlist": {
+    "description_too_long": "Popis playlistu je příliš dlouhý.",
     "likes_downloaded": "{done} z {total} staženo",
     "select_tracks": "Vyberte stopy",
     "playlist": "Seznam skladeb",
@@ -796,6 +797,7 @@
       "description": "Chování ve frontě, akce kliknutí a zvukový výstup."
     },
     "shortcuts": {
+      "reset_all_success": "Všechny klávesové zkratky byly obnoveny na výchozí nastavení.",
       "description": "Přizpůsobte si globální klávesové zkratky pro celý systém a hráče.",
       "global_section": "Globální zkratky (v celém systému)",
       "global_desc": "Pracujte z libovolné aplikace v počítači, i když je pruh minimalizovaný nebo není zaostřený.",
@@ -899,14 +901,14 @@
         "song": "Název písně",
         "artist_song": "Umělec - Píseň",
         "song_artist": "Píseň - Umělec",
-        "app": "Pruh (výchozí)"
+        "app": "Lane (výchozí)"
       },
       "show_timeline": {
         "title": "Časová osa přehrávání",
         "description": "Zobrazte interaktivní ukazatel průběhu s uplynulým a zbývajícím časem skladby."
       },
       "show_artwork": {
-        "title": "Sledovat umělecká díla",
+        "title": "Obal skladby",
         "description": "Zobrazit obal skladby nebo alba na kartě aktivity Discord."
       },
       "show_artist_image": {
@@ -934,7 +936,7 @@
       }
     },
     "customization": {
-      "description": "Tapeta na pozadí okna, efekty průhlednosti a blokování.",
+      "description": "Pozadí okna, průhlednost a rozostření panelů.",
       "apply_to_overlay": "Použít na překryvný minipřehrávač",
       "apply_to_overlay_desc": "Vykreslete vlastní pozadí a styl skla na plovoucím mini přehrávači.",
       "dark_theme_only": "Přizpůsobení je k dispozici pouze pro tmavé téma",
@@ -1394,6 +1396,8 @@
     }
   },
   "toast": {
+    "track_liked": "Přidáno do oblíbených skladeb",
+    "track_unliked": "Odebráno z oblíbených skladeb",
     "playlist_created": "Seznam skladeb byl vytvořen",
     "playlist_imported": "Importované {name} (skladby {count})",
     "importing_playlist": "Import skladeb {name}: {done} / {total}",
@@ -1419,12 +1423,12 @@
   },
   "import": {
     "review_title": "Zkontrolujte import",
-    "review_action": "Recenze",
+    "review_action": "Zkontrolovat",
     "review_description": "Vyberte skladby, které chcete zahrnout do importovaného seznamu skladeb.",
     "source_track": "Původní skladba",
     "proposed_match": "Navrhovaný zápas",
     "no_candidate": "V katalogu nebyl nalezen žádný kandidát",
-    "no_candidate_description": "Tato stopa bude při importu přeskočena",
+    "no_candidate_description": "Tato skladba se při importu přeskočí.",
     "reason_auto_matched": "Shoda",
     "reason_no_catalog_candidates": "V katalogu nenalezeno",
     "reason_low_confidence_match": "Shoda s nízkou sebedůvěrou",
@@ -1447,7 +1451,7 @@
     "status_running": "Odpovídající stopy",
     "status_running_progress": "Odpovídající skladby {count} ze {total}",
     "status_awaiting_decision": "Je vyžadována kontrola",
-    "status_awaiting_sub": "Před vytvořením zkontrolujte shody stop",
+    "status_awaiting_sub": "Před vytvořením playlistu zkontrolujte nalezené skladby.",
     "status_finalizing": "Vytváření seznamu videí…",
     "status_finalizing_sub": "Ukládání skladeb do knihovny",
     "status_completed": "Seznam skladeb byl importován",
@@ -1456,7 +1460,7 @@
     "status_failed": "Import se nezdařil",
     "status_failed_sub": "Něco se pokazilo",
     "view_playlist": "Otevřít seznam skladeb",
-    "no_candidate_found": "V katalogu nebyla nalezena žádná odpovídající stopa",
+    "no_candidate_found": "V katalogu není žádná odpovídající skladba.",
     "active_import": "Import seznamu skladeb"
   },
   "error_screen": {
@@ -1508,8 +1512,8 @@
     "status_skip": "přeskočit",
     "check_device": "Zařízení online",
     "check_api": "Stav API",
-    "check_covers": "Kryty dosažitelné",
-    "check_link": "Sdílejte dostupné odkazy",
+    "check_covers": "Dostupnost obrázků obalů",
+    "check_link": "Dostupnost odkazů ke sdílení",
     "check_dns": "DNS",
     "check_tcp": "TCP 443",
     "check_tls": "TLS handshake",
@@ -1539,7 +1543,7 @@
   "track_search": {
     "placeholder_playlist": "Hledat v seznamu skladeb",
     "placeholder_album": "Hledat v albu",
-    "button": "Hledat stopy",
+    "button": "Hledat skladby",
     "count": "{count} z {total}",
     "no_results": "Žádné skladby neodpovídají „{query}“",
     "clear": "Vymazat vyhledávání"
@@ -1599,7 +1603,7 @@
     "album": "Album",
     "daily_mix": "Denní mix",
     "radio": "Rádio: {title}",
-    "expand": "Zobrazit stopy",
+    "expand": "Zobrazit skladby",
     "collapse": "Skrýt stopy",
     "empty": "Zde se zobrazí vše, co posloucháte",
     "more": "Zobrazit více",
@@ -1612,7 +1616,7 @@
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} skladeb",
-    "just_tracks": "Jen stopy",
+    "just_tracks": "Jednotlivé skladby",
     "tracks_count_few": "{count} skladby",
     "tracks_count_many": "Skladby {count}",
     "songs_played_two": "Přehrávané skladby {count}",
@@ -1621,6 +1625,7 @@
     "songs_played_zero": "Přehrávané skladby {count}"
   },
   "trends": {
+    "cached_chart": "Zobrazujeme naposledy uložený žebříček. Zdroj je dočasně nedostupný.",
     "title": "Trendy",
     "russia": "Rusko",
     "world": "Celosvětově",

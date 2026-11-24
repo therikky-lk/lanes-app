@@ -11,7 +11,7 @@ import { useConnectivityStore } from "@/features/connectivity";
 import { SettingRow, SettingSection } from "../controls";
 
 export function AudioTab({ searchQuery }: { searchQuery?: string }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
   const [dumpExported, setDumpExported] = useState(false);
@@ -68,7 +68,7 @@ export function AudioTab({ searchQuery }: { searchQuery?: string }) {
               ? t("settings.connection.last_run", {
                   ok: connChecks.filter((c) => c.status === "ok").length,
                   total: connChecks.length,
-                  time: new Date(connLastRunAt).toLocaleTimeString(),
+                  time: new Date(connLastRunAt).toLocaleTimeString(locale),
                 })
               : t("settings.connection.never_run")
           }

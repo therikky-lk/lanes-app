@@ -31,8 +31,8 @@
     "single": "Sencillo",
     "all_releases": "Todo",
     "discography": "Discografía",
-    "your_tracks": "En tus canciones favoritas: {count}",
-    "open": "Artista abierto",
+    "your_tracks": "Canciones que te gustan: {count}",
+    "open": "Abrir el perfil del artista",
     "verified": "Verificado"
   },
   "collection": {
@@ -204,7 +204,7 @@
     "songs_one": "{count} canción",
     "songs_other": "{count} canciones",
     "songs_plural": "{count} canciones",
-    "env_warning": "La aplicación debe ejecutarse dentro de Electron: los enlaces profundos, verificaciones sin conexión y funciones de compartir necesitan el puente de escritorio.",
+    "env_warning": "Abre Lane en Electron. Los enlaces a la aplicación, las comprobaciones sin conexión y las opciones para compartir requieren la versión de escritorio.",
     "env_skip": "Omitir",
     "grid": "Cuadrícula",
     "list": "Lista",
@@ -251,7 +251,7 @@
     "popularArtists": "Artistas en tendencia",
     "popularPlaylists": "Listas populares",
     "dailyMixes": "Mixes diarios",
-    "dailyMixesSubtitle": "Listas frescas personalizadas según tus artistas y géneros favoritos",
+    "dailyMixesSubtitle": "Nuevas listas con tus artistas y géneros favoritos",
     "vibe": {
       "start_failed": "No se encontraron canciones disponibles. Prueba otra etiqueta o comprueba tu conexión.",
       "title": "Mi vibra",
@@ -459,7 +459,7 @@
     "waiting_verification": "Esperando verificación de Telegram...",
     "back": "Atrás",
     "cancel": "Cancelar",
-    "error_handle_required": "El usuario es obligatorio",
+    "error_handle_required": "Introduce tu nombre de usuario.",
     "error_password_required": "La contraseña es obligatoria",
     "error_passwords_no_match": "Las contraseñas no coinciden",
     "error_wrong_password": "Contraseña incorrecta",
@@ -621,6 +621,7 @@
     "reorder_track": "Reordenar canción"
   },
   "playlist": {
+    "description_too_long": "La descripción de la lista es demasiado larga.",
     "likes_downloaded": "{done} de {total} descargadas",
     "select_tracks": "Seleccionar canciones",
     "playlist": "Lista de reproducción",
@@ -1230,6 +1231,7 @@
       "open_folder": "Abrir carpeta de guardado"
     },
     "shortcuts": {
+      "reset_all_success": "Se han restaurado todos los atajos de teclado predeterminados.",
       "description": "Personaliza los atajos de teclado globales del sistema y del reproductor.",
       "global_section": "Atajos globales (en todo el sistema)",
       "global_desc": "Funcionan desde cualquier aplicación de tu equipo, incluso con Lane minimizado o sin foco.",
@@ -1355,6 +1357,8 @@
     }
   },
   "toast": {
+    "track_liked": "Añadida a las canciones que te gustan",
+    "track_unliked": "Quitada de las canciones que te gustan",
     "playlist_created": "Lista de reproducción creada",
     "playlist_imported": "Se importó {name} ({count} canciones)",
     "importing_playlist": "Importando {name}: {done} / {total} canciones",
@@ -1548,11 +1552,12 @@
     "today_tracks": "Pistas hoy",
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} minutos",
-    "just_tracks": "Sólo pistas",
+    "just_tracks": "Canciones sueltas",
     "tracks_count_few": "{count} pistas",
     "tracks_count_many": "{count} pistas"
   },
   "trends": {
+    "cached_chart": "Se muestra la última lista de éxitos guardada. La fuente no está disponible temporalmente.",
     "title": "Tendencia",
     "russia": "Rusia",
     "world": "En todo el mundo",

@@ -467,7 +467,7 @@ export default function ImportReviewModal() {
                             <div
                               className="relative h-[38px] w-[38px] rounded-md bg-border-alpha-14 overflow-hidden shrink-0 flex items-center justify-center group/cover cursor-pointer select-none"
                               onClick={() => handleTogglePlay(proposed)}
-                              title={isThisPlaying ? "Pause" : "Play"}
+                              title={isThisPlaying ? t("common.pause") : t("common.play")}
                             >
                               {proposed.cover ? (
                                 <CoverImage

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "@/languages";
 import { usePlayerState } from "@/features/player/hooks/usePlayerState";
 import { playerEngine } from "@/features/player/engine/playerEngine";
 import {
@@ -17,6 +18,7 @@ import type {
 import { useOverlaySettingsStore } from "../store/overlaySettingsStore";
 
 export function useOverlaySync() {
+  const { t } = useTranslation();
   const authStatus = useAuthStore((s) => s.status);
   const isAuthenticated = authStatus === "authenticated" && Boolean(getAuthSession());
   const player = usePlayerState();
@@ -103,8 +105,8 @@ export function useOverlaySync() {
               unlikeMutation.mutate(currentTrack.id, {
                 onSuccess: () => {
                   if (fromGlobal) {
-                    showToast(currentTrack.title || "Song", "info", {
-                      description: "Removed from favorites",
+                    showToast(currentTrack.title || t("common.track"), "info", {
+                      description: t("toast.track_unliked"),
                     });
                   }
                 },
@@ -114,8 +116,8 @@ export function useOverlaySync() {
               likeMutation.mutate(currentTrack.id, {
                 onSuccess: () => {
                   if (fromGlobal) {
-                    showToast(currentTrack.title || "Song", "checkmark", {
-                      description: "Added to favorites",
+                    showToast(currentTrack.title || t("common.track"), "checkmark", {
+                      description: t("toast.track_liked"),
                     });
                   }
                 },
@@ -149,7 +151,7 @@ export function useOverlaySync() {
     });
 
     return cleanup;
-  }, [currentTrack, isLiked, likeMutation, unlikeMutation]);
+  }, [currentTrack, isLiked, likeMutation, unlikeMutation, t]);
 
   // Push updates to overlay
   useEffect(() => {

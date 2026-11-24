@@ -255,7 +255,7 @@ export function OverlayPlayer() {
                 <CoverImage
                   key={state.track.coverUrl || state.track.cover}
                   src={state.track.coverUrl || state.track.cover || ""}
-                  alt={state.track?.title || "Artwork"}
+                  alt=""
                   fill
                   sizes="32px"
                   priority
@@ -272,7 +272,7 @@ export function OverlayPlayer() {
 
             <div className="flex min-w-0 flex-1 flex-col justify-center overflow-hidden">
               <ScrollableText
-                text={state.track?.title || "No track playing"}
+                text={state.track?.title || t("player.nothing_playing")}
                 isParentHovered={isInfoHovered}
                 className="text-[13px] font-normal leading-[16px] text-white tracking-tight"
                 style={{ fontFamily: "var(--font-inter), sans-serif" }}
@@ -308,7 +308,7 @@ export function OverlayPlayer() {
                   ? "text-[#ff3b5c]"
                   : "text-white/40 hover:text-white"
               }`}
-              aria-label={state.isLiked ? "Unlike" : "Like"}
+              aria-label={state.isLiked ? t("common.unlike") : t("common.like")}
             >
               {state.isLiked ? <HeartFill size={16} /> : <HeartLine size={16} />}
             </button>
@@ -342,7 +342,7 @@ export function OverlayPlayer() {
                 sendAction({ type: "togglePlay" });
               }}
               className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-full bg-white text-black shadow transition-all duration-150 ease-out hover:scale-105 active:scale-95 border-none cursor-pointer"
-              aria-label={isPlaying ? "Pause" : "Play"}
+              aria-label={isPlaying ? t("common.pause") : t("common.play")}
             >
               <span
                 className={`flex items-center justify-center transition-transform ${

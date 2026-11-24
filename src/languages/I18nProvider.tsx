@@ -3,11 +3,13 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   useMemo,
   type ReactNode,
 } from "react";
 import {
   type Locale,
+  LOCALE_STORAGE_KEY,
   getStoredLocale,
   storeLocale,
 } from "./locale";
@@ -24,6 +26,20 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => getStoredLocale());
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  useEffect(() => {
+    const syncLocale = (event: StorageEvent) => {
+      if (event.storageArea === window.localStorage && (event.key === LOCALE_STORAGE_KEY || event.key === null)) {
+        setLocaleState(getStoredLocale());
+      }
+    };
+    window.addEventListener("storage", syncLocale);
+    return () => window.removeEventListener("storage", syncLocale);
+  }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {
     storeLocale(newLocale);

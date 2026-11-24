@@ -31,7 +31,7 @@
     "tracks": "staze",
     "popular_songs": "Popularne pjesme",
     "albums": "Albumi",
-    "singles": "Samci",
+    "singles": "Singlovi",
     "reposts": "Reposts",
     "play": "igrati",
     "remove_from_library": "Ukloni iz knjižnice",
@@ -50,16 +50,16 @@
     "aka": "Također poznat kao",
     "genius_profile": "Genijalni profil",
     "album": "Album",
-    "single": "samac",
+    "single": "Singl",
     "all_releases": "sve",
     "discography": "Diskografija",
-    "your_tracks": "U pjesmama koje vam se sviđaju: {count}",
-    "open": "Otvoreni umjetnik",
+    "your_tracks": "Omiljene pjesme: {count}",
+    "open": "Otvori profil izvođača",
     "verified": "Provjereno"
   },
   "collection": {
     "unknown_album": "Nepoznati album",
-    "unknown_artist": "Nepoznati umjetnik",
+    "unknown_artist": "Nepoznati izvođač",
     "unknown_playlist": "Nepoznati popis za reprodukciju",
     "unknown_owner": "Nepoznati vlasnik",
     "added_to_queue": "Dodano u red čekanja",
@@ -67,7 +67,7 @@
     "playlist": "Popis pjesama",
     "album": "Album",
     "ep": "EP",
-    "single": "samac",
+    "single": "Singl",
     "tracks_count": "staze",
     "hr": "hr",
     "min": "min",
@@ -228,7 +228,7 @@
     "error_something_wrong": "Nešto nije u redu. Pokušajte ponovno.",
     "tracks_plural": "{count} staze",
     "songs_plural": "{count} pjesme",
-    "env_warning": "Aplikacija bi trebala raditi unutar Electrona — dubinske veze, izvanmrežne provjere i dijeljenje trebaju premosnik radne površine.",
+    "env_warning": "Otvori Lane u Electronu. Poveznice koje otvaraju aplikaciju, izvanmrežne provjere i dijeljenje dostupni su samo u aplikaciji za računalo.",
     "env_skip": "Preskoči",
     "grid": "Mreža",
     "list": "Popis",
@@ -384,11 +384,11 @@
     "tab_artists": "Umjetnici",
     "search_playlists": "Pretraži popise za reprodukciju",
     "search_albums": "Traži albume",
-    "search_artists": "Traži umjetnike",
+    "search_artists": "Traži izvođače",
     "sort_by": "Poredaj po",
     "sort_recent": "Nedavno dodano",
     "sort_title": "Abecedno (A-Z)",
-    "sort_creator": "Od strane kreatora/umjetnika",
+    "sort_creator": "Po autoru ili izvođaču",
     "view_grid": "Mreža",
     "view_list": "Popis",
     "find_music": "Traži",
@@ -397,7 +397,7 @@
     "no_playlists_desc": "Napravite svoj prvi popis za reprodukciju ili uvezite pjesme iz vanjskih usluga",
     "no_albums_title": "Nema spremljenih albuma",
     "no_albums_desc": "Spremite albume iz pretraživanja ili preporuka da biste ih brzo pronašli",
-    "no_artists_title": "Nema spremljenih umjetnika",
+    "no_artists_title": "Nema spremljenih izvođača",
     "no_artists_desc": "Spremite izvođače za brzi pristup njihovoj diskografiji",
     "search_music": "Traži glazbu",
     "import_spotify": "Uvoz sa Spotifyja",
@@ -561,7 +561,7 @@
     "lyrics": "Lyrics",
     "volume": "Volumen",
     "previous": "Prethodno",
-    "open_player": "Otvoreni player",
+    "open_player": "Otvori reproduktor",
     "next": "Dalje",
     "repeat": "Ponovi",
     "lyrics_upgraded": "Stihovi nadograđeni!",
@@ -590,11 +590,11 @@
     "track_unavailable": "\"{title}\" je nedostupan, preskakanje...",
     "track_unavailable_title": "Staza nije dostupna",
     "playback_stopped_too_many_errors": "Reprodukcija zaustavljena — nije uspjelo učitavanje previše zapisa.",
-    "speed_pitch": "Brzina i visina",
+    "speed_pitch": "Brzina i visina tona",
     "speed": "Brzina",
-    "pitch": "Pitch",
-    "link_speed_pitch": "Brzina povezivanja s visinom",
-    "link_speed_pitch_hint": "Stil vinila i trake: brzina mijenja visinu",
+    "pitch": "Visina tona",
+    "link_speed_pitch": "Poveži brzinu i visinu tona",
+    "link_speed_pitch_hint": "Kao na ploči ili kaseti: brzina mijenja visinu tona",
     "key_lock": "Zaključavanje ključa",
     "key_lock_hint": "Čuva izvorni ključ tijekom promjene brzine",
     "keep_speed_across_tracks": "Držite se preko tračnica",
@@ -635,8 +635,8 @@
     "eq_preset_headphones": "Slušalice",
     "eq_preset_laptop": "Prijenosno računalo",
     "eq_preset_night": "Noć",
-    "eq_preset_punch": "udarac",
-    "eq_preset_smooth": "Glatka",
+    "eq_preset_punch": "Snažan zvuk",
+    "eq_preset_smooth": "Mekši zvuk",
     "eq_preset_pop": "Pop",
     "eq_preset_rock": "Rock",
     "eq_preset_hiphop": "Hip-hop",
@@ -660,6 +660,7 @@
     "reorder_track": "Promijeni redoslijed zapisa"
   },
   "playlist": {
+    "description_too_long": "Opis playliste je predug.",
     "likes_downloaded": "{done} od {total} preuzeto",
     "select_tracks": "Odaberite pjesme",
     "playlist": "Popis pjesama",
@@ -682,7 +683,7 @@
     "about": "oko",
     "type_playlist": "Popis pjesama",
     "type_spotify": "Javni popis za reprodukciju · Spotify",
-    "open_source": "Otvoreni izvornik",
+    "open_source": "Otvori izvornik",
     "col_title": "Naslov",
     "col_album": "Album",
     "col_date_added": "Dodan datum",
@@ -796,6 +797,7 @@
       "description": "Ponašanje u redu čekanja, radnje klikova i audio izlaz."
     },
     "shortcuts": {
+      "reset_all_success": "Svi tipkovnički prečaci vraćeni su na zadane postavke.",
       "description": "Prilagodite globalne tipkovničke prečace za cijeli sustav i player.",
       "global_section": "Globalni prečaci (na razini cijelog sustava)",
       "global_desc": "Radite iz bilo koje aplikacije na svom računalu, čak i kada je Lane minimiziran ili nije fokusiran.",
@@ -829,7 +831,7 @@
       "toggle_queue_desc": "Otvaranje ili zatvaranje ploče čekanja reprodukcije.",
       "toggle_lyrics": "Lyrics",
       "toggle_lyrics_desc": "Otvaranje ili zatvaranje ploče sinkroniziranih pjesama.",
-      "toggle_fullscreen": "Cijeli zaslon / Prikaz igrača",
+      "toggle_fullscreen": "Reproduktor preko cijelog zaslona",
       "toggle_fullscreen_desc": "Uključivanje imerzivnog prikaza playera preko cijelog zaslona.",
       "like_track": "Sviđa mi se / Ne sviđa mi se",
       "like_track_desc": "Dodajte ili uklonite pjesmu iz omiljenih pjesama.",
@@ -895,22 +897,22 @@
       "status_display": {
         "title": "Format statusa",
         "description": "Odaberite što će se pojaviti u zaglavlju statusa Discorda 'Slušanje...'.",
-        "artist": "Umjetnik",
+        "artist": "Izvođač",
         "song": "Naslov pjesme",
         "artist_song": "Izvođač - Pjesma",
         "song_artist": "Pjesma - Izvođač",
-        "app": "Traka (zadano)"
+        "app": "Lane (zadano)"
       },
       "show_timeline": {
         "title": "Vremenska traka reprodukcije",
         "description": "Prikaz interaktivne trake napretka s proteklim i preostalim vremenom zapisa."
       },
       "show_artwork": {
-        "title": "Trag Artwork",
+        "title": "Omot pjesme",
         "description": "Prikaži naslovnicu pjesme ili albuma na kartici aktivnosti Discorda."
       },
       "show_artist_image": {
-        "title": "Značka s fotografijom umjetnika",
+        "title": "Fotografija izvođača",
         "description": "Prikažite fotografiju izvođača u maloj kružnoj znački u donjem kutu."
       },
       "show_paused": {
@@ -934,7 +936,7 @@
       }
     },
     "customization": {
-      "description": "Pozadinska pozadina prozora, efekti transparentnosti i zamućenja.",
+      "description": "Pozadina prozora, prozirnost i zamućenje panela.",
       "apply_to_overlay": "Primijeni na preklapajući mini player",
       "apply_to_overlay_desc": "Renderirajte prilagođenu pozadinu i stil stakla na plutajućem mini playeru.",
       "dark_theme_only": "Prilagodba je dostupna samo za tamnu temu",
@@ -1241,7 +1243,7 @@
       "favorites": "Favoriti",
       "music_question": "Što voliš slušati?",
       "music_hint": "Dodajte samo jednu pjesmu ili jednog izvođača. Uklonite trenutni odabir prije odabira drugog.",
-      "choose_artist": "Odaberite umjetnika",
+      "choose_artist": "Odaberite izvođača",
       "add_song": "Dodajte pjesmu",
       "favorite_artist": "Omiljeni umjetnik",
       "favorite_track": "Omiljena pjesma",
@@ -1356,7 +1358,7 @@
       "signed_in": "Povezan"
     },
     "miniplayer": {
-      "description": "Plutajuće ponašanje mini igrača, vremenska traka i izgled.",
+      "description": "Ponašanje, traka napretka i izgled lebdećeg minireproduktora.",
       "always_on_top": {
         "title": "Uvijek na vrhu",
         "description": "Držite miniplayer iznad ostalih prozora i aplikacija."
@@ -1394,6 +1396,8 @@
     }
   },
   "toast": {
+    "track_liked": "Dodano u omiljene pjesme",
+    "track_unliked": "Uklonjeno iz omiljenih pjesama",
     "playlist_created": "Popis za reprodukciju stvoren",
     "playlist_imported": "Uvezeni {name} ({count} pjesme)",
     "importing_playlist": "Uvoz {name}: {done} / {total} pjesama",
@@ -1508,7 +1512,7 @@
     "status_skip": "preskočiti",
     "check_device": "Uređaj na mreži",
     "check_api": "API zdravlje",
-    "check_covers": "Poklopci dostupni",
+    "check_covers": "Dostupnost omota",
     "check_link": "Dostupne veze za dijeljenje",
     "check_dns": "DNS",
     "check_tcp": "TCP 443",
@@ -1554,7 +1558,7 @@
     "empty_title": "Ovdje ispustite MP3 datoteke",
     "empty_desc": "ili kliknite za odabir. Naslov, izvođač i omot čitaju se iz oznaka datoteke.",
     "drop_here": "Ispustite za dodavanje u Moje staze",
-    "unknown_artist": "Nepoznati umjetnik",
+    "unknown_artist": "Nepoznati izvođač",
     "only_on_device": "Samo na “{device}”",
     "only_on_device_toast": "Ova pjesma se reproducira samo na \"{device}\"",
     "added_from_device": "Vaša datoteka s ovog uređaja",
@@ -1612,7 +1616,7 @@
     "hours_minutes": "{h} h {m} min",
     "minutes": "{m} min",
     "tracks_count": "{count} pjesama",
-    "just_tracks": "Samo tragovi",
+    "just_tracks": "Pojedinačne pjesme",
     "tracks_count_few": "{count} pjesme",
     "tracks_count_many": "{count} staze",
     "songs_played_two": "{count} pjesama",
@@ -1621,6 +1625,7 @@
     "songs_played_zero": "{count} pjesama"
   },
   "trends": {
+    "cached_chart": "Prikazujemo posljednju spremljenu ljestvicu. Izvor je privremeno nedostupan.",
     "title": "U trendu",
     "russia": "Rusija",
     "world": "Širom svijeta",

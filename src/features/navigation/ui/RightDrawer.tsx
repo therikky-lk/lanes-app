@@ -1208,7 +1208,7 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
                 </>
               ) : (
                 <div className="text-[28px] font-[700] text-text-tertiary">
-                  No lyrics available
+                  {t("player.no_lyrics")}
                 </div>
               )}
             </div>
