@@ -1230,7 +1230,7 @@ function LibraryPlaylistContent() {
                             <CheckLine size={17} />
                           </Button>
                         ) : (
-                          <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} className="!bg-border-alpha-14" extraMenuItems={[
+                           <ShareButton menu type="playlist" entityId={decodedId} snapshot={{ title: viewData.title, coverUrl: viewData.coverUrl }} variant={hasCustomBg ? "glass-action" : "outline"} className="!text-text-primary" extraMenuItems={[
                               ...(isMobile ? [{
                                 id: "edit-order",
                                 icon: <LuPencil size={15} />,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LuEllipsis, LuShare2 } from "react-icons/lu";
 import Button from "./Button";
+import type { ButtonProps } from "./Button";
 import { showToast } from "./Toast";
 import { useTranslation } from "@/languages";
 import { shareEntity } from "@/shared/utils/share";
@@ -10,8 +11,9 @@ import type { DropdownMenuItem } from "./DropdownMenu";
 import { resolveApiErrorMessage } from "@/shared/api/api";
 import { resolveArtistAvatar } from "@/features/artist/hooks/artistAvatar";
 
-export default function ShareButton({ type, entityId, snapshot, menu = true, extraMenuItems = [], className = "" }: {
+export default function ShareButton({ type, entityId, snapshot, menu = true, extraMenuItems = [], className = "", variant = "outline" }: {
   type: ShareEntityType; entityId: string; snapshot: ShareSnapshot; menu?: boolean; extraMenuItems?: DropdownMenuItem[]; className?: string;
+  variant?: ButtonProps["variant"];
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -36,7 +38,7 @@ export default function ShareButton({ type, entityId, snapshot, menu = true, ext
       onClick: handleShare,
     }, ...extraMenuItems];
     return <DropdownMenu
-      trigger={<Button variant="outline" size="icon" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
+      trigger={<Button variant={variant} size="icon" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
         className={`!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary ${className}`}>
         <LuEllipsis size={19} />
       </Button>}
@@ -44,7 +46,7 @@ export default function ShareButton({ type, entityId, snapshot, menu = true, ext
     />;
   }
   return <DropdownMenu
-    trigger={<Button variant="outline" size="icon" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
+    trigger={<Button variant={variant} size="icon" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
       className={`!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary ${className}`}>
       <LuEllipsis size={19} />
     </Button>}

@@ -154,6 +154,7 @@ function ArtistContent() {
           isScrolled={isScrolled}
           desktopBackdrop
           backButtonSurface
+          frostedBackButton
           plainMetadata
           title={data?.title}
           thumbnail={

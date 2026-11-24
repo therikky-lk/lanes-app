@@ -17,6 +17,7 @@ export interface StickyHeaderProps {
   desktopBackdrop?: boolean;
   plainMetadata?: boolean;
   backButtonSurface?: boolean;
+  frostedBackButton?: boolean;
 }
 
 export function StickyHeader({
@@ -31,6 +32,7 @@ export function StickyHeader({
   desktopBackdrop = false,
   plainMetadata = false,
   backButtonSurface = false,
+  frostedBackButton = false,
 }: StickyHeaderProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -88,7 +90,9 @@ export function StickyHeader({
               data-no-window-drag
               data-transparent-back-button={!backButtonSurface || undefined}
               className={`group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-md px-[10px] active:scale-[0.94] transition-all cursor-pointer select-none pointer-events-auto text-[13px] font-[500] text-text-primary border-0 !border-none ${
-                backButtonSurface
+                frostedBackButton
+                  ? "bg-bg-primary/20 backdrop-blur-2xl backdrop-saturate-150 hover:bg-bg-primary/35"
+                  : backButtonSurface
                   ? hasCustomBg ? "apple-glass-pill !border-none" : "bg-bg-panel/85 backdrop-blur-xl hover:bg-bg-panel"
                   : "!bg-transparent !backdrop-blur-none !shadow-none hover:!bg-transparent active:!bg-transparent"
               }`}
@@ -144,5 +148,4 @@ export function StickyHeader({
 }
 
 export default StickyHeader;
-
 
