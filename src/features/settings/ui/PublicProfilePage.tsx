@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftLine } from "@mingcute/react";
 import { api } from "@/shared/api";
+import { resolveApiErrorMessage } from "@/shared/api/api";
 import type { UserProfile } from "@/shared/contracts/users";
 import { useAuthStore } from "@/features/auth";
 import type { SharedEntity } from "@/shared/contracts/sharing";
@@ -117,10 +118,19 @@ export default function PublicProfilePage() {
       if (next?.isFollowing === desired) setSocial(next);
       else if (receipt?.isFollowing === previous) throw new Error("Follow change was not confirmed");
       // A successful legacy 204 may be followed by a stale profile read.
-    } catch {
+    } catch (error) {
+      if (!stillCurrent()) return;
+      // A failed response does not mean the write failed: the service can
+      // commit the change before the response is lost or fails to serialize.
+      const confirmed = await api.getUserProfile(profile.id).catch(() => null);
       if (stillCurrent()) {
-        setSocial(before);
-        showToast(t("settings.profile.follow_failed"), "error");
+        if (confirmed?.isFollowing === desired) {
+          followRefreshAfter.current = Date.now() + 5000;
+          setSocial(confirmed);
+        } else {
+          setSocial(confirmed?.isFollowing === previous ? confirmed : before);
+          showToast(resolveApiErrorMessage(error, t, "settings.profile.follow_failed"), "error");
+        }
       }
     }
     finally { followMutation.current = false; if (active.current) setFollowing(false); }

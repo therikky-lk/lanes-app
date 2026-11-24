@@ -67,10 +67,10 @@ interface PlayerUiElementsProps {
   onClose?: () => void;
 }
 
-function PlaybackTimeline({ width, compact }: { width: string; compact: boolean }) {
+function PlaybackTimeline({ width }: { width: string }) {
   const state = usePlayerStore(useShallow(s => ({ positionMs: s.positionMs, durationMs: s.durationMs, fallbackDuration: s.currentTrack?.durationMs ?? 0 })));
   return <TimelineSlider positionMs={state.positionMs} durationMs={state.durationMs > 0 ? state.durationMs : state.fallbackDuration}
-    onSeek={playerEngine.seek.bind(playerEngine)} showTime layout="stacked" size="lg" fillColor="#fff" style={{ width }} trackClassName={compact ? "!h-[4px]" : undefined} />;
+    onSeek={playerEngine.seek.bind(playerEngine)} showTime layout="stacked" size="lg" fillColor="#fff" style={{ width }} />;
 }
 
 export const PlayerUiElements = memo(function PlayerUiElements({
@@ -192,7 +192,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
   const { t } = useTranslation();
 
   const S = isMobile
-    ? "min(76cqw, 38dvh, 320px)"
+    ? "min(80cqw, 40dvh, 336px)"
     : "min(calc(100cqw - 44px), 54dvh, 460px)";
   const iconButtonClass = `inline-flex ${isMobile ? "size-11" : "size-[clamp(48px,15cqw,60px)]"} items-center justify-center text-white opacity-70 transition-all duration-150 ease-out hover:opacity-100 active:scale-[0.94] shrink-0 border-none bg-transparent cursor-pointer`;
   const likeButton = (
@@ -306,7 +306,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
       </div>
 
       {/* Timeline (Compact, with smooth spring pill, no thumb) */}
-      <PlaybackTimeline width={S} compact={isMobile} />
+      <PlaybackTimeline width={S} />
 
       {/* Primary Playback Controls */}
       <div className={`flex items-center ${isMobile ? "gap-[clamp(5px,2.5cqw,15px)]" : "gap-[clamp(2px,1.5cqw,10px)]"}`}>
