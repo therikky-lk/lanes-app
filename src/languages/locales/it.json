@@ -91,7 +91,7 @@
     "rename": "Rinomina",
     "edit_description": "Modifica descrizione",
     "add_description": "Aggiungi descrizione",
-    "import_sources_hint": "Incolla un link da YouTube, SoundCloud, Spotify, Deezer o Apple Music",
+    "import_sources_hint": "Incolla un link da YouTube, SoundCloud, Spotify, Deezer, Apple Music o Yandex Music",
     "make_public": "Rendi pubblica",
     "delete": "Elimina",
     "create": "Crea",
@@ -672,6 +672,10 @@
   },
   "settings": {
     "spotify": {
+      "sign_in": "Accedi a Spotify",
+      "signed_in": "Account collegato",
+      "signed_out": "Accesso non effettuato",
+      "account_description": "Accedi per importare le tue playlist personali.",
       "title": "Spotify",
       "description": "Esporta i brani preferiti o una playlist in Exportify e importa qui il CSV.",
       "unavailable": "L’accesso a Spotify non è disponibile su questa piattaforma.",

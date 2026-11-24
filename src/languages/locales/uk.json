@@ -91,7 +91,7 @@
     "rename": "Перейменувати",
     "edit_description": "Змінити опис",
     "add_description": "Додати опис",
-    "import_sources_hint": "Вставте посилання з YouTube, SoundCloud, Spotify, Deezer або Apple Music",
+    "import_sources_hint": "Вставте посилання з YouTube, SoundCloud, Spotify, Deezer, Apple Music або Яндекс Музики",
     "make_public": "Зробити публічним",
     "delete": "Видалити",
     "create": "Створити",
@@ -672,6 +672,10 @@
   },
   "settings": {
     "spotify": {
+      "sign_in": "Увійти в Spotify",
+      "signed_in": "Обліковий запис підключено",
+      "signed_out": "Ви не ввійшли",
+      "account_description": "Увійдіть, щоб імпортувати особисті списки відтворення.",
       "title": "Spotify",
       "description": "Експортуйте улюблені треки або плейліст в Exportify та імпортуйте сюди CSV-файл.",
       "unavailable": "Вхід у Spotify недоступний на цій платформі.",

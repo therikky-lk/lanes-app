@@ -91,7 +91,7 @@
     "rename": "Yeniden adlandır",
     "edit_description": "Açıklamayı düzenle",
     "add_description": "Açıklama ekle",
-    "import_sources_hint": "YouTube, SoundCloud, Spotify, Deezer veya Apple Music bağlantısı yapıştır",
+    "import_sources_hint": "YouTube, SoundCloud, Spotify, Deezer, Apple Music veya Yandex Music bağlantısı yapıştır",
     "make_public": "Herkese açık yap",
     "delete": "Sil",
     "create": "Oluştur",
@@ -672,6 +672,10 @@
   },
   "settings": {
     "spotify": {
+      "sign_in": "Spotify’da oturum aç",
+      "signed_in": "Hesap bağlı",
+      "signed_out": "Oturum açılmadı",
+      "account_description": "Kişisel çalma listelerini içe aktarmak için oturum aç.",
       "title": "Spotify",
       "description": "Beğenilen şarkıları veya bir çalma listesini Exportify ile dışa aktar, ardından CSV dosyasını burada içe aktar.",
       "unavailable": "Bu platformda Spotify oturumu açılamıyor.",

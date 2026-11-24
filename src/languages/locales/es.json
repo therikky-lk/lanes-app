@@ -91,7 +91,7 @@
     "rename": "Renombrar",
     "edit_description": "Editar descripción",
     "add_description": "Añadir descripción",
-    "import_sources_hint": "Pega un enlace de YouTube, SoundCloud, Spotify, Deezer o Apple Music",
+    "import_sources_hint": "Pega un enlace de YouTube, SoundCloud, Spotify, Deezer, Apple Music o Yandex Music",
     "make_public": "Hacer pública",
     "delete": "Eliminar",
     "create": "Crear",
@@ -672,6 +672,10 @@
   },
   "settings": {
     "spotify": {
+      "sign_in": "Iniciar sesión en Spotify",
+      "signed_in": "Cuenta conectada",
+      "signed_out": "Sesión no iniciada",
+      "account_description": "Inicia sesión para importar tus listas personales.",
       "title": "Spotify",
       "description": "Exporta tus canciones favoritas o una lista en Exportify e importa aquí el CSV.",
       "unavailable": "No se puede iniciar sesión en Spotify en esta plataforma.",
