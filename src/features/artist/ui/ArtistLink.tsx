@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { splitJoinedArtists } from "@/shared/api/track";
 import type { TrackArtist } from "@/shared/types";
+import { artistHref } from "@/shared/media/artistIdentity";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
 
@@ -68,7 +69,8 @@ export default function ArtistLink({
 
   /** desktop: open the artist; phone: slide up the artist sheet first */
   const goArtist = (targetId: string) => {
-    onOpenArtist?.(sheetArtists.find((artist) => artist.id === targetId) ?? { id: targetId, name: targetId });
+    const target = sheetArtists.find((artist) => artist.id === targetId) ?? { id: targetId, name: targetId };
+    onOpenArtist?.(target);
     if (isMobile) {
       const list = sheetArtists.some((a) => a.id === targetId)
         ? sheetArtists
@@ -77,7 +79,7 @@ export default function ArtistLink({
       return;
     }
     onNavigate?.();
-    navigate(`/artist?id=${encodeURIComponent(targetId)}`);
+    navigate(artistHref(target.id, target.name));
   };
 
   const innerContent = sheetArtists.map((artist, index) => (
@@ -142,4 +144,3 @@ export default function ArtistLink({
     </span>
   );
 }
-

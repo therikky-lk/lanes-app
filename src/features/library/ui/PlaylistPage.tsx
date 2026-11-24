@@ -31,9 +31,10 @@ import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { addYandexPlaylistToLikes } from "../services/import/sources/yandexMusic/yandexMusicImport";
 import { canSyncCoverMarker, readCoverMarker, readPlaylistSource, stripCoverMarker, withCoverMarker, withDescriptionText } from "../services/playlistCoverMarker";
-import { compactPlaylistCover, getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover, spotifyPlaylistCover } from "../services/playlistCovers";
+import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
+import Dialog from "@/shared/ui/Dialog";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { useModalStore } from "../store/modalStore";
@@ -308,6 +309,8 @@ function LibraryPlaylistContent() {
   }, [decodedId, isLikesMode]);
   const currentTrackId = usePlayerStore((st) => st.currentTrack?.id ?? null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [coverDialogOpen, setCoverDialogOpen] = useState(false);
+  const [coverSaving, setCoverSaving] = useState(false);
   const [trackView, setTrackViewState] = useState<"list" | "grid">(() => {
     try {
       return localStorage.getItem("lane_tracks_view") === "grid" ? "grid" : "list";
@@ -889,18 +892,44 @@ function LibraryPlaylistContent() {
         onChange={async (e) => {
           const file = e.target.files?.[0];
           e.target.value = "";
-          if (!file || !decodedId) return;
+           if (!file || !decodedId || coverSaving) return;
+           setCoverSaving(true);
           try {
             const synced = await savePlaylistCover(decodedId, await imageFileToCover(file));
-            if (!synced) {
-              diag(`[Lane][PlaylistCover] cover kept locally; retry scheduled`);
-            }
+             if (!synced) {
+               diag(`[Lane][PlaylistCover] cover kept locally; retry scheduled`);
+             }
+             setCoverDialogOpen(false);
           } catch (error) {
             diag(`[Lane][PlaylistCover] cover processing failed ${error instanceof Error ? error.message : String(error)}`);
-            toast(t("playlist.cover_failed") || "Could not use this image", "error");
+             toast(t("playlist.cover_failed") || "Could not use this image", "error");
+           } finally {
+             setCoverSaving(false);
           }
         }}
       />
+      <Dialog open={coverDialogOpen} onOpenChange={open => { if (!coverSaving) setCoverDialogOpen(open); }} maxWidth={360} aria-labelledby="playlist-cover-dialog-title">
+        <div className="grid grid-cols-2 gap-3 px-5 pb-5">
+          <h3 id="playlist-cover-dialog-title" className="col-span-2 m-0 text-base font-semibold text-text-primary">{t("playlist.change_cover")}</h3>
+          <Button type="button" className="min-w-0 !whitespace-normal" disabled={coverSaving} onClick={() => coverInputRef.current?.click()}>
+            {t("playlist.change_cover")}
+          </Button>
+          <Button type="button" variant="outline" className="min-w-0 !whitespace-normal" disabled={coverSaving || !hasCustomPlaylistCover(decodedId)} onClick={async () => {
+            if (!decodedId || coverSaving) return;
+            setCoverSaving(true);
+            try {
+              await savePlaylistCover(decodedId, null);
+              setCoverDialogOpen(false);
+            } catch {
+              toast(t("playlist.cover_failed"), "error");
+            } finally {
+              setCoverSaving(false);
+            }
+          }}>
+            {t("playlist.reset_cover")}
+          </Button>
+        </div>
+      </Dialog>
       <div className="relative z-1 grid grid-cols-1 w-full h-full min-h-0 overflow-hidden">
         {viewData && (
           <div
@@ -1263,36 +1292,9 @@ function LibraryPlaylistContent() {
                               {
                                 id: "cover",
                                 icon: <PicLine size={15} />,
-                                label: t("playlist.change_cover") || "Change cover",
-                                onClick: () => coverInputRef.current?.click(),
-                              },
-                              {
-                                id: "cover-spotify",
-                                icon: <FaSpotify size={15} />,
-                                label: `Spotify · ${t("playlist.change_cover")}`,
-                                onClick: () => {
-                                  if (!decodedId) return;
-                                  void compactPlaylistCover(spotifyPlaylistCover)
-                                    .then(cover => savePlaylistCover(decodedId, cover))
-                                    .then(saved => { if (!saved) toast(t("playlist.cover_failed"), "error"); })
-                                    .catch(() => toast(t("playlist.cover_failed"), "error"));
-                                },
-                              },
-                              ...(hasCustomPlaylistCover(decodedId)
-                                ? [
-                                    {
-                                      id: "cover-reset",
-                                      icon: <PicLine size={15} />,
-                                      label: t("playlist.reset_cover") || "Reset cover",
-                                      onClick: () => {
-                                        if (!decodedId) return;
-                                        void savePlaylistCover(decodedId, null).catch(() =>
-                                          toast(t("playlist.cover_failed") || "Could not update this cover", "error"),
-                                        );
-                                      },
-                                    },
-                                  ]
-                                : []),
+                                 label: t("playlist.change_cover") || "Change cover",
+                                 onClick: () => setCoverDialogOpen(true),
+                               },
                               {
                                 id: "delete",
                                 icon: <LuTrash2 size={15} />,

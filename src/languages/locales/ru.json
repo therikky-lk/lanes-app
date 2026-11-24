@@ -91,7 +91,7 @@
     "rename": "Переименовать",
     "edit_description": "Изменить описание",
     "add_description": "Добавить описание",
-    "import_sources_hint": "Вставьте ссылку из YouTube, SoundCloud, Spotify, Deezer или Apple Music",
+    "import_sources_hint": "Вставьте ссылку из YouTube, SoundCloud, Spotify, Deezer, Apple Music или Яндекс Музыки",
     "make_public": "Сделать публичным",
     "delete": "Удалить",
     "create": "Создать",
@@ -683,6 +683,10 @@
   },
   "settings": {
     "spotify": {
+      "sign_in": "Войти в Spotify",
+      "signed_in": "Аккаунт подключён",
+      "signed_out": "Вы не вошли",
+      "account_description": "Войдите, чтобы импортировать личные плейлисты.",
       "title": "Spotify",
       "description": "Выгрузите любимые треки или плейлист в Exportify и выберите здесь CSV-файл.",
       "unavailable": "На этой платформе вход в Spotify недоступен.",

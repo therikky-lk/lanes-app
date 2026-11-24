@@ -7,6 +7,7 @@ import { importDeezer } from "./sources/deezerSource";
 import { importSoundCloud } from "./sources/soundcloud/soundcloudSource";
 import { importSpotify } from "./sources/spotify/spotifySource";
 import { importYoutube } from "./sources/youtube/youtubeSource";
+import { importYandexMusicPlaylist } from "./sources/yandexMusic/yandexMusicSource";
 
 type SourceParser = (url: string, signal?: AbortSignal) => Promise<ClientImportedPlaylist>;
 
@@ -16,6 +17,7 @@ const PARSERS: Record<ImportSource, SourceParser> = {
   soundcloud: (url, signal) => importSoundCloud(url, { signal }),
   spotify: importSpotify,
   apple_music: importAppleMusic,
+  yandex_music: importYandexMusicPlaylist,
 };
 
 export async function parseImportSource(url: string, signal?: AbortSignal): Promise<ClientImportedPlaylist> {

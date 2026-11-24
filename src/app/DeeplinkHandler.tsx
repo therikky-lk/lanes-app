@@ -9,6 +9,7 @@ import { parseIncomingLink, type IncomingLink } from "@/shared/utils/incomingLin
 import { showToast } from "@/shared/ui/Toast";
 import { useTranslation } from "@/languages";
 import { startVibe, storedSettings } from "@/features/home/vibe/vibeController";
+import { artistHref } from "@/shared/media/artistIdentity";
 
 export default function DeeplinkHandler() {
   const navigate = useNavigate();
@@ -25,6 +26,10 @@ export default function DeeplinkHandler() {
         let entity = target;
         if (entity.type === "share") {
           const shared = await api.getShare(entity.id);
+          if (shared.type === "artist") {
+            navigate(artistHref(shared.entityId, shared.snapshot.title));
+            return;
+          }
           if (shared.type === "profile") {
             navigate(`/user?share=${encodeURIComponent(shared.id)}`);
             return;
@@ -32,7 +37,7 @@ export default function DeeplinkHandler() {
           entity = { type: shared.type, id: shared.entityId };
         }
         switch (entity.type) {
-          case "artist": navigate(`/artist?id=${encodeURIComponent(entity.id)}`); break;
+          case "artist": navigate(artistHref(entity.id)); break;
           case "album": case "playlist": navigate(`/collection?type=${entity.type}&id=${encodeURIComponent(entity.id)}`); break;
           case "track": {
             const track = toClientTrack(await api.getTrack(entity.id));

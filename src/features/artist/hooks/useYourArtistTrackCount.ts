@@ -4,12 +4,11 @@ import type { Track } from "@/shared/types";
 
 const norm = (value: string) => value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
-export function countArtistTracks(tracks: readonly Track[], artist: { id?: string | null; name?: string | null }): number {
+export function findArtistTracks(tracks: readonly Track[], artist: { id?: string | null; name?: string | null }): Track[] {
   const id = artist.id && artist.id !== "unknown" ? artist.id : "";
   const name = artist.name ? norm(artist.name) : "";
-  if (!id && !name) return 0;
-  let count = 0;
-  for (const track of tracks) {
+  if (!id && !name) return [];
+  return tracks.filter(track => {
     const list = track.artistList ?? [];
     const byList = list.some((a) => (id && a.id === id) || (name && a.name && norm(a.name) === name));
     const byText =
@@ -19,9 +18,12 @@ export function countArtistTracks(tracks: readonly Track[], artist: { id?: strin
           (track.artists ?? "")
             .split(/,|&| feat\.? | ft\.? /i)
             .some((part) => norm(part) === name)));
-    if (byList || byText) count += 1;
-  }
-  return count;
+    return byList || byText;
+  });
+}
+
+export function countArtistTracks(tracks: readonly Track[], artist: { id?: string | null; name?: string | null }): number {
+  return findArtistTracks(tracks, artist).length;
 }
 
 /** how many of the artist's songs are in your liked songs */

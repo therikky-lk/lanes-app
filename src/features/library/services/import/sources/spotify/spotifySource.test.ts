@@ -48,8 +48,20 @@ describe("Spotify account imports", () => {
     vi.mocked(fetchSpotifyPlaylistTracks).mockImplementation(async (_id, _signal, getToken) => ({
       tracks: getToken && await getToken() === "signed-in-token" ? [track] : [],
       total: undefined,
+      title: getToken ? "Your All-Time Top Songs" : undefined,
     }));
+    await expect(importSpotify("https://open.spotify.com/playlist/private1")).resolves.toMatchObject({
+      title: "Your All-Time Top Songs", tracks: [track],
+    });
+    expect(fetchSpotifyOAuthPlaylist).not.toHaveBeenCalled();
+  });
+
+  it("tries the signed-in playlist API when Android's web player lookup fails", async () => {
+    vi.mocked(fetchSpotifyEmbed).mockRejectedValue(new Error("No public embed"));
+    vi.mocked(fetchSpotifyPlaylistTracks).mockRejectedValue(new Error("No playlist content"));
+    vi.mocked(fetchSpotifyOAuthPlaylist).mockResolvedValue([track]);
     await expect(importSpotify("https://open.spotify.com/playlist/private1")).resolves.toMatchObject({ tracks: [track] });
+    expect(fetchSpotifyOAuthPlaylist).toHaveBeenCalledWith("private1", undefined);
   });
 
   it("imports Liked Songs from the account", async () => {

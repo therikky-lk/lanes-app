@@ -11,7 +11,8 @@ import {
 import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import { useArtistAvatar } from "../hooks/useArtistAvatar";
-import { useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
+import { findArtistTracks, useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
+import { useLikedTracks } from "@/features/library/hooks/useLikedTracks";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
 import ScrollableRow from "@/shared/ui/ScrollableRow";
@@ -57,13 +58,49 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+function ArtistFallback({ id, name }: { id: string | null; name: string | null }) {
+  const { t } = useTranslation();
+  const { data, isLoading } = useLikedTracks();
+  const tracks = findArtistTracks(data.tracks, { id, name });
+  if (isLoading && (id || name) && !tracks.length) return <ArtistPageSkeleton />;
+  if (!tracks.length) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-text-secondary">
+        {t("artist.artist_not_found")}
+      </div>
+    );
+  }
+  const title = name || tracks[0].artists;
+  return (
+    <div className="h-full w-full overflow-y-auto px-4 pt-[calc(var(--lane-safe-top,0px)+16px)] pb-24">
+      <h1 className="mb-2 text-2xl font-bold">{title}</h1>
+      <p className="mb-4 text-text-secondary">{t("artist.your_tracks", { count: tracks.length })}</p>
+      {tracks.map(track => (
+        <SongCardWithMenu
+          key={track.id}
+          id={track.id}
+          title={track.title}
+          artists={track.artists}
+          artistId={track.artistId}
+          artistList={track.artistList}
+          coverUrl={track.coverUrl}
+          durationMs={track.durationMs}
+          explicit={track.explicit}
+          onPlay={() => playerEngine.playTrack(track, tracks, title)}
+        />
+      ))}
+    </div>
+  );
+}
+
 function ArtistContent() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
   const [searchParams] = useSearchParams();
   const requestedId = searchParams.get("id");
-  const { data, loading } = useArtist(requestedId, searchParams.get("name"));
+  const requestedName = searchParams.get("name");
+  const { data, loading } = useArtist(requestedId, requestedName);
   const id = data?.id ?? requestedId;
   const pinned = usePinsStore((st) => Boolean(id && st.pins.some((p) => p.kind === "artist" && p.id === id)));
 
@@ -120,13 +157,7 @@ function ArtistContent() {
   };
 
   if (!loading && !data) {
-    return (
-      <div className="h-full w-full bg-transparent flex items-center justify-center">
-        <span className="text-text-secondary">
-          {t("artist.artist_not_found")}
-        </span>
-      </div>
-    );
+    return <ArtistFallback id={requestedId} name={requestedName} />;
   }
 
   return (

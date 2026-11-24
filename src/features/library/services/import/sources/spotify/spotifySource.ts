@@ -96,14 +96,27 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
     const tracks = pickPlaylistTracks(full, embed.tracks);
     if (!oauth && signedIn && (!tracks.length || (embed.tracks.length >= EMBED_TRACK_CAP && tracks.length === embed.tracks.length)
       || (full.total !== undefined && tracks.length < full.total))) {
-      const mine = await fetchSpotifyPlaylistTracks(entityId, signal, () => spotifyUserToken(signal)).catch((error) => {
+      const mine = await fetchSpotifyPlaylistTracks(entityId, signal, () => spotifyUserToken(signal)).catch((error): PathfinderResult => {
         rethrowIfAborted(signal);
         log("yellow", "import", `spotify playlist as the signed-in user failed: ${String(error)}`);
         return { tracks: [] as ClientImportedTrack[], total: undefined };
       });
-      if (mine.tracks.length > 0 && mine.tracks.length >= tracks.length) { remember(mine.tracks); return { ...base, tracks: mine.tracks }; }
+      if (mine.tracks.length > 0 && mine.tracks.length >= tracks.length) {
+        remember(mine.tracks);
+        return { ...base, title: mine.title ?? title, tracks: mine.tracks };
+      }
+      try {
+        const accountTracks = await fetchSpotifyOAuthPlaylist(entityId, signal);
+        if (accountTracks.length > 0 && accountTracks.length >= tracks.length) {
+          remember(accountTracks);
+          return { ...base, title: embed.title ?? full.title ?? title, tracks: accountTracks };
+        }
+      } catch (error) {
+        rethrowIfAborted(signal);
+        accountError = error;
+      }
     }
-    if (tracks.length > 0) { remember(tracks); return { ...base, tracks }; }
+    if (tracks.length > 0) { remember(tracks); return { ...base, title: embed.title ?? full.title ?? title, tracks }; }
     if (accountError instanceof SpotifyRequestError && (accountError.status === 403 || accountError.status === 404)) {
       throw new Error("Spotify didn’t share this playlist. For Wrapped, copy its tracks into a new playlist you own and import that link.");
     }
@@ -114,7 +127,7 @@ export async function importSpotify(rawUrl: string, signal?: AbortSignal): Promi
     if (signedIn === null) throw new Error("Could not check your Spotify session. Try again.");
     if (!signedIn && accountSupported) {
       throw new Error(
-        "This looks like a personal Spotify playlist. Sign in under Settings → Spotify, then try importing it again.",
+        "Sign in under Settings → Spotify with the account that can open this playlist, then retry. If Spotify still won’t share it, copy its tracks into a playlist you own and import that link.",
       );
     }
   }

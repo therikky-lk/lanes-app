@@ -1,6 +1,6 @@
 import { useYandexMusicPreferences } from "../store/yandexMusicPreferences";
 import { useSpotifyPreferences } from "../store/spotifyPreferences";
-import { getImportedPlaylistIds } from "../services/import/importedPlaylistMeta";
+import { getImportedPlaylistIds, getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { readPlaylistSource } from "../services/playlistCoverMarker";
 import OfflineCover from "./OfflineCover";
 import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
@@ -59,13 +59,28 @@ const initialState: LibraryState = {
   artists: { ...initialTabState },
 };
 
-function sortByRecent(items: LibraryItemViewModel[]) {
+function libraryPriority(item: LibraryItemViewModel) {
+  return item.pinPriority ?? (item.source === "youtube" && item.kind === "playlist" ? 3 : 0);
+}
+
+function sortLibraryItems(items: LibraryItemViewModel[]) {
   const sorted = [...items];
   sorted.sort(
     (a, b) =>
+      libraryPriority(b) - libraryPriority(a) ||
       new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime(),
   );
   return sorted;
+}
+
+function likesImportPriority(playlist: { id: string; title: string; description?: string | null }): number {
+  const source = readPlaylistSource(playlist.description);
+  if (source === "yandex") return 2;
+  const meta = getImportedPlaylistMeta(playlist.id);
+  if (source !== "spotify" && meta?.source !== "spotify") return 0;
+  if (/\/collection\/tracks\/?(?:[?#]|$)/i.test(meta?.sourceUrl ?? "")) return 1;
+  // Older Liked Songs imports, including CSV, may only have a source marker and title.
+  return /\b(?:liked|likes) songs\b/i.test(playlist.title) ? 1 : 0;
 }
 
 function LikesPlaylistCard({
@@ -248,6 +263,7 @@ export default function LibraryPage() {
       coverUrls: playlist.coverUrls,
       kind: "playlist" as const,
       isOwned: true,
+      pinPriority: likesImportPriority(playlist),
       href: `/library/playlist?id=${encodeURIComponent(playlist.id)}`,
       addedAt:
         playlist.createdAt || playlist.updatedAt || new Date().toISOString(),
@@ -297,7 +313,7 @@ export default function LibraryPage() {
             return haystack.includes(debouncedQuery);
           });
 
-    return sortByRecent(filtered);
+    return sortLibraryItems(filtered);
   }, [
     activeTab,
     debouncedQuery,
@@ -535,15 +551,6 @@ export default function LibraryPage() {
                               onClick={() => navigate("/library/playlist?id=likes")}
                             />,
                           ] : []),
-                          ...(showCachedCollection ? [<LikesPlaylistCard
-                              key="cached-tracks-card"
-                              count={cached.length}
-                              isLoading={!offlineLoaded}
-                              viewMode={viewMode}
-                              title={t("library.cached_songs")}
-                              Icon={TimeLine}
-                              onClick={() => navigate("/library/cached")}
-                            />] : []),
                           ...(showLocalCollection ? [<LikesPlaylistCard
                               key="local-tracks-card"
                               count={localTracks.length}
@@ -552,6 +559,15 @@ export default function LibraryPage() {
                               title={t("library.on_device")}
                               Icon={MusicLine}
                               onClick={() => navigate("/local")}
+                            />] : []),
+                          ...(showCachedCollection ? [<LikesPlaylistCard
+                              key="cached-tracks-card"
+                              count={cached.length}
+                              isLoading={!offlineLoaded}
+                              viewMode={viewMode}
+                              title={t("library.cached_songs")}
+                              Icon={TimeLine}
+                              onClick={() => navigate("/library/cached")}
                             />] : []),
                           ...(isImporting && importJob ? [
                             <ImportingPlaylistCard

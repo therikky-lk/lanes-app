@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { loadYandexAvatar, loadYandexLikedTracks, loadYandexProfile } from "./yandexMusicSource";
+import { importYandexMusicPlaylist, loadYandexAvatar, loadYandexLikedTracks, loadYandexProfile } from "./yandexMusicSource";
+import { detectImportSource } from "../../detectImportSource";
 
 const mocks = vi.hoisted(() => ({
   native: vi.fn(() => false),
@@ -10,6 +11,27 @@ vi.mock("@/shared/platform/native", () => ({ isNativeApp: mocks.native }));
 vi.mock("@capacitor/core", () => ({ CapacitorHttp: { request: mocks.request } }));
 
 const result = (data: unknown) => Response.json({ result: data });
+
+it("imports a public Yandex Music share link on Android without sending credentials", async () => {
+  const id = "ps.d9356ace-85e1-450f-ac2a-6591c2ef149e";
+  const url = `https://music.yandex.com/playlists/${id}?utm_medium=copy_link&ref_id=example`;
+  mocks.native.mockReturnValue(true);
+  mocks.request.mockResolvedValue({
+    status: 200, headers: {}, data: { result: { title: "Мой 2025", tracks: [
+      { track: { id: 2, title: "Second", artists: [{ name: "Artist" }] } },
+      { track: null },
+      { track: { id: 1, title: "First", artists: [{ name: "Artist" }] } },
+    ] } },
+  });
+  expect(detectImportSource(url)).toBe("yandex_music");
+  const playlist = await importYandexMusicPlaylist(url);
+  expect(playlist).toMatchObject({ title: "Мой 2025", sourceUrl: url });
+  expect(playlist.tracks.map(track => track.sourceId)).toEqual(["2", "1"]);
+  expect(mocks.request).toHaveBeenCalledWith(expect.objectContaining({
+    url: `https://api.music.yandex.net/playlist/${id}`,
+    headers: { Accept: "application/json" },
+  }));
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

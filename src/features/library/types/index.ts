@@ -3,6 +3,7 @@ export type LibraryTab = "all" | "playlists" | "albums" | "artists";
 export type LibraryItemKind = "playlist" | "album" | "artist";
 
 export interface LibraryItemViewModel {
+  pinPriority?: number;
   id: string;
   title: string;
   subtitle: string;

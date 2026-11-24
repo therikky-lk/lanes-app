@@ -8,11 +8,12 @@ import { useTranslation } from "@/languages";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
 import { useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
+import { artistHref, canonicalArtistId } from "@/shared/media/artistIdentity";
 
 const font = { fontFamily: "var(--font-inter), sans-serif" };
 
 function Avatar({ artist, size }: { artist: ArtistSheetArtist; size: number }) {
-  const url = useArtistAvatar(artist.id, artist.name);
+  const url = useArtistAvatar(canonicalArtistId(artist.id, artist.name), artist.name);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return (
     <div
@@ -65,7 +66,7 @@ export default function ArtistSheet() {
     const { onNavigate } = useArtistSheetStore.getState();
     close();
     onNavigate?.();
-    navigate(`/artist?id=${encodeURIComponent(artist.id)}`);
+    navigate(artistHref(artist.id, artist.name));
   };
 
   const main = artists.find((a) => a.id === selectedId) ?? artists[0];

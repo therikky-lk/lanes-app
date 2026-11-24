@@ -13,6 +13,7 @@ const PAGE_ATTEMPTS = 3;
 export interface PathfinderResult {
   tracks: ClientImportedTrack[];
   total: number | undefined;
+  title?: string;
 }
 
 function pathfinderUrl(playlistId: string, offset: number): string {
@@ -69,7 +70,7 @@ async function fetchPage(
   offset: number,
   signal?: AbortSignal,
   userToken?: () => Promise<string>,
-): Promise<JsonRecord | undefined> {
+): Promise<{ content: JsonRecord; title?: string } | undefined> {
   // personal playlists ("Your Top Songs", Daily Mix…) are visible only to their
   // owner: those are read with the signed-in user's token instead of a guest one
   const sessionFor = async (): Promise<SpotifySession> =>
@@ -89,15 +90,15 @@ async function fetchPage(
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const body = (await response.json()) as unknown;
-      const content = recordAt(body, "data", "playlistV2", "content");
+      const playlist = recordAt(body, "data", "playlistV2");
+      const content = recordAt(playlist, "content");
       if (!content) {
-        const playlist = recordAt(body, "data", "playlistV2");
         const errors = asArray(recordAt(body)?.errors);
         throw new Error(
           `no playlist content (${stringValue(playlist?.__typename) ?? "no playlistV2"}${errors.length ? `, errors: ${JSON.stringify(errors).slice(0, 300)}` : ""})`,
         );
       }
-      return content;
+      return { content, title: stringValue(playlist?.name) };
     } catch (error) {
       rethrowIfAborted(signal);
       log("yellow", "import", `spotify page at ${offset} failed (attempt ${attempt}): ${String(error)}`);
@@ -114,14 +115,17 @@ export async function fetchSpotifyPlaylistTracks(
 ): Promise<PathfinderResult> {
   const tracks: ClientImportedTrack[] = [];
   let total: number | undefined;
+  let title: string | undefined;
   let offset = 0;
 
   for (let page = 0; page < MAX_PAGES && (total === undefined || offset < total); page += 1) {
-    const content = await fetchPage(playlistId, offset, signal, userToken);
-    if (!content) {
+    const result = await fetchPage(playlistId, offset, signal, userToken);
+    if (!result) {
       if (page === 0) throw new Error("spotify pathfinder returned nothing");
       break;
     }
+    const { content } = result;
+    title ??= result.title;
     const count = numberValue(content.totalCount);
     if (count !== undefined) total = count;
     const items = asArray(content.items).filter(isRecord);
@@ -133,5 +137,5 @@ export async function fetchSpotifyPlaylistTracks(
     offset += PAGE_LIMIT;
     await delay(50, signal);
   }
-  return { tracks, total };
+  return { tracks, total, title };
 }

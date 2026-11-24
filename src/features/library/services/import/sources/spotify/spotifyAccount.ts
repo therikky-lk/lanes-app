@@ -257,12 +257,19 @@ export async function fetchSpotifyOAuthPlaylist(id: string, signal?: AbortSignal
   type Item = SavedTrackItem & { item?: SavedTrackItem["track"] };
   type Page = { items?: Item[]; next?: string | null };
   const tracks: ClientImportedTrack[] = [];
+  let endpoint = spotifyUsesOAuth() ? "items" : "tracks";
   let offset = 0;
-  for (;;) {
-    const page = await withRateLimit(async () => {
-      const res = await readSpotifyApi(`/playlists/${encodeURIComponent(id)}/items?limit=50&offset=${offset}`, signal);
+  const readPage = () => withRateLimit(async () => {
+      const res = await readSpotifyApi(`/playlists/${encodeURIComponent(id)}/${endpoint}?limit=50&offset=${offset}`, signal);
+      if (res.status === 401) cachedToken = null;
       return { status: res.status, retryAfter: res.headers.get("retry-after"), value: res.ok ? await res.json() as Page : undefined };
     }, "Spotify playlist request", signal);
+  let page = await readPage().catch(error => {
+    if (!(error instanceof SpotifyRequestError) || ![404, 405].includes(error.status)) throw error;
+    endpoint = endpoint === "items" ? "tracks" : "items";
+    return readPage();
+  });
+  for (;;) {
     const items = page.items ?? [];
     for (const item of items) {
       const mapped = mapSavedTrack({ track: item.item ?? item.track }, offset++);
@@ -270,6 +277,7 @@ export async function fetchSpotifyOAuthPlaylist(id: string, signal?: AbortSignal
     }
     if (!page.next || !items.length) return tracks;
     await sleep(350, signal);
+    page = await readPage();
   }
 }
 

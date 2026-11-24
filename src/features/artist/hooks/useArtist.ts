@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
 import type { ArtistDetails } from "@/shared/contracts";
-import { sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
+import { canonicalArtistId, sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
 
 export interface ArtistAlbumViewModel {
   id: string;
@@ -48,7 +48,7 @@ export function useArtist(id: string | null, expectedName: string | null = null)
       return;
     }
 
-    const artistId = id;
+    const artistId = canonicalArtistId(id, expectedName);
     let active = true;
 
     setData(null);
@@ -95,7 +95,8 @@ export function useArtist(id: string | null, expectedName: string | null = null)
 
     async function loadArtist() {
       try {
-        let artist = expectedName && sameArtistName(artistId, expectedName)
+        const nameOnly = expectedName && sameArtistName(artistId, expectedName);
+        let artist = nameOnly
           ? null
           : await api.getArtist(artistId, publish).catch(() => null);
         if (!active) return;
@@ -103,7 +104,8 @@ export function useArtist(id: string | null, expectedName: string | null = null)
           const { items } = await api.search(expectedName, "artist");
           if (!active) return;
           const matchId = uniqueArtistId(items, expectedName);
-          artist = matchId && matchId !== artistId ? await api.getArtist(matchId, publish) : null;
+          artist = matchId && (nameOnly || canonicalArtistId(matchId) !== artistId)
+            ? await api.getArtist(canonicalArtistId(matchId), publish) : null;
         }
         if (artist) publish(artist);
       } catch {

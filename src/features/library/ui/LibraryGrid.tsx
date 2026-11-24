@@ -433,10 +433,7 @@ export default function LibraryGrid({
         </div>
       ))}
       {items.map((item) => (
-        <div
-          key={`${item.kind}:${item.id}`}
-          className="lane-grid-item w-full"
-        >
+        <div key={`${item.kind}:${item.id}`} className="lane-grid-item w-full">
           <LibraryItemCard item={item} />
         </div>
       ))}
@@ -455,4 +452,3 @@ export default function LibraryGrid({
     </div>
   );
 }
-

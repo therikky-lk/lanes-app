@@ -32,5 +32,6 @@ export function detectImportSource(rawUrl: string): ImportSource {
   if (SPOTIFY_HOSTS.includes(host) || host.endsWith(".spotify.com")) return "spotify";
   if (hostMatches(host, "deezer.com")) return "deezer";
   if (APPLE_MUSIC_HOSTS.includes(host) || host.endsWith(".music.apple.com")) return "apple_music";
+  if (["music.yandex.com", "music.yandex.ru", "music.yandex.kz", "music.yandex.by"].includes(host)) return "yandex_music";
   throw new ImportUrlError(`Unsupported import host: ${host}.`);
 }

@@ -3,6 +3,7 @@ import { isNativeApp } from "@/shared/platform/native";
 import type { ImportedTrack } from "@/shared/contracts";
 import { isYandexMusicToken } from "@/shared/media/yandexMusicOAuth";
 import { delay } from "../../shared/http";
+import type { ClientImportedPlaylist } from "../../importTypes";
 
 const API = "https://api.music.yandex.net";
 const TRACK_BATCH_SIZE = 100;
@@ -32,9 +33,10 @@ function numericId(value: unknown): string | undefined {
   return /^\d+$/.test(id) ? id : undefined;
 }
 
-async function requestJson<T>(url: string, token: string, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
+async function requestJson<T>(url: string, token: string | undefined, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
   const method = form ? "POST" : "GET";
-  const headers: Record<string, string> = { Accept: "application/json", Authorization: `OAuth ${token}` };
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (token) headers.Authorization = `OAuth ${token}`;
   if (form) headers["Content-Type"] = "application/x-www-form-urlencoded";
 
   for (let attempt = 0; ; attempt++) {
@@ -85,10 +87,33 @@ async function requestJson<T>(url: string, token: string, signal?: AbortSignal, 
   }
 }
 
-async function request<T>(path: string, token: string, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
+async function request<T>(path: string, token: string | undefined, signal?: AbortSignal, form?: URLSearchParams): Promise<T> {
   const body = await requestJson<{ result?: T } | null>(`${API}${path}`, token, signal, form);
   if (body?.result == null) throw new YandexSourceError("source_unavailable");
   return body.result;
+}
+
+export async function importYandexMusicPlaylist(url: string, signal?: AbortSignal): Promise<ClientImportedPlaylist> {
+  const id = new URL(url).pathname.match(/^\/playlists\/(ps\.[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\/?$/i)?.[1];
+  if (!id) throw new Error("Use a Yandex Music playlist link copied with Share.");
+
+  let playlist: { title?: string; description?: string; tracks?: { track?: YandexTrack }[] };
+  try {
+    playlist = await request(`/playlist/${id}`, undefined, signal);
+  } catch (error) {
+    if (!(error instanceof YandexSourceError) || error.code === "rate_limited") throw error;
+    throw new Error("Could not open the Yandex Music playlist. Make sure the link is valid and the playlist is public.");
+  }
+  return {
+    source: "yandex_music",
+    sourceUrl: url,
+    title: playlist.title?.trim() || "Imported Yandex Music playlist",
+    description: playlist.description,
+    tracks: (playlist.tracks ?? []).flatMap(item => {
+      const track = item?.track && mapTrack(item.track);
+      return track ? [track] : [];
+    }),
+  };
 }
 
 export type YandexProfile = { displayName: string | null; login: string | null; avatarUrl: string | null };

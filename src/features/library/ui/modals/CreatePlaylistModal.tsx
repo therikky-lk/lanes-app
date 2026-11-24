@@ -16,28 +16,27 @@ import { api, resolveApiErrorMessage } from "@/shared/api";
 import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
 import { canSyncCoverMarker, withCoverMarker } from "../../services/playlistCoverMarker";
 import { diag } from "@/shared/platform/diag";
+import { detectImportSource } from "../../services/import/detectImportSource";
 
 type Tab = "create" | "import";
 
 const TITLE_MAX = 50;
 
-// mirrors backend detectImportSource, labels only
+const importSourceLabels = {
+  youtube: "YouTube",
+  soundcloud: "SoundCloud",
+  spotify: "Spotify",
+  deezer: "Deezer",
+  apple_music: "Apple Music",
+  yandex_music: "Yandex Music",
+};
+
 function detectSourceLabel(raw: string): string | null {
   try {
-    let text = raw.trim();
-    if (!text.startsWith("http://") && !text.startsWith("https://")) {
-      text = `https://${text}`;
-    }
-    const host = new URL(text).hostname.toLowerCase().replace(/^www\./, "");
-    if (["youtube.com", "music.youtube.com", "m.youtube.com", "youtu.be"].includes(host)) return "YouTube";
-    if (host === "soundcloud.com" || host.endsWith(".soundcloud.com")) return "SoundCloud";
-    if (host === "open.spotify.com") return "Spotify";
-    if (host === "deezer.com" || host.endsWith(".deezer.com")) return "Deezer";
-    if (["music.apple.com", "geo.music.apple.com", "itunes.apple.com"].includes(host) || host.endsWith(".music.apple.com")) return "Apple Music";
+    return importSourceLabels[detectImportSource(raw)];
   } catch {
-    // not a url yet
+    return null;
   }
-  return null;
 }
 
 const font = { fontFamily: "var(--font-inter), sans-serif" } as const;
