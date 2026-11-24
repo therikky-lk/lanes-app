@@ -164,7 +164,7 @@ export default function RecentPage() {
         const country = countryFromMixId(g.id ?? "");
         const name = country ? countryNames.of(country) ?? country : "";
         return {
-          title: country ? countryMixTitle(name) : t("home.country_mixes"),
+          title: country ? countryMixTitle(t, name) : t("home.country_mixes"),
           sub: count,
           coverNode: country ? <CountryMixCover country={country} name={name} compact /> : undefined,
         };

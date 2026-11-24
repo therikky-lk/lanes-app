@@ -1,7 +1,29 @@
 {
-  "track_comment_photo": {"add":"Adjuntar una foto","open":"Abrir foto","error":"No se pudo cargar o preparar la foto."},
+  "track_comment_photo": {
+    "add": "Adjuntar una foto",
+    "open": "Abrir foto",
+    "error": "No se pudo cargar o preparar la foto."
+  },
   "track_comments_input": "Escribe un comentario…",
-  "track_comments": {"title":"Comentarios","close":"Cerrar comentarios","loading":"Cargando…","empty":"Aún no hay comentarios","empty_hint":"Comparte antes que nadie qué te parece esta canción.","placeholder":"Escribe un comentario público…","send":"Publicar comentario","delete":"Eliminar comentario","cancel":"Cancelar","more":"Cargar comentarios anteriores","retry":"Volver a intentar","sign_in":"Inicia sesión para comentar","load_error":"No se pudieron cargar los comentarios.","post_error":"No se pudo publicar tu comentario.","delete_error":"No se pudo eliminar tu comentario.","rate_error":"Demasiados comentarios. Inténtalo en un minuto.","auth_error":"Vuelve a iniciar sesión para comentar."},
+  "track_comments": {
+    "title": "Comentarios",
+    "close": "Cerrar comentarios",
+    "loading": "Cargando…",
+    "empty": "Aún no hay comentarios",
+    "empty_hint": "Comparte antes que nadie qué te parece esta canción.",
+    "placeholder": "Escribe un comentario público…",
+    "send": "Publicar comentario",
+    "delete": "Eliminar comentario",
+    "cancel": "Cancelar",
+    "more": "Cargar comentarios anteriores",
+    "retry": "Volver a intentar",
+    "sign_in": "Inicia sesión para comentar",
+    "load_error": "No se pudieron cargar los comentarios.",
+    "post_error": "No se pudo publicar tu comentario.",
+    "delete_error": "No se pudo eliminar tu comentario.",
+    "rate_error": "Demasiados comentarios. Inténtalo en un minuto.",
+    "auth_error": "Vuelve a iniciar sesión para comentar."
+  },
   "artist": {
     "no_biography": "Sin biografía",
     "followers": "seguidores",
@@ -282,11 +304,19 @@
       "collapse": "Colapso",
       "language_ukrainian": "Ucraniano"
     },
-    "daily_mix": "Mezcla diaria {n}",
+    "daily_mix": "Mix diario {n}",
     "country_mixes": "Mezclas por país",
     "country_regions": "Regiones",
-    "country_group": {"europe":"Europa","asia":"Asia","americas":"América","africa":"África","oceania":"Oceanía"},
-    "mix_label": "Mezclar",
+    "country_group": {
+      "europe": "Europa",
+      "asia": "Asia",
+      "americas": "América",
+      "africa": "África",
+      "oceania": "Oceanía"
+    },
+    "mix_label": "Mix",
+    "daily_mix_badge": "Diario",
+    "country_mix_badge": "Top {n}",
     "history": "Historial",
     "previous_mixes": "Mezclas anteriores",
     "next_mixes": "Mezclas siguientes"
@@ -1533,7 +1563,7 @@
     "songs_played": "{count} canciones reproducidas",
     "playlist": "Lista de reproducción",
     "album": "Álbum",
-    "daily_mix": "Mezcla diaria",
+    "daily_mix": "Mix diario",
     "radio": "Radio: {title}",
     "expand": "Mostrar pistas",
     "collapse": "Ocultar pistas",

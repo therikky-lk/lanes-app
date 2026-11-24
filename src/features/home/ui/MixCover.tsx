@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import laneLogo from "@/assets/logo.svg";
+import { useTranslation } from "@/languages";
 
 export interface MixCoverProps {
   index: number;
@@ -27,9 +28,10 @@ export function MixCoverFrame({ title, subtitle, children, className = "", compa
 
 /** Crisp, inexpensive tiles: no network covers or live image filters. */
 export default function MixCover({ index, label, className, compact }: MixCoverProps) {
+  const { t } = useTranslation();
   const hue = [0, 20, 40, 65, 115, 160, 195, 220, 250, 280][(Math.max(1, index) - 1) % 10];
   return (
-    <MixCoverFrame title={`${label} ${String(index).padStart(2, "0")}`} subtitle="Daily" className={className} compact={compact}>
+    <MixCoverFrame title={`${label} ${String(index).padStart(2, "0")}`} subtitle={t("home.daily_mix_badge")} className={className} compact={compact}>
       {Array.from({ length: 20 }, (_, tile) => {
         const x = tile % 5;
         const y = Math.floor(tile / 5);

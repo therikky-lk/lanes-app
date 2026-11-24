@@ -1,7 +1,29 @@
 {
-  "track_comment_photo": {"add":"Joindre une photo","open":"Ouvrir la photo","error":"Impossible de charger ou de préparer la photo."},
+  "track_comment_photo": {
+    "add": "Joindre une photo",
+    "open": "Ouvrir la photo",
+    "error": "Impossible de charger ou de préparer la photo."
+  },
   "track_comments_input": "Écrire un commentaire…",
-  "track_comments": {"title":"Commentaires","close":"Fermer les commentaires","loading":"Chargement…","empty":"Pas encore de commentaires","empty_hint":"Donne ton avis sur ce titre avant tout le monde.","placeholder":"Écrire un commentaire public…","send":"Publier le commentaire","delete":"Supprimer le commentaire","cancel":"Annuler","more":"Afficher les commentaires précédents","retry":"Réessayer","sign_in":"Se connecter pour commenter","load_error":"Impossible de charger les commentaires.","post_error":"Impossible de publier ton commentaire.","delete_error":"Impossible de supprimer ton commentaire.","rate_error":"Trop de commentaires. Réessaie dans une minute.","auth_error":"Reconnecte-toi pour publier un commentaire."},
+  "track_comments": {
+    "title": "Commentaires",
+    "close": "Fermer les commentaires",
+    "loading": "Chargement…",
+    "empty": "Pas encore de commentaires",
+    "empty_hint": "Donne ton avis sur ce titre avant tout le monde.",
+    "placeholder": "Écrire un commentaire public…",
+    "send": "Publier le commentaire",
+    "delete": "Supprimer le commentaire",
+    "cancel": "Annuler",
+    "more": "Afficher les commentaires précédents",
+    "retry": "Réessayer",
+    "sign_in": "Se connecter pour commenter",
+    "load_error": "Impossible de charger les commentaires.",
+    "post_error": "Impossible de publier ton commentaire.",
+    "delete_error": "Impossible de supprimer ton commentaire.",
+    "rate_error": "Trop de commentaires. Réessaie dans une minute.",
+    "auth_error": "Reconnecte-toi pour publier un commentaire."
+  },
   "artist": {
     "no_biography": "Aucune biographie",
     "followers": "abonnés",
@@ -282,11 +304,19 @@
       "expand": "Développez mon ambiance",
       "collapse": "Réduire"
     },
-    "daily_mix": "Mélange quotidien {n}",
+    "daily_mix": "Mix du jour {n}",
     "country_mixes": "Mix par pays",
     "country_regions": "Régions",
-    "country_group": {"europe":"Europe","asia":"Asie","americas":"Amériques","africa":"Afrique","oceania":"Océanie"},
-    "mix_label": "Mélange",
+    "country_group": {
+      "europe": "Europe",
+      "asia": "Asie",
+      "americas": "Amériques",
+      "africa": "Afrique",
+      "oceania": "Océanie"
+    },
+    "mix_label": "Mix",
+    "daily_mix_badge": "Du jour",
+    "country_mix_badge": "Top {n}",
     "history": "Historique",
     "previous_mixes": "Mix précédents",
     "next_mixes": "Mix suivants"
@@ -1531,7 +1561,7 @@
     "songs_played": "{count} titres écoutés",
     "playlist": "Liste de lecture",
     "album": "Album",
-    "daily_mix": "Mélange quotidien",
+    "daily_mix": "Mix du jour",
     "radio": "Radio : {title}",
     "expand": "Afficher les pistes",
     "collapse": "Masquer les traces",

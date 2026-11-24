@@ -1,7 +1,29 @@
 {
-  "track_comment_photo": {"add":"Allega una foto","open":"Apri foto","error":"Impossibile caricare o preparare la foto."},
+  "track_comment_photo": {
+    "add": "Allega una foto",
+    "open": "Apri foto",
+    "error": "Impossibile caricare o preparare la foto."
+  },
   "track_comments_input": "Scrivi un commento…",
-  "track_comments": {"title":"Commenti","close":"Chiudi i commenti","loading":"Caricamento…","empty":"Ancora nessun commento","empty_hint":"Di’ per primo cosa pensi di questo brano.","placeholder":"Scrivi un commento pubblico…","send":"Pubblica commento","delete":"Elimina commento","cancel":"Annulla","more":"Carica i commenti precedenti","retry":"Riprova","sign_in":"Accedi per lasciare un commento","load_error":"Impossibile caricare i commenti.","post_error":"Impossibile pubblicare il commento.","delete_error":"Impossibile eliminare il commento.","rate_error":"Troppi commenti. Riprova tra un minuto.","auth_error":"Accedi di nuovo per pubblicare un commento."},
+  "track_comments": {
+    "title": "Commenti",
+    "close": "Chiudi i commenti",
+    "loading": "Caricamento…",
+    "empty": "Ancora nessun commento",
+    "empty_hint": "Di’ per primo cosa pensi di questo brano.",
+    "placeholder": "Scrivi un commento pubblico…",
+    "send": "Pubblica commento",
+    "delete": "Elimina commento",
+    "cancel": "Annulla",
+    "more": "Carica i commenti precedenti",
+    "retry": "Riprova",
+    "sign_in": "Accedi per lasciare un commento",
+    "load_error": "Impossibile caricare i commenti.",
+    "post_error": "Impossibile pubblicare il commento.",
+    "delete_error": "Impossibile eliminare il commento.",
+    "rate_error": "Troppi commenti. Riprova tra un minuto.",
+    "auth_error": "Accedi di nuovo per pubblicare un commento."
+  },
   "artist": {
     "no_biography": "Nessuna biografia",
     "followers": "follower",
@@ -61,7 +83,7 @@
       "version": "Versione 0.1.0"
     },
     "sidebar": {
-      "home": "Casa",
+      "home": "Home",
       "search": "Cerca",
       "library": "Libreria",
       "settings": "Impostazioni",
@@ -254,7 +276,7 @@
     "dailyMixesSubtitle": "Playlist sempre nuove create attorno ai tuoi artisti e generi preferiti",
     "vibe": {
       "start_failed": "Nessun brano riproducibile trovato. Prova un altro tag o controlla la connessione.",
-      "title": "La mia vibrazione",
+      "title": "La mia musica",
       "subtitle": "Flusso personale",
       "play": "Riproduci la mia atmosfera",
       "another": "Un'altra atmosfera",
@@ -282,11 +304,19 @@
       "expand": "Espandi la mia vibrazione",
       "collapse": "Crollo"
     },
-    "daily_mix": "Miscela giornaliera {n}",
+    "daily_mix": "Mix del giorno {n}",
     "country_mixes": "Mix per paese",
     "country_regions": "Regioni",
-    "country_group": {"europe":"Europa","asia":"Asia","americas":"America","africa":"Africa","oceania":"Oceania"},
-    "mix_label": "Mescolare",
+    "country_group": {
+      "europe": "Europa",
+      "asia": "Asia",
+      "americas": "America",
+      "africa": "Africa",
+      "oceania": "Oceania"
+    },
+    "mix_label": "Mix",
+    "daily_mix_badge": "Del giorno",
+    "country_mix_badge": "Top {n}",
     "history": "Cronologia",
     "previous_mixes": "Mix precedenti",
     "next_mixes": "Mix successivi"
@@ -1531,7 +1561,7 @@
     "songs_played": "{count} brani ascoltati",
     "playlist": "Elenco brani",
     "album": "Album",
-    "daily_mix": "Miscela giornaliera",
+    "daily_mix": "Mix del giorno",
     "radio": "Radio: {title}",
     "expand": "Mostra tracce",
     "collapse": "Nascondi tracce",

@@ -71,13 +71,14 @@ export function useCollection(
           const country = type === "playlist" ? countryFromMixId(decodedId) : null;
           if (country) {
             const locale = getStoredLocale();
+            const t = createTranslatorSync(locale);
             const name = new Intl.DisplayNames(locale, { type: "region" }).of(country) ?? country;
             const tracks = await loadCountryMix(country);
             if (!tracks.length) throw new Error("No playable tracks for this country");
             return {
               type: "playlist",
-              title: countryMixTitle(name),
-              author: createTranslatorSync(locale)("home.country_mixes"),
+              title: countryMixTitle(t, name),
+              author: t("home.country_mixes"),
               coverUrl: countryMixCover(country),
               tracks,
               isDailyMix: true,

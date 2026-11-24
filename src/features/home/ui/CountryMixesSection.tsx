@@ -62,7 +62,7 @@ function CountryMixesSection() {
               <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-bg-elevated transition-opacity group-hover:opacity-90">
                 <CountryMixCover country={country} name={name} />
               </div>
-              <p className="m-0 mt-2 truncate text-[14px] text-text-primary">{countryMixTitle(name)}</p>
+              <p className="m-0 mt-2 truncate text-[14px] text-text-primary">{countryMixTitle(t, name)}</p>
             </Link>
           );
         })}

@@ -1,5 +1,6 @@
 import { api, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
+import type { TFunction } from "@/languages/translator";
 import { fetchFeed, resolveSong, type ChartSong } from "../trends/charts";
 import { OTHER_VIBE_LANGUAGES, QUICK_VIBE_FLAGS, VIBE_REGION_LANGUAGES } from "../vibe/vibeLanguages";
 
@@ -17,7 +18,8 @@ for (const [region, languages] of Object.entries(VIBE_REGION_LANGUAGES)) {
 
 export const COUNTRY_MIX_COUNTRIES = [...countryQueries.keys()];
 export const countryMixId = (country: string) => `${ID_PREFIX}${country}`;
-export const countryMixTitle = (name: string) => `Top ${COUNTRY_MIX_SIZE} · ${name}`;
+export const countryMixBadge = (t: TFunction) => t("home.country_mix_badge", { n: COUNTRY_MIX_SIZE });
+export const countryMixTitle = (t: TFunction, name: string) => `${countryMixBadge(t)} · ${name}`;
 export const countryMixCover = (country: string) => `${import.meta.env.BASE_URL}country-mix-tiles/${country}.svg`;
 
 export function countryFromMixId(id: string): string | null {

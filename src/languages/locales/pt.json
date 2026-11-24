@@ -1,7 +1,29 @@
 {
-  "track_comment_photo": {"add":"Anexar uma foto","open":"Abrir foto","error":"Não foi possível carregar ou preparar a foto."},
+  "track_comment_photo": {
+    "add": "Anexar uma foto",
+    "open": "Abrir foto",
+    "error": "Não foi possível carregar ou preparar a foto."
+  },
   "track_comments_input": "Escreva um comentário…",
-  "track_comments": {"title":"Comentários","close":"Fechar comentários","loading":"Carregando…","empty":"Ainda não há comentários","empty_hint":"Seja a primeira pessoa a dizer o que achou desta faixa.","placeholder":"Escreva um comentário público…","send":"Publicar comentário","delete":"Excluir comentário","cancel":"Cancelar","more":"Carregar comentários anteriores","retry":"Tentar novamente","sign_in":"Entre para comentar","load_error":"Não foi possível carregar os comentários.","post_error":"Não foi possível publicar seu comentário.","delete_error":"Não foi possível excluir seu comentário.","rate_error":"Muitos comentários. Tente de novo em um minuto.","auth_error":"Entre novamente para publicar um comentário."},
+  "track_comments": {
+    "title": "Comentários",
+    "close": "Fechar comentários",
+    "loading": "Carregando…",
+    "empty": "Ainda não há comentários",
+    "empty_hint": "Seja a primeira pessoa a dizer o que achou desta faixa.",
+    "placeholder": "Escreva um comentário público…",
+    "send": "Publicar comentário",
+    "delete": "Excluir comentário",
+    "cancel": "Cancelar",
+    "more": "Carregar comentários anteriores",
+    "retry": "Tentar novamente",
+    "sign_in": "Entre para comentar",
+    "load_error": "Não foi possível carregar os comentários.",
+    "post_error": "Não foi possível publicar seu comentário.",
+    "delete_error": "Não foi possível excluir seu comentário.",
+    "rate_error": "Muitos comentários. Tente de novo em um minuto.",
+    "auth_error": "Entre novamente para publicar um comentário."
+  },
   "artist": {
     "no_biography": "Sem biografia",
     "followers": "seguidores",
@@ -254,7 +276,7 @@
     "dailyMixesSubtitle": "Playlists novas e atualizadas em torno dos seus artistas e gêneros favoritos",
     "vibe": {
       "start_failed": "Não foram encontradas músicas disponíveis. Tente outra tag ou verifique sua conexão.",
-      "title": "Minha vibração",
+      "title": "Minha vibe",
       "subtitle": "Fluxo pessoal",
       "play": "Toque minha vibração",
       "another": "Outra vibração",
@@ -282,11 +304,19 @@
       "expand": "Expanda minha vibração",
       "collapse": "Recolher"
     },
-    "daily_mix": "Mistura Diária {n}",
+    "daily_mix": "Mix do dia {n}",
     "country_mixes": "Mixes por país",
     "country_regions": "Regiões",
-    "country_group": {"europe":"Europa","asia":"Ásia","americas":"Américas","africa":"África","oceania":"Oceania"},
-    "mix_label": "Misturar",
+    "country_group": {
+      "europe": "Europa",
+      "asia": "Ásia",
+      "americas": "Américas",
+      "africa": "África",
+      "oceania": "Oceania"
+    },
+    "mix_label": "Mix",
+    "daily_mix_badge": "Do dia",
+    "country_mix_badge": "Top {n}",
     "history": "Histórico",
     "previous_mixes": "Mixes anteriores",
     "next_mixes": "Próximos mixes"
@@ -1533,7 +1563,7 @@
     "songs_played": "{count} músicas reproduzidas",
     "playlist": "Lista de reprodução",
     "album": "Álbum",
-    "daily_mix": "Mistura Diária",
+    "daily_mix": "Mix do dia",
     "radio": "Rádio: {title}",
     "expand": "Mostrar faixas",
     "collapse": "Ocultar faixas",
