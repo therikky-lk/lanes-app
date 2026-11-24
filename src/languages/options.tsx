@@ -2,6 +2,10 @@ import { Emoji } from "react-apple-emojis";
 import type { SelectOption } from "@/shared/ui/Select";
 import type { Locale } from "./locale";
 
+function LocalFlag({ country }: { country: string }) {
+  return <img src={`${import.meta.env.BASE_URL}vibe-flags/${country}.png`} width={16} height={16} alt="" />;
+}
+
 // shared locale options used across auth-wall and settings modal
 export const LOCALE_OPTIONS: SelectOption<Locale>[] = [
   {
@@ -54,4 +58,11 @@ export const LOCALE_OPTIONS: SelectOption<Locale>[] = [
     label: "Português (Brasil)",
     icon: <Emoji name="flag-brazil" width={16} />,
   },
+  { value: "cs", label: "Čeština", icon: <LocalFlag country="CZ" /> },
+  { value: "nl", label: "Nederlands", icon: <LocalFlag country="NL" /> },
+  { value: "et", label: "Eesti", icon: <LocalFlag country="EE" /> },
+  { value: "sr", label: "Српски", icon: <LocalFlag country="RS" /> },
+  { value: "hr", label: "Hrvatski", icon: <LocalFlag country="HR" /> },
+  { value: "ro", label: "Română", icon: <LocalFlag country="RO" /> },
+  { value: "bg", label: "Български", icon: <LocalFlag country="BG" /> },
 ];

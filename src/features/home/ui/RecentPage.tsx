@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Button from "@/shared/ui/Button";
 import HistoryTrackList from "./HistoryTrackList";
 import LikedCover from "@/features/library/ui/LikedCover";
@@ -13,6 +13,10 @@ import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import { usePlaylistsList } from "@/features/library/hooks/usePlaylists";
 import { useSessionOwner } from "../hooks/sessionAwareLoad";
 import { groupHistory, type HistoryGroup, type HistoryPlay } from "../history/groupHistory";
+import { countryFromMixId, countryMixTitle } from "../mixes/countryMixes";
+import { dailyMixIndex, isDailyMixId, readDailyMixIdentities, storeDailyMixIdentities, type DailyMixIdentity } from "../mixes/dailyMixIdentity";
+import CountryMixCover from "./CountryMixCover";
+import MixCover from "./MixCover";
 
 const PAGE = 100;
 
@@ -82,9 +86,28 @@ function useHistoryPlays() {
 export default function RecentPage() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
+  const owner = useSessionOwner();
   const { plays, loading, hasMore, filling, more } = useHistoryPlays();
   const { data: playlists } = usePlaylistsList();
-  const days = useMemo(() => groupHistory(plays), [plays]);
+  const [refreshedMixes, setRefreshedMixes] = useState<{ owner: string; items: DailyMixIdentity[] } | null>(null);
+  const playlistById = useMemo(() => new Map((playlists?.playlists ?? []).map((p) => [p.id, p])), [playlists]);
+  const dailyMixes = useMemo(() => new Map(
+    (refreshedMixes?.owner === owner ? refreshedMixes.items : readDailyMixIdentities(owner)).map(mix => [mix.id, mix]),
+  ), [owner, refreshedMixes]);
+  const hasUnidentifiedPlaylist = plays.some(({ context }) => context?.type === "playlist" && context.id
+    && !["likes", "liked"].includes(context.id) && !isDailyMixId(context.id)
+    && !countryFromMixId(context.id) && !dailyMixes.has(context.id) && !playlistById.has(context.id));
+  useEffect(() => {
+    if (!owner || !hasUnidentifiedPlaylist || refreshedMixes?.owner === owner) return;
+    let active = true;
+    void api.getDailyMixes().then(({ items }) => {
+      if (!active) return;
+      const identities = (items ?? []).map(({ id, title }, position) => ({ id, title, index: position + 1 }));
+      setRefreshedMixes({ owner, items: storeDailyMixIdentities(owner, identities) });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [owner, hasUnidentifiedPlaylist, refreshedMixes?.owner]);
+  const days = useMemo(() => groupHistory(plays, new Set(dailyMixes.keys())), [plays, dailyMixes]);
   const [open, setOpen] = useState<Set<string>>(() => new Set());
 
   const tr = (key: string, fallback: string, vars?: Record<string, string | number>) => {
@@ -97,8 +120,6 @@ export default function RecentPage() {
     const m = minutes % 60;
     return h > 0 ? tr("history.hours_minutes", `${h} h ${m} min`, { h, m }) : tr("history.minutes", `${m} min`, { m });
   };
-
-  const playlistById = useMemo(() => new Map((playlists?.playlists ?? []).map((p) => [p.id, p])), [playlists]);
 
   const dayLabel = (date: Date) => {
     const today = new Date();
@@ -114,7 +135,10 @@ export default function RecentPage() {
     return label.charAt(0).toUpperCase() + label.slice(1);
   };
 
-  const describe = (g: HistoryGroup) => {
+  const countryNames = useMemo(() => new Intl.DisplayNames(locale, { type: "region" }), [locale]);
+  const describe = (g: HistoryGroup): {
+    title: string; sub: string; cover?: string; coverNode?: ReactNode; icon?: "liked" | "vibe" | "tracks";
+  } => {
     const first = g.tracks[0];
     const count = t("history.songs_played", { count: g.tracks.length });
     switch (g.source) {
@@ -126,8 +150,25 @@ export default function RecentPage() {
         return { title: first.album?.title ?? first.title, sub: `${count} · ${t("history.album")}`, cover: first.coverUrl };
       case "liked":
         return { title: t("library.liked_songs"), sub: count, cover: undefined, icon: "liked" as const };
-      case "mix":
-        return { title: t("history.daily_mix"), sub: count, cover: first.coverUrl };
+      case "mix": {
+        const stored = g.id ? dailyMixes.get(g.id) : undefined;
+        const index = (g.id ? dailyMixIndex(g.id) : undefined) ?? stored?.index;
+        return {
+          title: stored?.title ?? (index ? t("home.daily_mix", { n: index }) : t("history.daily_mix")),
+          sub: count,
+          cover: first.coverUrl,
+          coverNode: index ? <MixCover index={index} covers={[]} label={t("home.mix_label")} compact /> : undefined,
+        };
+      }
+      case "country-mix": {
+        const country = countryFromMixId(g.id ?? "");
+        const name = country ? countryNames.of(country) ?? country : "";
+        return {
+          title: country ? countryMixTitle(name) : t("home.country_mixes"),
+          sub: count,
+          coverNode: country ? <CountryMixCover country={country} name={name} compact /> : undefined,
+        };
+      }
       case "vibe":
         return { title: t("home.vibe.title"), sub: count, cover: undefined, icon: "vibe" as const };
       case "radio":
@@ -143,7 +184,7 @@ export default function RecentPage() {
     if (g.source === "playlist" && g.id) navigate(`/library/playlist?id=${encodeURIComponent(g.id)}`);
     else if (g.source === "liked") navigate("/library/playlist?id=likes");
     else if (g.source === "album" && g.id) navigate(`/collection?type=album&id=${encodeURIComponent(g.id)}`);
-    else if (g.source === "mix" && g.id) navigate(`/collection?type=playlist&id=${encodeURIComponent(g.id)}`);
+    else if ((g.source === "mix" || g.source === "country-mix") && g.id) navigate(`/collection?type=playlist&id=${encodeURIComponent(g.id)}`);
     else void playerEngine.playTrack(g.tracks[0], g.tracks, "recent", null, 0);
   };
 
@@ -204,7 +245,7 @@ export default function RecentPage() {
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-[12px] text-left">
                         <span className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-md bg-border-alpha-14">
-                          {d.icon === "liked" ? (
+                           {d.coverNode ?? (d.icon === "liked" ? (
                             <LikedCover heartRatio={0.5} />
                           ) : d.icon === "vibe" ? (
                             <span className="flex h-full w-full items-center justify-center text-white" style={{ background: "radial-gradient(circle at 50% 50%, #111 38%, #d22ad2 70%, #6a0f96)" }}>
@@ -217,7 +258,7 @@ export default function RecentPage() {
                             </span>
                           ) : d.cover ? (
                             <CoverImage src={d.cover} alt="" fill sizes="52px" className="object-cover" />
-                          ) : null}
+                           ) : null)}
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate text-[15px] font-[550] text-text-primary">{d.title}</span>

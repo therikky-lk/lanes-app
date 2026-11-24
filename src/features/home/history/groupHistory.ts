@@ -3,8 +3,10 @@
 // radio become one entry ("5 songs played · Playlist"); a lone track is its
 // own entry.
 import type { Track } from "@/shared/types/track";
+import { countryFromMixId } from "../mixes/countryMixes";
+import { isDailyMixId } from "../mixes/dailyMixIdentity";
 
-export type HistorySource = "playlist" | "album" | "liked" | "mix" | "vibe" | "radio" | "track";
+export type HistorySource = "playlist" | "album" | "liked" | "mix" | "country-mix" | "vibe" | "radio" | "track";
 
 export interface HistoryPlay {
   track: Track;
@@ -38,12 +40,13 @@ export interface HistoryDay {
 /** a lone track between two parts of one session is part of that session */
 const SESSION_GAP_MS = 30 * 60 * 1000;
 
-export function sourceOf(context: HistoryPlay["context"]): { source: HistorySource; id?: string } {
+export function sourceOf(context: HistoryPlay["context"], dailyMixes?: ReadonlySet<string>): { source: HistorySource; id?: string } {
   const type = context?.type ?? "";
   const id = context?.id;
   if (type === "playlist" && id) {
     if (id === "likes" || id === "liked") return { source: "liked" };
-    if (id.startsWith("lane-mix-") || id.startsWith("daily-mix") || id.startsWith("mix-")) return { source: "mix", id };
+    if (countryFromMixId(id)) return { source: "country-mix", id };
+    if (isDailyMixId(id) || dailyMixes?.has(id)) return { source: "mix", id };
     return { source: "playlist", id };
   }
   if (type === "album" && id) return { source: "album", id };
@@ -136,7 +139,7 @@ export function consolidate(groups: HistoryGroup[]): HistoryGroup[] {
   return out;
 }
 
-export function groupHistory(plays: HistoryPlay[]): HistoryDay[] {
+export function groupHistory(plays: HistoryPlay[], dailyMixes?: ReadonlySet<string>): HistoryDay[] {
   const days: HistoryDay[] = [];
   for (const play of plays) {
     if (!play.track?.id) continue;
@@ -150,7 +153,7 @@ export function groupHistory(plays: HistoryPlay[]): HistoryDay[] {
     }
     day.plays += 1;
     day.playedMs += Math.max(0, play.playedMs ?? 0);
-    const { source, id } = sourceOf(play.context);
+    const { source, id } = sourceOf(play.context, dailyMixes);
     const last = day.groups[day.groups.length - 1];
     const time = at.getTime();
     // consecutive plays from the same place merge; single tracks never do

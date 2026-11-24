@@ -15,13 +15,13 @@ export function VerticalVolumeSlider() {
   const percent = Math.round(level * 100);
 
   return (
-    <div className="relative h-32 w-[46px] rounded-xl bg-[#382e2b] p-1 shadow-lg focus-within:ring-2 focus-within:ring-white/70">
-      <div aria-hidden="true" className="pointer-events-none relative h-full overflow-hidden rounded-lg bg-[#493b36]">
+    <div className="group relative h-32 w-[46px] rounded-xl bg-black/30 p-1 backdrop-blur-md">
+      <div aria-hidden="true" className="pointer-events-none relative h-full overflow-hidden rounded-lg">
         <div className="absolute inset-x-0 bottom-0 bg-[#e4dfdd]" style={{ height: `${percent}%` }} />
-        <div className={`absolute inset-x-0 top-2 flex justify-center ${percent >= 88 ? "text-[#231b18]" : "text-white"}`}>
+        <div className={`absolute inset-x-0 top-2 flex justify-center ${percent >= 88 ? "text-[#231b18]" : "text-white drop-shadow-sm"}`}>
           <VolumeLevelIcon level={level} size={14} />
         </div>
-        <div className={`absolute inset-x-0 bottom-1.5 text-center text-[11px] font-semibold tabular-nums ${percent >= 18 ? "text-[#231b18]" : "text-white"}`}>
+        <div className={`absolute inset-x-0 bottom-1.5 text-center text-[11px] font-semibold tabular-nums group-has-[:focus-visible]:underline ${percent >= 18 ? "text-[#231b18]" : "text-white drop-shadow-sm"}`}>
           {percent}%
         </div>
       </div>

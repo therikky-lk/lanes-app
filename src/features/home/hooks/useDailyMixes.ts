@@ -9,6 +9,7 @@ import { createTranslatorSync, getStoredLocale } from "@/languages";
 import { diag } from "@/shared/platform/diag";
 import { loadListeningSignals } from "./listeningSignals";
 import { isVideoTrack } from "@/shared/media/isVideoTrack";
+import { storeDailyMixIdentities } from "../mixes/dailyMixIdentity";
 
 export interface DailyMix {
   id: string;
@@ -101,10 +102,10 @@ interface StoredMixes {
   mixes: DailyMix[];
 }
 
-function readStoredMixes(owner: string): DailyMix[] | null {
+export function readStoredMixes(owner: string, includePreviousDay = false): DailyMix[] | null {
   try {
     const stored = JSON.parse(localStorage.getItem(LANE_MIXES_KEY) || "null") as StoredMixes | null;
-    return stored && stored.day === today() && stored.owner === owner && stored.mixes.length > 0 ? stored.mixes : null;
+    return stored && (includePreviousDay || stored.day === today()) && stored.owner === owner && stored.mixes.length > 0 ? stored.mixes : null;
   } catch {
     return null;
   }
@@ -260,6 +261,7 @@ export function useDailyMixes() {
           return mixItem;
         });
 
+        storeDailyMixIdentities(owner, mixes.map(({ id, title, mixIndex }) => ({ id, title, index: mixIndex })));
         // the client set is already in: keep it
         if (cache.client && cache.owner === owner) return;
         cache.data = mixes;

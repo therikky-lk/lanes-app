@@ -2,34 +2,28 @@
 //
 // The title says little (Toxi$, Big Baby Tape sing in Russian under Latin
 // names), so the lyrics decide: LRCLIB is asked for the track, and the script
-// of its lyrics (Cyrillic vs Latin) gives the language; LRCLIB's own
+// and word patterns in its lyrics give the language; LRCLIB's own
 // "instrumental" mark means no vocals. Only the verdict is kept (cached per
 // track and summed up per artist), never the lyrics. Tracks LRCLIB doesn't know
 // fall back to their artist's verdict, then to the title / artist script.
 import type { Track } from "@/shared/types/track";
+import { franc } from "franc";
 import { fetchLrclibJson, LRCLIB_BASE, normalizeForMatch, primaryArtist, scoreLrclibRecord, type LrclibRecord } from "@/shared/media/lyrics/fallbackLyrics";
 import type { VibeLanguage } from "./vibeTaste";
+import { OTHER_VIBE_LANGUAGE_KEYS, OTHER_VIBE_LANGUAGES, VIBE_REGIONS, VIBE_REGION_LANGUAGES } from "./vibeLanguages";
 
-// v2: Cyrillic that isn't Russian (Ukrainian, Belarusian, Kazakh…) has its own verdict
-// v3: Ukrainian and English have verdicts of their own
-const CACHE_KEY = "lane_track_language_v3";
+const CACHE_KEY = "lane_track_language_v5";
 const MAX_CACHE = 4000;
 const CYRILLIC = /[Ѐ-ӿ]/g;
-const LATIN = /[A-Za-z]/g;
-// letters Russian doesn't have: Ukrainian і ї є ґ, Belarusian ў, Kazakh/Tatar
-// ә ғ қ ң ө ұ ү һ, Serbian/Macedonian ђ ј љ њ ћ џ ѓ ќ ѕ
-const NOT_RUSSIAN = /[іїєґўәғқңөұүһђјљњћџѓќѕІЇЄҐЎӘҒҚҢӨҰҮҺЂЈЉЊЋЏЃЌЅ]/g;
-// letters that are Ukrainian's own (ї є ґ aren't in any other of these)
-const UKRAINIAN_OWN = /[їєґЇЄҐ]/g;
-// common English words: a Latin-script song made of them is sung in English
-const ENGLISH_WORDS = new Set(
-  "the you i me my and to a it in is that on your we be for all love it's i'm don't can know just like no but what so up oh baby yeah with this get go got never one when out time now make way say feel want gonna let down night see need back away been over".split(" "),
-);
-// letters only Russian (of these) has
-const RUSSIAN_ONLY = /[ыэъёЫЭЪЁ]/g;
+const ESTONIAN_WORDS = new Set("mina sina mulle sulle minu sinu olen oled ainult palju alati jälle ikka meie teie nende pole täna õhtu õhtul laulan laulud laulame laulu tuleb läheb sind mind juures tahan valgus tagasi kõrval kuid olla mõtlen öö".split(" "));
 
 /** "other": sung in a language none of the filters stands for (Kazakh, Spanish…) */
 type Verdict = VibeLanguage | "unknown" | "other";
+const languageByModel = new Map<string, VibeLanguage>([["rus", "russian"], ["eng", "english"]]);
+for (const key of OTHER_VIBE_LANGUAGE_KEYS) languageByModel.set(OTHER_VIBE_LANGUAGES[key][2], key);
+for (const region of VIBE_REGIONS) {
+  for (const [model] of Object.values(VIBE_REGION_LANGUAGES[region])) languageByModel.set(model, region);
+}
 
 let cache: Record<string, Verdict> = (() => {
   try {
@@ -55,28 +49,23 @@ function remember(id: string, verdict: Verdict): void {
 
 const artistKey = (t: Pick<Track, "artists">) => normalizeForMatch(primaryArtist(t.artists || ""));
 
-/** verdict from the script the lyrics are written in */
+/** Classify the lyrics rather than treating every Latin script as English. */
 export function scriptVerdict(text: string, minLetters = 20): Verdict {
-  const cyr = text.match(CYRILLIC)?.length ?? 0;
-  const lat = text.match(LATIN)?.length ?? 0;
-  if (cyr + lat < minLetters) return "unknown";
-  if (cyr / (cyr + lat) < 0.35) {
-    const words = text.toLowerCase().match(/[a-z']+/g) ?? [];
-    if (words.length < 6) return "unknown";
-    const english = words.filter((w) => ENGLISH_WORDS.has(w)).length;
-    return english / words.length >= 0.12 ? "english" : "other";
+  const lyrics = text.replace(/\[[^\]\n]*\]/g, " ").trim().normalize("NFC");
+  const letters = lyrics.match(/\p{L}/gu)?.length ?? 0;
+  if (letters < minLetters) return "unknown";
+  if ((lyrics.match(CYRILLIC)?.length ?? 0) >= letters * 0.6) {
+    // Distinctive letters help disambiguate short, closely related lyrics.
+    if ((lyrics.match(/[әғқңөұүһ]/gi)?.length ?? 0) >= 2) return "kk";
+    if ((lyrics.match(/ў/gi)?.length ?? 0) >= 2) return "be";
+    if (/[їєґ]/i.test(lyrics) && (lyrics.match(/[іїєґ]/gi)?.length ?? 0) >= 2) return "ukrainian";
   }
-  const notRussian = text.match(NOT_RUSSIAN)?.length ?? 0;
-  const russianOnly = text.match(RUSSIAN_ONLY)?.length ?? 0;
-  // a few stray letters (a name, a quote) don't make a Ukrainian song
-  if (notRussian >= Math.max(2, Math.ceil(cyr * 0.01)) && notRussian > russianOnly * 0.5) {
-    const own = text.match(UKRAINIAN_OWN)?.length ?? 0;
-    const i = (text.match(/[іІ]/g)?.length ?? 0);
-    // Ukrainian: і plus its own ї є ґ, and none of the Kazakh / Serbian letters
-    const others = notRussian - own - i;
-    return own > 0 && others <= notRussian * 0.1 ? "ukrainian" : "other";
-  }
-  return "russian";
+  // Franc lacks an Estonian model; require multiple distinct lexical clues.
+  const words = new Set(lyrics.toLowerCase().match(/\p{L}+/gu) ?? []);
+  const estonianHits = [...words].filter(word => ESTONIAN_WORDS.has(word)).length;
+  if (estonianHits >= 4 || (estonianHits >= 2 && /õ/i.test(lyrics))) return "et";
+  const model = franc(lyrics);
+  return model === "und" ? "unknown" : languageByModel.get(model) ?? "other";
 }
 
 async function lookup(track: Track, signal: AbortSignal): Promise<Verdict> {
@@ -95,7 +84,7 @@ async function lookup(track: Track, signal: AbortSignal): Promise<Verdict> {
   }
   if (!rec) return "unknown";
   if (rec.instrumental) return "instrumental";
-  return scriptVerdict(`${rec.plainLyrics ?? ""}\n${rec.syncedLyrics ?? ""}`.slice(0, 4000));
+  return scriptVerdict((rec.plainLyrics?.trim() || rec.syncedLyrics || "").slice(0, 4000));
 }
 
 /** artist -> what most of their known tracks are */
@@ -153,9 +142,7 @@ export async function languageFilter(
   // strict (the default): only tracks whose language is actually known, from
   // their lyrics or their artist's other songs. Loose: when that leaves too
   // little, the script of the title / artist name decides the rest.
-  // the "english" (US flag) filter means anything but Russian and Ukrainian:
-  // English, Spanish, Kazakh… all count
-  const fits = (v: Verdict) => v === language || (language === "english" && v === "other");
+  const fits = (v: Verdict) => v === language;
   const isKnown = (t: Track) => {
     const own = cache[t.id];
     return (!!own && own !== "unknown") || byArtist.has(artistKey(t));
@@ -172,13 +159,14 @@ export async function languageFilter(
     const artist = byArtist.get(artistKey(t));
     if (artist) return fits(artist);
     if (strict) return false;
-    // the name alone: Cyrillic says Russian / Ukrainian, Latin is taken as English
+    // A longer name can carry a language signal. For short names don't assume
+    // Latin means English, or non-Russian Cyrillic means Russian.
     const name = `${t.title} ${t.artists}`;
-    const cyr = name.match(CYRILLIC)?.length ?? 0;
-    if (cyr === 0) return language === "english";
-    if (/[іїєґІЇЄҐ]/.test(name)) return language === "ukrainian";
-    if (/[ўәғқңөұүһђјљњћџ]/i.test(name)) return language === "english";
-    return language === "russian";
+    const fromName = scriptVerdict(name, 35);
+    if (fromName !== "unknown") return fits(fromName);
+    if (/[іїєґ]/i.test(name)) return language === "ukrainian";
+    if (/[ўәғқңөұүһђјљњћџѓќѕ]/i.test(name)) return false;
+    return language === "russian" && !!name.match(CYRILLIC)?.length;
   };
   return Object.assign(predicate, { known: isKnown });
 }

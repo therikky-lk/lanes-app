@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { api, mediaUrl, toClientTrack } from "@/shared/api";
 import { queryCache } from "@/shared/cache/queryCache";
 import type { Track } from "@/shared/types";
-import { getDailyMixArtists } from "@/features/home/hooks/useDailyMixes";
+import { getDailyMixArtists, readStoredMixes } from "@/features/home/hooks/useDailyMixes";
+import { useSessionOwner } from "@/features/home/hooks/sessionAwareLoad";
+import { isDailyMixId, readDailyMixIdentities } from "@/features/home/mixes/dailyMixIdentity";
+import { countryFromMixId, countryMixCover, countryMixTitle, loadCountryMix } from "@/features/home/mixes/countryMixes";
+import { createTranslatorSync, getStoredLocale } from "@/languages";
 import { fetchYoutubeAccountPlaylist, isAccountPlaylistId } from "@/shared/media/youtube";
 
 export interface CollectionPageData {
@@ -28,6 +32,7 @@ export function useCollection(
   fallbackArtist?: string | null,
   isRelease = false,
 ) {
+  const owner = useSessionOwner();
   const cacheKey = type && id ? `collection:${type}:${id}` : null;
   const cached = cacheKey ? queryCache.get<CollectionPageData>(cacheKey) : undefined;
   const [data, setData] = useState<CollectionPageData | null>(cached ?? null);
@@ -63,6 +68,21 @@ export function useCollection(
         cacheKey,
         async () => {
           const decodedId = id ? decodeURIComponent(id) : "";
+          const country = type === "playlist" ? countryFromMixId(decodedId) : null;
+          if (country) {
+            const locale = getStoredLocale();
+            const name = new Intl.DisplayNames(locale, { type: "region" }).of(country) ?? country;
+            const tracks = await loadCountryMix(country);
+            if (!tracks.length) throw new Error("No playable tracks for this country");
+            return {
+              type: "playlist",
+              title: countryMixTitle(name),
+              author: createTranslatorSync(locale)("home.country_mixes"),
+              coverUrl: countryMixCover(country),
+              tracks,
+              isDailyMix: true,
+            } satisfies CollectionPageData;
+          }
           if (type === "playlist" && isAccountPlaylistId(decodedId)) {
             const youtubeCollection = await fetchYoutubeAccountPlaylist(decodedId);
             if (youtubeCollection) {
@@ -77,15 +97,23 @@ export function useCollection(
               } satisfies CollectionPageData;
             }
           }
-          const isDailyMix =
-            decodedId.startsWith("daily-mix") ||
-            decodedId.startsWith("mix-") ||
-            id.startsWith("daily-mix") ||
-            id.startsWith("mix-");
+          const isDailyMix = type === "playlist" && (isDailyMixId(decodedId)
+            || readDailyMixIdentities(owner).some(mix => mix.id === decodedId));
 
-          if (type === "playlist" && isDailyMix) {
+          if (isDailyMix) {
+            const t = createTranslatorSync(getStoredLocale());
+            const stored = readStoredMixes(owner, true)?.find(mix => mix.id === decodedId);
+            if (stored) {
+              return {
+                type: "playlist", title: stored.title, author: stored.clusterArtists.join(", "),
+                description: stored.description, coverUrl: stored.coverUrl ?? "", tracks: stored.tracks,
+                isDailyMix: true,
+                ...(stored.mixIndex ? { mixCover: { index: stored.mixIndex, covers: stored.mosaic ?? [], label: t("home.mix_label") } } : {}),
+              } satisfies CollectionPageData;
+            }
             const mixesRes = await api.getDailyMixes();
-            const found = mixesRes.items?.find((m) => m.id === id || m.id === decodedId);
+            const index = mixesRes.items?.findIndex((m) => m.id === decodedId) ?? -1;
+            const found = index >= 0 ? mixesRes.items?.[index] : undefined;
             if (found) {
               const clientTracks = (found.tracks || []).map(toClientTrack);
               const primaryCover = found.cover?.url
@@ -100,6 +128,7 @@ export function useCollection(
                 coverUrl: primaryCover,
                 tracks: clientTracks,
                 isDailyMix: true,
+                mixCover: { index: index + 1, covers: [], label: t("home.mix_label") },
               };
               return formatted;
             }
@@ -311,7 +340,7 @@ export function useCollection(
       active = false;
       unsubscribe();
     };
-  }, [type, id, cacheKey, fallbackTitle, fallbackArtist, isRelease]);
+  }, [type, id, cacheKey, fallbackTitle, fallbackArtist, isRelease, owner]);
 
   // Artwork is a UI choice, so stale catalog/cache covers must not override it.
   const displayed = useMemo(() => data && type === "playlist" && id

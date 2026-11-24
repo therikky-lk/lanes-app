@@ -23,6 +23,8 @@ import Button from "@/shared/ui/Button";
 import SongCardWithMenu from "@/features/player/ui/SongCardWithMenu";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import MixCover from "@/features/home/ui/MixCover";
+import CountryMixCover from "@/features/home/ui/CountryMixCover";
+import { countryFromMixId } from "@/features/home/mixes/countryMixes";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -54,19 +56,21 @@ function CollectionContent() {
   const id = searchParams.get("id");
   const releaseTitle = searchParams.get("title");
   const releaseArtist = searchParams.get("artist");
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
 
   const { data, loading } = useCollection(type, id, releaseTitle, releaseArtist, isRelease);
   const entityType = type === "playlist" ? "playlist" : "album";
   const decodedId = id ? decodeURIComponent(id) : "";
+  const countryMix = type === "playlist" ? countryFromMixId(decodedId) : null;
   const isDailyMix = Boolean(
     data?.isDailyMix ||
     (type === "playlist" && (
       decodedId.startsWith("daily-mix") ||
       decodedId.startsWith("mix-") ||
-      (id && (id.startsWith("daily-mix") || id.startsWith("mix-")))
+      decodedId.startsWith("lane-mix-") ||
+      countryMix
     ))
   );
 
@@ -232,6 +236,7 @@ function CollectionContent() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const mixSidebar = isDailyMix && !isMobile;
 
   // results start at the top, not wherever the full list was scrolled to
   useEffect(() => {
@@ -346,22 +351,28 @@ function CollectionContent() {
               className={
                 isMobile
                   ? "relative z-10 flex flex-col gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto overflow-x-hidden box-border"
-                  : "relative z-10 flex flex-col items-stretch px-[16px] h-full w-full min-h-0 box-border"
+                  : `relative z-10 flex items-stretch px-[16px] h-full w-full min-h-0 box-border ${
+                      mixSidebar ? "flex-row gap-[24px] pt-[56px]" : "flex-col"
+                    }`
               }
             >
               <div
-                className={isMobile ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]" : "w-full shrink-0 pt-[56px] pb-[16px]"}
+                className={isMobile
+                  ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]"
+                  : mixSidebar ? "w-[280px] shrink-0 overflow-y-auto pb-[24px] no-scrollbar" : "w-full shrink-0 pt-[56px] pb-[16px]"}
                 data-no-window-drag
               >
                 <EntitySidebar
-                layout="hero"
+                layout={mixSidebar ? "sidebar" : "hero"}
                 coverClassName={
                   hasCustomBg && !data.coverUrl
                     ? "apple-glass-static pointer-events-none"
                     : undefined
                 }
                 cover={
-                  data.mixCover ? (
+                   countryMix ? (
+                     <CountryMixCover country={countryMix} name={new Intl.DisplayNames(locale, { type: "region" }).of(countryMix) ?? countryMix} />
+                   ) : data.mixCover ? (
                     <MixCover index={data.mixCover.index} covers={data.mixCover.covers} label={data.mixCover.label} sizes="280px" />
                   ) : data.coverUrl ? (
                     <CoverImage
@@ -456,7 +467,9 @@ function CollectionContent() {
                   </div>
                 }
                   primaryAction={
-                    <div className="flex w-full max-w-[640px] flex-row items-center gap-[8px] max-md:flex-col max-md:items-stretch">
+                    <div className={`flex w-full max-w-[640px] gap-[8px] ${
+                      mixSidebar ? "flex-col items-stretch" : "flex-row items-center max-md:flex-col max-md:items-stretch"
+                    }`}>
                       <Button
                         variant={hasCustomBg ? "glass-primary" : "primary"}
                         onClick={handlePlayAll}
@@ -472,7 +485,7 @@ function CollectionContent() {
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleAddToQueue}
                           disabled={!data || data.tracks.length === 0}
-                          className={`!h-[36px] min-w-0 md:flex-none max-md:flex-1 !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
+                          className={`!h-[36px] min-w-0 ${mixSidebar ? "flex-1" : "md:flex-none max-md:flex-1"} !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
                             // optical centring: with three icon buttons beside it the label reads 1px right
                             !isDailyMix ? "[&>*]:-translate-x-px" : ""
                           }`}
@@ -540,6 +553,7 @@ function CollectionContent() {
                 />
               </div>
 
+              <div className={mixSidebar ? "relative flex min-h-0 min-w-0 flex-1 flex-col" : "contents"}>
               <div className={search.isOpen ? "w-full shrink-0 py-[8px]" : "shrink-0"}>
                 <TrackSearchField search={search} totalCount={data.tracks.length}
                   placeholder={t(isAlbum ? "track_search.placeholder_album" : "track_search.placeholder_playlist")}
@@ -557,6 +571,8 @@ function CollectionContent() {
                 className={
                   isMobile
                     ? "min-w-0 w-full mt-[16px] rounded-t-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] pt-[8px] pb-[24px] backdrop-blur-xl"
+                    : mixSidebar
+                    ? "min-w-0 w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[24px] overscroll-contain"
                     : "min-w-0 w-full flex-1 h-full min-h-0 overflow-y-auto overflow-x-hidden rounded-t-[14px] bg-black/[0.03] dark:bg-white/[0.04] px-[8px] pt-[8px] pb-[24px] overscroll-contain backdrop-blur-xl"
                 }
                 style={{ willChange: "scroll-position" }}
@@ -605,6 +621,7 @@ function CollectionContent() {
                 )}
               </section>
               </div>
+              </div>
             </div>
           </div>
         )}
@@ -617,7 +634,7 @@ function CollectionContent() {
             }`}
             onTransitionEnd={() => setSkeletonExited(true)}
           >
-            <CollectionPageSkeleton isAlbum={isAlbum} />
+            <CollectionPageSkeleton isAlbum={isAlbum} mixSidebar={mixSidebar} />
           </div>
         )}
       </div>

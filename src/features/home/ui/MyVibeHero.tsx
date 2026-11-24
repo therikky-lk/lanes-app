@@ -1,11 +1,10 @@
 import { isNativeApp } from "@/shared/platform/native";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
 import { isWindowVisible, onWindowVisibilityChange } from "@/shared/utils/windowVisibility";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState } from "react";
 import { useIsTrackLiked } from "@/features/library/hooks";
 import { createPortal } from "react-dom";
 import { CloseLine, DownLine, HeartFill, LightningFill, PauseFill, PlayFill, Refresh2Line, Settings6Line, Sparkles2Fill, UpLine, MicOffLine, PawFill } from "@mingcute/react";
-import { Emoji } from "react-apple-emojis";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { playerEngine, usePlayerStore } from "@/features/player";
@@ -23,6 +22,7 @@ import {
   type VibeSettings,
 } from "../vibe/vibeTaste";
 import { ambientVibePalette, lerpPalette, loadVibePalette, rgba, type VibePalette } from "../vibe/vibePalette";
+import { countriesInGroup, COUNTRY_GROUPS, isOtherVibeLanguage, isVibeRegion, OTHER_VIBE_LANGUAGE_KEYS, OTHER_VIBE_LANGUAGES, QUICK_VIBE_FLAGS } from "../vibe/vibeLanguages";
 import { useCoverSrc } from "@/features/covers";
 
 // My Vibe: a dark stage with a smoky ring of light that breathes with the
@@ -113,10 +113,14 @@ function traceRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
 }
 
 /** Apple's flag emoji, as everywhere else in the app (react-apple-emojis) */
-const LANGUAGE_FLAG = { russian: "flag-russia", ukrainian: "flag-ukraine", english: "flag-united-states" } as const;
+function VibeFlag({ country, size = 24 }: { country: string; size?: number }) {
+  return <img src={`${import.meta.env.BASE_URL}vibe-flags/${country}.png`} alt="" width={size} height={size} draggable={false} />;
+}
 
 export default function MyVibeHero({ liked, recent, trending, expanded = false, onToggleExpanded }: MyVibeHeroProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const languageDialog = useRef<HTMLDialogElement>(null);
+  const languageDialogTitle = useId();
   const { toast } = useToast();
   const launchRevision = useRef(0);
   useEffect(() => () => { launchRevision.current++; }, []);
@@ -479,10 +483,19 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     if (vibeActive || starting) void launch(next);
   };
 
+  const languageNames = new Intl.DisplayNames(locale, { type: "language" });
+  const countryNames = new Intl.DisplayNames(locale, { type: "region" });
+  const chosenOther = isOtherVibeLanguage(settings.language) ? settings.language : null;
+  const languageSlot = settings.language === "russian" ? 0 : settings.language === "english" ? 1 : chosenOther ? 2 : -1;
   const label = {
     character: (c: VibeCharacter) => t(`home.vibe.character_${c}`),
     mood: (m: VibeMood) => t(`home.vibe.mood_${m}`),
-    language: (l: VibeLanguage) => t(`home.vibe.language_${l}`),
+    language: (l: VibeLanguage) => {
+      if (isVibeRegion(l)) return countryNames.of(OTHER_VIBE_LANGUAGES[l][1]) ?? OTHER_VIBE_LANGUAGES[l][1];
+      const language = isOtherVibeLanguage(l) ? OTHER_VIBE_LANGUAGES[l][0] : null;
+      const name = language && languageNames.of(language);
+      return name ? name.charAt(0).toLocaleUpperCase(locale) + name.slice(1) : t(`home.vibe.language_${l}`);
+    },
   };
   const active: { key: keyof VibeSettings; text: string }[] = [
     ...(settings.character ? [{ key: "character" as const, text: label.character(settings.character) }] : []),
@@ -753,43 +766,53 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
             <LayoutGroup id="vibe-language-selector">
             <div className="flex w-full flex-nowrap items-center gap-[6px]">
               {/* library-style switch, flags only, with dividers */}
-              <div className="relative grid min-w-0 flex-1 grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="tablist">
+              <div className="relative grid min-w-0 flex-1 grid-cols-3 rounded-xl bg-bg-elevated p-[4px]" role="group" aria-label={t("home.vibe.by_language")}>
                 <motion.span
                   aria-hidden
                   className="pointer-events-none absolute bottom-[4px] left-[4px] top-[4px] z-0 rounded-lg bg-bg-surface dark:bg-bg-toolbox-active"
                   style={{ width: "calc((100% - 8px) / 3)" }}
                   animate={{
-                    x: `${Math.max(0, (["russian", "ukrainian", "english"] as const).indexOf(settings.language as "russian" | "ukrainian" | "english")) * 100}%`,
-                    opacity: settings.language && ["russian", "ukrainian", "english"].includes(settings.language) ? 1 : 0,
+                     x: `${Math.max(0, languageSlot) * 100}%`,
+                     opacity: languageSlot >= 0 ? 1 : 0,
                   }}
                   transition={{ type: "spring", stiffness: 220, damping: 24, mass: 0.8 }}
                 />
-                {(["russian", "ukrainian", "english"] as const).map((l) => {
+                {(["russian", "english"] as const).map((l) => {
                   const on = settings.language === l;
                   return (
                     <button
                       key={l}
                       type="button"
-                      role="tab"
-                      aria-selected={on}
+                      aria-pressed={on}
                       title={label.language(l)}
                       aria-label={label.language(l)}
                       onClick={() => toggle("language", l)}
                       className="relative z-10 inline-flex h-[36px] min-w-0 items-center justify-center rounded-lg border-0 bg-transparent px-[12px] cursor-pointer select-none active:scale-[0.97]"
                     >
                       <span className={`relative z-10 transition-opacity ${on ? "" : "opacity-75"}`}>
-                        <Emoji name={LANGUAGE_FLAG[l]} width={24} />
+                        <VibeFlag country={QUICK_VIBE_FLAGS[l]} />
                       </span>
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-label={chosenOther ? `${t("home.vibe.other_languages")}: ${label.language(chosenOther)}` : t("home.vibe.other_languages")}
+                  title={chosenOther ? label.language(chosenOther) : t("home.vibe.other_languages")}
+                  onClick={() => languageDialog.current?.showModal()}
+                  className="relative z-10 inline-flex h-[36px] min-w-0 items-center justify-center gap-1 rounded-lg border-0 bg-transparent px-[6px] text-text-secondary cursor-pointer active:scale-[0.97]"
+                >
+                  <VibeFlag country={chosenOther ? OTHER_VIBE_LANGUAGES[chosenOther][1] : "more"} />
+                  <DownLine size={12} aria-hidden />
+                </button>
                 <span
                   className="pointer-events-none absolute bottom-[8px] left-1/3 top-[8px] z-20 w-px bg-border-alpha-33 transition-opacity duration-150"
-                  style={{ opacity: settings.language === "russian" || settings.language === "ukrainian" ? 0 : 1 }}
+                  style={{ opacity: languageSlot === 0 || languageSlot === 1 ? 0 : 1 }}
                 />
                 <span
                   className="pointer-events-none absolute bottom-[8px] left-2/3 top-[8px] z-20 w-px bg-border-alpha-33 transition-opacity duration-150"
-                  style={{ opacity: settings.language === "ukrainian" || settings.language === "english" ? 0 : 1 }}
+                  style={{ opacity: languageSlot === 1 || languageSlot === 2 ? 0 : 1 }}
                 />
               </div>
               {/* "no vocals" on its own */}
@@ -819,6 +842,66 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
               </button>
             </div>
             </LayoutGroup>
+            <dialog
+              ref={languageDialog}
+              aria-labelledby={languageDialogTitle}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) event.currentTarget.close();
+              }}
+              className="fixed inset-0 m-auto w-[calc(100%_-_24px)] max-w-[800px] overflow-visible rounded-2xl border border-border-alpha-33 bg-bg-surface p-0 text-text-primary shadow-2xl backdrop:bg-black/60"
+            >
+              <div className="flex max-h-[min(84dvh,620px)] flex-col gap-4 p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 id={languageDialogTitle} className="m-0 text-[16px] font-semibold">{t("home.vibe.other_languages")}</h2>
+                  <button
+                    type="button"
+                    aria-label={t("common.close")}
+                    onClick={() => languageDialog.current?.close()}
+                    className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-text-secondary hover:text-text-primary"
+                  >
+                    <CloseLine size={18} />
+                  </button>
+                </div>
+                <div className="no-scrollbar min-h-0 space-y-5 overflow-y-auto overscroll-contain">
+                  {COUNTRY_GROUPS.map(group => {
+                    const languages = countriesInGroup(OTHER_VIBE_LANGUAGE_KEYS, group, l => OTHER_VIBE_LANGUAGES[l][1]);
+                    return (
+                      <section key={group}>
+                        <h3 className="m-0 mb-2.5 flex items-center gap-3 text-[13px] font-semibold text-text-secondary">
+                          {t(`home.country_group.${group}`)}
+                          <span aria-hidden className="h-px flex-1 bg-border-alpha-33" />
+                        </h3>
+                        <div className="grid grid-cols-5 gap-2.5 min-[460px]:grid-cols-8 min-[680px]:grid-cols-12">
+                          {languages.map(l => {
+                            const country = OTHER_VIBE_LANGUAGES[l][1];
+                            const selected = l === chosenOther;
+                            const name = isVibeRegion(l) ? label.language(l) : `${label.language(l)} · ${countryNames.of(country)}`;
+                            return (
+                              <button
+                                key={l}
+                                type="button"
+                                aria-pressed={selected}
+                                aria-label={name}
+                                title={name}
+                                onClick={() => {
+                                  languageDialog.current?.close();
+                                  toggle("language", l);
+                                }}
+                                className={`grid aspect-square min-w-0 cursor-pointer place-items-center rounded-lg border-0 p-0 active:scale-[0.97] ${
+                                  selected ? "bg-bg-toolbox-active ring-1 ring-inset ring-text-secondary" : "bg-bg-elevated hover:bg-bg-toolbox-active"
+                                }`}
+                              >
+                                <VibeFlag country={country} size={34} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              </div>
+            </dialog>
               </motion.div>
             </motion.div>
           )}

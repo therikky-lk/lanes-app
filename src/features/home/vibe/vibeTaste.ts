@@ -7,14 +7,15 @@
 // listener has not heard yet, with only an occasional familiar track.
 import type { Track } from "@/shared/types/track";
 import { isVideoTrack } from "@/shared/media/isVideoTrack";
+import { OTHER_VIBE_LANGUAGE_KEYS, type OtherVibeLanguage } from "./vibeLanguages";
 
 export type VibeMood = "energetic" | "happy" | "calm" | "sad";
 export type VibeCharacter = "favorite" | "unfamiliar" | "popular";
-export type VibeLanguage = "russian" | "ukrainian" | "english" | "instrumental";
+export type VibeLanguage = "russian" | "english" | "instrumental" | OtherVibeLanguage;
 
 export const VIBE_MOODS: readonly VibeMood[] = ["energetic", "happy", "calm", "sad"];
 export const VIBE_CHARACTERS: readonly VibeCharacter[] = ["favorite", "unfamiliar", "popular"];
-export const VIBE_LANGUAGES: readonly VibeLanguage[] = ["russian", "ukrainian", "english", "instrumental"];
+export const VIBE_LANGUAGES: readonly VibeLanguage[] = ["russian", "english", "instrumental", ...OTHER_VIBE_LANGUAGE_KEYS];
 
 export interface VibeSettings {
   character: VibeCharacter | null;
@@ -23,21 +24,6 @@ export interface VibeSettings {
 }
 
 export const NO_VIBE_SETTINGS: VibeSettings = { character: null, mood: null, language: null };
-
-const CYRILLIC = /[\u0400-\u04FF]/;
-const UKRAINIAN = /[іїєґІЇЄҐ]/;
-const INSTRUMENTAL = /instrumental|инструментал|lo-?fi|ambient|piano|beats?\b|без слов|soundtrack|ost\b|orchestra|minus|минус/i;
-
-/** does a track fit the language filter (by its title / artist) */
-export function fitsLanguage(track: Pick<Track, "title" | "artists">, language: VibeLanguage | null, pool?: Set<string>, id?: string): boolean {
-  if (!language) return true;
-  const text = `${track.title} ${track.artists}`;
-  if (language === "russian") return CYRILLIC.test(text) && !UKRAINIAN.test(text);
-  if (language === "ukrainian") return UKRAINIAN.test(text);
-  // "english" (US flag): anything that isn't Russian or Ukrainian
-  if (language === "english") return !CYRILLIC.test(text) || (!UKRAINIAN.test(text) && /[ўәғқңөұүһђјљњћџ]/i.test(text));
-  return INSTRUMENTAL.test(track.title) || (!!pool && !!id && pool.has(id));
-}
 
 export interface TasteSignals {
   liked: Track[];

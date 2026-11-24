@@ -7,6 +7,7 @@ import { shuffle } from "@/shared/utils/shuffle";
 import { isNativeApp } from "@/shared/platform/native";
 import { diag } from "@/shared/platform/diag";
 import { languageFilter } from "./trackLanguage";
+import { isOtherVibeLanguage, isVibeRegion, OTHER_VIBE_LANGUAGES, VIBE_REGION_LANGUAGES, vibeRegionForLanguage } from "./vibeLanguages";
 import { collectAvailable, within } from "./vibeRequests";
 import { isVibeTrack } from "./vibeTrack";
 import {
@@ -61,11 +62,16 @@ function pick<T extends string>(value: unknown, allowed: readonly T[]): T | null
 }
 
 function cleanSettings(raw: Partial<Record<keyof VibeSettings, unknown>> | null | undefined): VibeSettings {
+  const language = raw?.language;
   return {
     character: pick(raw?.character, VIBE_CHARACTERS),
     mood: pick(raw?.mood, VIBE_MOODS),
     // "foreign" was the old name of the English filter
-    language: pick(raw?.language === "foreign" ? "english" : raw?.language, VIBE_LANGUAGES),
+    language: pick(
+      language === "foreign" ? "english"
+        : typeof language === "string" ? vibeRegionForLanguage(language) : language,
+      VIBE_LANGUAGES,
+    ),
   };
 }
 
@@ -155,7 +161,7 @@ const MOOD_QUERIES_EN: Record<PoolKey, string[]> = {
   energetic: ["workout hits", "upbeat songs", "high energy rap"],
   happy: ["feel good hits", "happy songs", "good vibes playlist"],
   instrumental: ["instrumental music", "lofi beats", "piano instrumental"],
-  popular: ["top hits", "trending songs", "global top 50"],
+  popular: ["English language hits", "popular songs in English"],
   calm: ["chill vibes", "relaxing songs", "acoustic chill"],
   sad: ["sad songs", "melancholic", "sad rap"],
 };
@@ -171,7 +177,7 @@ const moodPools = new Map<string, { promise: Promise<Track[]>; expires: number }
 
 function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<Track[]> {
   const key = `${mood}:${language ?? "-"}`;
-  const queries =
+  const baseQueries =
     language === "russian"
       ? MOOD_QUERIES_RU
       : language === "ukrainian"
@@ -179,12 +185,21 @@ function moodPool(mood: PoolKey, language: VibeLanguage | null = null): Promise<
         : language === "english"
           ? MOOD_QUERIES_EN
           : MOOD_QUERIES;
+  let queries = baseQueries[mood].slice(0, 2);
+  if (language && isVibeRegion(language)) {
+    queries = [OTHER_VIBE_LANGUAGES[language][3], ...Object.values(VIBE_REGION_LANGUAGES[language]).map(([, query]) => query)].map(query =>
+      mood === "popular" ? query : `${query} ${MOOD_QUERIES_EN[mood][0]}`);
+  } else if (isOtherVibeLanguage(language) && language !== "ukrainian") {
+    const nativeQuery = OTHER_VIBE_LANGUAGES[language][3];
+    queries = MOOD_QUERIES_EN[mood].slice(0, 2).map(q => `${nativeQuery} ${q}`);
+    if (mood === "popular") queries = [nativeQuery, `${nativeQuery} top hits`];
+  }
   const cached = moodPools.get(key);
   let pool = cached && cached.expires > Date.now() ? cached.promise : undefined;
   if (!pool) {
     // Direct song results race playlist discovery. A single slow playlist must
     // not hold the first song hostage, and an empty pool must be retryable.
-    const requests = queries[mood].slice(0, 2).flatMap(q => [
+    const requests = queries.flatMap(q => [
       api.search(q, "track").then(r => r.items.flatMap(item =>
         item.type === "track" ? [toClientTrack(item as ApiTrackInput)] : []).filter(isVibeTrack)),
       within(api.search(q, "playlist"), 2000, { items: [] }).then(async r => {
@@ -255,7 +270,7 @@ async function nextBatch(
 
   // pools of tracks that carry the mood / "no words" / popularity
   // a language with nothing else picked: start from hits in that language
-  const spoken = language === "russian" || language === "ukrainian" || language === "english";
+  const spoken = language !== null && language !== "instrumental";
   const [moodTracks, instrumentalTracks, popularTracks] = await Promise.all([
     mood ? moodPool(mood, language) : Promise.resolve([] as Track[]),
     language === "instrumental" ? moodPool("instrumental") : Promise.resolve([] as Track[]),
@@ -273,7 +288,7 @@ async function nextBatch(
       ? moodTracks
       : language === "instrumental"
         ? instrumentalTracks
-           : character === "popular" || spoken || !taste.seeds.length
+        : character === "popular" || spoken || !taste.seeds.length
           ? popularTracks
           : []
   ).filter(fits);

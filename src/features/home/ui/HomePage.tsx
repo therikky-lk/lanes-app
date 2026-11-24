@@ -5,6 +5,7 @@ import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
 import PopularTracksSection from "./PopularTracksSection";
 import DailyMixesSection from "./DailyMixesSection";
+import CountryMixesSection from "./CountryMixesSection";
 import TrendsSection from "./TrendsSection";
 import MyVibeHero from "./MyVibeHero";
 import {
@@ -181,6 +182,8 @@ export default function HomePage() {
                 headingMarginTop="mt-[8px]"
               />
             )}
+
+          <CountryMixesSection />
 
           {/* Trending: Russia / worldwide */}
           <TrendsSection />

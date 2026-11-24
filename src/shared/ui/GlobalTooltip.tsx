@@ -13,6 +13,7 @@ interface TooltipTargetData {
     height: number;
   };
   side: "top" | "bottom";
+  modal: HTMLDialogElement | null;
 }
 
 function GlobalTooltipPortal({ text, targetRect, side: requestedSide }: TooltipTargetData) {
@@ -218,6 +219,7 @@ export function GlobalTooltip() {
             height: rect.height,
           },
           side: preferSide,
+          modal: target.closest<HTMLDialogElement>("dialog:modal"),
         });
       };
 
@@ -237,6 +239,9 @@ export function GlobalTooltip() {
 
     const handlePointerDown = () => close();
     const handleScroll = () => close();
+    const handleDialogClose = (e: Event) => {
+      if (e.target instanceof HTMLDialogElement && currentTargetRef.current && e.target.contains(currentTargetRef.current)) close();
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
     };
@@ -244,6 +249,7 @@ export function GlobalTooltip() {
     document.addEventListener("pointerover", handlePointerOver, true);
     document.addEventListener("pointerout", handlePointerOut, true);
     document.addEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("close", handleDialogClose, true);
     window.addEventListener("scroll", handleScroll, true);
     window.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("blur", close);
@@ -255,6 +261,7 @@ export function GlobalTooltip() {
       document.removeEventListener("pointerover", handlePointerOver, true);
       document.removeEventListener("pointerout", handlePointerOut, true);
       document.removeEventListener("pointerdown", handlePointerDown, true);
+      document.removeEventListener("close", handleDialogClose, true);
       window.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("keydown", handleKeyDown, true);
       window.removeEventListener("blur", close);
@@ -267,7 +274,9 @@ export function GlobalTooltip() {
     <AnimatePresence>
       {activeTooltip && <GlobalTooltipPortal key={activeTooltip.text} {...activeTooltip} />}
     </AnimatePresence>,
-    document.body
+    // Native modal dialogs are in the browser's top layer, above any z-index
+    // on a body portal. Keep their tooltips in the same layer.
+    activeTooltip?.modal ?? document.body
   );
 }
 

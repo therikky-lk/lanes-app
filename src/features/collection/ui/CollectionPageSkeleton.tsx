@@ -26,12 +26,14 @@ const TRACK_ARTIST_WIDTHS = [
 export interface CollectionPageSkeletonProps {
   className?: string;
   isAlbum?: boolean;
+  mixSidebar?: boolean;
 }
 
 // matches the sidebar + track list layout
 function CollectionPageSkeletonComponent({
   className = "",
   isAlbum = true,
+  mixSidebar = false,
 }: CollectionPageSkeletonProps) {
   const isMobile = useIsMobile();
   return (
@@ -40,7 +42,9 @@ function CollectionPageSkeletonComponent({
     >
       <div className={isMobile
         ? "relative z-10 flex flex-col items-center gap-[4px] px-[14px] h-full w-full min-h-0 overflow-y-auto box-border"
-        : "relative z-10 flex flex-row items-stretch gap-[16px] pl-[32px] pr-[16px] h-full w-full min-h-0 box-border"}>
+        : `relative z-10 flex flex-row items-stretch pr-[16px] h-full w-full min-h-0 box-border ${
+          mixSidebar ? "gap-[24px] pl-[16px]" : "gap-[16px] pl-[32px]"
+        }`}>
         <aside className={isMobile
           ? "shrink-0 w-full max-w-[320px] self-center pt-[56px] pb-[8px]"
           : "shrink-0 w-[280px] self-start pt-[56px] pb-[24px]"}>
@@ -62,7 +66,7 @@ function CollectionPageSkeletonComponent({
 
         <div className={isMobile
           ? "min-w-0 w-full shrink-0 overflow-hidden px-0 pt-[4px] pb-[24px]"
-          : "min-w-0 flex-1 h-full min-h-0 overflow-hidden px-[8px] pt-[56px] pb-[24px]"}>
+           : `min-w-0 flex-1 h-full min-h-0 overflow-hidden pt-[56px] pb-[24px] ${mixSidebar ? "" : "px-[8px]"}`}>
           <div className="flex flex-col">
             {Array.from({ length: 10 }).map((_, i) => (
               <div
