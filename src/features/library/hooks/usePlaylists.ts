@@ -395,8 +395,24 @@ export function usePlaylistsList() {
   return { ...state, data: visibleData };
 }
 
+function playlistDetailCacheKey(id: string) {
+  return `playlist:detail:${id}`;
+}
+
+const PLAYLIST_ITEM_REMOVED = "library:playlist-item-removed";
+
+export function applyPlaylistItemRemoval(playlistId: string, itemId: string) {
+  const key = playlistDetailCacheKey(playlistId);
+  const detail = queryCache.get<LibraryPlaylistDetail>(key);
+  if (!detail) return;
+  const tracks = detail.tracks.filter((track) => track.playlistItemId !== itemId);
+  if (tracks.length === detail.tracks.length) return;
+  queryCache.set(key, { ...detail, tracks, trackCount: tracks.length });
+  window.dispatchEvent(new CustomEvent(PLAYLIST_ITEM_REMOVED, { detail: playlistId }));
+}
+
 export function usePlaylist(id: string | null) {
-  const cacheKey = id ? `playlist:detail:${id}` : null;
+  const cacheKey = id ? playlistDetailCacheKey(id) : null;
   const cached = cacheKey ? queryCache.get<LibraryPlaylistDetail>(cacheKey) : undefined;
   const [data, setData] = useState<LibraryPlaylistDetail | null>(cached ?? null);
   const [error, setError] = useState<unknown>();
@@ -485,10 +501,18 @@ export function usePlaylist(id: string | null) {
 
     void fetchDetail(Boolean(initial));
     const refresh = () => void fetchDetail(true);
+    const onItemRemoved = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== id) return;
+      const updated = queryCache.get<LibraryPlaylistDetail>(cacheKey);
+      if (updated) setData(updated);
+      requestRevision++;
+    };
     window.addEventListener("library:changed", refresh);
+    window.addEventListener(PLAYLIST_ITEM_REMOVED, onItemRemoved);
     return () => {
       active = false;
       window.removeEventListener("library:changed", refresh);
+      window.removeEventListener(PLAYLIST_ITEM_REMOVED, onItemRemoved);
     };
   }, [id, cacheKey]);
 

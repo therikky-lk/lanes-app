@@ -179,6 +179,8 @@ export interface KawarpOptions {
   preserveDrawingBuffer?: boolean;
 }
 
+export type KawarpMotion = Required<Pick<KawarpOptions, "warpIntensity" | "animationSpeed" | "saturation" | "maxFps">>;
+
 export class KawarpEngine {
   private gl: WebGLRenderingContext;
 
@@ -502,6 +504,14 @@ export class KawarpEngine {
 
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  /** Change the live effect without destroying its canvas, texture, or clock. */
+  public setMotion(motion: KawarpMotion) {
+    this.warpIntensity = motion.warpIntensity;
+    this.animationSpeed = motion.animationSpeed;
+    this.saturation = motion.saturation;
+    this.minFrameMs = motion.maxFps > 0 ? Math.max(0, 1000 / motion.maxFps - 2) : 0;
   }
 
   public start() {

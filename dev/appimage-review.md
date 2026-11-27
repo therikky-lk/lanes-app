@@ -3,7 +3,7 @@
 ## Findings (2026-11-22)
 
 [PR #12350](https://github.com/AppImage/appimage.github.io/pull/12350) was merged
-on 2026-11-21. It tested Lane 1.8.3. The fixes are included in Lane 1.8.5.
+on 2026-11-21. It tested Lane 1.8.3, not the current working copy (1.8.4).
 Do not submit a duplicate catalog entry.
 
 - `Name=Lane` was already correct. The discovery bot derived `lanes` from the
@@ -72,7 +72,7 @@ Local checks:
 ```bash
 pnpm test:packaging
 pnpm electron:build:linux
-./release/Lane-1.8.5-x86_64.AppImage --appimage-updateinformation
+./release/Lane-1.8.4-x86_64.AppImage --appimage-updateinformation
 ```
 
 The Linux release job additionally extracts the image without FUSE, validates
@@ -80,7 +80,7 @@ The Linux release job additionally extracts the image without FUSE, validates
 AppImageUpdate and Lane's own updater are separate clients; do not run both
 against the same file simultaneously.
 
-Local validation completed: four packaging tests, seven theme tests and TypeScript
+Local validation completed: four packaging tests, 28 theme tests and TypeScript
 checking pass. An AppImage and `.zsync` were built using existing compiled app
 assets in an isolated output directory. Its extracted desktop entry passed
 desktop-file-validate; its runtime has no ELF interpreter; embedded update
@@ -91,16 +91,14 @@ from GitHub or a graphical/audio smoke test on all supported Linux distributions
 ## Theme
 
 The current main app already defaults to `system`: next-themes enables system
-detection. Its `theme` key persists the mode; `lane_theme_preset` persists the
-appearance preset selected in settings.
+detection, and `lane_theme_preset` / `lane_theme_sync` persist the user's preset.
 Explicit dark/AMOLED/colored choices must not be overwritten when the OS changes.
 The overlay is deliberately forced dark. No visual redesign or theme reset is
 needed to address the older screenshot. Verify light/dark OS changes with a
 fresh profile, then verify that an explicit saved choice survives restart.
 `src/app/systemTheme.test.tsx` now exercises light/dark startup, live system
-changes, explicit overrides and saved choices against the real ThemeProvider,
-and checks that App.tsx enables system mode by default. These tests run in CI.
-The catalog's
+changes and explicit overrides against the real ThemeProvider + ThemeSync.
+These and the existing startup/persistence tests run in CI. The catalog's
 1.8.3 screenshot must still be retested with the newly published release.
 
 ## Separate catalog correction

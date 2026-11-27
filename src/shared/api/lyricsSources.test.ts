@@ -85,6 +85,26 @@ describe("provider collection", () => {
     const result = await collect(collectLyricsSources([() => source(done)], () => source(found("LRCLIB"), done)));
     expect(result.at(-1)).toMatchObject({ source: "fallback" });
   });
+  it("looks for synced lyrics when a complete server response has only plain text", async () => {
+    const synced = found("LRCLIB") as Extract<LyricsStreamEvent, { status: "found" }>;
+    const plain: LyricsStreamEvent = {
+      ...synced, syncLevel: "plain",
+      candidate: { ...synced.candidate, syncLevel: "plain", contentKind: "plain", lyrics: { format: "plain", content: "Words" } },
+    };
+    const result = await collect(collectLyricsSources([() => source(plain, done)], () => source(synced, done)));
+    expect(result.filter(e => e.type === "provider")).toEqual([plain, synced]);
+  });
+  it("defers suspicious LRCLIB timestamps and emits the better matched lookup instead", async () => {
+    const event = found("LRCLIB") as Extract<LyricsStreamEvent, { status: "found" }>;
+    const lyrics = Array.from({ length: 8 }, (_, index) => `[00:${10 + index * 5}.00]Vocal line`).join("\n");
+    const initial = { ...event, candidate: { ...event.candidate, lyrics: { ...event.candidate.lyrics, content: lyrics } } };
+    const corrected = { ...event, candidate: { ...event.candidate, lyrics: { ...event.candidate.lyrics, content: `${lyrics}\n[01:37.00]Last line` } } };
+    const sources = [() => source(initial, done)];
+    const result = await collect(collectLyricsSources(sources, () => source(corrected, done), undefined, 100_000));
+    expect(result.filter(e => e.type === "provider")).toEqual([corrected]);
+    const withoutAlternate = await collect(collectLyricsSources(sources, () => source(done), undefined, 100_000));
+    expect(withoutAlternate.filter(e => e.type === "provider")).toEqual([initial]);
+  });
   it("keeps partial results provisional when a later service returns no providers", async () => {
     vi.spyOn(console, "warn").mockImplementationOnce(() => {});
     const result = await collect(collectLyricsSources([

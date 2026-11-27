@@ -5,9 +5,11 @@ import type { Track } from "@/shared/types";
 export type ProfileArtist = { id: string; name: string; coverUrl: string };
 export type ProfileCustomization = { banner: string | null; links: string[]; artist: ProfileArtist | null; tracks: Track[] };
 export const emptyProfile: ProfileCustomization = { banner: null, links: [], artist: null, tracks: [] };
-export function profileOwner() {
+export function profileOwner(expectedUserId?: string) {
   const session = getAuthSession();
-  return session?.user?.id ? `${session.authBackend ?? "liner"}:${session.user.id}` : null;
+  const userId = session?.user?.id;
+  return session && userId && (expectedUserId === undefined || expectedUserId === userId)
+    ? `${session.authBackend ?? "liner"}:${userId}` : null;
 }
 export async function profileRequest(owner: string, patch?: Partial<ProfileCustomization>, signal?: AbortSignal): Promise<ProfileCustomization> {
   if (profileOwner() !== owner) throw new Error("Account changed");

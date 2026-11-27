@@ -17,6 +17,15 @@ const MAX_SYNCED_COVER_LENGTH = 1_350;
 const MAX_LOCAL_COVER_LENGTH = 250_000;
 const COVER_LOG_PREFIX = "[Lane][PlaylistCover]";
 
+export function fullSizePlaylistCover(url: string): string {
+  // Yandex Music serves the same artwork at different square sizes.
+  return url.replace(
+    /^(https:\/\/avatars(?:\.mds)?\.yandex\.(?:net|ru)\/get-music-content\/[^?#]+\/)(\d+)x(\d+)(?=[?#]|$)/i,
+    (original, prefix: string, width: string, height: string) =>
+      width === height && Number(width) < 600 ? `${prefix}600x600` : original,
+  );
+}
+
 function coverLog(message: string, details?: unknown): void {
   const suffix = details ? ` ${JSON.stringify(details)}` : "";
   diag(`${COVER_LOG_PREFIX} ${message}${suffix}`);
@@ -43,7 +52,8 @@ export function getPlaylistCover(playlistId: string | null | undefined, descript
   if (!playlistId) return undefined;
   const imported = getImportedPlaylistMeta(playlistId);
   const source = readPlaylistSource(description);
-  return readAll()[playlistId] ?? imported?.coverUrl ?? serverCovers.get(playlistId)
+  const cover = readAll()[playlistId] ?? imported?.coverUrl ?? serverCovers.get(playlistId);
+  return (cover ? fullSizePlaylistCover(cover) : undefined)
     ?? (source === "yandex" ? yandexMusicCover : imported?.source === "spotify" || source === "spotify" ? spotifyPlaylistCover : undefined);
 }
 
@@ -97,7 +107,7 @@ async function compactCover(source: Blob, maxLength: number): Promise<string> {
       // Android. Browsers that do not support it return a PNG data URL, which
       // is still accepted by the cover marker parser.
       result = canvas.toDataURL("image/webp", quality);
-      if (result.length <= maxLength) break;
+      if (result.length <= maxLength || side === MIN_SIDE - 1) break;
       side = Math.max(MIN_SIDE - 1, Math.floor(side * 0.8));
       quality = Math.max(0.7, quality - 0.04);
     }

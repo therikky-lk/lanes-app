@@ -2,13 +2,14 @@ import { useArtistAvatar } from "../hooks/useArtistAvatar";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { RightLine, User3Fill } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
 import { useYourArtistTrackCount } from "../hooks/useYourArtistTrackCount";
 import { artistHref, canonicalArtistId } from "@/shared/media/artistIdentity";
+import { backdropMotion, fadeMotion, sheetMotion } from "@/shared/ui/surfaceMotion";
 
 const font = { fontFamily: "var(--font-inter), sans-serif" };
 
@@ -52,6 +53,7 @@ export default function ArtistSheet() {
   const artists = useArtistSheetStore((s) => s.artists);
   const selectedId = useArtistSheetStore((s) => s.selectedId);
   const close = useArtistSheetStore((s) => s.close);
+  const reduceMotion = useReducedMotion();
   const isOpen = selectedId !== null;
 
   useEffect(() => {
@@ -88,20 +90,16 @@ export default function ArtistSheet() {
             type="button"
             aria-label={t("common.close") || "Close"}
             className="lane-sheet-dimmer absolute inset-0 border-0 p-0 cursor-default"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            variants={reduceMotion ? fadeMotion : backdropMotion}
+            initial="initial" animate="animate" exit="exit"
             onClick={close}
           />
           <motion.div
             role="dialog"
             className="lane-frost-sheet relative w-full rounded-t-[22px] bg-bg-primary px-[18px] pt-[10px] shadow-[0_-10px_40px_rgba(0,0,0,0.35)]"
             style={{ paddingBottom: "calc(18px + var(--lane-safe-bottom, 0px))" }}
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            variants={reduceMotion ? fadeMotion : sheetMotion}
+            initial="initial" animate="animate" exit="exit"
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.6 }}

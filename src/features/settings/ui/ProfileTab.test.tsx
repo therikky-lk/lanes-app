@@ -2,11 +2,13 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import ProfileTab from "./ProfileTab";
+import { clearProfileCache, readProfileCache, type ProfileStatsSnapshot } from "../store/profileCache";
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(), updateProfile: vi.fn(), navigate: vi.fn(),
   share: vi.fn(), toast: vi.fn(), getProfile: vi.fn(),
   mobile: false,
+  owner: "liner:listener",
   dialog: vi.fn(),
   user: { id: "listener", username: "listener", displayName: "Listener", bio: "", isPublic: true },
 }));
@@ -31,7 +33,7 @@ vi.mock("./ProfileMusicPicker", () => ({ default: (props: { onTrack: (track: unk
 </div> }));
 vi.mock("../store/profileCustomization", () => ({
   emptyProfile: { banner: null, links: [], artist: null, tracks: [] },
-  profileOwner: () => "liner:listener", profileRequest: mocks.request,
+  profileOwner: () => mocks.owner, profileRequest: mocks.request,
 }));
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -47,7 +49,9 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   vi.clearAllMocks();
+  clearProfileCache();
   mocks.mobile = false;
+  mocks.owner = "liner:listener";
   mocks.user.isPublic = true;
   mocks.share.mockResolvedValue("copied");
   mocks.request.mockResolvedValue({ banner: null, links: [], artist: null, tracks: [] });
@@ -226,6 +230,62 @@ it("shows the same profile statistics as the public page on mobile", async () =>
   expect(stats.textContent).toContain("settings.profile.liked_tracks42");
   expect(stats.querySelector("dd")!.textContent).not.toBe("—");
   expect(stats.compareDocumentPosition(container.querySelector(".lane-profile-header-actions")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("shows the cached profile on reopen and replaces it when the background requests finish", async () => {
+  const previous = {
+    banner: "https://example.test/banner.jpg", links: [], artist: null,
+    tracks: [{ id: "old", title: "Cached favorite", artists: "Artist", coverUrl: "", durationMs: 1000, playCount: 0 }],
+  };
+  mocks.request.mockResolvedValueOnce(previous);
+  await act(async () => root.render(<ProfileTab />));
+  await act(async () => root.render(<div>Other tab</div>));
+
+  let resolveProfile!: (value: typeof previous) => void;
+  let resolveStats!: (value: ProfileStatsSnapshot) => void;
+  mocks.request.mockImplementationOnce(() => new Promise(resolve => { resolveProfile = resolve; }));
+  mocks.getProfile.mockImplementationOnce(() => new Promise(resolve => { resolveStats = resolve; }));
+  await act(async () => root.render(<ProfileTab />));
+
+  const banner = container.querySelector<HTMLButtonElement>(".lane-profile-banner-upload")!;
+  expect(banner.style.backgroundImage).toContain(previous.banner);
+  expect(banner.disabled).toBe(true);
+  expect(container.textContent).toContain("Cached favorite");
+  expect(container.textContent).toContain("settings.profile.followers7");
+  expect(container.querySelector('[role="status"]')).toBeNull();
+  expect(mocks.request).toHaveBeenCalledTimes(2);
+  expect(mocks.getProfile).toHaveBeenCalledTimes(2);
+
+  await act(async () => {
+    resolveProfile({ ...previous, tracks: [] });
+    resolveStats({ followersCount: 0, listenedDurationMs: 0, likedTracksCount: 0 });
+  });
+  expect(container.textContent).not.toContain("Cached favorite");
+  expect(container.textContent).toContain("settings.profile.followers0");
+  expect(banner.disabled).toBe(false);
+  expect(readProfileCache(mocks.owner, "customization")?.tracks).toEqual([]);
+});
+
+it("keeps the cached banner and stats if a refresh fails without showing them to a different account", async () => {
+  const bannerUrl = "https://example.test/offline-banner.jpg";
+  mocks.request.mockResolvedValueOnce({ banner: bannerUrl, links: [], artist: null, tracks: [] });
+  await act(async () => root.render(<ProfileTab />));
+  await act(async () => root.render(null));
+  mocks.request.mockRejectedValueOnce(new Error("offline"));
+  mocks.getProfile.mockRejectedValueOnce(new Error("offline"));
+  await act(async () => root.render(<ProfileTab />));
+
+  expect(container.querySelector<HTMLElement>(".lane-profile-banner-upload")!.style.backgroundImage).toContain(bannerUrl);
+  expect(container.textContent).toContain("settings.profile.followers7");
+  expect(readProfileCache(mocks.owner, "customization")?.banner).toBe(bannerUrl);
+  expect(readProfileCache(mocks.owner, "stats")?.followersCount).toBe(7);
+
+  mocks.owner = "hyprr:listener";
+  mocks.request.mockImplementationOnce(() => new Promise(() => {}));
+  mocks.getProfile.mockImplementationOnce(() => new Promise(() => {}));
+  await act(async () => root.render(<ProfileTab />));
+  expect(container.querySelector<HTMLElement>(".lane-profile-banner-upload")!.style.backgroundImage).toBe("");
+  expect([...container.querySelectorAll(".lane-profile-stats dd")].map(node => node.textContent)).toEqual(["—", "—", "—"]);
 });
 
 it("retries a stats failure without blocking profile editing or fabricating zero counts", async () => {

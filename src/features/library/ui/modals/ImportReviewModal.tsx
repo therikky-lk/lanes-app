@@ -323,6 +323,7 @@ export default function ImportReviewModal() {
     <Dialog
       open={open}
       onOpenChange={(next) => (!next ? close() : undefined)}
+      fadeOnly={isMobile}
       maxWidth={isMobile ? "none" : 540}
       maxHeight={isMobile ? "100%" : "85dvh"}
       className={isMobile ? "mx-0! h-full min-w-0 rounded-none! border-0! pt-[calc(max(env(safe-area-inset-top,0px),var(--lane-safe-top,0px))+12px)] supports-[height:100dvh]:h-dvh" : undefined}

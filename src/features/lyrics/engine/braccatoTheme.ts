@@ -44,11 +44,13 @@ export const braccatoThemeCss = `
   transform: none !important;
 }
 
-/* letter-by-letter (see ui/letterAnimation.ts): in words split into letters the
-   lit copy has no sweep of its own, its letters light up one by one */
+/* Lane's original letter sweep. Unsplit words keep Braccato's own highlight. */
 .blyrics-word-highlight[data-lane-letters] {
   background-image: none !important;
   color: transparent;
+  /* The letters own visibility here. The native whole-word animation can
+     otherwise hide letters that already lit after a seek or a pause. */
+  opacity: 1 !important;
 }
 .lane-ch {
   display: inline-block;
@@ -65,5 +67,8 @@ export const braccatoThemeCss = `
 }
 .blyrics--active .lane-ch.lane-ch-lit {
   transform: translateY(-0.035em);
+}
+.blyrics-word-highlight[data-lane-letter-glow] > .lane-ch.lane-ch-lit {
+  text-shadow: 0 0 var(--lane-lyric-glow-radius, 0.3em) rgb(228 236 255 / var(--lane-lyric-glow-opacity, 58%));
 }
 `;

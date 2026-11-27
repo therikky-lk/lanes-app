@@ -12,7 +12,6 @@ import { shareEntity } from "@/shared/utils/share";
 import { showToast } from "@/shared/ui/Toast";
 import { resolveApiErrorMessage } from "@/shared/api/api";
 import { api } from "@/shared/api";
-import type { UserProfile } from "@/shared/contracts/users";
 import AvatarEditor from "./AvatarEditor";
 import ProfileMusic from "./ProfileMusic";
 import ProfileStats from "./ProfileStats";
@@ -20,25 +19,27 @@ import ProfileMusicPicker from "./ProfileMusicPicker";
 import ImageCropDialog from "./ImageCropDialog";
 import { loadCropSource, type CropSource } from "./imageCrop";
 import { emptyProfile, profileOwner, profileRequest, type ProfileCustomization } from "../store/profileCustomization";
+import { readProfileCache, writeProfileCache, type ProfileStatsSnapshot } from "../store/profileCache";
 import "./profile.css";
 
 export default function ProfileTab() {
   const user = useAuthStore(state => state.user);
+  const owner = user ? profileOwner(user.id) : null;
   // Remount all drafts and pending requests when the signed-in account changes.
-  return <ProfileContent key={`${profileOwner()}:${user?.id}`} />;
+  return <ProfileContent key={`${owner}:${user?.id}`} owner={owner} />;
 }
 
-function ProfileContent() {
+function ProfileContent({ owner }: { owner: string | null }) {
   const isMobile = useIsMobile();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore(state => state.user);
-  const owner = profileOwner();
-  const [profile, setProfile] = useState<ProfileCustomization>(emptyProfile);
+  const [loadedProfile, setProfile] = useState(() => readProfileCache(owner, "customization"));
+  const profile = loadedProfile ?? emptyProfile;
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reload, setReload] = useState(0);
-  const [stats, setStats] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState(() => readProfileCache(owner, "stats"));
   const [statsFailed, setStatsFailed] = useState(false);
   const [statsReload, setStatsReload] = useState(0);
   const [editor, setEditor] = useState(false);
@@ -67,7 +68,11 @@ function ProfileContent() {
     if (!owner) { setLoading(false); return; }
     const controller = new AbortController();
     setLoading(true); setLoadFailed(false);
-    profileRequest(owner, undefined, controller.signal).then(setProfile).catch(() => {
+    profileRequest(owner, undefined, controller.signal).then(result => {
+      if (controller.signal.aborted || profileOwner() !== owner) return;
+      writeProfileCache(owner, "customization", result);
+      setProfile(result);
+    }).catch(() => {
       if (!controller.signal.aborted) setLoadFailed(true);
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -78,7 +83,11 @@ function ProfileContent() {
     let current = true;
     setStatsFailed(false);
     void api.getUserProfile(user.id).then(result => {
-      if (current) setStats(result);
+      if (!current || profileOwner() !== owner) return;
+      const { followersCount, listenedDurationMs, likedTracksCount } = result;
+      const snapshot: ProfileStatsSnapshot = { followersCount, listenedDurationMs, likedTracksCount };
+      writeProfileCache(owner, "stats", snapshot);
+      setStats(snapshot);
     }).catch(() => {
       if (current) setStatsFailed(true);
     });
@@ -124,7 +133,13 @@ function ProfileContent() {
   const saveCustomization = async (patch: Partial<ProfileCustomization>) => {
     if (!owner || mutation.current || loading || loadFailed) throw new Error("Profile unavailable");
     mutation.current = true; setBusy(true); setError("");
-    try { setProfile(await profileRequest(owner, patch)); }
+    try {
+      const next = await profileRequest(owner, patch);
+      if (profileOwner() === owner) {
+        writeProfileCache(owner, "customization", next);
+        if (active.current) setProfile(next);
+      }
+    }
     catch (cause) { setError(t("settings.profile.save_failed")); throw cause; }
     finally { mutation.current = false; setBusy(false); }
   };
@@ -188,7 +203,7 @@ function ProfileContent() {
         </div>}
       </div>
     </section>
-    {loading && <p role="status" className="lane-profile-note">{t("settings.profile.loading")}</p>}
+    {loading && !loadedProfile && <p role="status" className="lane-profile-note">{t("settings.profile.loading")}</p>}
     {loadFailed && <div role="alert" className="lane-profile-note">{t("settings.profile.load_failed")} <button className="lane-profile-button" onClick={() => setReload(value => value + 1)}>{t("settings.profile.retry")}</button></div>}
     {error && !editor && <p role="alert" className="lane-profile-error">{error}</p>}
     {user && <ProfileMusic artist={profile.artist} tracks={profile.tracks} disabled={unavailable} onChoose={() => setMusicPicker(true)} onRemoveArtist={() => saveCustomization({ artist: null, tracks: [] })} onRemoveTrack={() => saveCustomization({ tracks: [], artist: null })} />}

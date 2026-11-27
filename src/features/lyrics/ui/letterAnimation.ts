@@ -1,63 +1,67 @@
-// Letter-by-letter lyrics: braccato lights a word with one gradient sweep; on top
-// of it, each word with its own timing is split into letters, and the letters
-// light up one after another across the word's duration (a short fade per
-// letter plus a slight lift), in step with the song.
-//
-// braccato draws every line twice: the words themselves and, in a parallel
-// "highlight run" laid over them, a lit copy. Both copies of a word are split
-// the same way so the lift moves the letter and its light together.
-
-import { lyricsOutputLatencyMs } from "../engine/lyricsLatency";
+// Braccato draws the original line and a lit copy. Advance through the lit
+// copy by grapheme, keeping the entire sung prefix of each active line lit.
+import { lyricsOutputLatencyMs, WORD_LEAD_S } from "../engine/lyricsLatency";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
 
 const WORD = "blyrics--word";
 const HIGHLIGHT_RUN = "blyrics-highlight-run";
-const ACTIVE_LINE = "blyrics--active";
+const LYRICS_LOADED = "braccato:lyrics-loaded";
 const LINE_SYNCED = "blyrics-line-synced-word";
 const RTL = "blyrics-rtl";
 const SPLIT_ATTR = "data-lane-letters";
+const GLOW_ATTR = "data-lane-letter-glow";
 const LIT = "lane-ch-lit";
-// braccato runs word-timed lines this much ahead of the audio
-const RICHSYNC_LEAD_S = 0.15;
-// a line that stops being current is usually still finishing its last word
-// (our clock follows the speakers, braccato's runs ahead of them): its letters
-// are completed and held this long before going dark, instead of being cut off
-const FINISH_HOLD_MS = 650;
-// weak phones: the letters fade by CSS transition, so ~30 updates a second look
-// the same as 90 and leave the main thread free for scrolling the lyrics
-const FRAME_MS = isLowEndDevice() ? 33 : 0;
+const FINISH_HOLD_S = 0.65;
+const PREPARE_AHEAD_S = 0.18;
+const FRAME_MS = isLowEndDevice() ? 40 : 32;
+const MAX_PREPARED_LINES = 8;
+const SUSTAINED_WORD_S = 0.68;
 
 interface WordLetters {
+  element: HTMLElement;
+  baseElement: HTMLElement;
   time: number;
   duration: number;
   base: HTMLElement[];
   lit: HTMLElement[];
   count: number;
+  canGlow: boolean;
 }
 
-type LyricsHost = HTMLElement & { currentTime?: number };
+type LyricsHost = HTMLElement & { currentTime?: number; tickOptions?: { lyricOffset?: number } };
 
-const segmenter: Intl.Segmenter | null =
-  typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+interface TimedLine {
+  element: HTMLElement;
+  start: number;
+  end: number;
+  prefixEnd: number;
+  key: string;
+  words?: WordLetters[];
+}
+
+const segmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
 
 function graphemes(text: string): string[] {
-  return segmenter ? Array.from(segmenter.segment(text), (s) => s.segment) : Array.from(text);
+  return segmenter ? Array.from(segmenter.segment(text), s => s.segment) : Array.from(text);
 }
 
-/** wrap every letter of a word in its own span (keeps <wbr> and spaces as they are) */
 function splitWord(word: HTMLElement): HTMLElement[] {
   const letters: HTMLElement[] = [];
+  const doc = word.ownerDocument;
   for (const node of Array.from(word.childNodes)) {
     if (node.nodeType !== Node.TEXT_NODE) continue;
-    const fragment = document.createDocumentFragment();
-    for (const g of graphemes(node.textContent ?? "")) {
-      if (/^\s+$/.test(g)) {
-        fragment.appendChild(document.createTextNode(g));
+    const fragment = doc.createDocumentFragment();
+    for (const letter of graphemes(node.textContent ?? "")) {
+      if (/^\s+$/u.test(letter)) {
+        fragment.appendChild(doc.createTextNode(letter));
         continue;
       }
-      const span = document.createElement("span");
+      const span = doc.createElement("span");
       span.className = "lane-ch";
-      span.textContent = g;
+      span.textContent = letter;
       fragment.appendChild(span);
       letters.push(span);
     }
@@ -68,59 +72,102 @@ function splitWord(word: HTMLElement): HTMLElement[] {
 }
 
 function splittable(word: HTMLElement): boolean {
-  if (word.hasAttribute(SPLIT_ATTR)) return false;
-  if (word.classList.contains(LINE_SYNCED) || word.classList.contains(RTL)) return false;
+  if (word.hasAttribute(SPLIT_ATTR) || word.classList.contains(LINE_SYNCED) || word.classList.contains(RTL)) return false;
   if (word.closest(".blyrics-bidi-sensitive")) return false;
-  const duration = Number.parseFloat(word.dataset.duration ?? "");
+  const duration = Number(word.dataset.duration);
   return Number.isFinite(duration) && duration > 0;
 }
 
 export function attachLetterAnimation(host: LyricsHost): () => void {
-  const words = new Map<HTMLElement, WordLetters>(); // keyed by the lit copy
-  let touched = new Set<WordLetters>();
-  /** words of lines that just stopped being current: when to let them go dark */
-  const finishing = new Map<WordLetters, number>();
+  let lines: TimedLine[] = [];
+  const repetitions = new Map<string, number>();
+  const prepared = new Set<TimedLine>();
+  let active = new Set<TimedLine>();
   let raf = 0;
-  let lastFrame = 0;
-  /** the split words of each line, so a frame doesn't query the DOM per line */
-  let lineCache = new WeakMap<HTMLElement, WordLetters[]>();
-  let scanQueued = false;
+  let needsIndex = true;
+  let lastFrame = -Infinity;
+  let lastTime = NaN;
   let latencyS = lyricsOutputLatencyMs() / 1000;
-  const latencyTimer = setInterval(() => (latencyS = lyricsOutputLatencyMs() / 1000), 2000);
+  const latencyTimer = setInterval(() => { latencyS = lyricsOutputLatencyMs() / 1000; }, 2000);
 
-  const scan = () => {
-    scanQueued = false;
-    lineCache = new WeakMap();
-    for (const run of Array.from(host.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN}`))) {
+  const release = (line: TimedLine) => {
+    for (const pair of line.words ?? []) {
+      for (const [word, letters] of [[pair.element, pair.lit], [pair.baseElement, pair.base]] as const) {
+        if (!host.contains(word)) continue;
+        for (const letter of letters) letter.replaceWith(word.ownerDocument.createTextNode(letter.textContent ?? ""));
+        word.removeAttribute(SPLIT_ATTR);
+        word.removeAttribute(GLOW_ATTR);
+        word.style.removeProperty("--lane-ch-dur");
+        word.normalize();
+      }
+    }
+    line.words = undefined;
+    prepared.delete(line);
+  };
+
+  function indexLines() {
+    for (const line of prepared) release(line);
+    active.clear();
+    repetitions.clear();
+    lines = [];
+    for (const element of host.querySelectorAll<HTMLElement>(".blyrics--line:not([data-instrumental])")) {
+      let start = Infinity;
+      let end = -Infinity;
+      // Index the provider's timestamps once. Looking ahead in the index is
+      // cheap; splitting two copies of every letter in the song is not.
+      const words = element.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} .${WORD}`);
+      for (const word of words) {
+        if (!splittable(word)) continue;
+        const time = Number(word.dataset.time);
+        if (!Number.isFinite(time)) continue;
+        start = Math.min(start, time);
+        end = Math.max(end, time + Number(word.dataset.duration));
+      }
+      if (!(end > start)) continue;
+      const key = element.querySelector(`.blyrics-line-main .${HIGHLIGHT_RUN}`)?.textContent
+        ?.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() ?? "";
+      if (key.includes(" ") && key.length >= 8) repetitions.set(key, (repetitions.get(key) ?? 0) + 1);
+      lines.push({ element, start, end, prefixEnd: end, key });
+    }
+    lines.sort((a, b) => a.start - b.start);
+    for (let i = 1; i < lines.length; i++) lines[i].prefixEnd = Math.max(lines[i - 1].prefixEnd, lines[i].end);
+    needsIndex = false;
+    lastTime = NaN;
+  }
+
+  function prepare(line: TimedLine): WordLetters[] {
+    if (line.words) return line.words;
+    const words: WordLetters[] = [];
+    const refrain = (repetitions.get(line.key) ?? 0) > 1;
+    for (const run of line.element.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN}`)) {
       const baseRun = Array.from(run.parentElement?.children ?? []).find(
-        (el) => el !== run && el.classList.contains("blyrics-bidi-run") && !el.classList.contains(HIGHLIGHT_RUN),
+        el => el !== run && el.classList.contains("blyrics-bidi-run") && !el.classList.contains(HIGHLIGHT_RUN),
       );
       if (!baseRun) continue;
-      const litWords = Array.from(run.querySelectorAll<HTMLElement>(`.${WORD}`));
-      const baseWords = Array.from(baseRun.querySelectorAll<HTMLElement>(`.${WORD}`));
+      const litWords = [...run.querySelectorAll<HTMLElement>(`.${WORD}`)];
+      const baseWords = [...baseRun.querySelectorAll<HTMLElement>(`.${WORD}`)];
       if (litWords.length !== baseWords.length) continue;
-      litWords.forEach((litWord, i) => {
-        const baseWord = baseWords[i];
-        if (!splittable(litWord) || !splittable(baseWord)) return;
+      litWords.forEach((litWord, index) => {
+        const baseWord = baseWords[index];
+        const time = Number(litWord.dataset.time);
+        if (!Number.isFinite(time) || !splittable(litWord) || !splittable(baseWord)) return;
         if (litWord.dataset.content !== baseWord.dataset.content) return;
         const lit = splitWord(litWord);
         const base = splitWord(baseWord);
         if (lit.length !== base.length || lit.length === 0) return;
-        const time = Number.parseFloat(litWord.dataset.time ?? "0");
-        const duration = Number.parseFloat(litWord.dataset.duration ?? "0");
-        // each letter fades in over roughly its own share of the word
-        const step = Math.min(Math.max((duration * 1000) / lit.length, 60), 260);
-        for (const w of [litWord, baseWord]) w.style.setProperty("--lane-ch-dur", `${Math.round(step)}ms`);
-        words.set(litWord, { time, duration, base, lit, count: 0 });
+        const duration = Number(litWord.dataset.duration);
+        const step = Math.min(Math.max(duration * 1000 / lit.length, 60), 260);
+        for (const word of [litWord, baseWord]) word.style.setProperty("--lane-ch-dur", `${Math.round(step)}ms`);
+        words.push({
+          element: litWord, baseElement: baseWord, time, duration, lit, base, count: 0,
+          canGlow: duration >= SUSTAINED_WORD_S || refrain,
+        });
       });
     }
-  };
-
-  const queueScan = () => {
-    if (scanQueued) return;
-    scanQueued = true;
-    requestAnimationFrame(scan);
-  };
+    line.words = words;
+    prepared.add(line);
+    return words;
+  }
 
   const setCount = (word: WordLetters, count: number) => {
     if (word.count === count) return;
@@ -134,70 +181,59 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
     word.count = count;
   };
 
-  const frame = (ts: number) => {
+  const frame = (timestamp: number) => {
     raf = requestAnimationFrame(frame);
-    if (FRAME_MS && ts - lastFrame < FRAME_MS) return;
-    lastFrame = ts;
-    const now = (host.currentTime ?? 0) + RICHSYNC_LEAD_S - latencyS;
-    const next = new Set<WordLetters>();
-    for (const line of Array.from(host.querySelectorAll<HTMLElement>(`.${ACTIVE_LINE}`))) {
-      let lineWords = lineCache.get(line);
-      if (!lineWords) {
-        lineWords = Array.from(line.querySelectorAll<HTMLElement>(`.${HIGHLIGHT_RUN} [${SPLIT_ATTR}]`))
-          .map((el) => words.get(el))
-          .filter((w): w is WordLetters => Boolean(w));
-        lineCache.set(line, lineWords);
-      }
-      const current = lineWords;
-      current.forEach((word, i) => {
-        const progress = word.duration > 0 ? (now - word.time) / word.duration : now >= word.time ? 1 : 0;
-        let count = Math.max(0, Math.min(word.lit.length, Math.ceil(progress * word.lit.length)));
-        // the next word has begun: this one is done, even if its timing ran long
-        const later = current[i + 1];
-        if (later && now >= later.time) count = word.lit.length;
+    if (needsIndex) {
+      indexLines();
+      lastFrame = -Infinity;
+    }
+    const now = (host.currentTime ?? 0) + WORD_LEAD_S - latencyS - (host.tickOptions?.lyricOffset ?? 0);
+    if (!Number.isFinite(now) || now === lastTime || timestamp - lastFrame < FRAME_MS) return;
+    lastFrame = timestamp;
+    lastTime = now;
+
+    // Scroll can move early to preview what's next. Keep lighting the current
+    // line until its actual last timestamp, even after another line scrolls in.
+    let low = 0;
+    let high = lines.length;
+    while (low < high) {
+      const center = (low + high) >>> 1;
+      if (lines[center].start <= now + PREPARE_AHEAD_S) low = center + 1;
+      else high = center;
+    }
+    const next = new Set<TimedLine>();
+    for (let i = low - 1; i >= 0 && lines[i].prefixEnd + FINISH_HOLD_S >= now; i--) {
+      const line = lines[i];
+      if (line.end + FINISH_HOLD_S < now) continue;
+      next.add(line);
+      for (const word of prepare(line)) {
+        const progress = (now - word.time) / word.duration;
+        const count = Math.max(0, Math.min(word.lit.length, Math.ceil(progress * word.lit.length)));
         setCount(word, count);
-        next.add(word);
-      });
+        if (word.canGlow) word.element.toggleAttribute(GLOW_ATTR, progress >= 0 && progress < 1);
+      }
     }
-    const wall = performance.now();
-    for (const word of touched) {
-      if (next.has(word)) continue;
-      // moving on: finish what was being sung; a jump back: go dark right away
-      if (now >= word.time - 0.05 || word.count > 0) {
-        setCount(word, word.lit.length);
-        finishing.set(word, wall + FINISH_HOLD_MS);
-      } else {
+    for (const line of active) {
+      if (next.has(line)) continue;
+      for (const word of line.words ?? []) {
+        word.element.removeAttribute(GLOW_ATTR);
         setCount(word, 0);
       }
     }
-    for (const [word, until] of finishing) {
-      if (next.has(word)) {
-        finishing.delete(word);
-      } else if (wall >= until) {
-        setCount(word, 0);
-        finishing.delete(word);
-      }
+    active = next;
+    for (const line of prepared) {
+      if (prepared.size <= MAX_PREPARED_LINES) break;
+      if (!active.has(line)) release(line);
     }
-    touched = next;
   };
 
-  const observer = new MutationObserver(queueScan);
-  observer.observe(host, { childList: true, subtree: true });
-  queueScan();
+  const lyricsLoaded = () => { needsIndex = true; };
+  host.addEventListener(LYRICS_LOADED, lyricsLoaded);
   raf = requestAnimationFrame(frame);
-
   return () => {
     cancelAnimationFrame(raf);
     clearInterval(latencyTimer);
-    observer.disconnect();
-    // Restore the original words so changing visual quality can attach again.
-    for (const word of host.querySelectorAll<HTMLElement>(`[${SPLIT_ATTR}]`)) {
-      for (const letter of word.querySelectorAll<HTMLElement>(".lane-ch")) letter.replaceWith(document.createTextNode(letter.textContent ?? ""));
-      word.removeAttribute(SPLIT_ATTR);
-      word.normalize();
-    }
-    words.clear();
-    touched.clear();
-    finishing.clear();
+    host.removeEventListener(LYRICS_LOADED, lyricsLoaded);
+    for (const line of prepared) release(line);
   };
 }

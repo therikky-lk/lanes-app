@@ -2,7 +2,7 @@ import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { getPublicLyricsCatalog } from "@/shared/api/lyricsSources";
 
 export function getLyricsCacheSource(): string {
-  return `${getApiBaseUrl()}|${getPublicLyricsCatalog() ?? ""}#lyrics-sources-v4`;
+  return `${getApiBaseUrl()}|${getPublicLyricsCatalog() ?? ""}#lyrics-sources-v6`;
 }
 
 import type { LyricsCandidate } from "@/shared/contracts/lyrics";

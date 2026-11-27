@@ -6,7 +6,8 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useDragControls } from "framer-motion";
+import { AnimatePresence, motion, useDragControls, useReducedMotion } from "framer-motion";
+import { backdropMotion, fadeMotion, popoverMotion, sheetMotion } from "./surfaceMotion";
 
 export interface DropdownMenuItem {
   id: string;
@@ -45,9 +46,10 @@ function useFixedStyle(
 
   useLayoutEffect(() => {
     if (!isFixed || !position || !menuRef.current) return;
-    const rect = menuRef.current.getBoundingClientRect();
-    let left = align === "end" ? position.x - rect.width : position.x;
-    let top = side === "top" ? position.y - rect.height : position.y;
+    // Layout dimensions don't change as the popover scales in.
+    const { offsetWidth: width, offsetHeight: height } = menuRef.current;
+    let left = align === "end" ? position.x - width : position.x;
+    let top = side === "top" ? position.y - height : position.y;
     const isMobile = document.documentElement.classList.contains("lane-mobile");
     const mobileDock = isMobile
       ? document.querySelector<HTMLElement>("[data-mobile-dock]")
@@ -57,16 +59,16 @@ function useFixedStyle(
       ? Math.min(window.innerHeight, dockTop as number) - 8
       : window.innerHeight - 8;
 
-    if (left + rect.width > window.innerWidth) {
-      left = window.innerWidth - rect.width - 8;
+    if (left + width > window.innerWidth) {
+      left = window.innerWidth - width - 8;
     }
     if (left < 8) left = 8;
 
-    if (side !== "top" && top + rect.height > bottomLimit) {
-      top = position.y - rect.height - 8;
+    if (side !== "top" && top + height > bottomLimit) {
+      top = position.y - height - 8;
     }
     if (top < 8) top = 8;
-    if (isMobile) top = Math.min(top, bottomLimit - rect.height);
+    if (isMobile) top = Math.min(top, bottomLimit - height);
 
     setStyle({ left, top: Math.max(8, top) });
   }, [isFixed, position, open, menuRef, side, align]);
@@ -91,6 +93,7 @@ export default function DropdownMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
+  const reduceMotion = useReducedMotion();
   const mobileSheet = Boolean(mobileSheetHeader) && typeof document !== "undefined"
     && document.documentElement.classList.contains("lane-mobile");
 
@@ -111,6 +114,7 @@ export default function DropdownMenu({
   const targetPos = position || computedPos;
   const isFixed = Boolean(targetPos);
   const fixedStyle = useFixedStyle(menuRef, isFixed, targetPos, open, side, align);
+  const menuSide = targetPos && typeof fixedStyle.top === "number" && fixedStyle.top < targetPos.y ? "top" : side;
 
   useEffect(() => {
     if (!open) return;
@@ -192,8 +196,8 @@ export default function DropdownMenu({
         >
           <motion.div
             className="lane-sheet-dimmer absolute inset-0"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.14, ease: "easeOut" }}
+            variants={reduceMotion ? fadeMotion : backdropMotion}
+            initial="initial" animate="animate" exit="exit"
             onClick={() => setOpen(false)}
           />
           <motion.div
@@ -203,8 +207,8 @@ export default function DropdownMenu({
             aria-modal="true"
             data-dropdown-menu="true"
             className="lane-frost-sheet lane-track-actions-sheet relative flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-2xl border-t border-border-primary p-[18px] pb-[calc(var(--lane-safe-bottom,0px)+16px)]"
-            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            variants={reduceMotion ? fadeMotion : sheetMotion}
+            initial="initial" animate="animate" exit="exit"
             style={{ maxHeight: "min(88dvh, calc(100dvh - var(--lane-safe-top, 0px) - 16px))", touchAction: "pan-y", willChange: "transform" }}
             drag="y"
             dragListener={false}
@@ -242,14 +246,12 @@ export default function DropdownMenu({
           key="dropdown-menu"
           ref={menuRef}
           data-dropdown-menu="true"
-          initial={{ opacity: 0, scale: 0.96, y: side === "top" ? 2 : -2 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: side === "top" ? 2 : -2 }}
-          transition={{ duration: 0.1, ease: "easeOut" }}
+          variants={reduceMotion ? fadeMotion : popoverMotion[menuSide]}
+          initial="initial" animate="animate" exit="exit"
           className={`touch-none overflow-hidden rounded-xl border border-white/[0.07] bg-bg-elevated/95 shadow-none backdrop-blur-xl p-1.5 min-w-[180px] ${
             isFixed ? "fixed z-[99999]" : side === "top" ? "absolute right-0 bottom-full mb-1 z-50" : "absolute right-0 top-full mt-1 z-50"
           }`}
-          style={isFixed ? fixedStyle : {}}
+          style={{ ...(isFixed ? fixedStyle : {}), transformOrigin: `${align === "end" ? "right" : "left"} ${menuSide === "top" ? "bottom" : "top"}` }}
           onClick={(e) => e.stopPropagation()}
           onWheel={(e) => { e.preventDefault(); e.stopPropagation(); }}
         >

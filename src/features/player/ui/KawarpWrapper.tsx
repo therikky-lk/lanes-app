@@ -3,6 +3,7 @@ import { isNativeApp } from "@/shared/platform/native";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
 import { memo, useEffect, useRef, useState } from "react";
 import { KawarpEngine } from "../engine/kawarpEngine";
+import { backdropMotion, type VisualQuality } from "../store/visualQualityStore";
 import { getCoverElement, useCoverElement } from "@/features/covers";
 
 export const KAWARP_RESIZE_SETTLE_MS = 300;
@@ -12,12 +13,13 @@ export const KAWARP_RENDER_SCALE = isNativeApp() ? (isLowEndDevice() ? 0.22 : 0.
 
 interface KawarpWrapperProps {
   src?: string;
+  quality?: VisualQuality;
   paused?: boolean;
   onLoad?: () => void;
   onError?: (err: Error) => void;
 }
 
-export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, onLoad, onError }: KawarpWrapperProps) {
+export const KawarpWrapper = memo(function KawarpWrapper({ src, quality = "all", paused = false, onLoad, onError }: KawarpWrapperProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<KawarpEngine | null>(null);
@@ -33,15 +35,10 @@ export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, 
     let engine: KawarpEngine | null = null;
     try {
       engine = new KawarpEngine(canvas, {
-        warpIntensity: 1.1,
         blurPasses: isNativeApp() ? (isLowEndDevice() ? 3 : 4) : 4,
         transitionDuration: 1000,
-        animationSpeed: isNativeApp() ? 0.7 : 1.0,
-        saturation: 1.3,
         scale: 1.18,
         dithering: 0.008,
-        // a slow-moving background: 30 fps looks the same and halves the GPU work
-        maxFps: isNativeApp() ? (isLowEndDevice() ? 24 : 30) : 0,
         // phones redraw every frame, nothing reads the canvas back
         preserveDrawingBuffer: !isNativeApp(),
       });
@@ -60,6 +57,10 @@ export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, 
   }, [onError]);
 
   useEffect(() => {
+    engineRef.current?.setMotion(backdropMotion(quality, isNativeApp(), isLowEndDevice()));
+  }, [quality, onError]);
+
+  useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
@@ -70,10 +71,8 @@ export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, 
 
     const surfaceSize = () => {
       const rect = container.getBoundingClientRect();
-      return {
-        width: Math.round(Math.max(rect.width, window.screen?.width ?? 0)),
-        height: Math.round(Math.max(rect.height, window.screen?.height ?? 0)),
-      };
+      // Size the GPU buffer to the actual player, not the user's whole monitor.
+      return { width: Math.round(rect.width), height: Math.round(rect.height) };
     };
 
     const applySize = () => {
@@ -82,8 +81,6 @@ export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, 
       if (width === surfaceWidth && height === surfaceHeight) return;
       surfaceWidth = width;
       surfaceHeight = height;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
       canvas.width = Math.max(1, Math.round(width * KAWARP_RENDER_SCALE));
       canvas.height = Math.max(1, Math.round(height * KAWARP_RENDER_SCALE));
       engineRef.current?.resize();
@@ -150,7 +147,7 @@ export const KawarpWrapper = memo(function KawarpWrapper({ src, paused = false, 
     >
       <canvas
         ref={canvasRef}
-        className={`absolute left-1/2 top-1/2 block max-w-none -translate-x-1/2 -translate-y-1/2 transition-opacity duration-500 ${
+        className={`absolute inset-0 block h-full w-full transition-opacity duration-500 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}
       />

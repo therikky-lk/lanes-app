@@ -17,6 +17,8 @@ export interface LyricsProviderOption {
   candidate: LyricsCandidate;
 }
 
+export type LyricsDisplayMode = "source" | "karaoke";
+
 export function hasSyncedLyricsSources(
   availableProviders: LyricsProviderOption[] = [],
   braccatoLyrics: Lyric[] = [],
@@ -60,6 +62,7 @@ export interface LyricsState {
   currentLyricsTrackId: string | null;
   activeProvider: string | null;
   availableProviders: LyricsProviderOption[];
+  displayMode: LyricsDisplayMode;
   offsetMs: number;
   trackOffsets: Record<string, number>;
   activeLineIndex: number | null;
@@ -71,6 +74,7 @@ export interface LyricsState {
         | "setLyricsState"
         | "reset"
         | "selectProvider"
+        | "selectKaraoke"
         | "setOffset"
         | "adjustOffset"
         | "resetOffset"
@@ -79,7 +83,8 @@ export interface LyricsState {
     >,
   ) => void;
   setActiveLineIndex: (index: number | null) => void;
-  selectProvider: (providerName: string) => void;
+  selectProvider: (providerName: string, mode?: LyricsDisplayMode) => void;
+  selectKaraoke: () => void;
   setOffset: (offsetMs: number) => void;
   adjustOffset: (deltaMs: number) => void;
   resetOffset: () => void;
@@ -104,6 +109,7 @@ export const useLyricsStore = create<LyricsState>()(
       currentLyricsTrackId: null,
       activeProvider: null,
       availableProviders: [],
+      displayMode: "karaoke",
       offsetMs: 0,
       trackOffsets: {},
       activeLineIndex: null,
@@ -147,6 +153,7 @@ export const useLyricsStore = create<LyricsState>()(
         );
 
         set({
+          ...(isNewTrack ? { displayMode: "karaoke" } : {}),
           ...state,
           offsetMs: offset,
           baseBraccatoLyrics: baseBraccato,
@@ -156,10 +163,21 @@ export const useLyricsStore = create<LyricsState>()(
         });
       },
 
-      selectProvider: (providerName: string) => {
-        const { availableProviders, offsetMs } = get();
+      selectKaraoke: () => {
+        const { activeProvider, availableProviders, selectProvider } = get();
+        const timed = availableProviders.filter(option => hasSyncedLyricsSources([option]));
+        const choice = timed.find(option => option.provider === activeProvider) ?? timed[0];
+        if (choice) selectProvider(choice.provider, "karaoke");
+      },
+
+      selectProvider: (providerName, displayMode = "source") => {
+        const { activeProvider, availableProviders, offsetMs } = get();
         const option = availableProviders.find((p) => p.provider === providerName);
         if (!option) return;
+        if (activeProvider === providerName) {
+          set({ displayMode });
+          return;
+        }
 
         try {
           const parsed = parseRawLyrics(
@@ -174,6 +192,7 @@ export const useLyricsStore = create<LyricsState>()(
 
           set({
             activeProvider: option.provider,
+            displayMode,
             rawLyrics: option.candidate.lyrics.content,
             rawFormat: option.candidate.lyrics.format,
             baseBraccatoLyrics: parsed.braccatoLyrics,
@@ -186,6 +205,7 @@ export const useLyricsStore = create<LyricsState>()(
         } catch {
           set({
             activeProvider: option.provider,
+            displayMode,
             rawLyrics: option.candidate.lyrics.content,
             rawFormat: option.candidate.lyrics.format,
             baseBraccatoLyrics: [],
@@ -199,6 +219,7 @@ export const useLyricsStore = create<LyricsState>()(
       },
 
       setOffset: (offsetMs: number) => {
+        if (get().offsetMs === offsetMs) return;
         const {
           baseBraccatoLyrics,
           baseSyncedLines,
@@ -252,6 +273,7 @@ export const useLyricsStore = create<LyricsState>()(
           currentLyricsTrackId: null,
           activeProvider: null,
           availableProviders: [],
+          displayMode: "karaoke",
           offsetMs: 0,
           activeLineIndex: null,
         }),
@@ -263,6 +285,7 @@ export const useLyricsStore = create<LyricsState>()(
         if (state) {
           state.lyricsLoading = false;
           state.lyricsError = null;
+          state.displayMode = "karaoke";
           if (!state.trackOffsets) {
             state.trackOffsets = {};
           }
@@ -275,4 +298,3 @@ export const useLyricsStore = create<LyricsState>()(
     },
   ),
 );
-

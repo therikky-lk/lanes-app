@@ -182,8 +182,8 @@ export default function LoginPage() {
     setSubmitting(true);
     setError("");
     try {
-      const capabilities = await api.getEmailAuthCapabilities().catch(() => null);
-      if (capabilities?.registrationVerification) {
+      const capabilities = await api.getEmailAuthCapabilities();
+      if (capabilities.registrationVerification) {
         setEmailFlow("register");
         return;
       }

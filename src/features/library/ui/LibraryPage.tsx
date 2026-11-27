@@ -2,6 +2,7 @@ import { useYandexMusicPreferences } from "../store/yandexMusicPreferences";
 import { useSpotifyPreferences } from "../store/spotifyPreferences";
 import { getImportedPlaylistIds, getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { readPlaylistSource } from "../services/playlistCoverMarker";
+import { playlistDisplayTitle } from "../services/playlistDisplayTitle";
 import OfflineCover from "./OfflineCover";
 import { useOfflineLibraryStore } from "../offline/offlineLibraryStore";
 import { TimeLine } from "@mingcute/react";
@@ -257,7 +258,7 @@ export default function LibraryPage() {
     });
     return list.map((playlist) => ({
       id: playlist.id,
-      title: playlist.title,
+      title: playlistDisplayTitle(playlist, t),
       subtitle: t("common.tracks", { count: playlist.trackCount }),
       imageUrl: playlist.coverUrl || "",
       coverUrls: playlist.coverUrls,
@@ -499,16 +500,6 @@ export default function LibraryPage() {
               onViewModeChange={handleViewModeChange}
             />
           </div>
-          {viewMode !== "list" && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-full h-[36px] backdrop-blur-xl"
-              style={{
-                WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)",
-                maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.45) 45%, transparent 100%)",
-              }}
-            />
-          )}
         </div>
         )}
 

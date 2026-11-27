@@ -1,4 +1,5 @@
-import { youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
+import { isYoutubeLikedPlaylist, youtubePlaylistArtwork } from "@/shared/media/youtube/account/playlistArtwork";
+import { useTranslation } from "@/languages";
 import { useEffect, useMemo, useState } from "react";
 import { fetchYoutubeAccountPlaylists, useYoutubePreferences } from "@/shared/media/youtube";
 import { useYoutubeAccount } from "./useYoutubeAccount";
@@ -38,6 +39,7 @@ function load(session: string): Promise<Snapshot> {
 }
 
 export function useYoutubeLibraryItems() {
+  const { t } = useTranslation();
   const { signedIn, session } = useYoutubeAccount();
   const syncLibrary = useYoutubePreferences(state => state.syncLibrary);
   const [loaded, setLoaded] = useState(() => ({ session, items: session ? snapshots.get(session)?.items ?? EMPTY : EMPTY }));
@@ -57,7 +59,13 @@ export function useYoutubeLibraryItems() {
   const items = !signedIn || !syncLibrary || !session ? EMPTY
     : loaded.session === session ? loaded.items : snapshots.get(session)?.items ?? EMPTY;
   return useMemo(() => items.map(item => {
+    if (!isYoutubeLikedPlaylist(item.id)) return item;
     const imageUrl = youtubePlaylistArtwork(item.id, item.imageUrl);
-    return imageUrl === item.imageUrl ? item : { ...item, imageUrl };
-  }), [items]);
+    return {
+      ...item,
+      imageUrl,
+      title: `${t("library.liked_songs")} · YouTube Music`,
+      subtitle: item.subtitle.replace(/^Auto playlist\b/i, t("playlist.playlist")),
+    };
+  }), [items, t]);
 }

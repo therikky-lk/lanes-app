@@ -13,7 +13,6 @@ import { LuShuffle } from "react-icons/lu";
 import Button from "@/shared/ui/Button";
 import { useToast } from "@/shared/ui";
 import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
-import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import SongCard from "@/features/player/ui/SongCard";
 import { playerEngine, usePlayerStore } from "@/features/player";
 import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
@@ -97,7 +96,6 @@ export default function LocalTracksPage() {
     >
       <div data-window-drag className="absolute top-0 left-0 right-0 h-[56px] z-10" />
       <div data-page-scroller className="h-full w-full overflow-y-auto pb-[32px]" style={{ ...font, paddingTop: isMobile ? "var(--lane-safe-top, 0px)" : 12, paddingBottom: isMobile ? "calc(var(--lane-dock-h, 120px) + 24px)" : 32 }}>
-        <ScrollBlurEdge height={72} />
         <TrackCollectionHeader title={t("local.title")} kind="local" count={tracks.length}
           onPlay={() => playAll(false)} onShuffle={() => playAll(true)}
           onQueue={() => tracks.forEach(track => playerEngine.addToQueue(track))}

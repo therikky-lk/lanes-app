@@ -1,4 +1,5 @@
 import type { LyricsCandidate, LyricsStreamEvent } from "@/shared/contracts/lyrics";
+import { hasSuspiciousLrclibTiming } from "@/shared/media/lyrics/lrcTiming";
 
 type LyricsSource = () => AsyncIterable<LyricsStreamEvent>;
 export type LyricsTarget = { baseUrl: string; token: string | null; publicCatalog?: true };
@@ -29,8 +30,23 @@ export async function* collectLyricsSources(
   servers: LyricsSource[],
   fallback: LyricsSource,
   signal?: AbortSignal,
+  durationMs?: number,
 ): AsyncGenerator<LyricsStreamEvent> {
   const candidates = new Map<string, LyricsCandidate>();
+  let deferredLrclib: Extract<LyricsStreamEvent, { status: "found" }> | undefined;
+  function keepCandidate(event: Extract<LyricsStreamEvent, { status: "found" }>): boolean {
+    if (!event.candidate.lyrics.content.trim()) return false;
+    const key = event.provider.toLowerCase().trim();
+    const previous = candidates.get(key);
+    if (previous) {
+      const upgradedSync = previous.syncLevel === "plain" && event.syncLevel !== "plain";
+      const correctedLrc = event.syncLevel !== "plain" && hasSuspiciousLrclibTiming(previous, durationMs) &&
+        !hasSuspiciousLrclibTiming(event.candidate, durationMs);
+      if (!upgradedSync && !correctedLrc) return false;
+    }
+    candidates.set(key, event.candidate);
+    return true;
+  }
   let complete = false;
   let instrumental = false;
   for (const source of servers) {
@@ -48,7 +64,11 @@ export async function* collectLyricsSources(
         if (event.type === "provider" && event.status === "found") {
           if (!event.candidate.lyrics.content.trim()) continue;
           sourceFound = true;
-          candidates.set(event.provider.toLowerCase(), event.candidate);
+          if (!keepCandidate(event)) continue;
+          if (hasSuspiciousLrclibTiming(event.candidate, durationMs)) {
+            deferredLrclib = event;
+            continue;
+          }
         }
         yield event;
       }
@@ -60,16 +80,17 @@ export async function* collectLyricsSources(
     if (complete && (candidates.size || instrumental)) break;
   }
   const serverComplete = complete && (candidates.size > 0 || instrumental);
-  if ((!complete || !candidates.size) && !instrumental) {
+  const hasSynced = [...candidates.values()].some(candidate => candidate.syncLevel !== "plain");
+  if ((!serverComplete || !hasSynced || deferredLrclib) && !instrumental) {
     for await (const event of fallback()) {
       signal?.throwIfAborted();
       if (event.type === "done") continue;
-      if (event.type === "provider" && event.status === "found") {
-        if (candidates.has(event.provider.toLowerCase())) continue;
-        candidates.set(event.provider.toLowerCase(), event.candidate);
-      }
+      if (event.type === "provider" && event.status === "found" && !keepCandidate(event)) continue;
       yield event;
     }
+  }
+  if (deferredLrclib && candidates.get(deferredLrclib.provider.toLowerCase().trim()) === deferredLrclib.candidate) {
+    yield deferredLrclib;
   }
   yield {
     type: "done", cached: false,

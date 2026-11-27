@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { warmTrackTags } from "@/features/library/services/trackTags";
 import LikedCover from "@/features/library/ui/LikedCover";
-import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useNavigate } from "react-router-dom";
 import PopularTracksSection from "./PopularTracksSection";
 import DailyMixesSection from "./DailyMixesSection";
@@ -75,7 +74,6 @@ export default function HomePage() {
 
   return (
     <div data-page-scroller className={`relative h-full min-w-0 w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
-      <ScrollBlurEdge height={72} />
 
       <div
         data-window-drag

@@ -6,12 +6,15 @@ import { usePlayerStore } from "../store/playerStore";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { attachLetterAnimation } from "@/features/lyrics/ui/letterAnimation";
+import CustomLyricsDialog from "@/features/lyrics/ui/CustomLyricsDialog";
 import { applyLyricsLatency, lyricsOutputLatencyMs } from "@/features/lyrics/engine/lyricsLatency";
-import { LuCaptions, LuMessageCircle } from "react-icons/lu";
+import { CUSTOM_LYRICS_PROVIDER } from "@/shared/media/lyrics/customLyrics";
+import { LuCaptions, LuFilePenLine, LuMessageCircle } from "react-icons/lu";
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   createElement,
   useRef,
   useState,
@@ -20,6 +23,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { shouldReleaseTopPin, startsPinnedToTop } from "./lyricsTopPin";
 import { installFullscreenLyrics } from "./installFullscreenLyrics";
+import { fullscreenLyricsForMode } from "./fullscreenKaraoke";
 import { playerEngine } from "../engine/playerEngine";
 import {
   useLyricsStore,
@@ -36,6 +40,7 @@ import { DownLine } from "@mingcute/react";
 import { Sidebar } from "@solar-icons/react";
 import { preloadCoverArt, useCoverSrc } from "@/features/covers";
 import "@braccato/core/element";
+import type { BraccatoLyricsElement } from "@braccato/core/element";
 import "@braccato/core/styles/variables.css";
 import "@braccato/core/styles/lyrics.css";
 import "@braccato/core/styles/instrumental.css";
@@ -50,14 +55,16 @@ import TrackComments, { supportsTrackComments, useTrackCommentsAccount } from ".
 const BRACCATO_TAG = "braccato-lyrics";
 
 interface BraccatoLyricsViewProps {
-  lyrics: any[];
-  animateLetters?: boolean;
+  lyrics: ReturnType<typeof fullscreenLyricsForMode>;
+  karaoke: boolean;
+  offsetMs: number;
   blurEdges?: boolean;
 }
 
-const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLetters = true, blurEdges = false }: BraccatoLyricsViewProps) {
+const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, offsetMs, blurEdges = false }: BraccatoLyricsViewProps) {
   const player = usePlayerStore(useShallow(s => ({ status: s.status })));
-  const elementRef = useRef<any>(null);
+  const elementRef = useRef<BraccatoLyricsElement | null>(null);
+  const offsetRef = useRef(offsetMs);
   const latestLyricsRef = useRef(lyrics);
   const assignedLyricsRef = useRef<BraccatoLyricsViewProps["lyrics"] | null>(null);
   const finishLayoutRef = useRef<(() => void) | null>(null);
@@ -152,10 +159,14 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
   const handleUserInteractionRef = useRef(handleUserInteraction);
   handleUserInteractionRef.current = handleUserInteraction;
 
-  const setElement = useCallback((el: any) => {
+  const setElement = useCallback((el: BraccatoLyricsElement | null) => {
     elementRef.current = el;
     if (!el) return;
+    // Braccato needs a scroll host even to update highlight classes. The lyrics
+    // element owns the scroll; don't infer it from the surrounding player layout.
+    el.host = { getScrollElement: () => el };
     el.theme = braccatoThemeCss;
+    el.tickOptions = { ...el.tickOptions, lyricOffset: offsetRef.current / 1000 };
     el.source = "#liner-audio";
 
     const handleBraccatoLineClick = (e: Event) => {
@@ -186,7 +197,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
               : Math.round(detail.time * 1000)
             : null;
       if (timeMs !== null) {
-        playerEngine.seek(timeMs, true);
+        playerEngine.seek(Math.max(0, timeMs + offsetRef.current), true);
       }
     };
 
@@ -196,9 +207,13 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
 
     let syncRafId: number;
     let lastReportedIndex = -1;
+    let lastCheckAt = -Infinity;
 
-    const checkActiveLine = () => {
-      const audioEl = document.getElementById("liner-audio") as HTMLAudioElement | null;
+    const checkActiveLine = (timestamp: number) => {
+      syncRafId = requestAnimationFrame(checkActiveLine);
+      if (timestamp - lastCheckAt < 40) return;
+      lastCheckAt = timestamp;
+      const audioEl = el.mediaElement;
       if (audioEl && !Number.isNaN(audioEl.currentTime)) {
         const currentMs = audioEl.currentTime * 1000 - Math.max(appliedLatency, 0);
         const lines = useLyricsStore.getState().syncedLines;
@@ -220,7 +235,6 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
           useLyricsStore.getState().setActiveLineIndex(idx >= 0 ? idx : null);
         }
       }
-      syncRafId = requestAnimationFrame(checkActiveLine);
     };
 
     syncRafId = requestAnimationFrame(checkActiveLine);
@@ -259,10 +273,23 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
     };
   }, []);
 
+  useLayoutEffect(() => {
+    offsetRef.current = offsetMs;
+    const element = elementRef.current;
+    if (!element || element.tickOptions.lyricOffset === offsetMs / 1000) return;
+    // Shift the media clock, not the lyric DOM. Rebuilding the view during a
+    // drag also stalls the WebGL background and restarts the letter animation.
+    element.tickOptions = { ...element.tickOptions, lyricOffset: offsetMs / 1000 };
+    if (!element.playing) {
+      element.renderer?.tick(element.currentTime, { ...element.tickOptions, isPlaying: false });
+    }
+  }, [offsetMs]);
+
   useEffect(() => {
-    if (!animateLetters || !elementRef.current) return;
-    return attachLetterAnimation(elementRef.current);
-  }, [animateLetters, lyrics]);
+    const element = elementRef.current;
+    if (!karaoke || !element) return;
+    return attachLetterAnimation(element);
+  }, [karaoke]);
 
   useEffect(() => {
     latestLyricsRef.current = lyrics;
@@ -316,7 +343,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, animateLet
   }, []);
 
   return (
-    <div className="lane-lyrics-viewport relative flex flex-col flex-1 w-full h-full min-h-0">
+    <div data-lyrics-mode={karaoke ? "karaoke" : "source"} className="lane-lyrics-viewport relative flex flex-col flex-1 w-full h-full min-h-0">
       {createElement(BRACCATO_TAG, {
         ref: setElement,
         className: "block flex-1 w-full h-full px-6",
@@ -346,17 +373,23 @@ export function FullscreenPlayer({
   const isMobile = useIsMobile();
   const fullscreenRoot = useRef<HTMLDivElement>(null);
   const toolbar = useRef<HTMLDivElement>(null);
-  const [chromeMask, setChromeMask] = useState<string>();
+  const chromeGlass = useRef<HTMLDivElement>(null);
   const [dismissZoneHeight, setDismissZoneHeight] = useState(64);
   useLayoutEffect(() => {
     if (isMobile) return;
     const root = fullscreenRoot.current;
     const controls = toolbar.current;
-    if (!root || !controls) return;
+    const glass = chromeGlass.current;
+    if (!root || !controls || !glass) return;
     const measure = () => {
       const box = root.getBoundingClientRect();
       const bar = controls.getBoundingClientRect();
-      setChromeMask(fullscreenChromeMask(box.width, bar.left - box.left, bar.width));
+      // The toolbar animates its width. Updating just the mask avoids rendering
+      // the entire fullscreen player again at every intermediate size.
+      const mask = fullscreenChromeMask(box.width, bar.left - box.left, bar.width);
+      if (glass.style.getPropertyValue("--lane-fs-toolbar-mask") !== mask) {
+        glass.style.setProperty("--lane-fs-toolbar-mask", mask);
+      }
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -385,6 +418,11 @@ export function FullscreenPlayer({
   const [audioSheet, setAudioSheet] = useState<"speed" | "eq">("speed");
   const [queueOpen, setQueueOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [lyricsEditor, setLyricsEditor] = useState<{ id: string; title: string } | null>(null);
+  const openLyricsEditor = useCallback(() => {
+    const track = player.currentTrack;
+    if (track) setLyricsEditor({ id: track.id, title: track.title });
+  }, [player.currentTrack]);
   const commentsAccount = useTrackCommentsAccount();
   const commentsTrack = isMobile && commentsAccount && player.currentTrack && supportsTrackComments(player.currentTrack.id)
     ? player.currentTrack
@@ -408,16 +446,18 @@ export function FullscreenPlayer({
     lyricsLoading,
     lyricsError,
     plainLyrics,
-    activeProvider,
+    displayMode,
+    offsetMs,
     availableProviders,
     currentLyricsTrackId,
   } = useLyricsStore(useShallow(s => ({
-    braccatoLyrics: s.braccatoLyrics,
+    braccatoLyrics: s.baseBraccatoLyrics,
     rawFormat: s.rawFormat,
     lyricsLoading: s.lyricsLoading,
     lyricsError: s.lyricsError,
     plainLyrics: s.plainLyrics,
-    activeProvider: s.activeProvider,
+    displayMode: s.displayMode,
+    offsetMs: s.offsetMs,
     availableProviders: s.availableProviders,
     currentLyricsTrackId: s.currentLyricsTrackId,
   })));
@@ -440,13 +480,20 @@ export function FullscreenPlayer({
   const currentTrackId = player.currentTrack?.id;
   const isMatchingTrack = Boolean(currentTrackId && currentLyricsTrackId === currentTrackId);
   const hasLyrics = isMatchingTrack && braccatoLyrics.length > 0;
+  const trackDurationMs = player.currentTrack?.durationMs;
+  const displayLyrics = useMemo(
+    () => fullscreenLyricsForMode(braccatoLyrics, rawFormat, displayMode, trackDurationMs),
+    [rawFormat, braccatoLyrics, displayMode, trackDurationMs],
+  );
+  const karaoke = displayMode === "karaoke" && rawFormat !== null && rawFormat !== "plain";
   const hasSyncedSources = hasSyncedLyricsSources(
     availableProviders,
     braccatoLyrics,
     rawFormat,
   );
   const showProviderIsland =
-    hasLyrics && (hasSyncedSources || availableProviders.length > 1);
+    hasLyrics && (hasSyncedSources || availableProviders.length > 1 ||
+      availableProviders.some(option => option.provider === CUSTOM_LYRICS_PROVIDER));
   const isInstrumental =
     isMatchingTrack &&
     !lyricsLoading &&
@@ -458,7 +505,7 @@ export function FullscreenPlayer({
     <div
       ref={fullscreenRoot}
       data-theme="dark"
-      data-visual-quality={isMobile ? undefined : quality}
+      data-visual-quality={quality}
       className={`lane-fs-player ${isMobile ? "" : "lane-fs-player--desktop"} dark relative h-full w-full overflow-hidden bg-black text-white`}
     >
       <div className="lane-fs-background absolute inset-0 overflow-hidden">
@@ -468,7 +515,7 @@ export function FullscreenPlayer({
           style={{ backgroundColor: "var(--color-bg-primary)" }}
         />
         <AnimatePresence initial={false}>
-          {kawarpSrc && (!kawarpShown || !effects.liveBackground) && (
+          {kawarpSrc && !kawarpShown && (
             <motion.div key={kawarpSrc}
               initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.65, ease: "easeInOut" }}
@@ -477,13 +524,13 @@ export function FullscreenPlayer({
             />
           )}
         </AnimatePresence>
-        {effectsReady && effects.liveBackground ? (
-           <KawarpWrapper src={kawarpSrc} paused={isMobile && (mobileLyrics || speedOpen || queueOpen || (commentsOpen && !!commentsTrack))} onLoad={onKawarpLoad} onError={onError} />
+        {effectsReady ? (
+           <KawarpWrapper src={kawarpSrc} quality={quality} onLoad={onKawarpLoad} onError={onError} />
         ) : null}
       </div>
 
       <div className={`absolute inset-0 z-[1] ${isMobile ? "bg-black/40" : "lane-fs-desktop-shade"}`} />
-      {!isMobile && chromeMask && <div aria-hidden className="lane-fs-chrome-glass" style={{ maskImage: chromeMask, WebkitMaskImage: chromeMask }} />}
+      {!isMobile && <div ref={chromeGlass} aria-hidden className="lane-fs-chrome-glass" />}
       {isMobile && <div aria-hidden className="absolute inset-x-0 top-0 z-20" style={{ height: dismissZoneHeight, touchAction: "none" }} />}
 
 
@@ -516,7 +563,7 @@ export function FullscreenPlayer({
                   transition={{ duration: isMobile ? 0.22 : 0, ease: "easeInOut" }}
                   className="absolute inset-0 flex flex-col"
                 >
-                  <BraccatoLyricsView lyrics={braccatoLyrics} animateLetters={effects.letterAnimation} blurEdges={effects.lyricBlur} />
+                  <BraccatoLyricsView lyrics={displayLyrics} karaoke={karaoke} offsetMs={offsetMs} blurEdges={effects.lyricBlur} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -588,6 +635,13 @@ export function FullscreenPlayer({
                   >
                     {lyricsError || t("player.no_lyrics_found")}
                   </span>
+                  {currentTrackId && (
+                    <button type="button" onClick={openLyricsEditor}
+                      className="mt-1 inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 text-[13px] font-medium text-white transition-colors hover:bg-white/20">
+                      <LuFilePenLine size={15} aria-hidden />
+                      {t("player.custom_lyrics_add")}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ) : null}
@@ -718,7 +772,7 @@ export function FullscreenPlayer({
         data-no-window-drag
       >
         {!isMobile && <VisualQualityPicker />}
-        {showProviderIsland && (!isMobile || mobileLyrics) && <LyricsProviderIsland />}
+        {showProviderIsland && (!isMobile || mobileLyrics) && <LyricsProviderIsland onEditCustomLyrics={openLyricsEditor} />}
         {isMobile && (
           <button
             type="button"
@@ -779,6 +833,14 @@ export function FullscreenPlayer({
           </button>
         )}
       </div>
+      {lyricsEditor && (
+        <CustomLyricsDialog
+          open
+          trackId={lyricsEditor.id}
+          trackTitle={lyricsEditor.title}
+          onOpenChange={open => { if (!open) setLyricsEditor(null); }}
+        />
+      )}
     </div>
   );
 }

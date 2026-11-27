@@ -11,6 +11,7 @@ import {
 } from "@/shared/api";
 import { playerEngine } from "@/features/player";
 import { queryCache } from "@/shared/cache/queryCache";
+import { clearProfileCache } from "@/features/settings/store/profileCache";
 
 export type AuthStatus = "initializing" | "authenticated" | "anonymous";
 export type AuthState = {
@@ -174,6 +175,7 @@ async function clearPlayback(): Promise<void> {
 
 useAuthStore.subscribe((state, previous) => {
   if (state.status === "anonymous" && previous.status !== "anonymous") {
+    clearProfileCache();
     void clearPlayback();
   }
 });

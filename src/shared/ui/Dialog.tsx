@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls, useIsPresent, useReducedMotion } from "framer-motion";
 import { isWindowDraggingActive } from "@/shared/hooks";
 import { isEscapeGuarded } from "@/shared/utils/escapeGuard";
+import { backdropMotion, fadeMotion, modalMotion, modalTransform, sheetMotion } from "./surfaceMotion";
 
 export interface DialogProps {
   open: boolean;
@@ -16,6 +17,7 @@ export interface DialogProps {
   zIndex?: number;
   animateLayout?: boolean;
   bottomSheet?: boolean;
+  fadeOnly?: boolean;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
   "aria-labelledby"?: string;
@@ -23,8 +25,7 @@ export interface DialogProps {
 
 const activeDialogs: Array<() => void> = [];
 
-export default function Dialog({
-  open,
+function DialogLayer({
   onOpenChange,
   children,
   maxWidth = 360,
@@ -35,14 +36,101 @@ export default function Dialog({
   zIndex,
   animateLayout = false,
   bottomSheet = false,
+  fadeOnly = false,
   closeOnBackdrop = true,
-  closeOnEscape = true,
   "aria-labelledby": labelledBy,
-}: DialogProps) {
+}: Omit<DialogProps, "open" | "closeOnEscape">) {
   const dragControls = useDragControls();
   const reduceMotion = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
+  const isPresent = useIsPresent();
   const pointerStartRef = useRef<{ x: number; y: number; target: EventTarget | null } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointerStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      target: e.target,
+    };
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (!isPresent || !closeOnBackdrop || e.target !== e.currentTarget) return;
+    if (isWindowDraggingActive()) {
+      return;
+    }
+    const start = pointerStartRef.current;
+    if (start) {
+      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      if (dist > 6) {
+        return;
+      }
+      if (start.target !== e.currentTarget && (start.target as HTMLElement)?.closest?.("[data-dialog-container]")) {
+        return;
+      }
+    }
+    onOpenChange(false);
+  };
+
+  return (
+    <>
+      <motion.div
+        data-dialog-backdrop="true"
+        aria-hidden="true"
+        variants={reduceMotion ? fadeMotion : backdropMotion}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        className={`fixed inset-0 z-[199] bg-black/40 backdrop-blur-[4px] rounded-4xl overflow-hidden ${backdropClassName}`}
+        style={zIndex ? { zIndex: zIndex - 1 } : undefined}
+        onPointerDown={handlePointerDown}
+        onClick={handleBackdropClick}
+      />
+      <div
+        data-dialog-container={isPresent ? "true" : undefined}
+        className={`fixed inset-0 z-[200] flex justify-center pointer-events-none ${bottomSheet ? "items-end" : "items-center"}`}
+        style={zIndex ? { zIndex } : undefined}
+      >
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={labelledBy}
+          inert={!isPresent}
+          variants={reduceMotion || fadeOnly ? fadeMotion : bottomSheet ? sheetMotion : modalMotion}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transformTemplate={!reduceMotion && !fadeOnly && !bottomSheet ? modalTransform : undefined}
+          drag={bottomSheet && isPresent ? "y" : false}
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.6 }}
+          onPointerDown={event => {
+            event.stopPropagation();
+            if (bottomSheet && (event.target as HTMLElement).closest("[data-sheet-handle]")) dragControls.start(event);
+          }}
+          onClick={event => event.stopPropagation()}
+          onDragEnd={(_, info) => {
+            if (isPresent && bottomSheet && (info.offset.y > 80 || (info.offset.y > 20 && info.velocity.y > 500))) onOpenChange(false);
+          }}
+          className={`pointer-events-auto w-full mx-[16px] max-h-[85vh] flex flex-col rounded-xl border border-border-primary bg-bg-primary overflow-hidden relative ${
+            className || "pt-[16px]"
+          }`}
+          style={{ maxWidth, minHeight, ...(maxHeight ? { maxHeight } : {}) }}
+          layout={animateLayout && !reduceMotion}
+          transition={animateLayout ? { layout: { type: "spring", stiffness: 360, damping: 34 } } : undefined}
+        >
+          {children}
+        </motion.div>
+      </div>
+    </>
+  );
+}
+
+export default function Dialog({ open, closeOnEscape = true, ...props }: DialogProps) {
+  const [mounted, setMounted] = useState(false);
+  const { onOpenChange } = props;
 
   useEffect(() => {
     setMounted(true);
@@ -81,92 +169,9 @@ export default function Dialog({
 
   if (!mounted || typeof document === "undefined") return null;
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    pointerStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      target: e.target,
-    };
-  };
-
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    if (!closeOnBackdrop || e.target !== e.currentTarget) return;
-    if (isWindowDraggingActive()) {
-      return;
-    }
-    const start = pointerStartRef.current;
-    if (start) {
-      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-      if (dist > 6) {
-        return;
-      }
-      if (start.target !== e.currentTarget && (start.target as HTMLElement)?.closest?.("[data-dialog-container]")) {
-        return;
-      }
-    }
-    onOpenChange(false);
-  };
-
   return createPortal(
     <AnimatePresence>
-      {open && (
-        <motion.div
-          key="dialog-backdrop"
-          data-dialog-backdrop="true"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className={`fixed inset-0 z-[199] bg-black/40 backdrop-blur-[2px] rounded-4xl overflow-hidden ${backdropClassName}`}
-          style={zIndex ? { zIndex: zIndex - 1 } : undefined}
-          onPointerDown={handlePointerDown}
-          onClick={handleBackdropClick}
-        />
-      )}
-      {open && (
-        <motion.div
-          key="dialog"
-          data-dialog-container="true"
-          initial={bottomSheet ? { opacity: 1 } : { opacity: 0, scale: 0.97, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={bottomSheet ? { opacity: 1 } : { opacity: 0, scale: 0.97, y: 10 }}
-          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          layout={animateLayout}
-          className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
-          style={zIndex ? { zIndex } : undefined}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={labelledBy}
-            initial={bottomSheet ? { y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 } : undefined}
-            animate={bottomSheet ? { y: 0, opacity: 1 } : undefined}
-            exit={bottomSheet ? { y: reduceMotion ? 0 : "100%", opacity: reduceMotion ? 0 : 1 } : undefined}
-            drag={bottomSheet ? "y" : false}
-            dragControls={dragControls}
-            dragListener={false}
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.6 }}
-            onPointerDown={event => {
-              event.stopPropagation();
-              if (bottomSheet && (event.target as HTMLElement).closest("[data-sheet-handle]")) dragControls.start(event);
-            }}
-            onClick={event => event.stopPropagation()}
-            onDragEnd={(_, info) => {
-              if (bottomSheet && (info.offset.y > 80 || (info.offset.y > 20 && info.velocity.y > 500))) onOpenChange(false);
-            }}
-            className={`pointer-events-auto w-full mx-[16px] max-h-[85vh] flex flex-col rounded-xl border border-border-primary bg-bg-primary overflow-hidden relative ${
-              className || "pt-[16px]"
-            }`}
-            style={{ maxWidth, minHeight, ...(maxHeight ? { maxHeight } : {}) }}
-            layout={animateLayout}
-            transition={bottomSheet ? { duration: reduceMotion ? 0.1 : 0.32, ease: [0.22, 1, 0.36, 1] } : animateLayout ? { layout: { type: "spring", stiffness: 360, damping: 34 } } : undefined}
-          >
-            {children}
-          </motion.div>
-        </motion.div>
-      )}
+      {open && <DialogLayer {...props} />}
     </AnimatePresence>,
     document.body,
   );

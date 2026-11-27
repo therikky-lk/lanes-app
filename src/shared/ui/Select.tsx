@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { fadeMotion, popoverMotion } from "./surfaceMotion";
 
 export interface SelectOption<T extends string = string> {
   value: T;
@@ -124,7 +125,8 @@ export function Select<T extends string = string>({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const [placement, setPlacement] = useState<{ style: React.CSSProperties; side: "top" | "bottom" }>({ style: {}, side: "bottom" });
+  const reduceMotion = useReducedMotion();
 
   const selected = options.find((o) => o.value === value);
 
@@ -169,13 +171,12 @@ export function Select<T extends string = string>({
     const maxHeight = Math.max(0, Math.min(height, openAbove ? above : below));
     const top = Math.max(12, openAbove ? trigger.top - maxHeight - 6 : trigger.bottom + 6);
 
-    setMenuStyle({
-      top,
-      maxHeight,
-      minWidth: menuWidth,
-      width: menuWidth,
-      maxWidth: availableWidth,
-      left,
+    setPlacement({
+      side: openAbove ? "top" : "bottom",
+      style: {
+        top, maxHeight, minWidth: menuWidth, width: menuWidth, maxWidth: availableWidth, left,
+        transformOrigin: `${align === "bottom-right" ? "right" : "left"} ${openAbove ? "bottom" : "top"}`,
+      },
     });
   }, [open, align]);
 
@@ -239,13 +240,11 @@ export function Select<T extends string = string>({
               key="select-menu"
               ref={menuRef}
               role="listbox"
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ duration: 0.13, ease: "easeOut" }}
+              variants={reduceMotion ? fadeMotion : popoverMotion[placement.side]}
+              initial="initial" animate="animate" exit="exit"
               className="lane-select-menu fixed z-[9999] max-h-[min(360px,calc(100dvh-24px))] overflow-y-auto overscroll-contain rounded-[12px] border border-border-primary/35 bg-bg-primary/85 p-[8px] shadow-[0_16px_44px_rgba(0,0,0,0.32)] backdrop-blur-2xl"
               style={{
-                ...menuStyle,
+                ...placement.style,
                 background: "color-mix(in srgb, var(--bg-primary) 82%, transparent)",
                 backdropFilter: "blur(24px) saturate(145%)",
                 WebkitBackdropFilter: "blur(24px) saturate(145%)",

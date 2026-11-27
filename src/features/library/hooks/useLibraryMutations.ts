@@ -7,6 +7,7 @@ import { useCallback, useState } from "react";
 import { api, toTrackSnapshot } from "@/shared/api";
 import {
   notifyLibraryChanged,
+  applyPlaylistItemRemoval,
   addLocalTrackToPlaylist,
   removeLocalTrackFromPlaylist,
 } from "./usePlaylists";
@@ -55,10 +56,13 @@ export function useAddPlaylistTracks() {
   );
 }
 
-function removePlaylistTrack({ playlistId, itemId }: { playlistId: string; itemId: string }) {
-  return isLocalPlaylistItemId(itemId)
-    ? removeLocalTrackFromPlaylist(playlistId, itemId.slice(LOCAL_ITEM_PREFIX.length))
-    : api.removePlaylistItem(playlistId, itemId);
+async function removePlaylistTrack({ playlistId, itemId }: { playlistId: string; itemId: string }) {
+  if (isLocalPlaylistItemId(itemId)) {
+    await removeLocalTrackFromPlaylist(playlistId, itemId.slice(LOCAL_ITEM_PREFIX.length));
+  } else {
+    await api.removePlaylistItem(playlistId, itemId);
+  }
+  applyPlaylistItemRemoval(playlistId, itemId);
 }
 
 export function useRemovePlaylistTracks() {

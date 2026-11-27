@@ -1,4 +1,5 @@
 import { getLyricsCacheSource, needsLyricsRefresh } from "@/features/lyrics/store/lyricsRefresh";
+import { hasSuspiciousLrclibTiming } from "@/shared/media/lyrics/lrcTiming";
 import { EQ_MAX_CUSTOM_PRESETS, EQ_PRESET_NAME_MAX } from "./equalizer";
 import { cleanTrackTitle } from "@/shared/utils/trackTitle";
 import { diag } from "@/shared/platform/diag";
@@ -36,6 +37,7 @@ import {
   type CachedLyricsItem,
 } from "@/features/lyrics";
 import { preloadCoverArt } from "@/features/covers";
+import { preloadTrackArtistAvatars } from "@/features/artist/hooks/artistAvatarCache";
 import { linerDb, type CachedLyricsRecord } from "@/shared/storage";
 import { debouncedStorage } from "@/shared/utils/storage";
 import { showToast } from "@/shared/ui";
@@ -137,7 +139,7 @@ function newRadioWaveId(): string {
 type LyricsHint = { title: string; artist: string; durationMs?: number };
 
 function lyricsHint(track: Track): LyricsHint {
-  const artist = track.artistList?.[0]?.name || track.artists.split(",")[0] || "";
+  const artist = track.artistList?.map(({ name }) => name.trim()).filter(Boolean).join(", ") || track.artists;
   return { title: track.title, artist: artist.trim(), durationMs: track.durationMs };
 }
 
@@ -398,6 +400,7 @@ class PlayerEngine {
           this.lastPreloadKey = null;
           if (state.currentTrack) {
             this.telemetry.startTrack(state.currentTrack, state.playbackContext);
+            preloadTrackArtistAvatars(state.currentTrack);
           } else {
             this.telemetry.flushCurrentTrack();
           }
@@ -431,6 +434,7 @@ class PlayerEngine {
         const restoredTrack = state.currentTrack;
         if (restoredTrack) {
           prevTrackId = restoredTrack.id;
+          preloadTrackArtistAvatars(restoredTrack);
           void this.fetchLyricsForTrack(restoredTrack);
           this.preloadNextTrack(state);
         }
@@ -1335,6 +1339,7 @@ class PlayerEngine {
     if (nextTrack.coverUrl) {
       void preloadCoverArt(nextTrack.coverUrl);
     }
+    preloadTrackArtistAvatars(nextTrack);
 
     if (!lyricsCache.has(nextTrack.id)) {
       void this.prefetchLyrics(nextTrack.id, lyricsHint(nextTrack));
@@ -1490,6 +1495,7 @@ class PlayerEngine {
 
     if (!track) {
       this.currentLyricsTrackId = null;
+      this.lyricsAbort?.abort();
       lyricsStore.reset();
       return;
     }
@@ -1541,6 +1547,7 @@ class PlayerEngine {
         cached = null;
       }
     }
+    if (token !== this.lyricsLoadToken || controller.signal.aborted) return;
 
     if (cached && cached.candidate) {
       bestCandidate = cached.candidate;
@@ -1596,6 +1603,7 @@ class PlayerEngine {
         await this.inFlightLyricsPrefetches.get(trackId);
         if (token !== this.lyricsLoadToken || controller.signal.aborted) return;
         const freshCached = lyricsCache.get(trackId) || (await linerDb.getLyrics(trackId));
+        if (token !== this.lyricsLoadToken || controller.signal.aborted) return;
         if (freshCached && freshCached.candidate) {
           const parsed = parseRawLyrics(
             freshCached.candidate.lyrics.content,
@@ -1629,6 +1637,12 @@ class PlayerEngine {
         if (event.type === "provider" && event.status === "found") {
           const candidate = event.candidate;
           const currentStore = useLyricsStore.getState();
+          const providerKey = candidate.provider.toLowerCase().trim();
+          const previous = currentStore.availableProviders.find(p => p.provider.toLowerCase().trim() === providerKey);
+          const suspiciousTiming = hasSuspiciousLrclibTiming(candidate, track.durationMs);
+          // Don't replace a previously corrected match when the alternate catalog is temporarily unavailable.
+          if (previous && previous.syncLevel !== "plain" && suspiciousTiming &&
+              !hasSuspiciousLrclibTiming(previous.candidate, track.durationMs)) continue;
           const option = {
             provider: candidate.provider,
             syncLevel: candidate.syncLevel,
@@ -1637,7 +1651,7 @@ class PlayerEngine {
           };
           const updatedProviders = [
             ...currentStore.availableProviders.filter(
-              (p) => p.provider !== candidate.provider,
+              (p) => p.provider.toLowerCase().trim() !== providerKey,
             ),
             option,
           ].sort((a, b) => compareLyricsCandidates(a.candidate, b.candidate));
@@ -1649,7 +1663,10 @@ class PlayerEngine {
 
           if (
             !bestCandidate ||
-            isBetterLyricsCandidate(candidate, bestCandidate)
+            isBetterLyricsCandidate(candidate, bestCandidate) ||
+            (providerKey === bestCandidate.provider.toLowerCase().trim() &&
+              candidate.syncLevel !== "plain" && hasSuspiciousLrclibTiming(bestCandidate, track.durationMs) &&
+              !suspiciousTiming)
           ) {
             bestCandidate = candidate;
 
@@ -1668,6 +1685,7 @@ class PlayerEngine {
               syncedLines: parsed.syncedLines,
               plainLyrics: parsed.plainLyrics,
               lyricsQuality: candidate.quality.total,
+              lyricsLoading: false,
             });
             if (shouldCacheLyricsCandidate(candidate)) {
               lyricsCache.set(trackId, candidate, updatedProviders);
@@ -1730,8 +1748,8 @@ class PlayerEngine {
           log(
             "cyan",
             "lyrics",
-            event.best
-              ? `done, best=${event.best.provider} q=${event.best.quality}`
+            bestCandidate
+              ? `done, best=${bestCandidate.provider} q=${bestCandidate.quality.total}`
               : "done, no lyrics found",
           );
           break;
@@ -1750,7 +1768,7 @@ class PlayerEngine {
         });
       }
     } finally {
-      if (token === this.lyricsLoadToken) {
+      if (token === this.lyricsLoadToken && !controller.signal.aborted) {
         useLyricsStore.getState().setLyricsState({ lyricsLoading: false });
       }
     }

@@ -1,19 +1,16 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ThemeProvider, useTheme } from "next-themes";
+import { ThemeProvider } from "next-themes";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { ThemeSync } from "./ThemeSync";
+import { chooseTheme, useThemePreferences } from "@/shared/theme/themePreferences";
+
+vi.mock("@/shared/hooks/useIsMobile", () => ({ useIsMobile: () => false }));
 
 let root: Root;
 let container: HTMLDivElement;
 let systemDark: boolean;
 let listeners: Set<(event: { matches: boolean }) => void>;
-let selectTheme: (theme: string) => void;
-
-function ThemeControl() {
-  selectTheme = useTheme().setTheme;
-  return null;
-}
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -28,6 +25,9 @@ beforeEach(() => {
     addListener: (listener: (event: { matches: boolean }) => void) => listeners.add(listener),
     removeListener: (listener: (event: { matches: boolean }) => void) => listeners.delete(listener),
   }));
+  useThemePreferences.setState({
+    preset: "system", syncEnabled: false, preferenceVersion: 0, themeVersion: 0,
+  });
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -44,7 +44,7 @@ async function mount() {
   await act(async () => {
     root.render(
       <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
-        <ThemeControl />
+        <ThemeSync />
       </ThemeProvider>,
     );
   });
@@ -58,9 +58,7 @@ async function changeSystem(dark: boolean) {
 }
 
 it("defaults to the system, not a forced dark preset", () => {
-  const app = readFileSync(`${process.cwd()}/src/app/App.tsx`, "utf8");
-  expect(app).toMatch(/defaultTheme="system"/);
-  expect(app).toMatch(/enableSystem=\{true\}/);
+  expect(useThemePreferences.getInitialState().preset).toBe("system");
 });
 
 it("starts light on a light system and follows OS changes", async () => {
@@ -80,18 +78,11 @@ it("starts dark only when the system is dark", async () => {
 
 it.each(["light", "dark"] as const)("respects and saves the explicit %s choice", async (preset) => {
   await mount();
-  await act(async () => selectTheme(preset));
-  expect(localStorage.getItem("theme")).toBe(preset);
+  await act(async () => chooseTheme(preset));
+  expect(localStorage.getItem("lane_theme_preset")).toBe(preset);
   await changeSystem(true);
   await changeSystem(false);
   expect(document.documentElement.dataset.theme).toBe(preset);
-  await act(async () => selectTheme("system"));
+  await act(async () => chooseTheme("system"));
   expect(document.documentElement.dataset.theme).toBe("light");
-});
-
-it.each(["light", "dark"] as const)("restores a saved %s choice on startup", async (preset) => {
-  localStorage.setItem("theme", preset);
-  systemDark = preset === "light";
-  await mount();
-  expect(document.documentElement.dataset.theme).toBe(preset);
 });

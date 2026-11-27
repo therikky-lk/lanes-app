@@ -3,8 +3,11 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.therikky.lane",
   appName: "Lane",
-  webDir: "dist-android",
+  webDir: process.env.LANE_AUTH_DIAGNOSTICS === "1"
+    ? process.env.LANE_AUTH_DIAGNOSTICS_WEB_DIR || "dist-android"
+    : "dist-android",
   backgroundColor: "#0d0d10",
+  ...(process.env.LANE_AUTH_DIAGNOSTICS === "1" ? { loggingBehavior: "none" as const } : {}),
   android: {
     // media streams and APIs are plain https; nothing needs mixed content
     allowMixedContent: false,

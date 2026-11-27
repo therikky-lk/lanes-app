@@ -1,4 +1,3 @@
-export { default as ScrollBlurEdge } from "./ScrollBlurEdge";
 export { default as Button, type ButtonProps } from "./Button";
 export { default as Dialog, type DialogProps } from "./Dialog";
 export { default as Select, type SelectProps, type SelectOption } from "./Select";
@@ -51,4 +50,3 @@ export {
   useWindowAnimationStore,
   type WindowAnimationPhase,
 } from "./WindowAnimationContainer";
-

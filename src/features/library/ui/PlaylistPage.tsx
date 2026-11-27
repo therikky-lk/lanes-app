@@ -2,7 +2,6 @@ import ShareButton from "@/shared/ui/ShareButton";
 import { SwipeToQueue } from "@/shared/ui/SwipeToDelete";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useSearchParams } from "react-router-dom";
-import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo, Suspense } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import PlaylistPageSkeleton from "./PlaylistPageSkeleton";
@@ -31,7 +30,8 @@ import TrackGridCard from "@/features/player/ui/TrackGridCard";
 import { getImportedPlaylistMeta } from "../services/import/importedPlaylistMeta";
 import { addYandexPlaylistToLikes } from "../services/import/sources/yandexMusic/yandexMusicImport";
 import { canSyncCoverMarker, readCoverMarker, readPlaylistSource, stripCoverMarker, withCoverMarker, withDescriptionText } from "../services/playlistCoverMarker";
-import { getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
+import { playlistDisplayTitle } from "../services/playlistDisplayTitle";
+import { fullSizePlaylistCover, getCustomPlaylistCover, getPlaylistCover, hasCustomPlaylistCover, imageFileToCover, setPlaylistCover } from "../services/playlistCovers";
 import { diag } from "@/shared/platform/diag";
 import Button from "@/shared/ui/Button";
 import Dialog from "@/shared/ui/Dialog";
@@ -349,7 +349,7 @@ function LibraryPlaylistContent() {
     if (!playlistDetail) return null;
     const bio = stripCoverMarker(playlistDetail.description);
     return {
-      title: playlistDetail.title || t("playlist.untitled_playlist"),
+      title: playlistDisplayTitle({ ...playlistDetail, id: decodedId ?? undefined }, t) || t("playlist.untitled_playlist"),
       bio,
       coverUrl: playlistDetail.coverUrl || "",
       coverUrls:
@@ -358,7 +358,7 @@ function LibraryPlaylistContent() {
       tracks: withLocalAvailability(playlistDetail.tracks, localRecords),
       revision: playlistDetail.revision,
     };
-  }, [isLikesMode, likesData, playlistDetail, localRecords, t]);
+  }, [isLikesMode, likesData, playlistDetail, localRecords, decodedId, t]);
 
   useEffect(() => {
     if (isEditingTitle && titleRef.current) {
@@ -395,7 +395,7 @@ function LibraryPlaylistContent() {
 
   useEffect(() => {
     setOptimisticTracks(null);
-  }, [viewData?.revision, decodedId]);
+  }, [viewData?.revision, playlistDetail?.tracks, decodedId]);
 
   const allTracks = useMemo(() => {
     return optimisticTracks ?? viewData?.tracks ?? [];
@@ -908,13 +908,19 @@ function LibraryPlaylistContent() {
           }
         }}
       />
-      <Dialog open={coverDialogOpen} onOpenChange={open => { if (!coverSaving) setCoverDialogOpen(open); }} maxWidth={360} aria-labelledby="playlist-cover-dialog-title">
-        <div className="grid grid-cols-2 gap-3 px-5 pb-5">
-          <h3 id="playlist-cover-dialog-title" className="col-span-2 m-0 text-base font-semibold text-text-primary">{t("playlist.change_cover")}</h3>
-          <Button type="button" className="min-w-0 !whitespace-normal" disabled={coverSaving} onClick={() => coverInputRef.current?.click()}>
+      <Dialog open={coverDialogOpen} onOpenChange={open => { if (!coverSaving) setCoverDialogOpen(open); }} maxWidth={480} aria-labelledby="playlist-cover-dialog-title">
+        <div className="px-6 pb-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 id="playlist-cover-dialog-title" className="m-0 text-lg font-semibold text-text-primary">{t("playlist.change_cover")}</h3>
+            <button type="button" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-white/10 hover:text-text-primary disabled:opacity-50" disabled={coverSaving} onClick={() => setCoverDialogOpen(false)} aria-label={t("common.close")}>
+              <LuX size={20} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
+          <Button type="button" className="min-w-0 !h-auto min-h-11 !whitespace-normal !px-3 !py-2 text-center" disabled={coverSaving} onClick={() => coverInputRef.current?.click()}>
             {t("playlist.change_cover")}
           </Button>
-          <Button type="button" variant="outline" className="min-w-0 !whitespace-normal" disabled={coverSaving || !hasCustomPlaylistCover(decodedId)} onClick={async () => {
+          <Button type="button" variant="outline" className="min-w-0 !h-auto min-h-11 !whitespace-normal !px-3 !py-2 text-center" disabled={coverSaving || !hasCustomPlaylistCover(decodedId)} onClick={async () => {
             if (!decodedId || coverSaving) return;
             setCoverSaving(true);
             try {
@@ -928,6 +934,7 @@ function LibraryPlaylistContent() {
           }}>
             {t("playlist.reset_cover")}
           </Button>
+          </div>
         </div>
       </Dialog>
       <div className="relative z-1 grid grid-cols-1 w-full h-full min-h-0 overflow-hidden">
@@ -989,7 +996,7 @@ function LibraryPlaylistContent() {
                     if (urls.length === 1) {
                       return (
                         <CoverImage
-                          src={urls[0]}
+                           src={fullSizePlaylistCover(urls[0])}
                           alt={viewData.title}
                           fill
                           sizes="280px"
@@ -1010,7 +1017,7 @@ function LibraryPlaylistContent() {
                               className={`relative overflow-hidden${spanFull ? " row-span-2" : ""}`}
                             >
                               <CoverImage
-                                src={url}
+                                 src={fullSizePlaylistCover(url)}
                                 alt={`${viewData.title} cover ${i + 1}`}
                                 fill
                                 sizes="140px"
@@ -1355,7 +1362,6 @@ function LibraryPlaylistContent() {
                 />
               )}
               <div className="relative z-[1]">
-              <ScrollBlurEdge height={60} />
               {isLikesMode && allTracks.length > 0 && (
                 <div
                   ref={trackFiltersRef}

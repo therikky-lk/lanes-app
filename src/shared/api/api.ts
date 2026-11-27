@@ -1151,8 +1151,8 @@ export const api = {
   },
 
   /**
-   * Server lyrics first; when the server finds nothing (or is unreachable) fall
-   * back to client-side sources (LRCLIB synced/plain, YouTube Music plain).
+   * Server lyrics first; supplement missing timing or an unavailable server
+   * with client-side sources (LRCLIB and YouTube Music).
    */
   async *streamLyrics(
     id: string,
@@ -1176,6 +1176,7 @@ export const api = {
       targets.map(target => () => api.streamServerLyrics(id, signal, hint, target)),
       () => streamFallbackLyrics(id, hint, signal),
       signal,
+      hint?.durationMs,
     );
   },
 
@@ -1193,7 +1194,9 @@ export const api = {
             ...(hint.durationMs && hint.durationMs > 0 ? { durationMs: String(Math.round(hint.durationMs)) } : {}),
           }).toString()
         : "";
-    const path = `/v1/tracks/${encodeURIComponent(id)}/lyrics${hintParams ? `?${hintParams}` : ""}`;
+    const providerId = id.replace(/^yt:([a-zA-Z0-9_-]{11})$/, "$1");
+    const encodedId = encodeURIComponent(providerId);
+    const path = `/v1/tracks/${encodedId}/lyrics${hintParams ? `?${hintParams}` : ""}`;
     const accessToken = target ? target.token : getAuthSession()?.authBackend === "hyprr" ? null : await getValidAccessToken();
     const baseUrl = target?.baseUrl ?? getApiBaseUrl();
     const signedHeaders = target?.publicCatalog ? {} : await signApiRequest("GET", path);
@@ -1209,29 +1212,25 @@ export const api = {
       "x-session-id": id,
     };
 
-    let res: Response;
-    const connect = new AbortController();
-    const connectTimer = setTimeout(() => connect.abort(), 20_000);
-    try {
-      const localPreview = !target?.publicCatalog && usesLocalAppTransport() && baseUrl === getApiBaseUrl();
-      res = await fetch(
-        localPreview
-          ? `/__lane/lyrics/${encodeURIComponent(id)}${hintParams ? `?${hintParams}` : ""}`
-          : `${baseUrl}${path}`,
-        {
-          signal: signal ? AbortSignal.any([signal, connect.signal]) : connect.signal,
-          ...(target?.publicCatalog ? { credentials: "omit", redirect: "error" } as const : {}),
-          headers: {
-            Accept: "application/json, text/event-stream",
-            ...(!target?.publicCatalog && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-            ...(target?.publicCatalog ? {} : correlationHeaders),
-            ...signedHeaders,
-          },
+    // The timeout covers the response body too: an accepted SSE connection
+    // can otherwise send nothing and keep the local sources from ever running.
+    const deadline = AbortSignal.timeout(20_000);
+    const localPreview = !target?.publicCatalog && usesLocalAppTransport() && baseUrl === getApiBaseUrl();
+    const res = await fetch(
+      localPreview
+        ? `/__lane/lyrics/${encodedId}${hintParams ? `?${hintParams}` : ""}`
+        : `${baseUrl}${path}`,
+      {
+        signal: signal ? AbortSignal.any([signal, deadline]) : deadline,
+        ...(target?.publicCatalog ? { credentials: "omit", redirect: "error" } as const : {}),
+        headers: {
+          Accept: "application/json, text/event-stream",
+          ...(!target?.publicCatalog && accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(target?.publicCatalog ? {} : correlationHeaders),
+          ...signedHeaders,
         },
-      );
-    } finally {
-      clearTimeout(connectTimer);
-    }
+      },
+    );
 
     const lyricsDateHeader = res.headers?.get?.("date");
     if (lyricsDateHeader && !target?.publicCatalog) {

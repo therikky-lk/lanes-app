@@ -1,4 +1,5 @@
 import { addPlaylistSelection } from "../../services/addPlaylistSelection";
+import { playlistDisplayTitle } from "../../services/playlistDisplayTitle";
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { PlaylistFill, Search2Line, CloseCircleFill, AddLine } from "@mingcute/react";
 import { useToast } from "@/shared/ui";
@@ -37,14 +38,15 @@ export default function AddToPlaylistModal() {
   const rawPlaylists = track?.playlists ?? playlistData?.playlists ?? [];
 
   const playlists = useMemo(() => {
-    if (!searchQuery.trim()) return rawPlaylists;
+    const localized = rawPlaylists.map(p => ({ ...p, title: playlistDisplayTitle(p, t) }));
+    if (!searchQuery.trim()) return localized;
     const q = searchQuery.toLowerCase().trim();
-    return rawPlaylists.filter(
+    return localized.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         (p.description ? p.description.toLowerCase().includes(q) : false),
     );
-  }, [rawPlaylists, searchQuery]);
+  }, [rawPlaylists, searchQuery, t]);
 
   // update dynamic top and bottom scroll fade mask
   const updateScrollMask = useCallback(() => {

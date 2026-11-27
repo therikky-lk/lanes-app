@@ -1,7 +1,6 @@
 import ShareButton from "@/shared/ui/ShareButton";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import ScrollBlurEdge from "@/shared/ui/ScrollBlurEdge";
 import { useCallback, useEffect, useState, useMemo, useRef, Suspense } from "react";
 import CollectionPageSkeleton from "./CollectionPageSkeleton";
 import {
@@ -35,6 +34,7 @@ import {
 } from "@/shared/ui";
 import type { Track } from "@/shared/types";
 import { useTranslation } from "@/languages";
+import { isYoutubeLikedPlaylist } from "@/shared/media/youtube/account/playlistArtwork";
 import { useModalStore } from "@/features/library";
 import { useExternalItems } from "@/features/library/hooks";
 import { useCollection } from "../hooks/useCollection";
@@ -63,6 +63,8 @@ function CollectionContent() {
   const { data, loading } = useCollection(type, id, releaseTitle, releaseArtist, isRelease);
   const entityType = type === "playlist" ? "playlist" : "album";
   const decodedId = id ? decodeURIComponent(id) : "";
+  const title = type === "playlist" && isYoutubeLikedPlaylist(decodedId)
+    ? `${t("library.liked_songs")} · YouTube Music` : data?.title;
   const countryMix = type === "playlist" ? countryFromMixId(decodedId) : null;
   const isDailyMix = Boolean(
     data?.isDailyMix ||
@@ -390,7 +392,7 @@ function CollectionContent() {
                 }
 
                 title={
-                  <h1 className={SIDEBAR_TITLE_CLASS}>{data.title}</h1>
+                  <h1 className={SIDEBAR_TITLE_CLASS}>{title}</h1>
                 }
                 subtitle={
                   data.artists && data.artists.length > 0 ? (
@@ -577,7 +579,6 @@ function CollectionContent() {
                 }
                 style={{ willChange: "scroll-position" }}
               >
-              <ScrollBlurEdge offset={56} height={60} />
               <section>
                 {search.matches && search.matches.length === 0 ? (
                   <TrackSearchEmpty query={search.activeQuery} onClear={() => search.setQuery("")} />

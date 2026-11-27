@@ -33,12 +33,16 @@ export function VisualQualityPicker() {
         <path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8M5.6 18.4l2.8-2.8m7.2-7.2 2.8-2.8" /><circle cx="12" cy="12" r="3" />
       </svg>
     </button>
-    {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={t("player.visual_quality")}
+    {open && createPortal(<div ref={panel} id={id} role="menu" aria-label={t("player.visual_quality")} data-no-window-drag
       className="lane-fs-popover lane-fs-quality-menu dark" data-theme="dark" style={position}>
       <h3 className="m-0 text-[13px] font-semibold text-white">{t("player.visual_quality")}</h3>
       <p className="m-0 mb-2 mt-1 text-[11px] leading-[1.4] text-white/65">{t("player.visual_quality_hint")}</p>
       {(["all", "balanced", "lite"] as VisualQuality[]).map(mode => <button key={mode} type="button" role="menuitemradio" aria-checked={quality === mode}
-        onClick={() => setQuality(mode)} className={`lane-fs-quality-option ${quality === mode ? "is-selected" : ""}`}>
+        onClick={() => {
+          setQuality(mode);
+          setOpen(false);
+          anchor.current?.focus();
+        }} className={`lane-fs-quality-option ${quality === mode ? "is-selected" : ""}`}>
         <span className="min-w-0 flex-1"><span className="block text-[12px] font-semibold">{t(`player.visual_quality_${mode}`)}</span>
           <span className="mt-0.5 block text-[11px] leading-[1.35] opacity-70">{t(`player.visual_quality_${mode}_hint`)}</span></span>
         {quality === mode && <CheckLine size={17} className="shrink-0" />}

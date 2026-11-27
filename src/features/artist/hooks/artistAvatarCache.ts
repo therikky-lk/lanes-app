@@ -1,5 +1,8 @@
 import { resolveArtistAvatar } from "./artistAvatar";
 import { prepareCoverFallback } from "@/features/covers/lib/coverSigner";
+import { splitJoinedArtists } from "@/shared/api/track";
+import { canonicalArtistId } from "@/shared/media/artistIdentity";
+import type { Track } from "@/shared/types";
 
 const CACHE = "liner-covers-v2";
 const PATH = "/__lane_artist_avatar__/";
@@ -11,8 +14,23 @@ const listeners = new Map<string, Set<() => void>>();
 let generation = 0;
 let writes: Promise<unknown> = Promise.resolve();
 
-export const artistAvatarKey = (id?: string, name?: string) => id && id !== "unknown" && id !== name
-  ? `id:${id}` : `name:${name?.normalize("NFKC").trim().toLocaleLowerCase() ?? ""}`;
+export function artistAvatarKey(id?: string, name?: string): string {
+  const canonical = canonicalArtistId(id ?? "", name);
+  return canonical && canonical !== "unknown" && canonical !== name
+    ? `id:${canonical}` : `name:${name?.normalize("NFKC").trim().toLocaleLowerCase() ?? ""}`;
+}
+
+type TrackCredits = Pick<Track, "artistId" | "artistList" | "artists">;
+
+export function trackAvatarArtists({ artistId, artistList, artists }: TrackCredits) {
+  return splitJoinedArtists(artistList?.length ? artistList : [{ id: artistId, name: artists }]).slice(0, 3);
+}
+
+export function preloadTrackArtistAvatars(track: TrackCredits): void {
+  for (const { id, name } of trackAvatarArtists(track)) {
+    void loadArtistAvatar(id, name).catch(() => {});
+  }
+}
 
 export function peekArtistAvatar(key: string): string | null {
   return memory.get(key)?.url ?? null;
@@ -58,10 +76,11 @@ async function trim(cache: Cache): Promise<void> {
 export function loadArtistAvatar(id?: string, name?: string, sourceUrl?: string): Promise<string | null> {
   const key = artistAvatarKey(id, name);
   const existing = memory.get(key);
-  if (existing && existing.expires > Date.now()) return Promise.resolve(existing.url);
-  const running = pending.get(key);
-  if (running) return running;
+  if (existing && existing.expires > Date.now() && (existing.url || !sourceUrl)) return Promise.resolve(existing.url);
   const epoch = generation;
+  const running = pending.get(key);
+  if (running) return sourceUrl ? running.then(url =>
+    !url && epoch === generation ? loadArtistAvatar(id, name, sourceUrl) : url) : running;
   const request = (async () => {
     const cacheKey = new URL(PATH + encodeURIComponent(key), "https://lane-avatar-cache.invalid").href;
     let cache: Cache | undefined;
@@ -69,7 +88,7 @@ export function loadArtistAvatar(id?: string, name?: string, sourceUrl?: string)
     let blob = await cache?.match(cacheKey).then(response => response?.blob()).catch(() => undefined);
     let url: string | null = null;
     if (!blob?.size) {
-      url = sourceUrl || await resolveArtistAvatar(id, name);
+      url = sourceUrl || await resolveArtistAvatar(canonicalArtistId(id ?? "", name), name);
       if (epoch !== generation) return null;
       remember(key, url);
       if (url) {

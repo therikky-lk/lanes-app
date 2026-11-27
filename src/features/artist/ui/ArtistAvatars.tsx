@@ -1,18 +1,32 @@
-import { splitJoinedArtists } from "@/shared/api/track";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import type { TrackArtist } from "@/shared/types";
+import { artistAvatarKey, trackAvatarArtists } from "../hooks/artistAvatarCache";
 import { useArtistAvatar } from "../hooks/useArtistAvatar";
+
 function Avatar({ artist, size }: { artist: TrackArtist; size: number }) {
   const url = useArtistAvatar(artist.id, artist.name);
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  return <span data-artist-avatar={artist.name} className="relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-[8px] font-medium text-current"
+  const [readyUrl, setReadyUrl] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    if (!url) { setReadyUrl(null); return; }
+    const image = new Image();
+    image.onload = () => setReadyUrl(url);
+    image.src = url;
+    if (image.complete && image.naturalWidth > 0) setReadyUrl(url);
+    return () => { image.onload = null; };
+  }, [url]);
+
+  // No initials while resolving a photo. Keep the previous image for this
+  // artist while a cached copy (or a new URL) is loading.
+  if (!readyUrl) return null;
+  return <span data-artist-avatar={artist.name} className="inline-flex shrink-0 overflow-hidden rounded-full"
     style={{ width: size, height: size }}>
-    {url && url !== failedUrl ? <img src={url} alt="" className="h-full w-full object-cover" draggable={false} onError={() => setFailedUrl(url)} /> : <span>{artist.name.trim().charAt(0).toUpperCase()}</span>}
+    <img src={readyUrl} alt="" className="h-full w-full object-cover" draggable={false} onError={() => setReadyUrl(null)} />
   </span>;
 }
+
 export function ArtistAvatars({ artistId, artistList, name, size = 18 }: { artistId?: string; artistList?: TrackArtist[]; name: string; size?: number }) {
-  const artists = splitJoinedArtists(artistList?.length ? artistList : [{ id: artistId, name }]);
-  return <span aria-hidden="true" className="inline-flex shrink-0 items-center -space-x-[6px]">
-    {artists.filter(artist => artist.name).slice(0, 3).map((artist, index) => <Avatar key={`${artist.id ?? artist.name}-${index}`} artist={artist} size={size} />)}
+  const artists = trackAvatarArtists({ artistId, artistList, artists: name });
+  return <span aria-hidden="true" className="inline-flex shrink-0 items-center -space-x-[6px] empty:hidden">
+    {artists.map(artist => <Avatar key={`${artistAvatarKey(artist.id, artist.name)}:${artist.name}`} artist={artist} size={size} />)}
   </span>;
 }

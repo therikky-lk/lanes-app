@@ -4,6 +4,8 @@
 import type { LyricsCandidate, LyricsStreamEvent } from "@/shared/contracts/lyrics";
 import { postInnertube } from "@/shared/media/innertube/innertubeClient";
 import { isBrowserRuntime } from "@/shared/platform/browser";
+import { cleanTrackTitle } from "@/shared/utils/trackTitle";
+import { hasSuspiciousLrcTiming } from "./lrcTiming";
 
 export interface FallbackLyricsHint {
   title: string;
@@ -29,11 +31,10 @@ const lyricResponses = new Map<string, { data: unknown; expiresAt: number }>();
 
 export function normalizeLyricsHint(hint: FallbackLyricsHint): FallbackLyricsHint {
   const artist = hint.artist.replace(/\s*-\s*Topic$/i, "").trim();
-  // Upload titles often carry the real artist while the author is an uploader.
-  const parts = hint.title.split(/\s+[–—-]\s+/);
-  return parts.length === 2 && parts.every((part) => part.trim())
-    ? { ...hint, title: parts[1].trim(), artist: parts[0].trim() }
-    : { ...hint, title: hint.title.trim(), artist };
+  const title = cleanTrackTitle(hint.title.trim(), artist)
+    .replace(/\s*[([]\s*(?:feat|ft|prod)\.?\s+[^)\]]+[)\]]\s*$/i, "")
+    .trim();
+  return { ...hint, title, artist };
 }
 
 export function normalizeForMatch(text: string): string {
@@ -66,18 +67,25 @@ function tokenOverlap(a: string, b: string): number {
 /** 0..1 score of how well a LRCLIB record matches the track we play */
 export function scoreLrclibRecord(rec: LrclibRecord, hint: FallbackLyricsHint): number {
   const titleScore = tokenOverlap(rec.trackName, hint.title);
-  const artistScore = Math.max(
-    tokenOverlap(rec.artistName, hint.artist),
-    tokenOverlap(rec.artistName, primaryArtist(hint.artist)),
-    normalizeForMatch(hint.artist).includes(normalizeForMatch(primaryArtist(rec.artistName))) ? 1 : 0,
-  );
+  const artistScore = scoreArtist(rec, hint);
   let durationScore = 0.5;
   if (hint.durationMs && rec.duration) {
     const diff = Math.abs(rec.duration - hint.durationMs / 1000);
     durationScore = diff <= 2 ? 1 : diff <= 5 ? 0.8 : diff <= 10 ? 0.4 : 0;
   }
-  const syncBonus = rec.syncedLyrics ? 0.05 : 0;
-  return titleScore * 0.5 + artistScore * 0.3 + durationScore * 0.2 + syncBonus;
+  return titleScore * 0.5 + artistScore * 0.3 + durationScore * 0.2;
+}
+
+function scoreArtist(rec: LrclibRecord, hint: FallbackLyricsHint): number {
+  return Math.max(
+    tokenOverlap(rec.artistName, hint.artist),
+    tokenOverlap(primaryArtist(rec.artistName), primaryArtist(hint.artist)),
+  );
+}
+
+function hasUsableSync(rec: LrclibRecord, hint: FallbackLyricsHint): boolean {
+  if (!rec.syncedLyrics?.trim()) return false;
+  return !hint.durationMs || !rec.duration || Math.abs(rec.duration - hint.durationMs / 1000) <= 8;
 }
 
 export async function fetchLrclibJson<T>(url: string, signal?: AbortSignal): Promise<T | null> {
@@ -117,33 +125,47 @@ export async function findLrclibLyrics(
   const artist = hint.artist.trim();
   if (!title) return null;
 
-  const usable = (r: LrclibRecord | null | undefined): r is LrclibRecord =>
-    !!r && !r.instrumental && !!(r.syncedLyrics?.trim() || r.plainLyrics?.trim());
+  const matches = (r: LrclibRecord | null): r is LrclibRecord =>
+    !!r && typeof r.trackName === "string" && typeof r.artistName === "string" &&
+    !r.instrumental && !!(hasUsableSync(r, hint) || r.plainLyrics?.trim()) &&
+    tokenOverlap(r.trackName, title) >= (artist ? 0.66 : 1) &&
+    (artist ? scoreArtist(r, hint) >= 0.5 : Boolean(hint.durationMs && r.duration &&
+      Math.abs(r.duration - hint.durationMs / 1000) <= 2));
+
+  type Match = { rec: LrclibRecord; score: number; plausibleSync: boolean };
+  let best: Match | null = null;
+  function consider(rec: LrclibRecord, previous: Match | null): Match {
+    const synced = hasUsableSync(rec, hint);
+    const plausibleSync = synced && !hasSuspiciousLrcTiming(rec.syncedLyrics!, hint.durationMs ?? (rec.duration ?? 0) * 1_000);
+    const score = scoreLrclibRecord(rec, hint) + (synced ? 0.15 : 0) + (plausibleSync ? 0.1 : 0);
+    return !previous || score > previous.score ? { rec, score, plausibleSync } : previous;
+  }
 
   // exact lookup first (fast, uses duration to pick the right version)
   if (artist) {
     const params = new URLSearchParams({ track_name: title, artist_name: primaryArtist(artist) });
     if (hint.durationMs && hint.durationMs > 0) params.set("duration", String(Math.round(hint.durationMs / 1000)));
     const exact = await fetchLrclibJson<LrclibRecord>(`${LRCLIB_BASE}/get?${params}`, signal);
-    if (usable(exact) && scoreLrclibRecord(exact, hint) >= 0.6) return exact;
+    if (matches(exact)) {
+      best = consider(exact, best);
+      if (best.plausibleSync) return exact;
+    }
   }
 
   // fuzzy search, then pick the best scoring hit
   const queries = [
     new URLSearchParams({ track_name: title, ...(artist ? { artist_name: primaryArtist(artist) } : {}) }),
-    new URLSearchParams({ q: `${primaryArtist(artist)} ${normalizeForMatch(title)}`.trim() }),
+    new URLSearchParams({ q: `${primaryArtist(artist)} ${title}`.trim() }),
   ];
-  let best: { rec: LrclibRecord; score: number } | null = null;
   for (const q of queries) {
     const list = await fetchLrclibJson<LrclibRecord[]>(`${LRCLIB_BASE}/search?${q}`, signal);
     for (const rec of Array.isArray(list) ? list : []) {
-      if (!usable(rec)) continue;
-      const score = scoreLrclibRecord(rec, hint);
-      if (!best || score > best.score) best = { rec, score };
+      if (!matches(rec)) continue;
+      best = consider(rec, best);
     }
-    if (best && best.score >= 0.75 && best.rec.syncedLyrics) break;
+    if (best?.plausibleSync && best.score >= 0.9) break;
   }
-  return best && best.score >= 0.6 ? best.rec : null;
+  return best?.rec ?? null;
 }
 
 // --- YouTube Music lyrics tab -------------------------------------------------
@@ -165,13 +187,15 @@ export async function findYoutubeMusicLyrics(videoId: string, signal?: AbortSign
   // Anonymous web playback has no YouTube Music session for the lyrics tab.
   if (isBrowserRuntime()) return null;
   try {
-    const next = await postInnertube("next", { videoId, isAudioOnly: true }, { signal });
+    const timeout = AbortSignal.timeout(8_000);
+    const options = { signal: signal ? AbortSignal.any([signal, timeout]) : timeout };
+    const next = await postInnertube("next", { videoId, isAudioOnly: true }, options);
     const browseId = findFirst(
       next,
       (k, v) => k === "browseId" && typeof v === "string" && v.startsWith("MPLY"),
     ) as string | undefined;
     if (!browseId) return null;
-    const page = await postInnertube("browse", { browseId }, { signal });
+    const page = await postInnertube("browse", { browseId }, options);
     const shelf = findFirst(page, (k) => k === "musicDescriptionShelfRenderer");
     const runs = shelf?.description?.runs as Array<{ text: string }> | undefined;
     const text = runs?.map((r) => r.text).join("").trim();
@@ -192,19 +216,20 @@ function makeCandidate(
   matched?: { title?: string; artists?: string[]; durationMs?: number },
 ): LyricsCandidate {
   const synced = format === "lrc";
-  const total = Math.round((synced ? 60 : 35) + score * 20);
+  const wordSynced = synced && /<\d+:\d{2}(?:[.:]\d+)?>[^\S\r\n]*[^<\s]/.test(content);
+  const total = Math.round((wordSynced ? 70 : synced ? 60 : 35) + score * 20);
   return {
     provider,
     lyrics: { format, content },
     matchedTrack: matched,
-    syncHint: synced ? "line_synced" : "plain",
-    contentKind: synced ? "line_synced" : "plain",
-    syncLevel: synced ? "line_level" : "plain",
+    syncHint: wordSynced ? "word_synced" : synced ? "line_synced" : "plain",
+    contentKind: wordSynced ? "word_synced" : synced ? "line_synced" : "plain",
+    syncLevel: wordSynced ? "word_level" : synced ? "line_level" : "plain",
     quality: {
       total,
       match: Math.round(score * 100),
       content: 100,
-      sync: synced ? 60 : 0,
+      sync: wordSynced ? 90 : synced ? 60 : 0,
       source: 50,
       reasons: [`client fallback: ${provider}`],
     },
@@ -224,7 +249,16 @@ export async function* streamFallbackLyrics(
 
   if (hint?.title?.trim()) {
     hint = normalizeLyricsHint(hint);
-    const rec = await findLrclibLyrics(hint, signal);
+    let rec = await findLrclibLyrics(hint, signal);
+    // Only reinterpret "artist - title" after trying the supplied metadata:
+    // a dash can also be part of the real song title.
+    if (!rec) {
+      const upload = /^(.+?)\s+[–—-]\s+(.+)$/.exec(hint.title);
+      if (upload) {
+        hint = { ...hint, title: upload[2], artist: upload[1] };
+        rec = await findLrclibLyrics(hint, signal);
+      }
+    }
     if (rec) {
       const score = scoreLrclibRecord(rec, hint);
       const matched = {
@@ -232,13 +266,10 @@ export async function* streamFallbackLyrics(
         artists: [rec.artistName],
         durationMs: rec.duration ? Math.round(rec.duration * 1000) : undefined,
       };
-      if (rec.syncedLyrics?.trim()) {
-        const c = makeCandidate("LRCLIB", "lrc", rec.syncedLyrics, score, matched);
-        found = c;
-        yield { type: "provider", provider: c.provider, status: "found", syncLevel: c.syncLevel, candidate: c };
-      }
-      if (rec.plainLyrics?.trim() && !rec.syncedLyrics?.trim()) {
-        const c = makeCandidate("LRCLIB", "plain", rec.plainLyrics, score, matched);
+      const synced = hasUsableSync(rec, hint);
+      const content = synced ? rec.syncedLyrics : rec.plainLyrics;
+      if (content?.trim()) {
+        const c = makeCandidate("LRCLIB", synced ? "lrc" : "plain", content, score, matched);
         found = c;
         yield { type: "provider", provider: c.provider, status: "found", syncLevel: c.syncLevel, candidate: c };
       }

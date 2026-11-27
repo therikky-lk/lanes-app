@@ -26,6 +26,6 @@ jobs:
       - run: pnpm exec tsc -b
       - run: pnpm test:packaging
       - name: Verify system theme and saved preferences
-        run: pnpm exec vitest run src/app/systemTheme.test.tsx
+        run: pnpm exec vitest run src/app/systemTheme.test.tsx src/app/themeStartup.test.ts src/shared/theme/themePreferences.test.ts
       - name: Check translations
         run: node scripts/check-locales.mjs

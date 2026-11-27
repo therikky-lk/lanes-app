@@ -34,6 +34,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (System.getenv("LANE_AUTH_DIAGNOSTICS") == "1") applicationIdSuffix ".authdiag"
+        }
         release {
             if (System.getenv("LANE_KEYSTORE_FILE")) signingConfig signingConfigs.release
             minifyEnabled false

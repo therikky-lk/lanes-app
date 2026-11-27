@@ -1,6 +1,7 @@
 package com.therikky.lane.http;
 
 import android.util.Base64;
+import android.util.Log;
 import android.os.SystemClock;
 import android.webkit.CookieManager;
 
@@ -45,6 +46,22 @@ public class LaneHttpPlugin extends Plugin {
     // A relay DNS outage must not occupy the workers used for audio/API calls.
     private final ExecutorService relayPool = Executors.newFixedThreadPool(2);
 
+    private boolean shouldLogAuth(android.net.Uri uri) {
+        if (!getContext().getPackageName().equals("com.therikky.lane.authdiag")) return false;
+        String path = uri.getPath();
+        if (path == null) return false;
+        switch (path) {
+            case "/v1/auth/login":
+            case "/v1/auth/register":
+            case "/v1/auth/challenge":
+            case "/v1/auth/email-capabilities":
+            case "/v1/auth/email-code":
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private static boolean isRelayUrl(String url) {
         String host = android.net.Uri.parse(url).getHost();
         return "ntfy.sh".equals(host) || "ntfy.envs.net".equals(host);
@@ -86,6 +103,8 @@ public class LaneHttpPlugin extends Plugin {
         Map<String, String> requestHeaders = new LinkedHashMap<>();
         String transport = call.getString("transport", "auto");
         boolean withCookies = Boolean.TRUE.equals(call.getBoolean("withCookies", false));
+        android.net.Uri uri = android.net.Uri.parse(url);
+        String authLog = shouldLogAuth(uri) ? uri.getHost() + uri.getPath() : null;
         if (withCookies && !hasCookie(requestHeaders)) {
             String cookies = CookieManager.getInstance().getCookie(url);
             if (cookies != null && !cookies.isEmpty()) requestHeaders.put("Cookie", cookies);
@@ -102,12 +121,26 @@ public class LaneHttpPlugin extends Plugin {
             }
         }
         (isRelayUrl(url) ? relayPool : pool).execute(() -> {
+            long started = SystemClock.elapsedRealtime();
+            if (authLog != null) Log.i("LaneAuth", authLog + " start transport=" + transport);
             Result result;
             try {
                 result = requestWithRecovery(url, method, requestHeaders, body, transport, withCookies);
             } catch (Exception error) {
+                if (authLog != null) {
+                    Throwable cause = error.getCause();
+                    Log.w("LaneAuth", authLog + " failed=" + error.getClass().getSimpleName()
+                        + (cause == null ? "" : " cause=" + cause.getClass().getSimpleName())
+                        + " ms=" + (SystemClock.elapsedRealtime() - started));
+                }
                 call.reject(error.getClass().getSimpleName() + ": " + error.getMessage());
                 return;
+            }
+            if (authLog != null) {
+                String ray = result.headers.get("cf-ray");
+                Log.i("LaneAuth", authLog + " status=" + result.status + " via=" + result.via
+                    + " ms=" + (SystemClock.elapsedRealtime() - started)
+                    + (ray != null && ray.matches("[0-9a-fA-F]{16}-[A-Z]{3}") ? " cf-ray=" + ray : ""));
             }
             JSObject resHeaders = new JSObject();
             for (Map.Entry<String, String> e : result.headers.entrySet()) resHeaders.put(e.getKey(), e.getValue());

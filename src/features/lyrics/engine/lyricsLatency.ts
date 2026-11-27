@@ -1,3 +1,5 @@
+import type { BraccatoLyricsElement } from "@braccato/core/element";
+
 // How far behind the playback clock the sound actually reaches the ears.
 //
 // When the <audio> element plays through the Web Audio graph (speed / pitch,
@@ -19,20 +21,11 @@ export function lyricsOutputLatencyMs(): number {
   return Math.min(MAX_MS, Math.round(seconds * 1000));
 }
 
-// braccato's own lead (its defaults): lines and words start this much before
-// their timestamp so they're lit as the syllable begins
-const LINE_LEAD_S = 0.115;
-const WORD_LEAD_S = 0.15;
-
-type LyricsElement = HTMLElement & { renderer?: { engine?: { cachedDurations?: Map<string, number>; cachedCSSValues?: Map<string, unknown> } } };
+// Match Braccato's default word lead so the sweep and scroll use the same clock.
+export const WORD_LEAD_S = 0.15;
 
 /** shift braccato's timing leads by the current output latency */
-export function applyLyricsLatency(el: LyricsElement, latencyMs: number): void {
+export function applyLyricsLatency(el: BraccatoLyricsElement, latencyMs: number): void {
   const lat = latencyMs / 1000;
-  el.style.setProperty("--blyrics-timing-offset", `${(LINE_LEAD_S - lat).toFixed(3)}s`);
-  el.style.setProperty("--blyrics-richsync-timing-offset", `${(WORD_LEAD_S - lat).toFixed(3)}s`);
-  // the engine caches CSS durations; drop them so the new values are read
-  const engine = el.renderer?.engine;
-  engine?.cachedDurations?.clear();
-  engine?.cachedCSSValues?.clear();
+  el.tickOptions = { ...el.tickOptions, lineOffsetTrim: lat, richsyncOffsetTrim: lat };
 }
