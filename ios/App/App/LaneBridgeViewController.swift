@@ -18,6 +18,8 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             checkRenderer(attempts: 60)
         } else if ProcessInfo.processInfo.arguments.contains("--lane-glass-test") {
             checkGlass(attempts: 60)
+        } else if ProcessInfo.processInfo.arguments.contains("--lane-account-test") {
+            checkAccount(attempts: 60)
         }
         #endif
     }
@@ -68,30 +70,25 @@ final class LaneBridgeViewController: CAPBridgeViewController {
 
     private func checkGlass(attempts: Int) {
         guard attempts > 0 else { return }
-        // Use the bundled CSS and real lens generator, against a repeatable
-        // backdrop. No account, live requests, or credentials are needed.
+        // Use the bundled settings panel CSS against a repeatable backdrop.
         let probe = """
         if (!document.querySelector("#root button, #root a, #root input")) return null;
+        document.activeElement?.blur();
+        await new Promise(resolve => setTimeout(resolve, 400));
+        window.scrollTo(0, 0);
         const root = document.documentElement;
         root.classList.add("lane-mobile");
-        root.dataset.colorTheme = "liquid-glass";
         const stage = document.createElement("section");
-        stage.style.cssText = "position:fixed;z-index:2147483647;inset:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);padding:22px 12px;color:white;background:#141414;font:15px system-ui";
+        stage.style.cssText = "position:fixed;z-index:2147483647;inset:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);padding:22px 12px;color:white;background:#141414;font:15px system-ui;overflow:hidden";
         const background = "repeating-linear-gradient(0deg, #121212 0 4px, #ededed 4px 8px)";
-        stage.innerHTML = '<h1 style="font-size:22px;margin:0 0 12px">Lane • Liquid Glass</h1>' +
+        stage.innerHTML = '<h1 style="font-size:22px;margin:0 0 12px">Lane • Standard blur</h1>' +
           '<p style="margin:0 0 24px">iPhone Simulator · bundled app styles</p>' +
           '<div style="display:flex;gap:8px">' +
-          '<div style="flex:1;min-width:0"><p>App effect</p><div data-lane-swatch style="height:224px;padding:12px;background:' + background + '"><div data-liquid-glass="field" style="height:200px;border-radius:24px"></div></div></div>' +
-          '<div style="flex:1;min-width:0"><p>Blur disabled</p><div data-lane-swatch style="height:224px;padding:12px;background:' + background + '"><div data-liquid-glass="field" style="height:200px;border-radius:24px;backdrop-filter:none!important;-webkit-backdrop-filter:none!important"></div></div></div>' +
+          '<div style="flex:1;min-width:0"><p>App effect</p><div style="height:224px;padding:12px;background:' + background + '"><div class="lane-settings-shell" data-liquid-glass="field" style="height:200px"></div></div></div>' +
+          '<div style="flex:1;min-width:0"><p>Blur disabled</p><div style="height:224px;padding:12px;background:' + background + '"><div class="lane-settings-shell" data-liquid-glass="field" style="height:200px;backdrop-filter:none!important;-webkit-backdrop-filter:none!important"></div></div></div>' +
           '</div>';
         document.body.appendChild(stage);
         const [glass, control] = stage.querySelectorAll("[data-liquid-glass]");
-        const svgSupport = CSS.supports("backdrop-filter", 'url("#lane-glass-lens")');
-        if (svgSupport) {
-            for (let i = 0; i < 20 && !glass.style.getPropertyValue("--lane-glass-filter"); i++) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-        }
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const describe = (el) => {
             const {x, y, width, height} = el.getBoundingClientRect();
@@ -104,7 +101,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             viewport: {width: window.innerWidth, height: window.innerHeight},
             reducedTransparency: matchMedia("(prefers-reduced-transparency: reduce)").matches,
             blurSupported: CSS.supports("backdrop-filter", "blur(14px)"),
-            svgSupport,
+            theme: root.dataset.colorTheme,
             lens: glass.style.getPropertyValue("--lane-glass-filter"),
             glass: describe(glass),
             control: describe(control)
@@ -116,6 +113,85 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self?.checkGlass(attempts: attempts - 1)
+                }
+            }
+        }
+    }
+
+    private func checkAccount(attempts: Int) {
+        guard attempts > 0,
+              let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
+        let credentialsFile = caches.appendingPathComponent("lane-qa-credentials")
+        guard let data = try? Data(contentsOf: credentialsFile),
+              let credentials = try? JSONDecoder().decode([String: String].self, from: data),
+              let email = credentials["email"], let password = credentials["password"] else {
+            writeTestResult("{\"login\":\"missing credentials\"}\n", named: "lane-account-ready")
+            return
+        }
+        let probe = """
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        const wait = async (condition, ms) => {
+            for (const end = Date.now() + ms; Date.now() < end; ) {
+                if (condition()) return true;
+                await delay(150);
+            }
+            return false;
+        };
+        const input = document.querySelector('input[name="email"]');
+        const secret = document.querySelector('input[name="password"]');
+        if (!input || !secret) return null;
+        const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+        for (const [field, value] of [[input, email], [secret, password]]) {
+            setValue.call(field, value);
+            field.dispatchEvent(new Event("input", {bubbles: true}));
+        }
+        await delay(150);
+        input.form?.requestSubmit();
+        const frame = () => document.querySelector("[data-lane-frame]");
+        const loginResult = () => document.querySelector('[role="dialog"] iframe, iframe[src*="turnstile"]');
+        await wait(() => frame() || loginResult(), 35000);
+        if (!frame()) return JSON.stringify({login: loginResult() ? "human verification required" : "did not open signed-in home"});
+        document.activeElement?.blur();
+        const results = {};
+        const routes = [
+            ["/", "[data-page-scroller]"],
+            ["/search", 'form[role="search"]'],
+            ["/library", "[data-page-scroller]"],
+            ["/library/cached", "[data-page-scroller]"],
+            ["/local", "[data-page-scroller]"],
+            ["/recent", "[data-page-scroller]"],
+            ["/settings", ".lane-settings-page"],
+            ["/settings/Appearance", ".lane-settings-page"],
+            ["/settings/Profile", ".lane-settings-page"],
+            ["/settings/Playback", ".lane-settings-page"],
+            ["/settings/Audio", ".lane-settings-page"]
+        ];
+        for (const [path, selector] of routes) {
+            const link = document.querySelector(`nav a[href="#${path}"]`);
+            if (link) link.click();
+            else location.hash = path;
+            await delay(450);
+            results[path] = await wait(() =>
+                location.hash.split("?")[0] === "#" + path && frame()?.querySelector(selector), 4000);
+        }
+        const dock = document.querySelector(".lane-dock-glass");
+        return JSON.stringify({login: "passed", routes: results,
+            liquidGlassVisible: Array.from(document.querySelectorAll("button, [role=option]"))
+                .some(node => node.textContent.trim() === "Liquid Glass"),
+            theme: document.documentElement.dataset.colorTheme,
+            dockFilter: dock ? getComputedStyle(dock).backdropFilter : null
+        }, null, 2);
+        """
+        webView?.callAsyncJavaScript(probe, arguments: ["email": email, "password": password], in: nil, in: .page) { [weak self] result in
+            if case .success(let value) = result, let report = value as? String {
+                try? FileManager.default.removeItem(at: credentialsFile)
+                self?.writeTestResult(report + "\n", named: "lane-account-ready")
+            } else if case .failure = result {
+                try? FileManager.default.removeItem(at: credentialsFile)
+                self?.writeTestResult("{\"login\":\"simulator interaction failed\"}\n", named: "lane-account-ready")
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self?.checkAccount(attempts: attempts - 1)
                 }
             }
         }

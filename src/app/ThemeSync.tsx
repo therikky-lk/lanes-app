@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { flushSync } from "react-dom";
 import { useTheme } from "next-themes";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { nativePlatform } from "@/shared/platform/native";
 import { DEFAULT_CUSTOM_COLOR, useThemePreferences, type ThemeSettings } from "@/shared/theme/themePreferences";
 import "./theme-transition.css";
 
@@ -39,7 +40,7 @@ export function ThemeSync() {
   }, []);
   useEffect(() => {
     const apply = ({ preset, customColor }: ThemeSettings, animate: boolean) => {
-      const effective = preset === "liquid-glass" && (!isMobile || window.linerElectron) ? "dark" : preset;
+      const effective = preset === "liquid-glass" && (!isMobile || window.linerElectron || nativePlatform() === "ios") ? "dark" : preset;
       const root = document.documentElement;
       const seed = customColor ?? DEFAULT_CUSTOM_COLOR;
       const themeChanged = root.dataset.colorTheme !== effective

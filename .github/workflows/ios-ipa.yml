@@ -16,6 +16,7 @@ jobs:
   ios:
     runs-on: macos-15
     timeout-minutes: 40
+    environment: lane-ios-qa
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
@@ -41,6 +42,9 @@ jobs:
             -configuration Debug -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/lane-simulator" CODE_SIGNING_ALLOWED=NO build
       - name: Verify renderer and playback on iPhone Simulator
+        env:
+          LANE_QA_EMAIL: ${{ secrets.LANE_QA_EMAIL }}
+          LANE_QA_PASSWORD: ${{ secrets.LANE_QA_PASSWORD }}
         run: bash scripts/ios-smoke.sh "$RUNNER_TEMP/lane-simulator/Build/Products/Debug-iphonesimulator/App.app" ios-artifacts/simulator
       - uses: actions/upload-artifact@v4
         if: always()

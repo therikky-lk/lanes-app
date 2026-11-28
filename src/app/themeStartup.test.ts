@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
 const startup = html.match(/<script>([\s\S]*?)<\/script>/)![1];
 
-function boot(saved: string | null, mobile = false, electron = false, native = false, color?: string) {
+function boot(saved: string | null, mobile = false, electron = false, native = false, color?: string, platform = "android") {
   const dataset: Record<string, string> = {};
   const storage = new Map(saved ? [["lane_theme_preset", saved]] : []);
   const variables = new Map<string, string>();
@@ -15,7 +15,7 @@ function boot(saved: string | null, mobile = false, electron = false, native = f
     window: {
       linerElectron: electron ? {} : undefined,
       matchMedia: () => ({ matches: mobile }),
-      Capacitor: { isNativePlatform: () => native },
+      Capacitor: { isNativePlatform: () => native, getPlatform: () => platform },
     },
     document: { documentElement: { dataset, style: { setProperty: (key: string, value: string) => variables.set(key, value) } } },
     localStorage: {
@@ -52,5 +52,8 @@ describe("theme startup migration", () => {
   it("preserves Liquid Glass on mobile and native Android", () => {
     expect(boot("liquid-glass", true)).toEqual({ theme: "liquid-glass", saved: "liquid-glass" });
     expect(boot("liquid-glass", false, false, true)).toEqual({ theme: "liquid-glass", saved: "liquid-glass" });
+  });
+  it("migrates a saved Liquid Glass theme to dark on native iOS", () => {
+    expect(boot("liquid-glass", false, false, true, undefined, "ios")).toEqual({ theme: "dark", saved: "dark" });
   });
 });

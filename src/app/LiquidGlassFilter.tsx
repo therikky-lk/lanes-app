@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createLensMap, LENS_DISPLACEMENT_SCALE } from "./liquidGlassLens";
+import { nativePlatform } from "@/shared/platform/native";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SURFACES = '[data-liquid-glass], .lane-search-box';
@@ -14,7 +15,7 @@ export function LiquidGlassFilter() {
 
   useEffect(() => {
     const defs = defsRef.current;
-    if (!defs) return;
+    if (!defs || nativePlatform() === "ios") return;
     const root = document.documentElement;
     const panels = new Map<HTMLElement, { filter: SVGFilterElement; size: string }>();
     const reducedTransparency = matchMedia("(prefers-reduced-transparency: reduce)");

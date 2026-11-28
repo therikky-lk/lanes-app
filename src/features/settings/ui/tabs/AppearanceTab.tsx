@@ -6,6 +6,7 @@ import { useLibraryPreferences } from "@/features/library/store/libraryPreferenc
 import { useOfflineLibraryStore } from "@/features/library/offline/offlineLibraryStore";
 import { SettingRow, SettingSection } from "../controls";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { nativePlatform } from "@/shared/platform/native";
 import { chooseCustomColor, chooseTheme, DEFAULT_CUSTOM_COLOR, useThemePreferences, type ThemePreset } from "@/shared/theme/themePreferences";
 import ThemeColorPicker from "../ThemeColorPicker";
 
@@ -34,7 +35,7 @@ export function AppearanceTab({ searchQuery }: { searchQuery?: string }) {
   const [mounted, setMounted] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const isMobile = useIsMobile();
-  const glassAvailable = isMobile && !window.linerElectron;
+  const glassAvailable = isMobile && !window.linerElectron && nativePlatform() !== "ios";
   const preset = useThemePreferences((state) => state.preset);
   const customColor = useThemePreferences((state) => state.customColor ?? DEFAULT_CUSTOM_COLOR);
   const themePreset = preset === "liquid-glass" && !glassAvailable ? "dark" : preset;
