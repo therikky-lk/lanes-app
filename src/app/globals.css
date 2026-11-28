@@ -501,6 +501,7 @@ button.apple-glass-action:hover,
               opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
               filter 0.32s ease,
               color 0.32s ease;
+  will-change: transform, opacity, filter;
   cursor: pointer;
 }
 
@@ -1067,6 +1068,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
 /* lyrics: no per-line blur filter (each line would be its own filtered layer) */
 .lane-low-end .lyric-line {
   filter: none !important;
+  will-change: transform, opacity;
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
               opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
               color 0.28s ease;
@@ -1088,46 +1090,6 @@ html[data-hover-reset] [data-window-controls] button:hover {
   content-visibility: auto;
   contain-intrinsic-size: auto 66px;
 }
-
-[data-sidebar-expanded] {
-  --lane-expanded-sidebar-glass: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--bg-primary) 50%, transparent),
-    color-mix(in srgb, var(--bg-primary) 28%, transparent)
-  );
-  background: var(--lane-expanded-sidebar-glass);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
-}
-
-/* Extend the clipping column itself behind the sidebar. Only the carousels
-   draw into that space; keep the rest of the page and mini player aligned. */
-[data-sidebar-bleed] {
-  margin-left: calc(-1 * var(--lane-row-bleed));
-}
-[data-sidebar-bleed] [data-lane-home] {
-  padding-left: var(--lane-row-bleed);
-}
-[data-sidebar-bleed] [data-vibe-expanded] {
-  --lane-vibe-bleed: var(--lane-row-bleed);
-}
-[data-sidebar-bleed] > [data-lane-mini-player] {
-  width: calc(100% - var(--lane-row-bleed));
-  margin-left: var(--lane-row-bleed);
-}
-[data-sidebar-bleed] [data-lane-home] .home-scroll-section {
-  overflow: visible;
-}
-[data-sidebar-bleed] [data-lane-home] .home-scroll-section > [data-scrollable-row] {
-  margin-left: calc(-1 * var(--lane-row-bleed));
-  max-width: none;
-}
-[data-sidebar-bleed] [data-lane-home] .home-scroll-section > [data-scrollable-row] > div {
-  --lane-row-fade-end: 18px;
-  padding-left: calc(var(--lane-row-inset, 32px) + var(--lane-row-bleed));
-  scroll-padding-left: var(--lane-row-bleed);
-}
-
 .lane-mobile .home-scroll-section {
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;
