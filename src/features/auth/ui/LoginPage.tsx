@@ -1,4 +1,4 @@
-import { isNativeApp } from "@/shared/platform/native";
+import { isNativeApp, nativePlatform } from "@/shared/platform/native";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,6 +26,7 @@ const inputStyle = "h-[44px]! rounded-[8px]! border-white/15 bg-[#111112]! [--in
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const isIOS = nativePlatform() === "ios";
   // maximized / fullscreen: square, borderless, edge to edge (same as the main app frame)
   const { isEdgeToEdge } = useWindowState();
   const frameShape = isEdgeToEdge ? "rounded-none" : "rounded-5xl";
@@ -219,6 +220,7 @@ export default function LoginPage() {
 
   return (
     <main
+      data-lane-login
       className={`relative flex h-full w-full items-center justify-center overflow-hidden ${frameShape} ${
         isEdgeToEdge ? "border-0" : "border border-border-primary"
       } bg-[#18181a] backdrop-blur-[18px]`}
@@ -385,7 +387,7 @@ export default function LoginPage() {
                       <TextInput
                         id="auth-email"
                         name="email"
-                        autoFocus
+                        autoFocus={!isIOS}
                         type="email"
                         inputMode="email"
                         autoCapitalize="none"
@@ -540,7 +542,7 @@ export default function LoginPage() {
                       </label>
                       <TextInput
                         id="auth-username"
-                        autoFocus
+                        autoFocus={!isIOS}
                         type="text"
                         autoCapitalize="none"
                         spellCheck={false}

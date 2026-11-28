@@ -4,6 +4,31 @@ import Foundation
 import WebKit
 
 final class LaneBridgeViewController: CAPBridgeViewController {
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        publishSafeAreaInsets()
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        publishSafeAreaInsets()
+    }
+
+    private func publishSafeAreaInsets() {
+        guard let webView else { return }
+        let insets = view.safeAreaInsets
+        webView.evaluateJavaScript("""
+            (() => {
+                const style = document.documentElement?.style;
+                if (!style) return;
+                style.setProperty("--lane-ios-safe-top", "\(insets.top)px");
+                style.setProperty("--lane-ios-safe-right", "\(insets.right)px");
+                style.setProperty("--lane-ios-safe-bottom", "\(insets.bottom)px");
+                style.setProperty("--lane-ios-safe-left", "\(insets.left)px");
+            })()
+            """)
+    }
+
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         bridge?.registerPluginInstance(LaneHttpPlugin())
@@ -190,6 +215,27 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         document.activeElement?.blur();
         const results = {};
         const captures = {};
+        const layout = {};
+        const geometry = () => {
+            const viewport = window.visualViewport;
+            const root = document.documentElement;
+            const dock = document.querySelector("[data-mobile-dock] a");
+            const frame = document.querySelector("[data-lane-frame]");
+            const frameBounds = frame?.getBoundingClientRect();
+            const probe = document.createElement("span");
+            probe.style.cssText = "position:fixed;visibility:hidden;padding-top:var(--lane-safe-top);padding-bottom:var(--lane-safe-bottom)";
+            document.body.appendChild(probe);
+            const {paddingTop, paddingBottom} = getComputedStyle(probe);
+            probe.remove();
+            return {
+                scale: viewport?.scale, viewportWidth: viewport?.width, rootWidth: root.clientWidth,
+                screenWidth: screen.width, offsetLeft: viewport?.offsetLeft, pageLeft: viewport?.pageLeft,
+                safeTop: parseFloat(paddingTop), safeBottom: parseFloat(paddingBottom),
+                frameLeft: frameBounds?.left, frameRight: frameBounds?.right,
+                navigationAnimation: frame?.querySelector(".page-transition") ? getComputedStyle(frame.querySelector(".page-transition")).animationName : null,
+                tapAction: dock ? getComputedStyle(dock).touchAction : null
+            };
+        };
         const capture = async (name) => {
             const handler = window.webkit?.messageHandlers?.laneQACapture;
             if (!handler) return;
@@ -218,7 +264,10 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             await navigate(path);
             results[path] = await wait(() =>
                 location.hash.split("?")[0] === "#" + path && frame()?.querySelector(selector), 4000);
-            if (results[path]) await capture(name);
+            if (results[path]) {
+                layout[path] = geometry();
+                await capture(name);
+            }
         }
         const extras = {};
         if (window.webkit?.messageHandlers?.laneQACapture) {
@@ -277,12 +326,14 @@ final class LaneBridgeViewController: CAPBridgeViewController {
                 const track = document.querySelector("[data-reorder-item]");
                 if (track) {
                     track.click();
-                    await delay(650);
-                    await capture("31-mini-player");
+                    if (await wait(() => document.querySelector('[data-mobile-dock] [data-player-progress]'), 4000)) {
+                        await capture("31-mini-player");
+                    }
                 }
             }
             await navigate("/player");
-            if (document.querySelector("[data-visual-quality]")) {
+            if (await wait(() => location.hash === "#/player" &&
+                document.querySelector("[data-visual-quality] [data-player-artwork]"), 2000)) {
                 await capture("24-player");
                 const playerActions = [
                     ["25-player-queue", "Queue", '[aria-label="Close"], [role="dialog"]'],
@@ -301,7 +352,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             }
         }
         const dock = document.querySelector(".lane-dock-glass");
-        return JSON.stringify({login: "passed", ...diagnostic, routes: results, captures, extras,
+        return JSON.stringify({login: "passed", ...diagnostic, routes: results, layout, captures, extras,
             liquidGlassVisible: Array.from(document.querySelectorAll("button, [role=option]"))
                 .some(node => node.textContent.trim() === "Liquid Glass"),
             theme: document.documentElement.dataset.colorTheme,

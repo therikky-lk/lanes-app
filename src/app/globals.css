@@ -618,6 +618,65 @@ html[data-hover-reset] [data-window-controls] button:hover {
 
 /* phone: content scrolls under the status bar, keep sticky bars below it */
 :root { --lane-safe-top: env(safe-area-inset-top, 0px); --lane-safe-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* WKWebView zooms the entire viewport when a small editable field gets focus.
+   Keep focus at 1× without disabling the user's pinch-to-zoom accessibility. */
+:root[data-lane-platform="ios"] {
+  --lane-safe-top: max(env(safe-area-inset-top, 0px), var(--lane-ios-safe-top, 0px));
+  --lane-safe-right: max(env(safe-area-inset-right, 0px), var(--lane-ios-safe-right, 0px));
+  --lane-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--lane-ios-safe-bottom, 0px));
+  --lane-safe-left: max(env(safe-area-inset-left, 0px), var(--lane-ios-safe-left, 0px));
+  --lane-ios-bottom: max(8px, var(--lane-safe-bottom), var(--lane-ios-keyboard-inset, 0px));
+  --lane-ios-dialog-height: max(100px, calc(100dvh - max(12px, var(--lane-safe-top)) - var(--lane-ios-bottom)));
+  width: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+:root[data-lane-platform="ios"] :is(body, #root) {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+:root[data-lane-platform="ios"] body { padding: 0; }
+:root[data-lane-platform="ios"] #root {
+  padding-left: var(--lane-safe-left);
+  padding-right: var(--lane-safe-right);
+}
+:root[data-lane-platform="ios"] :is(
+  textarea, [contenteditable="true"], input:not([type]),
+  input[type="text"], input[type="email"], input[type="password"], input[type="search"],
+  input[type="url"], input[type="tel"], input[type="number"]
+) {
+  font-size: max(16px, 1em) !important;
+}
+:root[data-lane-platform="ios"] :where(button, a[href], [role="button"], [data-reorder-item]):not([data-reorder-handle], [role="slider"]) {
+  touch-action: manipulation;
+}
+:root[data-lane-platform="ios"] .page-transition {
+  animation: none;
+}
+:root[data-lane-platform="ios"] [data-lane-login] {
+  padding-top: var(--lane-safe-top);
+  padding-bottom: var(--lane-ios-bottom);
+}
+:root[data-lane-platform="ios"] [data-dialog-container] {
+  padding-top: max(12px, var(--lane-safe-top));
+  padding-right: var(--lane-safe-right);
+  padding-bottom: var(--lane-ios-bottom);
+  padding-left: var(--lane-safe-left);
+}
+:root[data-lane-platform="ios"] [data-dialog-container] > [role="dialog"] {
+  min-width: 0;
+  max-height: min(var(--lane-dialog-max-height, 85dvh), var(--lane-ios-dialog-height)) !important;
+}
+@media (prefers-reduced-transparency: no-preference) {
+  :root[data-lane-platform="ios"] [data-mobile-dock] .lane-dock-glass {
+    -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+    backdrop-filter: blur(12px) saturate(1.2) !important;
+    background-color: color-mix(in srgb, var(--bg-primary) 76%, transparent) !important;
+  }
+}
 .lane-mobile { --lane-scroll-top-inset: var(--lane-safe-top, 0px); }
 .lane-mobile [data-page-scroller] {
   padding-top: var(--lane-safe-top, 0px) !important;

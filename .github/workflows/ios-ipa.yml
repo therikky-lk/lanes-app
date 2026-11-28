@@ -62,7 +62,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/lane-package/Payload" ios-artifacts
           ditto "$RUNNER_TEMP/lane-device/Build/Products/Release-iphoneos/App.app" \
             "$RUNNER_TEMP/lane-package/Payload/App.app"
-          (cd "$RUNNER_TEMP/lane-package" && /usr/bin/zip -qyr "$GITHUB_WORKSPACE/ios-artifacts/Lane-$version-ios-unsigned.ipa" Payload)
+          (cd "$RUNNER_TEMP/lane-package" && /usr/bin/zip -qyr "$GITHUB_WORKSPACE/ios-artifacts/Lane-$version-ios-build-$GITHUB_RUN_NUMBER-unsigned.ipa" Payload)
       - uses: actions/upload-artifact@v4
         with:
           name: Lane-iOS-unsigned

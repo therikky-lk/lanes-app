@@ -83,7 +83,7 @@ finish_account() {
   xcrun simctl uninstall "$device" "$bundle" >/dev/null 2>&1 || true
   if [[ -n "$private_dir" ]]; then
     if compgen -G "$private_dir/screens/*.png" >/dev/null; then
-      if ! (tar -czf - -C "$private_dir/screens" . | "$openssl" cms -encrypt -binary -aes256 -outform DER \
+      if ! (COPYFILE_DISABLE=1 tar -czf - -C "$private_dir/screens" . | "$openssl" cms -encrypt -binary -aes256 -outform DER \
         -out "$private_dir/qa-gallery.cms" "$private_dir/recipient.pem"); then
         status=1
       else
@@ -130,7 +130,15 @@ while ((SECONDS < deadline)); do
   if [[ -f "$marker" ]]; then
     cp "$marker" "$output/account.json"
     cat "$output/account.json"
-    node -e 'const r = require(process.argv[1]); if (r.login !== "passed" || Object.values(r.routes).includes(false) || r.liquidGlassVisible || r.theme === "liquid-glass") process.exit(1)' "$output/account.json"
+    node -e '
+      const r = require(process.argv[1]);
+      if (r.login !== "passed" || Object.values(r.routes).includes(false) || r.liquidGlassVisible || r.theme === "liquid-glass") process.exit(1);
+      const invalid = Object.entries(r.layout).filter(([, p]) => Math.abs(p.scale - 1) > 0.02 ||
+        Math.abs(p.viewportWidth - p.screenWidth) > 2 || Math.abs(p.pageLeft) > 2 ||
+        p.frameLeft < -2 || p.frameRight > p.rootWidth + 2 ||
+        p.navigationAnimation !== "none" || p.tapAction !== "manipulation");
+      if (invalid.length) { console.error("iOS route geometry/input regression:", JSON.stringify(invalid)); process.exit(1); }
+    ' "$output/account.json"
     exit 0
   fi
   sleep 0.25

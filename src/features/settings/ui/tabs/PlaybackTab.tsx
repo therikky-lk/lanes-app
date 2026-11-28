@@ -1,4 +1,4 @@
-import { isAndroidApp, isNativeApp } from "@/shared/platform/native";
+import { isAndroidApp, isNativeApp, nativePlatform } from "@/shared/platform/native";
 import { useState, useEffect } from "react";
 import { useTranslation } from "@/languages";
 import { usePlayerStore } from "@/features/player";
@@ -101,7 +101,7 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
           }
         />
 
-        <SettingRow
+        {nativePlatform() !== "ios" && <SettingRow
           title={t("settings.track_double_click.title")}
           description={t("settings.track_double_click.description")}
           titleKey="settings.track_double_click.title"
@@ -128,7 +128,7 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
               <span />
             )
           }
-        />
+        />}
 
         <SettingRow
           title={t("settings.default_playback_context.title")}

@@ -6,6 +6,7 @@
     <meta name="referrer" content="no-referrer" />
     <script>
       try {
+        if (window.Capacitor?.getPlatform?.() === "ios") document.documentElement.dataset.lanePlatform = "ios";
         const saved = localStorage.getItem("lane_theme_preset");
         const migrations = { rose: "ruby", sapphire: "violet", sunset: "amber", emerald: "spotify", aurora: "system", dusk: "system", lagoon: "system" };
         let preset = Object.hasOwn(migrations, saved) ? migrations[saved] : saved;

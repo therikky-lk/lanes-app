@@ -13,6 +13,7 @@ import SourceBadge from "@/shared/ui/SourceBadge";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { isCoverReady } from "@/features/covers/lib/coverArt";
 import type { TrackArtist } from "@/shared/types";
+import { nativePlatform } from "@/shared/platform/native";
 
 export interface SongCardProps {
   id?: string;
@@ -157,7 +158,7 @@ function SongCard({
       return;
     }
     if (!onPlay) return;
-    if (!onDoubleClick) {
+    if (!onDoubleClick || nativePlatform() === "ios") {
       onPlay();
       return;
     }

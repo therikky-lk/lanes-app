@@ -1,6 +1,7 @@
 import { motion, useDragControls } from "framer-motion";
 import { useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import type { DialogProps } from "@/shared/ui/Dialog";
+import { nativePlatform } from "@/shared/platform/native";
 
 export default function SettingsPageFrame({ children, className }: DialogProps) {
   const location = useLocation();
@@ -8,6 +9,7 @@ export default function SettingsPageFrame({ children, className }: DialogProps) 
   const action = useNavigationType();
   const { tab } = useParams();
   const controls = useDragControls();
+  const isIOS = nativePlatform() === "ios";
   const direction = action === "POP" || location.state?.settingsDirection === -1 ? -1 : 1;
   const back = () => {
     if (location.state?.settingsParent) navigate(-1);
@@ -17,7 +19,7 @@ export default function SettingsPageFrame({ children, className }: DialogProps) 
     <div className="relative h-full overflow-hidden">
       <motion.div key={location.pathname} custom={direction}
         variants={{ enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-22%" }), active: { x: 0 }, leave: (dir: number) => ({ x: dir > 0 ? "-22%" : "100%" }) }}
-        initial="enter" animate="active"
+        initial={isIOS ? false : "enter"} animate="active"
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className={`${className} flex bg-bg-primary`}
         drag={tab ? "x" : false} dragListener={false} dragControls={controls}

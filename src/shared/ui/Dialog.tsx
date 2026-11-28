@@ -117,7 +117,10 @@ function DialogLayer({
           className={`pointer-events-auto w-full mx-[16px] max-h-[85vh] flex flex-col rounded-xl border border-border-primary bg-bg-primary overflow-hidden relative ${
             className || "pt-[16px]"
           }`}
-          style={{ maxWidth, minHeight, ...(maxHeight ? { maxHeight } : {}) }}
+          style={{
+            maxWidth, minHeight,
+            ...(maxHeight ? { maxHeight, "--lane-dialog-max-height": typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight } : {}),
+          }}
           layout={animateLayout && !reduceMotion}
           transition={animateLayout ? { layout: { type: "spring", stiffness: 360, damping: 34 } } : undefined}
         >

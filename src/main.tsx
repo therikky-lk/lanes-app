@@ -1,11 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { initGlobalErrorHandlers } from "@/shared/utils/globalErrorHandlers";
-import { installNativeFetchHeaders } from "@/shared/platform/native";
+import { installNativeFetchHeaders, nativePlatform } from "@/shared/platform/native";
 import { installAndroidBackButton } from "@/shared/platform/androidBack";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
+import { installIOSLayout } from "@/shared/platform/iosLayout";
 
 initGlobalErrorHandlers();
+if (nativePlatform() === "ios") installIOSLayout();
 installNativeFetchHeaders();
 void installAndroidBackButton();
 // weak phones: cheaper blur and animations (see globals.css .lane-low-end)
