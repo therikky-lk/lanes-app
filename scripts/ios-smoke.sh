@@ -138,6 +138,11 @@ while ((SECONDS < deadline)); do
         p.frameLeft < -2 || p.frameRight > p.rootWidth + 2 ||
         p.navigationAnimation !== "none" || p.tapAction !== "manipulation");
       if (invalid.length) { console.error("iOS route geometry/input regression:", JSON.stringify(invalid)); process.exit(1); }
+      if (typeof r.checks?.homeCanvasTop !== "number" || r.checks.homeCanvasTop > 2 ||
+          r.checks?.importWithKeyboard?.pass === false) {
+        console.error("iOS home or dialog inset regression:", JSON.stringify(r.checks));
+        process.exit(1);
+      }
     ' "$output/account.json"
     exit 0
   fi

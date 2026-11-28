@@ -16,6 +16,7 @@ import { api, resolveApiErrorMessage } from "@/shared/api";
 import { imageFileToCover, setPlaylistCover } from "../../services/playlistCovers";
 import { canSyncCoverMarker, withCoverMarker } from "../../services/playlistCoverMarker";
 import { diag } from "@/shared/platform/diag";
+import { nativePlatform } from "@/shared/platform/native";
 import { detectImportSource } from "../../services/import/detectImportSource";
 
 type Tab = "create" | "import";
@@ -80,9 +81,10 @@ export default function CreatePlaylistModal() {
       setImportUrl((initialUrl || "").trim());
       setCreateError("");
       setImportError("");
-      requestAnimationFrame(() =>
-        (initialUrl ? linkRef : titleRef).current?.focus(),
-      );
+      if (nativePlatform() !== "ios") {
+        const frame = requestAnimationFrame(() => (initialUrl ? linkRef : titleRef).current?.focus());
+        return () => cancelAnimationFrame(frame);
+      }
     }
   }, [open, initialUrl]);
 

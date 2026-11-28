@@ -216,6 +216,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         const results = {};
         const captures = {};
         const layout = {};
+        const checks = {};
         const geometry = () => {
             const viewport = window.visualViewport;
             const root = document.documentElement;
@@ -266,6 +267,10 @@ final class LaneBridgeViewController: CAPBridgeViewController {
                 location.hash.split("?")[0] === "#" + path && frame()?.querySelector(selector), 4000);
             if (results[path]) {
                 layout[path] = geometry();
+                if (path === "/") {
+                    const hero = document.querySelector("[data-lane-home] .lane-vibe-hero canvas");
+                    checks.homeCanvasTop = hero?.getBoundingClientRect().top;
+                }
                 await capture(name);
             }
         }
@@ -305,7 +310,26 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             const add = document.querySelector(libraryHeader + " button:first-of-type");
             add?.click();
             if (await wait(() => document.querySelector("[data-dropdown-menu]"), 1500)) {
-                await interact("35-import-playlist", byText("[data-dropdown-menu]", /import/i), '[role="dialog"]');
+                if (await interact("35-import-playlist", byText("[data-dropdown-menu]", /import/i), '[role="dialog"]')) {
+                    const dialog = document.querySelector('[data-dialog-container] [role="dialog"]');
+                    const field = dialog?.querySelector("input");
+                    const viewport = window.visualViewport;
+                    if (dialog && field && viewport) {
+                        const fullHeight = viewport.height;
+                        field.focus({preventScroll: true});
+                        const keyboardVisible = await wait(() => fullHeight - viewport.height > 90, 3500);
+                        if (keyboardVisible) {
+                            await delay(450);
+                            const dialogTop = dialog.getBoundingClientRect().top - viewport.offsetTop;
+                            const safeTop = geometry().safeTop;
+                            checks.importWithKeyboard = {dialogTop, safeTop, pass: dialogTop >= safeTop - 2};
+                            await capture("36-import-keyboard");
+                        } else {
+                            checks.importWithKeyboard = {keyboardVisible: false};
+                        }
+                        field.blur();
+                    }
+                }
                 document.querySelector('[role="dialog"] button[aria-label="Close"]')?.click();
             }
             await navigate("/search");
@@ -352,7 +376,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             }
         }
         const dock = document.querySelector(".lane-dock-glass");
-        return JSON.stringify({login: "passed", ...diagnostic, routes: results, layout, captures, extras,
+        return JSON.stringify({login: "passed", ...diagnostic, routes: results, layout, checks, captures, extras,
             liquidGlassVisible: Array.from(document.querySelectorAll("button, [role=option]"))
                 .some(node => node.textContent.trim() === "Liquid Glass"),
             theme: document.documentElement.dataset.colorTheme,

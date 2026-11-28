@@ -627,7 +627,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   --lane-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--lane-ios-safe-bottom, 0px));
   --lane-safe-left: max(env(safe-area-inset-left, 0px), var(--lane-ios-safe-left, 0px));
   --lane-ios-bottom: max(8px, var(--lane-safe-bottom), var(--lane-ios-keyboard-inset, 0px));
-  --lane-ios-dialog-height: max(100px, calc(100dvh - max(12px, var(--lane-safe-top)) - var(--lane-ios-bottom)));
+  --lane-ios-dialog-height: max(100px, calc(100dvh - var(--lane-ios-viewport-top, 0px) - max(12px, var(--lane-safe-top)) - var(--lane-ios-bottom)));
   width: 100%;
   overflow: hidden;
   overscroll-behavior: none;
@@ -661,6 +661,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-bottom: var(--lane-ios-bottom);
 }
 :root[data-lane-platform="ios"] [data-dialog-container] {
+  top: var(--lane-ios-viewport-top, 0px);
   padding-top: max(12px, var(--lane-safe-top));
   padding-right: var(--lane-safe-right);
   padding-bottom: var(--lane-ios-bottom);
@@ -683,6 +684,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-bottom: calc(var(--lane-dock-h, 0px) + 16px) !important;
 }
 .lane-mobile [data-page-scroller][data-own-top] { padding-top: 0 !important; }
+:root[data-lane-platform="ios"] [data-page-scroller][data-lane-home] { padding-top: 0 !important; }
 .lane-mobile [data-page-scroller] .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
 /* sliders: the finger drags the thumb, the page must not scroll instead */
 [role="slider"] { touch-action: none; }

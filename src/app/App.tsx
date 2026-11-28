@@ -16,6 +16,7 @@ import EnvironmentWarning from "./EnvironmentWarning";
 import { LiquidGlassFilter } from "./LiquidGlassFilter";
 import { ConnectivityWall } from "@/features/connectivity";
 import { ThemeSync } from "./ThemeSync";
+import IOSStatusBarSync from "./IOSStatusBarSync";
 import "./globals.css";
 import "./liquid-glass.css";
 
@@ -59,6 +60,7 @@ export default function App() {
         <GlobalTooltip />
         <LiquidGlassFilter />
         <ThemeSync />
+        <IOSStatusBarSync />
         <AppIconSync />
         <PresenceSync />
         <TouchBarSync />

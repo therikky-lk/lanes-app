@@ -73,7 +73,7 @@ export default function HomePage() {
   const [vibeExpanded, setVibeExpanded] = useState(false);
 
   return (
-    <div data-page-scroller className={`relative h-full min-w-0 w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
+    <div data-page-scroller data-lane-home className={`relative h-full min-w-0 w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
 
       <div
         data-window-drag
