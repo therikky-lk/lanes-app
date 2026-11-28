@@ -46,6 +46,7 @@ jobs:
           LANE_QA_EMAIL: ${{ secrets.LANE_QA_EMAIL }}
           LANE_QA_PASSWORD: ${{ secrets.LANE_QA_PASSWORD }}
           LANE_QA_CAPTURE_CERT: ${{ secrets.LANE_QA_CAPTURE_CERT }}
+          LANE_QA_HOME_ONLY: ${{ secrets.LANE_QA_HOME_ONLY }}
         run: bash scripts/ios-smoke.sh "$RUNNER_TEMP/lane-simulator/Build/Products/Debug-iphonesimulator/App.app" ios-artifacts/simulator
       - uses: actions/upload-artifact@v4
         if: always()

@@ -261,7 +261,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             else location.hash = path;
             await delay(450);
         };
-        for (const [path, selector, name] of routes) {
+        for (const [path, selector, name] of homeOnly ? routes.slice(0, 1) : routes) {
             await navigate(path);
             results[path] = await wait(() =>
                 location.hash.split("?")[0] === "#" + path && frame()?.querySelector(selector), 4000);
@@ -275,7 +275,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             }
         }
         const extras = {};
-        if (window.webkit?.messageHandlers?.laneQACapture) {
+        if (!homeOnly && window.webkit?.messageHandlers?.laneQACapture) {
             const interact = async (name, trigger, expected) => {
                 const button = typeof trigger === "string" ? document.querySelector(trigger) : trigger();
                 if (!button) { extras[name] = "trigger unavailable"; return false; }
@@ -376,14 +376,15 @@ final class LaneBridgeViewController: CAPBridgeViewController {
             }
         }
         const dock = document.querySelector(".lane-dock-glass");
-        return JSON.stringify({login: "passed", ...diagnostic, routes: results, layout, checks, captures, extras,
+        return JSON.stringify({login: "passed", ...diagnostic, homeOnly, routes: results, layout, checks, captures, extras,
             liquidGlassVisible: Array.from(document.querySelectorAll("button, [role=option]"))
                 .some(node => node.textContent.trim() === "Liquid Glass"),
             theme: document.documentElement.dataset.colorTheme,
             dockFilter: dock ? getComputedStyle(dock).backdropFilter : null
         }, null, 2);
         """
-        webView?.callAsyncJavaScript(probe, arguments: ["email": email, "password": password], in: nil, in: .page) { [weak self] result in
+        let homeOnly = ProcessInfo.processInfo.arguments.contains("--lane-home-only")
+        webView?.callAsyncJavaScript(probe, arguments: ["email": email, "password": password, "homeOnly": homeOnly], in: nil, in: .page) { [weak self] result in
             if case .success(let value) = result, let report = value as? String {
                 try? FileManager.default.removeItem(at: credentialsFile)
                 self?.writeTestResult(report + "\n", named: "lane-account-ready")
@@ -426,7 +427,7 @@ extension LaneBridgeViewController: WKScriptMessageHandlerWithReply {
                 replyHandler(false, nil)
             }
         }
-        waitForCapture(100)
+        waitForCapture(name == "01-home" ? 450 : 100)
     }
 }
 #endif

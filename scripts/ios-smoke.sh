@@ -116,6 +116,7 @@ if [[ -n ${LANE_QA_CAPTURE_CERT:-} ]]; then
   rm -f "$capture_request" "$capture_ack"
   args+=(--lane-capture-gallery)
 fi
+if [[ ${LANE_QA_HOME_ONLY:-} == 1 ]]; then args+=(--lane-home-only); fi
 xcrun simctl launch --terminate-running-process "$device" "$bundle" "${args[@]}"
 deadline=$((SECONDS + 190))
 while ((SECONDS < deadline)); do
@@ -133,6 +134,10 @@ while ((SECONDS < deadline)); do
     node -e '
       const r = require(process.argv[1]);
       if (r.login !== "passed" || Object.values(r.routes).includes(false) || r.liquidGlassVisible || r.theme === "liquid-glass") process.exit(1);
+      if (r.homeOnly && r.captures["01-home"] !== true) {
+        console.error("The Home screenshot was not acknowledged.");
+        process.exit(1);
+      }
       const invalid = Object.entries(r.layout).filter(([, p]) => Math.abs(p.scale - 1) > 0.02 ||
         Math.abs(p.viewportWidth - p.screenWidth) > 2 || Math.abs(p.pageLeft) > 2 ||
         p.frameLeft < -2 || p.frameRight > p.rootWidth + 2 ||
