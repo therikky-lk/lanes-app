@@ -17,6 +17,12 @@ describe("scoped CORS policy", () => {
     expect(withOpenCors(headers, "GET", true)).toEqual({ responseHeaders: headers });
   });
 
+  it("preserves the Lane worker's PATCH preflight for profile customization", () => {
+    expect(needsOpenCors("https://lane-app.site/v1/me/profile-customization/liner")).toBe(false);
+    expect(needsOpenCors("https://lane-app.site/v1/me/profile-customization/hyprr", true)).toBe(false);
+    expect(needsOpenCors("https://lane-app.site/v1/shares")).toBe(true);
+  });
+
   it("normalizes provider CORS headers and returns a successful preflight", () => {
     const result = withOpenCors({ "Access-Control-Allow-Origin": ["https://old.example"], "content-type": ["audio/mpeg"] }, "OPTIONS");
     expect(result.statusLine).toBe("HTTP/1.1 200 OK");

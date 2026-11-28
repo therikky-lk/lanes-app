@@ -20,8 +20,12 @@ const OPEN_CORS_DOMAINS = [
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export function needsOpenCors(url: string, allowLoopback = false): boolean {
-  let host: string;
-  try { host = new URL(url).hostname; } catch { return false; }
+  let target: URL;
+  try { target = new URL(url); } catch { return false; }
+  // The Lane worker already authorizes PATCH for profile customization.
+  if (target.origin === "https://lane-app.site" &&
+      /^\/v1\/me\/profile-customization\/(?:liner|hyprr)$/.test(target.pathname)) return false;
+  const host = target.hostname;
   if (allowLoopback && LOOPBACK_HOSTS.has(host)) return true;
   return OPEN_CORS_DOMAINS.some((domain) => host === domain || host.endsWith(`.${domain}`));
 }
