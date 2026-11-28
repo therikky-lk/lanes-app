@@ -12,15 +12,15 @@ export default defineConfig(({ command, mode }) => {
     if (devSigningSecret) process.env.LINER_DEV_SIGNING_SECRET = devSigningSecret;
   }
 
-  // `LANE_TARGET=android vite build`: renderer only, for the Capacitor app
-  const android = process.env.LANE_TARGET === "android";
+  // Capacitor packages the renderer without Electron.
+  const mobile = ["android", "ios"].includes(process.env.LANE_TARGET ?? "");
   const securityTest = mode === "security-test";
   const electronBuild = securityTest
     ? { outDir: ".lane-security-build/dist-electron", emptyOutDir: true }
     : {};
 
   return {
-  base: android ? "./" : undefined,
+  base: mobile ? "./" : undefined,
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -28,7 +28,7 @@ export default defineConfig(({ command, mode }) => {
     lyricsBridge(),
     react(),
     tailwindcss(),
-    !android && electron({
+    !mobile && electron({
       main: {
         entry: "electron/main.ts",
         vite: {

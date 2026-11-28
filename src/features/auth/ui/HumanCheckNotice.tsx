@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Button from "@/shared/ui/Button";
 import { useTranslation } from "@/languages";
 import { humanCheckPageUrl } from "@/shared/api";
-import { isNativeApp } from "@/shared/platform/native";
+import { isAndroidApp } from "@/shared/platform/native";
 import { humanCheckUserAgent, nativeHumanCheck } from "@/shared/platform/nativeHumanCheck";
 import { useHumanCheckStore } from "../store/humanCheckStore";
 import HumanCheckFrame from "./HumanCheckFrame";
@@ -20,7 +20,7 @@ export default function HumanCheckNotice() {
   const cancel = useHumanCheckStore((state) => state.cancel);
 
   useEffect(() => {
-    if (!request || !isNativeApp()) return;
+    if (!request || !isAndroidApp()) return;
     let active = true;
     const id = `human-check-${++nativeAttemptId}`;
     void nativeHumanCheck.verify({
@@ -44,7 +44,7 @@ export default function HumanCheckNotice() {
   }, [request, attempt, t]);
 
   useEffect(() => {
-    if (!request || isNativeApp()) return;
+    if (!request || isAndroidApp()) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") cancel();
     };
@@ -54,7 +54,7 @@ export default function HumanCheckNotice() {
 
   if (typeof document === "undefined") return null;
   const failed = phase === "error" || phase === "expired";
-  const nativeApp = isNativeApp();
+  const nativeApp = isAndroidApp();
   if (nativeApp && !failed) return null;
 
   return createPortal(

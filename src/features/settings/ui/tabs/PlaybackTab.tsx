@@ -1,4 +1,4 @@
-import { isNativeApp } from "@/shared/platform/native";
+import { isAndroidApp, isNativeApp } from "@/shared/platform/native";
 import { useState, useEffect } from "react";
 import { useTranslation } from "@/languages";
 import { usePlayerStore } from "@/features/player";
@@ -173,7 +173,7 @@ export function PlaybackTab({ searchQuery }: { searchQuery?: string }) {
           }
         />}
 
-        {isNativeApp() && <BackgroundWorkRow searchQuery={searchQuery} />}
+        {isAndroidApp() && <BackgroundWorkRow searchQuery={searchQuery} />}
       </SettingSection>
     </div>
   );

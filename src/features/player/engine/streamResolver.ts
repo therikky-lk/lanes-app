@@ -6,7 +6,7 @@ import { resolveSoundCloudStream, toSoundCloudTrackId } from "@/shared/media/sou
 import { resolveLinerStream } from "@/shared/media/liner/linerPlayback";
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
-import { isNativeApp } from "@/shared/platform/native";
+import { isNativeApp, nativePlatform } from "@/shared/platform/native";
 import { diag } from "@/shared/platform/diag";
 import {
   fromInnertubeStream,
@@ -25,8 +25,8 @@ export type { BufferedPlaybackStream, PlayableTrack, PlaybackStream, UrlPlayback
 
 function audioOptions(quality: AudioQuality) {
   return {
-    preferredCodec: quality === "low" || quality === "standard" ? ("aac" as const) : ("opus" as const),
-    preferHighest: quality === "lossless" || quality === "320",
+    preferredCodec: nativePlatform() === "ios" || quality === "low" || quality === "standard" ? ("aac" as const) : ("opus" as const),
+    preferHighest: nativePlatform() !== "ios" && (quality === "lossless" || quality === "320"),
   };
 }
 

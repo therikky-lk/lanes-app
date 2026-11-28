@@ -29,7 +29,8 @@
     "electron:build:win": "pnpm native:build && tsc -b && vite build && electron-builder --win",
     "electron:build:mac": "tsc -b && vite build && electron-builder --mac",
     "native:build": "pnpm dlx node-gyp@11 rebuild --directory native/snap-preview && node scripts/verify-native-addon.cjs",
-    "build:web": "tsc -b && LANE_TARGET=android vite build --outDir dist-web"
+    "build:web": "tsc -b && LANE_TARGET=android vite build --outDir dist-web",
+    "build:ios": "tsc -b && LANE_TARGET=ios vite build --outDir dist-ios"
   },
   "build": {
     "appId": "com.therikky.lane",
@@ -197,6 +198,8 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/share": "^8.0.3",
     "@mingcute/react": "^1.4.1",
     "@solar-icons/react": "^1.1.1",
     "@tanstack/react-virtual": "^3.13.23",

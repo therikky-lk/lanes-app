@@ -24,6 +24,10 @@ export function nativePlatform(): string | null {
   return (window as unknown as { Capacitor?: CapacitorGlobal }).Capacitor?.getPlatform?.() ?? null;
 }
 
+export function isAndroidApp(): boolean {
+  return nativePlatform() === "android";
+}
+
 /** User-Agent of the YouTube client that produced the latest stream URL */
 let streamUserAgent: string | undefined;
 export function setStreamUserAgent(ua: string | undefined): void {
@@ -259,7 +263,7 @@ export function installNativeFetchHeaders(): void {
       }
       const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
       const withCookies = (isAuth && isLegacyApi) || (init?.credentials ?? (input instanceof Request ? input.credentials : "same-origin")) === "include";
-      const transport = isAuth ? "java" : "auto";
+    const transport = isAuth && isAndroidApp() ? "java" : "auto";
       const response = await nativeHttpFetch(
         url,
         method,
@@ -281,7 +285,7 @@ export function installNativeFetchHeaders(): void {
         contentType.includes("text/html") &&
         (server.includes("cloudflare") || response.headers.has("cf-ray"));
 
-      if (isCloudflareChallenge) {
+      if (isCloudflareChallenge && isAndroidApp()) {
         const rayId = response.headers.get("cf-ray");
         diag(`API ${method} ${url.replace(/^https?:\/\//, "").slice(0, 70)} blocked by Cloudflare via native ${transport}; cf-ray=${rayId ?? "unavailable"}; retrying alternate native transport`);
         try {

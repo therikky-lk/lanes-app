@@ -1,4 +1,4 @@
-import { isNativeApp } from "./native";
+import { isAndroidApp } from "./native";
 
 type BackHandler = () => boolean;
 const handlers: BackHandler[] = [];
@@ -13,7 +13,7 @@ export function onAndroidBack(handler: BackHandler): () => void {
 }
 
 export async function installAndroidBackButton(): Promise<void> {
-  if (!isNativeApp()) return;
+  if (!isAndroidApp()) return;
   const { App } = await import("@capacitor/app");
   await App.addListener("backButton", () => {
     // newest overlay first (fullscreen player, search, settings...)

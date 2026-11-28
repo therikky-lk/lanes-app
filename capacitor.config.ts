@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.therikky.lane",
   appName: "Lane",
-  webDir: process.env.LANE_AUTH_DIAGNOSTICS === "1"
+  webDir: process.env.LANE_TARGET === "ios" ? "dist-ios" : process.env.LANE_AUTH_DIAGNOSTICS === "1"
     ? process.env.LANE_AUTH_DIAGNOSTICS_WEB_DIR || "dist-android"
     : "dist-android",
   backgroundColor: "#0d0d10",
@@ -11,6 +11,11 @@ const config: CapacitorConfig = {
   android: {
     // media streams and APIs are plain https; nothing needs mixed content
     allowMixedContent: false,
+    includePlugins: ["@capacitor/app"],
+  },
+  ios: {
+    preferredContentMode: "mobile",
+    allowsLinkPreview: false,
   },
   plugins: {
     // route fetch/XHR through native HTTP: no CORS limits, custom headers allowed

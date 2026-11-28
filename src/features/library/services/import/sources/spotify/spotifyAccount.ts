@@ -2,7 +2,7 @@
 // lives outside the page (Electron: a separate session; Android: the app
 // cookie store); requests that need it are sent by the native side.
 import { registerPlugin } from "@capacitor/core";
-import { isNativeApp, laneHttp } from "@/shared/platform/native";
+import { isAndroidApp, laneHttp } from "@/shared/platform/native";
 import type { ClientImportedTrack } from "../../importTypes";
 import { buildSpotifyTokenUrl } from "./spotifyAuth";
 
@@ -19,21 +19,21 @@ const LaneSpotify = registerPlugin<{
 
 
 export function spotifyAccountSupported(): boolean {
-  return isNativeApp() || Boolean(window.linerElectron?.spotifyLogin);
+  return isAndroidApp() || Boolean(window.linerElectron?.spotifyLogin);
 }
 
 export async function spotifyHasLogin(): Promise<boolean> {
-  if (isNativeApp()) return (await LaneSpotify.hasLogin()).value;
+  if (isAndroidApp()) return (await LaneSpotify.hasLogin()).value;
   return (await window.linerElectron?.spotifyHasLogin?.()) ?? false;
 }
 
 export async function spotifyLogin(): Promise<boolean> {
-  if (isNativeApp()) return (await LaneSpotify.login()).value;
+  if (isAndroidApp()) return (await LaneSpotify.login()).value;
   return (await window.linerElectron?.spotifyLogin?.()) ?? false;
 }
 
 export async function spotifyLogout(): Promise<void> {
-  if (isNativeApp()) await LaneSpotify.logout();
+  if (isAndroidApp()) await LaneSpotify.logout();
   else await window.linerElectron?.spotifyLogout?.();
   cachedToken = null;
   cachedProfile = null;
@@ -41,7 +41,7 @@ export async function spotifyLogout(): Promise<void> {
 
 /** GET with the Spotify login cookies attached */
 async function fetchWithLogin(url: string): Promise<{ status: number; text: string; retryAfter?: string | null }> {
-  if (isNativeApp()) {
+  if (isAndroidApp()) {
     const res = await laneHttp!.request({ url, method: "GET", headers: { accept: "application/json" }, withCookies: true });
     const bin = atob(res.body);
     const bytes = new Uint8Array(bin.length);

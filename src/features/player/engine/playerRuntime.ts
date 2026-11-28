@@ -13,7 +13,7 @@ import type { Track } from "@/shared/types";
 import { pitchShifter } from "./pitchShifter";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
 import { downloadAudioBytes } from "@/shared/media/innertube";
-import { isNativeApp, streamHeadersFor } from "@/shared/platform/native";
+import { isAndroidApp, isNativeApp, streamHeadersFor } from "@/shared/platform/native";
 import { isBotCheckError, isYoutubeSignedIn, isYoutubeSignInDeclined, prefersSignInPrompt, requestYoutubeSignIn } from "@/shared/media/youtube";
 import {
   clearNativeNext,
@@ -79,7 +79,7 @@ export class PlayerRuntime {
   constructor() {
     const win = typeof window !== "undefined" ? (window as any) : null;
     let audio = (win?.__liner_audio || (typeof document !== "undefined" && document.getElementById("liner-audio"))) as HTMLAudioElement | null;
-    if (!audio && isNativeApp()) {
+    if (!audio && isAndroidApp()) {
       // Android: a native player behind an <audio> facade (background playback,
       // media notification, lock screen controls)
       audio = createNativeAudioElement();
@@ -272,7 +272,7 @@ export class PlayerRuntime {
   }
 
   public updateMediaSessionMetadata(track: Track | null) {
-    if (isNativeApp()) {
+    if (isAndroidApp()) {
       setNativeNowPlaying(
         track
           ? {
@@ -338,7 +338,7 @@ export class PlayerRuntime {
 
       const state = usePlayerStore.getState();
       const reportedDuration = Math.round(audioEl.duration * 1000);
-      state.setDuration(isNativeApp()
+      state.setDuration(isAndroidApp()
         ? normalizeNativeDuration(reportedDuration, state.currentTrack?.durationMs ?? 0)
         : reportedDuration);
       this.syncMediaSessionPosition();
@@ -395,7 +395,7 @@ export class PlayerRuntime {
 
     audioEl.addEventListener("playing", () => {
       if (this.isResetting || audioEl !== this.audio) return;
-      this.nativePlayingTrackId = isNativeApp() ? this.currentTrackId : null;
+      this.nativePlayingTrackId = isAndroidApp() ? this.currentTrackId : null;
       log("green", "audio", "playing");
       if (isNativeApp() && this.diagnosedPlayingEpoch !== this.loadEpoch && this.currentTrackId) {
         this.diagnosedPlayingEpoch = this.loadEpoch;
@@ -494,7 +494,7 @@ export class PlayerRuntime {
     const isExpired =
       this.currentSessionExpiresAt !== null &&
       Date.now() >= this.currentSessionExpiresAt - 15_000;
-    if (isNativeApp() && this.currentTrackId === trackId) {
+    if (isAndroidApp() && this.currentTrackId === trackId) {
       const why = [
         this.attachedTrackId !== trackId && "attached to another track",
         !(this.audio.currentSrc || this.audio.src) && "no src",
@@ -537,10 +537,12 @@ export class PlayerRuntime {
       const reverbLevel = store.reverbLevel ?? 0.35;
       const isEqEnabled = store.isEqEnabled;
       const eqGains = store.eqGains ?? FLAT_EQ;
-      if (isNativeApp()) {
+      if (isAndroidApp()) {
         void setNativeEqualizer(isEqEnabled, eqGains).catch(error => diag(`Native equalizer: ${String(error)}`));
         return;
       }
+      // WebKit streams without CORS; attaching a Web Audio graph can mute them.
+      if (isNativeApp()) return;
       const needsEffects = isEqActive(isEqEnabled, eqGains) || isReverbEnabled || (!isPitchLinked && Math.abs(pitchSemitones) >= 0.05);
       if (!needsEffects && !pitchShifter.isAttached()) return;
       pitchShifter.attach(this.audio);
@@ -665,7 +667,7 @@ export class PlayerRuntime {
    * another app open), and the music stopped.
    */
   public queueNextNatively(afterTrackId: string, tracks: Track[]): void {
-    if (!isNativeApp()) return;
+    if (!isAndroidApp()) return;
     const ids = tracks.map((t) => t.id).join(",");
     const pendingKey = `${afterTrackId}:${ids}`;
     if (tracks.length && this.nativeQueuePending === pendingKey) return;
@@ -851,7 +853,7 @@ export class PlayerRuntime {
   }
 
   public setRepeatOne(enabled: boolean): void {
-    if (isNativeApp()) return;
+    if (isAndroidApp()) return;
     this.audio.loop = enabled;
     this.lastObservedAudioTime = 0;
   }
@@ -937,7 +939,7 @@ export class PlayerRuntime {
           `audio cache hit for "${track.title}" (${Math.round(cachedAudio.byteSize / 1024)} KB)`,
         );
 
-        if (!isNativeApp() && this.audio.readyState < 3) {
+        if (!isAndroidApp() && this.audio.readyState < 3) {
           await new Promise<void>((resolve) => {
             const timeout = setTimeout(resolve, 3000);
             const onCanPlay = () => {
@@ -991,7 +993,7 @@ export class PlayerRuntime {
         return;
       }
 
-      const nativePlayback = isNativeApp();
+      const nativePlayback = isAndroidApp();
       const streamCodec = stream.codec;
       const streamBitrate = stream.bitrate;
       this.currentSessionExpiresAt = stream.expiresAtMs;

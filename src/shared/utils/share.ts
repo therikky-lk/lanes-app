@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import { api } from "@/shared/api";
 import { LANE_LINK_ORIGIN } from "@/shared/api/baseUrl";
 import type { ShareEntityType, ShareSnapshot } from "@/shared/contracts/sharing";
@@ -12,6 +13,10 @@ export async function shareEntity(type: ShareEntityType, entityId: string, snaps
   if (Capacitor.getPlatform() === "android") {
     await nativeShare.share({ title: snapshot.title, url });
     return "shared";
+  }
+  if (Capacitor.getPlatform() === "ios") {
+    const { activityType } = await Share.share({ title: snapshot.title, url });
+    return activityType ? "shared" : "cancelled";
   }
   if (navigator.share) {
     try { await navigator.share({ title: snapshot.title, url }); return "shared"; }

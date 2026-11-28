@@ -1,0 +1,65 @@
+name: iOS preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ios-preview]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Select Xcode 26
+        run: |
+          developer_dir=$(node -e 'const fs = require("node:fs"); const apps = fs.readdirSync("/Applications").filter(s => /^Xcode_26.*\.app$/.test(s)).sort((a,b) => b.localeCompare(a, undefined, {numeric:true})); if (!apps.length) process.exit(1); console.log(`/Applications/${apps[0]}/Contents/Developer`)')
+          echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$developer_dir" xcodebuild -version
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:ios
+      - run: LANE_TARGET=ios pnpm exec cap sync ios
+      - name: Build iPhone simulator app
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/lane-simulator" CODE_SIGNING_ALLOWED=NO build
+      - name: Verify renderer and playback on iPhone Simulator
+        run: bash scripts/ios-smoke.sh "$RUNNER_TEMP/lane-simulator/Build/Products/Debug-iphonesimulator/App.app" ios-artifacts/simulator
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Lane-iOS-simulator
+          path: ios-artifacts/simulator
+      - name: Build device IPA for signing
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/lane-device" CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="$version" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" build
+          mkdir -p "$RUNNER_TEMP/lane-package/Payload" ios-artifacts
+          ditto "$RUNNER_TEMP/lane-device/Build/Products/Release-iphoneos/App.app" \
+            "$RUNNER_TEMP/lane-package/Payload/App.app"
+          (cd "$RUNNER_TEMP/lane-package" && /usr/bin/zip -qyr "$GITHUB_WORKSPACE/ios-artifacts/Lane-$version-ios-unsigned.ipa" Payload)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lane-iOS-unsigned
+          path: ios-artifacts/*.ipa
+          if-no-files-found: error

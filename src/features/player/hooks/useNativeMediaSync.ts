@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 import { usePlayerStore } from "../store/playerStore";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
-import { isNativeApp } from "@/shared/platform/native";
+import { isAndroidApp } from "@/shared/platform/native";
 import { LaneAudio, onNativeLike, onNativeRepeat } from "@/shared/platform/nativeAudio";
 import { playerEngine } from "../engine/playerEngine";
 import { isRadioContext, nextRepeatMode } from "../engine/radioMode";
 
 /** Android: keeps the media notification's like button in sync with the library */
 export function useNativeMediaSync(): void {
-  const native = isNativeApp();
+  const native = isAndroidApp();
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const repeat = usePlayerStore((s) => s.repeat);
   const isLiked = useIsTrackLiked(currentTrack?.id);

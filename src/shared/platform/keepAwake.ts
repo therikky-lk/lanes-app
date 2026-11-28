@@ -4,7 +4,7 @@
 // Android's battery optimization may freeze Lane in the background (which
 // cuts background playback on many phones) and asks to lift it.
 import { registerPlugin } from "@capacitor/core";
-import { isNativeApp } from "./native";
+import { isAndroidApp } from "./native";
 
 interface Progress {
   title?: string;
@@ -27,7 +27,7 @@ let holders = 0;
 export async function keepAwake(initial: Progress): Promise<{ update: (p: Progress) => void; release: () => void }> {
   holders += 1;
   try {
-    if (isNativeApp()) await LaneKeepAwake.start(initial);
+    if (isAndroidApp()) await LaneKeepAwake.start(initial);
     else await window.linerElectron?.keepAwake?.(true);
   } catch {
     // best effort: the job still runs, it may just pause with the screen off
@@ -35,7 +35,7 @@ export async function keepAwake(initial: Progress): Promise<{ update: (p: Progre
   let released = false;
   return {
     update: (p) => {
-      if (released || !isNativeApp()) return;
+      if (released || !isAndroidApp()) return;
       void LaneKeepAwake.update(p).catch(() => {});
     },
     release: () => {
@@ -43,7 +43,7 @@ export async function keepAwake(initial: Progress): Promise<{ update: (p: Progre
       released = true;
       holders = Math.max(0, holders - 1);
       if (holders > 0) return;
-      if (isNativeApp()) void LaneKeepAwake.stop().catch(() => {});
+      if (isAndroidApp()) void LaneKeepAwake.stop().catch(() => {});
       else void window.linerElectron?.keepAwake?.(false)?.catch?.(() => {});
     },
   };
@@ -51,7 +51,7 @@ export async function keepAwake(initial: Progress): Promise<{ update: (p: Progre
 
 /** Android only: is Lane allowed to run in the background without being frozen */
 export async function batteryOptimizationStatus(): Promise<{ supported: boolean; ignoring: boolean }> {
-  if (!isNativeApp()) return { supported: false, ignoring: true };
+  if (!isAndroidApp()) return { supported: false, ignoring: true };
   try {
     return await LaneKeepAwake.batteryStatus();
   } catch {
@@ -61,7 +61,7 @@ export async function batteryOptimizationStatus(): Promise<{ supported: boolean;
 
 /** Android only: shows the system prompt to let Lane run in the background */
 export async function requestBatteryExemption(): Promise<boolean> {
-  if (!isNativeApp()) return true;
+  if (!isAndroidApp()) return true;
   try {
     return (await LaneKeepAwake.requestBatteryExemption()).ignoring;
   } catch {

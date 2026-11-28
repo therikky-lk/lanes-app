@@ -3,7 +3,7 @@ import { diag } from "@/shared/platform/diag";
 import { Innertube, Platform } from "youtubei.js/web";
 import { registerPlugin } from "@capacitor/core";
 import { getClientVisitorData } from "@/shared/api/visitorSession";
-import { isNativeApp } from "@/shared/platform/native";
+import { isAndroidApp, isNativeApp } from "@/shared/platform/native";
 
 // Android: BotGuard runs in a hidden native WebView on youtube.com
 const LanePoToken = registerPlugin<{ mint(options: { identifier: string }): Promise<{ token: string }> }>("LanePoToken");
@@ -84,7 +84,7 @@ export async function getWebPlayer(): Promise<WebPlayer> {
 }
 
 async function mintContentPoToken(videoId: string): Promise<string> {
-  if (isNativeApp()) {
+  if (isAndroidApp()) {
     try {
       const { token } = await LanePoToken.mint({ identifier: videoId });
       return token;

@@ -58,6 +58,11 @@ scratch/
 
 # android web build
 /dist-android
+/dist-ios
+/ios-artifacts
+*.ipa
+*.mobileprovision
+*.p12
 
 # local Android signing material
 /android/keystore/*.jks
