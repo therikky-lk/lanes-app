@@ -8,6 +8,7 @@ import Dialog from "@/shared/ui/Dialog";
 import { onAndroidBack } from "@/shared/platform/androidBack";
 import type { Track } from "@/shared/types";
 import type { ProfileArtist } from "../store/profileCustomization";
+import { SegmentedControl } from "./controls";
 
 export default function ProfileMusicPicker({ trackIds, onTrack, onArtist, onClose }: {
   trackIds: string[];
@@ -27,9 +28,17 @@ export default function ProfileMusicPicker({ trackIds, onTrack, onArtist, onClos
   useEffect(() => onAndroidBack(() => { if (!busy) onClose(); return true; }), [onClose, busy]);
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose(); }} aria-labelledby="lane-profile-music-picker-title" maxWidth={520} zIndex={240} className="lane-profile-dialog">
     <div className="lane-profile-dialog-heading"><h3 id="lane-profile-music-picker-title">{t("settings.profile.favorites")}</h3><button className="lane-profile-icon lane-profile-remove" aria-label={t("common.close")} disabled={busy} onClick={onClose}><CloseLine size={22} /></button></div>
-    <div className="lane-profile-tabs lane-profile-music-tabs" role="group" aria-label={t("settings.profile.favorites")}>
-      <button type="button" aria-pressed={kind === "track"} disabled={busy} onClick={() => { setKind("track"); setFailed(false); }}>{t("search.songs")}</button>
-      <button type="button" aria-pressed={kind === "artist"} disabled={busy} onClick={() => { setKind("artist"); setFailed(false); }}>{t("search.artists")}</button>
+    <div className="lane-profile-music-tabs">
+      <SegmentedControl
+        ariaLabel={t("settings.profile.favorites")}
+        options={[
+          { value: "track", label: t("search.songs") },
+          { value: "artist", label: t("search.artists") },
+        ]}
+        value={kind}
+        onChange={next => { setKind(next); setFailed(false); }}
+        disabled={busy}
+      />
     </div>
     <div className="lane-profile-search"><Search2Line size={19} /><input autoFocus aria-label={t("settings.search_placeholder")} placeholder={t("settings.search_placeholder")} value={query} onChange={event => setQuery(event.target.value)} /></div>
     <div className="lane-profile-results" aria-busy={search.loading || busy}>

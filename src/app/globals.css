@@ -678,6 +678,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-mobile [data-page-scroller][data-own-top] { padding-top: 0 !important; }
 :root[data-lane-platform="ios"] [data-page-scroller][data-lane-home] { padding-top: 0 !important; }
 .lane-mobile [data-page-scroller] .sticky.top-0 { top: var(--lane-safe-top, 0px) !important; }
+.lane-mobile [data-page-scroller] .lane-sticky-header.sticky { top: 0 !important; }
 /* sliders: the finger drags the thumb, the page must not scroll instead */
 [role="slider"] { touch-action: none; }
 /* library header on phones: a soft frosted fade (no visible edge) once the
@@ -688,7 +689,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   padding-top: var(--lane-safe-top, 0px);
   padding-bottom: 14px;
 }
-.lane-mobile .lane-frost-sticky::before {
+.lane-mobile :is(.lane-frost-sticky, .lane-sticky-header)::before {
   content: "";
   position: absolute;
   inset: 0 0 -10px 0;
@@ -702,7 +703,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
   -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
   mask-image: linear-gradient(to bottom, #000 70%, transparent);
 }
-.lane-mobile .lane-frost-sticky[data-frost="true"]::before { opacity: 1; }
+.lane-mobile :is(.lane-frost-sticky, .lane-sticky-header)[data-frost="true"]::before { opacity: 1; }
 .lane-mobile { --lane-releases-top: 12px; }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -1007,10 +1008,6 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-low-end .backdrop-blur-xl { --tw-backdrop-blur: blur(10px); }
 .lane-low-end .backdrop-blur-lg { --tw-backdrop-blur: blur(8px); }
 .lane-low-end .blur-3xl { --tw-blur: blur(20px); }
-.lane-low-end .lane-frost-sticky::before {
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
 .lane-low-end .page-transition { animation-duration: 140ms; }
 
 /* weak phones, part 2 (Galaxy A17 and the like): anything frosted that sits
@@ -1032,7 +1029,7 @@ html[data-hover-reset] [data-window-controls] button:hover {
 .lane-low-end:not([data-color-theme="liquid-glass"]) .lane-dock-glass.lane-dock-glass--elevated { background-color: color-mix(in srgb, var(--bg-elevated) 96%, transparent) !important; box-shadow: none !important; }
 .lane-low-end:not([data-color-theme="liquid-glass"]) .lane-search-box,
 .lane-low-end:not([data-color-theme="liquid-glass"]) .lane-search-panel { background-color: var(--bg-panel) !important; }
-.lane-low-end .lane-frost-sticky::before {
+.lane-low-end :is(.lane-frost-sticky, .lane-sticky-header)::before {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background: color-mix(in srgb, var(--bg-primary, #0d0d10) 94%, transparent);

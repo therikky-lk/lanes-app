@@ -34,8 +34,8 @@ export default function ReleaseCard({
   artistName,
   className = "",
 }: ReleaseCardProps) {
-  const label = releaseType === "ep" ? "EP" : "Single";
   const { t } = useTranslation();
+  const label = releaseType === "ep" ? t("collection.ep") : t("collection.single");
   const pending = useRef(false);
   const [busy, setBusy] = useState(false);
   const originalUrl = isAppleReleaseId(id) ? `https://music.apple.com/us/album/${id.split(":")[1]}` : undefined;

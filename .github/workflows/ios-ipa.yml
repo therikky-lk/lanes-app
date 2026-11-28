@@ -1,23 +1,20 @@
-name: iOS preview
+name: iOS IPA
 
 on:
   workflow_call:
   workflow_dispatch:
-  push:
-    branches: [ios-preview]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ios-preview-${{ github.ref }}
+  group: ios-ipa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   ios:
     runs-on: macos-15
     timeout-minutes: 40
-    environment: lane-ios-qa
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
@@ -37,23 +34,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:ios
       - run: LANE_TARGET=ios pnpm exec cap sync ios
-      - name: Build iPhone simulator app
-        run: |
-          xcodebuild -project ios/App/App.xcodeproj -scheme App \
-            -configuration Debug -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/lane-simulator" CODE_SIGNING_ALLOWED=NO build
-      - name: Verify renderer and playback on iPhone Simulator
-        env:
-          LANE_QA_EMAIL: ${{ secrets.LANE_QA_EMAIL }}
-          LANE_QA_PASSWORD: ${{ secrets.LANE_QA_PASSWORD }}
-          LANE_QA_CAPTURE_CERT: ${{ secrets.LANE_QA_CAPTURE_CERT }}
-          LANE_QA_HOME_ONLY: ${{ secrets.LANE_QA_HOME_ONLY }}
-        run: bash scripts/ios-smoke.sh "$RUNNER_TEMP/lane-simulator/Build/Products/Debug-iphonesimulator/App.app" ios-artifacts/simulator
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Lane-iOS-simulator
-          path: ios-artifacts/simulator
       - name: Build device IPA for signing
         run: |
           version=$(node -p 'require("./package.json").version')

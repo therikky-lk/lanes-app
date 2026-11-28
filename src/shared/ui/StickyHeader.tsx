@@ -53,20 +53,16 @@ export function StickyHeader({
 
   return (
     <div
-      className={`sticky ${isMobile ? "" : "top-0"} z-20 w-full pointer-events-none select-none ${className}`}
+      className={`sticky top-0 z-20 w-full pointer-events-none select-none ${isMobile ? "lane-sticky-header" : ""} ${className}`}
+      data-frost={isMobile && isScrolled ? "true" : undefined}
       style={
         isMobile
           ? {
-              // phones: reaches up under the status bar and frosts once scrolled
-              top: "calc(-1 * var(--lane-safe-top, 0px))",
+              // Offset the scroller padding initially, then stick at the top of the viewport.
               marginTop: "calc(-1 * var(--lane-safe-top, 0px))",
               height: "calc(56px + var(--lane-safe-top, 0px))",
               marginBottom: "calc(-56px - var(--lane-safe-top, 0px))",
               paddingTop: "var(--lane-safe-top, 0px)",
-              transition: "background-color 0.25s ease, backdrop-filter 0.25s ease",
-              backgroundColor: isScrolled ? "color-mix(in srgb, var(--bg-primary, #0d0d10) 62%, transparent)" : "transparent",
-              backdropFilter: isScrolled ? "blur(24px) saturate(1.5)" : "none",
-              WebkitBackdropFilter: isScrolled ? "blur(24px) saturate(1.5)" : "none",
             }
         : {
             height: "56px",
@@ -148,4 +144,3 @@ export function StickyHeader({
 }
 
 export default StickyHeader;
-

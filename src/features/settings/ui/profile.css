@@ -96,10 +96,7 @@
 .lane-profile-editor-summary > div:last-child { min-width: 0; }
 .lane-profile-editor-summary strong { display: block; font-size: 24px; font-weight: 800; letter-spacing: -.04em; overflow-wrap: anywhere; }
 .lane-profile-editor-summary span { display: block; font-size: 13px; color: var(--text-tertiary); overflow-wrap: anywhere; }
-.lane-profile-tabs { display: inline-flex; padding: 4px; border-radius: 30px; background: var(--profile-control); margin-bottom: 26px; max-width: 100%; }
-.lane-profile-tabs button { flex: 1; padding: 9px 20px; border: 0; border-radius: 24px; background: transparent; color: var(--text-tertiary); font-size: 14px; cursor: pointer; }
-.lane-profile-tabs button[aria-selected="true"], .lane-profile-tabs button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-primary); }
-.lane-profile-music-tabs { display: flex; margin: 0 24px 16px; }
+.lane-profile-music-tabs { margin: 0 24px 16px; }
 .lane-profile-field { display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
 .lane-profile-field > span { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-weight: 600; }
 .lane-profile-field small { color: var(--text-tertiary); font-size: 12px; font-weight: 400; line-height: 1.6; }
