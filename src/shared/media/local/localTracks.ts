@@ -97,21 +97,26 @@ function readDuration(blob: Blob): Promise<number> {
     const url = URL.createObjectURL(blob);
     const audio = new Audio();
     const done = (ms: number) => {
+      clearTimeout(timeout);
+      audio.onloadedmetadata = audio.onerror = null;
+      audio.removeAttribute("src");
+      audio.load();
       URL.revokeObjectURL(url);
       resolve(ms);
     };
     audio.preload = "metadata";
     audio.onloadedmetadata = () => done(Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : 0);
     audio.onerror = () => done(0);
-    setTimeout(() => done(0), 8000);
+    const timeout = setTimeout(() => done(0), 8000);
     audio.src = url;
   });
 }
 
 /** cover art scaled down to keep the persisted queue small */
 async function coverToDataUrl(cover: { mime: string; data: Uint8Array }): Promise<string | undefined> {
+  let bitmap: ImageBitmap | undefined;
   try {
-    const bitmap = await createImageBitmap(new Blob([cover.data.slice().buffer], { type: cover.mime }));
+    bitmap = await createImageBitmap(new Blob([cover.data.slice().buffer], { type: cover.mime }));
     const size = Math.min(400, Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = size;
@@ -124,6 +129,8 @@ async function coverToDataUrl(cover: { mime: string; data: Uint8Array }): Promis
     return canvas.toDataURL("image/jpeg", 0.86);
   } catch {
     return undefined;
+  } finally {
+    bitmap?.close();
   }
 }
 

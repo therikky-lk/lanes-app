@@ -1,6 +1,6 @@
 // Braccato draws the original line and a lit copy. Advance through the lit
 // copy by grapheme, keeping the entire sung prefix of each active line lit.
-import { lyricsOutputLatencyMs, WORD_LEAD_S } from "../engine/lyricsLatency";
+import { WORD_LEAD_S } from "../engine/lyricsLatency";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
 
 const WORD = "blyrics--word";
@@ -26,9 +26,10 @@ interface WordLetters {
   lit: HTMLElement[];
   count: number;
   canGlow: boolean;
+  glowing: boolean;
 }
 
-type LyricsHost = HTMLElement & { currentTime?: number; tickOptions?: { lyricOffset?: number } };
+type LyricsHost = HTMLElement & { currentTime?: number; tickOptions?: { lyricOffset?: number; richsyncOffsetTrim?: number } };
 
 interface TimedLine {
   element: HTMLElement;
@@ -83,22 +84,25 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
   const repetitions = new Map<string, number>();
   const prepared = new Set<TimedLine>();
   let active = new Set<TimedLine>();
+  let next = new Set<TimedLine>();
   let raf = 0;
   let needsIndex = true;
   let lastFrame = -Infinity;
   let lastTime = NaN;
-  let latencyS = lyricsOutputLatencyMs() / 1000;
-  const latencyTimer = setInterval(() => { latencyS = lyricsOutputLatencyMs() / 1000; }, 2000);
+
+  const restoreWord = (word: HTMLElement, letters: HTMLElement[]) => {
+    for (const letter of letters) letter.replaceWith(word.ownerDocument.createTextNode(letter.textContent ?? ""));
+    word.removeAttribute(SPLIT_ATTR);
+    word.removeAttribute(GLOW_ATTR);
+    word.style.removeProperty("--lane-ch-dur");
+    word.normalize();
+  };
 
   const release = (line: TimedLine) => {
-    for (const pair of line.words ?? []) {
-      for (const [word, letters] of [[pair.element, pair.lit], [pair.baseElement, pair.base]] as const) {
-        if (!host.contains(word)) continue;
-        for (const letter of letters) letter.replaceWith(word.ownerDocument.createTextNode(letter.textContent ?? ""));
-        word.removeAttribute(SPLIT_ATTR);
-        word.removeAttribute(GLOW_ATTR);
-        word.style.removeProperty("--lane-ch-dur");
-        word.normalize();
+    if (host.contains(line.element)) {
+      for (const pair of line.words ?? []) {
+        restoreWord(pair.element, pair.lit);
+        restoreWord(pair.baseElement, pair.base);
       }
     }
     line.words = undefined;
@@ -154,13 +158,18 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
         if (litWord.dataset.content !== baseWord.dataset.content) return;
         const lit = splitWord(litWord);
         const base = splitWord(baseWord);
-        if (lit.length !== base.length || lit.length === 0) return;
+        if (lit.length !== base.length || lit.length === 0) {
+          restoreWord(litWord, lit);
+          restoreWord(baseWord, base);
+          return;
+        }
         const duration = Number(litWord.dataset.duration);
         const step = Math.min(Math.max(duration * 1000 / lit.length, 60), 260);
         for (const word of [litWord, baseWord]) word.style.setProperty("--lane-ch-dur", `${Math.round(step)}ms`);
         words.push({
           element: litWord, baseElement: baseWord, time, duration, lit, base, count: 0,
           canGlow: duration >= SUSTAINED_WORD_S || refrain,
+          glowing: false,
         });
       });
     }
@@ -187,8 +196,10 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
       indexLines();
       lastFrame = -Infinity;
     }
-    const now = (host.currentTime ?? 0) + WORD_LEAD_S - latencyS - (host.tickOptions?.lyricOffset ?? 0);
-    if (!Number.isFinite(now) || now === lastTime || timestamp - lastFrame < FRAME_MS) return;
+    if (timestamp - lastFrame < FRAME_MS) return;
+    const now = (host.currentTime ?? 0) + WORD_LEAD_S
+      - (host.tickOptions?.richsyncOffsetTrim ?? 0) - (host.tickOptions?.lyricOffset ?? 0);
+    if (!Number.isFinite(now) || now === lastTime) return;
     lastFrame = timestamp;
     lastTime = now;
 
@@ -201,7 +212,6 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
       if (lines[center].start <= now + PREPARE_AHEAD_S) low = center + 1;
       else high = center;
     }
-    const next = new Set<TimedLine>();
     for (let i = low - 1; i >= 0 && lines[i].prefixEnd + FINISH_HOLD_S >= now; i--) {
       const line = lines[i];
       if (line.end + FINISH_HOLD_S < now) continue;
@@ -210,17 +220,27 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
         const progress = (now - word.time) / word.duration;
         const count = Math.max(0, Math.min(word.lit.length, Math.ceil(progress * word.lit.length)));
         setCount(word, count);
-        if (word.canGlow) word.element.toggleAttribute(GLOW_ATTR, progress >= 0 && progress < 1);
+        const glowing = word.canGlow && progress >= 0 && progress < 1;
+        if (word.glowing !== glowing) {
+          word.glowing = glowing;
+          word.element.toggleAttribute(GLOW_ATTR, glowing);
+        }
       }
     }
     for (const line of active) {
       if (next.has(line)) continue;
       for (const word of line.words ?? []) {
-        word.element.removeAttribute(GLOW_ATTR);
+        if (word.glowing) {
+          word.glowing = false;
+          word.element.removeAttribute(GLOW_ATTR);
+        }
         setCount(word, 0);
       }
     }
+    const previous = active;
     active = next;
+    next = previous;
+    next.clear();
     for (const line of prepared) {
       if (prepared.size <= MAX_PREPARED_LINES) break;
       if (!active.has(line)) release(line);
@@ -232,7 +252,6 @@ export function attachLetterAnimation(host: LyricsHost): () => void {
   raf = requestAnimationFrame(frame);
   return () => {
     cancelAnimationFrame(raf);
-    clearInterval(latencyTimer);
     host.removeEventListener(LYRICS_LOADED, lyricsLoaded);
     for (const line of prepared) release(line);
   };

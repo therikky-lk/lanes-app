@@ -1,3 +1,5 @@
+import { toPhoneticLatin } from "@/shared/media/matching/phonetic";
+
 export function normalizeSearchText(value: string): string {
   return value
     .toLowerCase()
@@ -54,7 +56,14 @@ export function matchesQueryWell(query: string, title: string, artistNames: stri
   const tokens = getQueryTokens(query);
   if (tokens.length === 0) return true;
   const combined = normalizeSearchText(`${title} ${artistNames.join(" ")}`);
-  const matched = tokens.filter((token) => combined.includes(token)).length;
+  // The catalog returns native Cyrillic names even when the query is typed in
+  // Latin ("khrystyna soloviy"), so compare the phonetic form as a fallback.
+  const combinedPhonetic = toPhoneticLatin(`${title} ${artistNames.join(" ")}`);
+  const matched = tokens.filter((token) => {
+    if (combined.includes(token)) return true;
+    const phonetic = toPhoneticLatin(token);
+    return phonetic.length > 2 && combinedPhonetic.includes(phonetic);
+  }).length;
   const threshold = tokens.length <= 2 ? tokens.length : Math.ceil(tokens.length * 0.75);
   return matched >= threshold;
 }

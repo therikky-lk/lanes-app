@@ -184,7 +184,7 @@ function ProfileContent({ owner }: { owner: string | null }) {
 
   return <div className="lane-profile">
     <input ref={bannerInput} type="file" accept="image/*" hidden onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; void uploadBanner(file); }} />
-    <section className="lane-profile-card">
+    <section className="lane-profile-card" data-profile-loading={loading && !loadedProfile ? "" : undefined}>
       <button type="button" className={`lane-profile-banner lane-profile-banner-upload ${profile.banner ? "has-image" : ""}`} style={profile.banner ? { backgroundImage: `url(${profile.banner})` } : undefined} disabled={unavailable} aria-label={t("settings.profile.upload_banner_hint")} onClick={() => bannerInput.current?.click()}>
         <span className="lane-profile-upload-hint"><AddLine size={22} />{t("settings.profile.upload_banner_hint")}</span>
       </button>

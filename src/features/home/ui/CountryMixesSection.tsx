@@ -52,7 +52,7 @@ function CountryMixesSection() {
         </div>
       </div>
       <ScrollableRow controller={scroll}
-        className="mt-[10px] min-w-0 flex-nowrap gap-4 px-4 pb-5 md:gap-[28px] md:px-8">
+        className="mt-[10px] min-w-0 flex-nowrap gap-4 px-4 pb-5 [--lane-row-inset:16px] md:gap-[28px] md:px-8 md:[--lane-row-inset:32px]">
         {countries.map(country => {
           const name = names.of(country) ?? country;
           return (

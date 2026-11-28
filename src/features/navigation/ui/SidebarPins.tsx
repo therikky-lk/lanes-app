@@ -23,12 +23,12 @@ function PinCover({ pin, active }: { pin: SidebarPin; active: boolean }) {
   const round = pin.kind === "artist";
   return (
     <span
-      className={`relative block h-[36px] w-[36px] overflow-hidden bg-border-alpha-14 ${
+      className={`relative block h-[36px] w-[36px] shrink-0 overflow-hidden bg-border-alpha-14 ${
         round ? "rounded-full" : "rounded-[8px]"
       } transition-opacity duration-150 ${active ? "opacity-100" : "opacity-80 group-hover:opacity-100"}`}
     >
       {pin.imageUrl ? (
-        <CoverImage src={pin.imageUrl} alt={pin.title} fill className="object-cover" draggable={false} unoptimized />
+        <CoverImage src={pin.imageUrl} alt="" fill className="object-cover" draggable={false} unoptimized />
       ) : (
         <span className="absolute inset-0 flex items-center justify-center text-text-tertiary">
           {round ? <User1Fill size={18} /> : <PlaylistFill size={18} />}
@@ -48,7 +48,7 @@ function PinCover({ pin, active }: { pin: SidebarPin; active: boolean }) {
   );
 }
 
-export default function SidebarPins() {
+export default function SidebarPins({ expanded }: { expanded: boolean }) {
   const { t } = useTranslation();
   const tr = (key: string, fallback: string) => {
     const v = t(key);
@@ -72,12 +72,12 @@ export default function SidebarPins() {
 
   return (
     <>
-      <div className="mx-auto mb-[12px] h-px w-[36px] shrink-0 bg-border-primary" role="separator" />
+      <div className={`mb-[12px] h-px shrink-0 bg-border-primary ${expanded ? "mx-[11px] self-stretch" : "mx-auto w-[36px]"}`} role="separator" />
       <Reorder.Group
         axis="y"
         values={order}
         onReorder={setLocalOrder}
-        className="flex min-h-0 w-full flex-1 flex-col items-center gap-[10px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 px-0 pb-[4px]"
+        className={`flex min-h-0 w-full flex-1 flex-col gap-[10px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden list-none m-0 pb-[4px] ${expanded ? "px-[11px]" : "items-center px-0"}`}
       >
         {order.map((pin) => {
           const active = samePlace(pin.href, pathname, search);
@@ -98,12 +98,12 @@ export default function SidebarPins() {
                 }, 0);
               }}
             >
-              <Tooltip content={pin.title} side="right" sideOffset={12}>
+              <Tooltip content={pin.title} side="right" sideOffset={12} wrapperClassName={expanded ? "w-full min-w-0" : undefined}>
                 <button
                   type="button"
                   aria-current={active ? "page" : undefined}
                   aria-label={pin.title}
-                  className="group flex h-[36px] w-[36px] shrink-0 items-center justify-center border-0 bg-transparent p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100"
+                  className={`group flex h-[36px] shrink-0 items-center border-0 bg-transparent p-0 text-text-primary cursor-pointer active:scale-[0.96] transition-transform duration-100 ${expanded ? "w-full justify-start gap-2 rounded-lg pr-2 hover:bg-border-alpha-14" : "w-[36px] justify-center"}`}
                   onClick={() => {
                     if (!dragged.current) navigate(pin.href);
                   }}
@@ -113,6 +113,7 @@ export default function SidebarPins() {
                   }}
                 >
                   <PinCover pin={pin} active={active} />
+                  {expanded && <span className="truncate text-[13px] font-medium">{pin.title}</span>}
                 </button>
               </Tooltip>
             </Reorder.Item>

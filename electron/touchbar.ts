@@ -1,41 +1,6 @@
 import { handleTrusted, onTrusted } from "./ipc-guard.js";
 import { BrowserWindow, TouchBar } from "electron";
-
-export interface TouchBarTrackInfo {
-  id?: string;
-  title: string;
-  artist: string;
-  album?: string;
-  cover?: string | null;
-  durationMs?: number;
-}
-
-export interface TouchBarActiveLine {
-  text: string;
-  timeMs: number;
-  durationMs?: number;
-  isInstrumental?: boolean;
-}
-
-export interface TouchBarStatePayload {
-  status: "playing" | "paused" | "loading" | "buffering" | "idle" | "error";
-  track: TouchBarTrackInfo | null;
-  positionMs: number;
-  durationMs: number;
-  volume: number;
-  isLiked: boolean;
-  shuffle: boolean;
-  repeat: "off" | "all" | "one";
-  activeLine?: TouchBarActiveLine | null;
-  activeLyricText?: string;
-  nextLyricText?: string;
-  offsetMs?: number;
-  currentRoute?: string;
-  isFullscreen?: boolean;
-  hasSyncedLyrics?: boolean;
-  syncedLines?: TouchBarActiveLine[];
-  activeIndex?: number;
-}
+import type { TouchBarStatePayload } from "../src/features/touchbar/contracts.js";
 
 export interface TouchBarAction {
   type:
@@ -120,9 +85,19 @@ export class TouchBarManager {
       ],
     });
 
+    if (this.latestState) this.updateNativeLabels(this.latestState);
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.setTouchBar(this.nativeTouchBar);
     }
+  }
+
+  private updateNativeLabels(state: TouchBarStatePayload) {
+    const play = state.status === "playing" ? "⏸" : "▶";
+    const track = state.track ? `${state.track.title} - ${state.track.artist}` : "Lane";
+    const lyrics = state.activeLyricText || "";
+    if (this.nativePlayBtn.label !== play) this.nativePlayBtn.label = play;
+    if (this.nativeTrackLabel.label !== track) this.nativeTrackLabel.label = track;
+    if (this.nativeLyricsLabel.label !== lyrics) this.nativeLyricsLabel.label = lyrics;
   }
 
   private registerIpcHandlers() {
@@ -130,17 +105,7 @@ export class TouchBarManager {
       this.latestState = state;
 
       if (process.platform === "darwin" && this.nativeTouchBar) {
-        if (this.nativePlayBtn) {
-          this.nativePlayBtn.label = state.status === "playing" ? "⏸" : "▶";
-        }
-        if (this.nativeTrackLabel) {
-          this.nativeTrackLabel.label = state.track
-            ? `${state.track.title} - ${state.track.artist}`
-            : "Lane";
-        }
-        if (this.nativeLyricsLabel) {
-          this.nativeLyricsLabel.label = state.activeLyricText || "";
-        }
+        this.updateNativeLabels(state);
       }
     });
 

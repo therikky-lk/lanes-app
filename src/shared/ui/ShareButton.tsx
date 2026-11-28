@@ -39,7 +39,7 @@ export default function ShareButton({ type, entityId, snapshot, menu = true, ext
     }, ...extraMenuItems];
     return <DropdownMenu
       trigger={<Button variant={variant} size="icon" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
-        className={`!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary ${className}`}>
+        className={`shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary ${className}`}>
         <LuEllipsis size={19} />
       </Button>}
       items={items}
@@ -47,7 +47,7 @@ export default function ShareButton({ type, entityId, snapshot, menu = true, ext
   }
   return <DropdownMenu
     trigger={<Button variant={variant} size="icon" disabled={busy} title={t("common.more")} aria-label={t("common.more")}
-      className={`!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary ${className}`}>
+      className={`shrink-0 !p-0 flex items-center justify-center text-text-secondary hover:text-text-primary ${className}`}>
       <LuEllipsis size={19} />
     </Button>}
     items={[{ id: "share-artist", label: t("common.share"), icon: <LuShare2 size={15} />, disabled: busy, onClick: handleShare }, ...extraMenuItems]}

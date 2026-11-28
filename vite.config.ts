@@ -78,6 +78,18 @@ export default defineConfig(({ command, mode }) => {
           request.removeHeader("cookie");
         }),
       },
+      "^/__lane/channel/(browse|navigation/resolve_url)$": {
+        target: "https://www.youtube.com",
+        changeOrigin: true,
+        secure: true,
+        rewrite: url => url.replace("/__lane/channel/", "/youtubei/v1/"),
+        configure: proxy => proxy.on("proxyReq", request => {
+          request.removeHeader("cookie");
+          request.removeHeader("authorization");
+          request.setHeader("origin", "https://www.youtube.com");
+          request.setHeader("x-youtube-client-name", "1");
+        }),
+      },
       "^/__lane/catalog/(search|browse)$": {
         target: "https://music.youtube.com",
         changeOrigin: true,

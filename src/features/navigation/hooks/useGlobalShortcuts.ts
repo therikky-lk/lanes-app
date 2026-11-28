@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { playerEngine, usePlayerStore, toVolumeGain, toVolumeLevel } from "@/features/player";
-import { useShortcutsStore, matchesShortcut } from "@/features/shortcuts";
+import { DEFAULT_SEARCH_ALTERNATE, DEFAULT_SHORTCUTS, useShortcutsStore, matchesShortcut } from "@/features/shortcuts";
 import {
   isBlockingOverlayOpen,
   isKeyHandledByFocusedControl,
@@ -92,11 +92,20 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions): void {
         return;
       }
 
-      if (isTypingTarget(event.target)) return;
-      if (isBlockingOverlayOpen()) return;
-      if (isKeyHandledByFocusedControl(event.target, code)) return;
-
+      if (event.isComposing || isBlockingOverlayOpen()) return;
       const { mainApp } = useShortcutsStore.getState();
+      const usesDefaultSearch = mainApp.search === DEFAULT_SHORTCUTS.mainApp.search;
+      const isSearchShortcut = matchesShortcut(event, mainApp.search);
+      const isSearchAlternate = usesDefaultSearch && matchesShortcut(event, DEFAULT_SEARCH_ALTERNATE) &&
+        !Object.entries(mainApp).some(([action, shortcut]) => action !== "search" && matchesShortcut(event, shortcut));
+      if (isTypingTarget(event.target)) {
+        if (usesDefaultSearch && (isSearchShortcut || isSearchAlternate)) {
+          event.preventDefault();
+          opts.openSearch();
+        }
+        return;
+      }
+      if (isKeyHandledByFocusedControl(event.target, code)) return;
 
       if (matchesShortcut(event, mainApp.playPause)) {
         event.preventDefault();
@@ -157,7 +166,7 @@ export function useGlobalShortcuts(options: GlobalShortcutsOptions): void {
         return;
       }
 
-      if (matchesShortcut(event, mainApp.search)) {
+      if (isSearchShortcut || isSearchAlternate) {
         event.preventDefault();
         opts.openSearch();
         return;

@@ -63,8 +63,8 @@ export default function App() {
         <IOSStatusBarSync />
         <AppIconSync />
         <PresenceSync />
-        <TouchBarSync />
-        <DiscordSync />
+        {window.linerElectron?.touchbarUpdateState && <TouchBarSync />}
+        {window.linerElectron?.discordUpdateState && <DiscordSync />}
         <AppleEmojiProvider>
           <I18nProvider>
             {window.linerElectron?.overlayUpdateState && <OverlaySync />}

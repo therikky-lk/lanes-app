@@ -54,6 +54,7 @@
     "all_releases": "Wszystko",
     "discography": "Dyskografia",
     "your_tracks": "Polubione utwory: {count}",
+    "saved_tracks": "Twoje zapisane utwory",
     "open": "Otwórz profil artysty",
     "verified": "Zweryfikowano"
   },
@@ -74,6 +75,7 @@
     "sec": "s"
   },
   "common": {
+    "enterFullscreen": "Włącz tryb pełnoekranowy",
     "show_more": "Pokaż więcej",
     "pause": "Pauza",
     "source": "Źródło",
@@ -83,6 +85,8 @@
       "version": "Wersja 0.1.0"
     },
     "sidebar": {
+      "expand": "Rozwiń pasek boczny",
+      "collapse": "Zwiń pasek boczny",
       "home": "Start",
       "search": "Szukaj",
       "library": "Biblioteka",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Otwórz odtwarzacz w trybie pełnoekranowym",
     "open_cover": "Otwórz okładkę",
     "repeat_off": "Powtarzanie: wył.",
     "repeat_all": "Powtarzanie: wszystko",
@@ -636,6 +641,8 @@
     "visual_quality_balanced": "Zrównoważony",
     "visual_quality_balanced_hint": "Spokojniejszy ruch tła, bez rozmycia tekstu",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Tylko rozmyta okładka",
+    "visual_quality_blur_hint": "Statyczna rozmyta okładka zamiast animowanego tła",
     "visual_quality_lite_hint": "Wolniejsze ruchome tło z mniejszą liczbą klatek",
     "volume": "Głośność",
     "previous": "Poprzedni",

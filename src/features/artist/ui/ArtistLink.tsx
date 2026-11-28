@@ -9,7 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { splitJoinedArtists } from "@/shared/api/track";
 import type { TrackArtist } from "@/shared/types";
-import { artistHref } from "@/shared/media/artistIdentity";
+import { artistHref, nativeArtistName } from "@/shared/media/artistIdentity";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import { useArtistSheetStore, type ArtistSheetArtist } from "../store/artistSheetStore";
 
@@ -18,6 +18,7 @@ export interface ArtistLinkProps {
   artistId?: string;
   artists?: string;
   artistList?: TrackArtist[];
+  trackId?: string;
   className?: string;
   separator?: string;
   onNavigate?: () => void;
@@ -29,6 +30,7 @@ export default function ArtistLink({
   artistId,
   artists,
   artistList,
+  trackId,
   className = "",
   separator = ", ",
   onNavigate,
@@ -65,6 +67,7 @@ export default function ArtistLink({
       ? artist.id
       : index === 0 && artistId && artistId !== "unknown" ? artistId : artist.name,
     name: artist.name,
+    sourceTrackId: trackId,
   }));
 
   /** desktop: open the artist; phone: slide up the artist sheet first */
@@ -79,7 +82,7 @@ export default function ArtistLink({
       return;
     }
     onNavigate?.();
-    navigate(artistHref(target.id, target.name));
+    navigate(artistHref(target.id, target.name, trackId));
   };
 
   const innerContent = sheetArtists.map((artist, index) => (
@@ -98,7 +101,7 @@ export default function ArtistLink({
             goArtist(artist.id);
           }
         }}
-      >{artist.name}</span>
+      >{nativeArtistName(artist.id, artist.name)}</span>
     </Fragment>
   ));
 

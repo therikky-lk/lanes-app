@@ -11,6 +11,7 @@ import { linerDb, audioCache } from "@/shared/storage";
 import { isStandaloneAudioFile } from "@/shared/storage/audioFormat";
 import type { Track } from "@/shared/types";
 import { pitchShifter } from "./pitchShifter";
+import { waitForCanPlay } from "./waitForCanPlay";
 import { resolvePlaybackStream, type PlaybackStream } from "./streamResolver";
 import { downloadAudioBytes } from "@/shared/media/innertube";
 import { isAndroidApp, isNativeApp, streamHeadersFor } from "@/shared/platform/native";
@@ -40,6 +41,7 @@ export class PlayerRuntime {
   private currentTrackId: string | null = null;
   private loadEpoch = 0;
   private loadAbortController: AbortController | null = null;
+  private pendingMetadataSeek: (() => void) | null = null;
   private isResetting = false;
   private fadeTimer: ReturnType<typeof setTimeout> | null = null;
   private stallStartTime: number | null = null;
@@ -604,6 +606,7 @@ export class PlayerRuntime {
   }
 
   private safeResetAudioElement() {
+    this.clearMetadataSeek();
     this.isResetting = true;
     this.currentSessionExpiresAt = null;
     try {
@@ -626,6 +629,7 @@ export class PlayerRuntime {
   // is ready. Emptying the element here made Chromium drop the system media session
   // during every skip, so Windows controls / FluentFlyout lost Lane after a track change.
   private pauseForTransition() {
+    this.clearMetadataSeek();
     this.isResetting = true;
     this.currentSessionExpiresAt = null;
     try {
@@ -638,6 +642,7 @@ export class PlayerRuntime {
   }
 
   private attachSource(url: string, isBlob: boolean, trackId: string) {
+    this.clearMetadataSeek();
     const previousBlob = this.activeBlobUrl;
     this.audio.src = url;
     this.activeBlobUrl = isBlob ? url : null;
@@ -833,23 +838,7 @@ export class PlayerRuntime {
   public setPendingSeek(positionMs: number): void {
     this.pendingStartPositionMs = positionMs;
     usePlayerStore.getState().setPosition(positionMs);
-    if (this.audio.src && this.audio.src !== window.location.href) {
-      try {
-        if (this.audio.readyState >= 1) {
-          this.audio.currentTime = positionMs / 1000;
-        } else {
-          this.audio.addEventListener(
-            "loadedmetadata",
-            () => {
-              try {
-                this.audio.currentTime = positionMs / 1000;
-              } catch {}
-            },
-            { once: true },
-          );
-        }
-      } catch {}
-    }
+    if (this.audio.src && this.audio.src !== window.location.href) this.seek(positionMs);
   }
 
   public setRepeatOne(enabled: boolean): void {
@@ -932,26 +921,14 @@ export class PlayerRuntime {
           this.pendingStartPositionMs > 0
             ? this.pendingStartPositionMs
             : startPositionMs;
-        this.seekWhenReady(epoch, targetPosition);
+        if (targetPosition > 0) this.seek(targetPosition);
         log(
           "cyan",
           "playback",
           `audio cache hit for "${track.title}" (${Math.round(cachedAudio.byteSize / 1024)} KB)`,
         );
 
-        if (!isAndroidApp() && this.audio.readyState < 3) {
-          await new Promise<void>((resolve) => {
-            const timeout = setTimeout(resolve, 3000);
-            const onCanPlay = () => {
-              clearTimeout(timeout);
-              this.audio.removeEventListener("canplay", onCanPlay);
-              this.audio.removeEventListener("error", onCanPlay);
-              resolve();
-            };
-            this.audio.addEventListener("canplay", onCanPlay, { once: true });
-            this.audio.addEventListener("error", onCanPlay, { once: true });
-          });
-        }
+        if (!isAndroidApp() && this.audio.readyState < 3) await waitForCanPlay(this.audio, controller.signal);
 
         if (epoch !== this.loadEpoch || controller.signal.aborted) return;
 
@@ -1015,7 +992,7 @@ export class PlayerRuntime {
         this.pendingStartPositionMs > 0
           ? this.pendingStartPositionMs
           : startPositionMs;
-      this.seekWhenReady(epoch, targetPosition);
+      if (targetPosition > 0) this.seek(targetPosition);
       log(
         "green",
         "playback",
@@ -1024,19 +1001,7 @@ export class PlayerRuntime {
 
       // Media3 starts buffering and applies play intent itself. Its synthetic
       // canplay event depends on duration metadata and may arrive much later.
-      if (!nativePlayback && this.audio.readyState < 3) {
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(resolve, 3000);
-          const onCanPlay = () => {
-            clearTimeout(timeout);
-            this.audio.removeEventListener("canplay", onCanPlay);
-            this.audio.removeEventListener("error", onCanPlay);
-            resolve();
-          };
-          this.audio.addEventListener("canplay", onCanPlay, { once: true });
-          this.audio.addEventListener("error", onCanPlay, { once: true });
-        });
-      }
+      if (!nativePlayback && this.audio.readyState < 3) await waitForCanPlay(this.audio, controller.signal);
 
       if (epoch !== this.loadEpoch || controller.signal.aborted) return;
 
@@ -1121,21 +1086,10 @@ export class PlayerRuntime {
     }
   }
 
-  private seekWhenReady(epoch: number, positionMs: number) {
-    if (positionMs <= 0) return;
-    const apply = () => {
-      if (epoch !== this.loadEpoch) return;
-      try {
-        this.audio.currentTime = positionMs / 1000;
-      } catch {
-        // Media not seekable yet — ignore
-      }
-    };
-    if (this.audio.readyState >= 1) {
-      apply();
-    } else {
-      this.audio.addEventListener("loadedmetadata", apply, { once: true });
-    }
+  private clearMetadataSeek() {
+    if (!this.pendingMetadataSeek) return;
+    this.audio.removeEventListener("loadedmetadata", this.pendingMetadataSeek);
+    this.pendingMetadataSeek = null;
   }
 
   public pause() {
@@ -1219,23 +1173,19 @@ export class PlayerRuntime {
       diag("seek: no source attached, skipped");
       return;
     }
-    if (this.audio.readyState < 1) diag("seek: waiting for the stream before seeking");
-    try {
-      if (this.audio.readyState >= 1) {
+    this.clearMetadataSeek();
+    const apply = () => {
+      this.clearMetadataSeek();
+      try {
         this.audio.currentTime = positionMs / 1000;
-      } else {
-        this.audio.addEventListener(
-          "loadedmetadata",
-          () => {
-            try {
-              this.audio.currentTime = positionMs / 1000;
-            } catch {}
-          },
-          { once: true },
-        );
-      }
-    } catch {
-      // Ignore seek error if media not yet ready
+      } catch {}
+    };
+    if (this.audio.readyState >= 1) {
+      apply();
+    } else {
+      diag("seek: waiting for the stream before seeking");
+      this.pendingMetadataSeek = apply;
+      this.audio.addEventListener("loadedmetadata", apply, { once: true });
     }
   }
 

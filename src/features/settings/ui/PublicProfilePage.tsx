@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftLine } from "@mingcute/react";
 import { api } from "@/shared/api";
-import { resolveApiErrorMessage } from "@/shared/api/api";
+import { ApiError, resolveApiErrorMessage } from "@/shared/api/api";
 import type { UserProfile } from "@/shared/contracts/users";
 import { useAuthStore } from "@/features/auth";
 import type { SharedEntity } from "@/shared/contracts/sharing";
@@ -41,7 +41,6 @@ export default function PublicProfilePage() {
   const active = useRef(true);
   const currentTarget = useRef<string | null>(null);
   const socialRevision = useRef(0);
-  const followRefreshAfter = useRef(0);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const backendOf = (result: SharedEntity) => result.profile?.authBackend || result.entityId?.split(":")[0] || "liner";
 
@@ -71,14 +70,6 @@ export default function PublicProfilePage() {
     return () => { active = false; controller.abort(); };
   }, [id, username, backend, commentTrack, commentId, retry, viewerOwner]);
 
-  useEffect(() => {
-    const refresh = () => {
-      if (document.visibilityState !== "hidden" && !followMutation.current && !mutation.current && Date.now() >= followRefreshAfter.current) setRetry(value => value + 1);
-    };
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, []);
-
   const profile = share?.profile;
   const targetOwner = profile && share ? `${backendOf(share)}:${profile.id}` : null;
   currentTarget.current = targetOwner;
@@ -104,9 +95,18 @@ export default function PublicProfilePage() {
       && currentTarget.current === targetOwner && revision === socialRevision.current;
     setSocial({ ...social, isFollowing: desired, followersCount: Math.max(0, social.followersCount + (desired ? 1 : -1)) });
     try {
-      const receipt = previous ? await api.unfollowUser(profile.id) : await api.followUser(profile.id);
+      const write = (identifier: string) => previous ? api.unfollowUser(identifier) : api.followUser(identifier);
+      const receipt = await write(profile.id).catch(async error => {
+        // Older account services can resolve handles but not UUIDs on the
+        // follow route. Only retry a definite not-found, never a failed write
+        // that may have reached the database.
+        if (!stillCurrent() || !(error instanceof ApiError) || error.status !== 404 ||
+          !profile.username || profile.username === profile.id) throw error;
+        const target = await api.getUserProfile(profile.username).catch(() => null);
+        if (!stillCurrent() || target?.id !== profile.id) throw error;
+        return write(profile.username);
+      });
       if (!stillCurrent()) return;
-      followRefreshAfter.current = Date.now() + 5000;
       if (receipt?.isFollowing === desired && Number.isFinite(receipt.followersCount)) {
         // The mutation returns a fresh database snapshot. Do not overwrite it
         // with a separate, potentially stale read made before the write.
@@ -116,8 +116,8 @@ export default function PublicProfilePage() {
       const next = await api.getUserProfile(profile.id).catch(() => null);
       if (!stillCurrent()) return;
       if (next?.isFollowing === desired) setSocial(next);
-      else if (receipt?.isFollowing === previous) throw new Error("Follow change was not confirmed");
-      // A successful legacy 204 may be followed by a stale profile read.
+      // A successful write can return a cached relationship snapshot (or no
+      // body on a legacy worker). An older read must not roll back the write.
     } catch (error) {
       if (!stillCurrent()) return;
       // A failed response does not mean the write failed: the service can
@@ -125,11 +125,12 @@ export default function PublicProfilePage() {
       const confirmed = await api.getUserProfile(profile.id).catch(() => null);
       if (stillCurrent()) {
         if (confirmed?.isFollowing === desired) {
-          followRefreshAfter.current = Date.now() + 5000;
           setSocial(confirmed);
         } else {
           setSocial(confirmed?.isFollowing === previous ? confirmed : before);
-          showToast(resolveApiErrorMessage(error, t, "settings.profile.follow_failed"), "error");
+          const message = resolveApiErrorMessage(error, t, "settings.profile.follow_failed");
+          if (error instanceof ApiError && error.requestId) showToast(message, "error", { requestId: error.requestId });
+          else showToast(message, "error");
         }
       }
     }

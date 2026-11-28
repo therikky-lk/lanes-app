@@ -54,6 +54,7 @@
     "all_releases": "Све",
     "discography": "Дискографија",
     "your_tracks": "У омиљеним песмама: {count}",
+    "saved_tracks": "Ваше сачуване песме",
     "open": "Отвори страницу извођача",
     "verified": "Потврђен профил"
   },
@@ -74,6 +75,7 @@
     "sec": "сек"
   },
   "common": {
+    "enterFullscreen": "Пређи на цео екран",
     "show_more": "Прикажи више",
     "pause": "Пауза",
     "source": "Извор",
@@ -83,6 +85,8 @@
       "version": "Верзија 0.1.0"
     },
     "sidebar": {
+      "expand": "Прошири бочну траку",
+      "collapse": "Скупи бочну траку",
       "home": "Почетна",
       "search": "Тражи",
       "library": "Библиотека",
@@ -550,6 +554,7 @@
     "frame_title": "Безбедносна провера Cloudflare-а"
   },
   "player": {
+    "open_fullscreen_player": "Отвори плејер преко целог екрана",
     "open_cover": "Отвори омот",
     "repeat_off": "Понављање: искључено",
     "repeat_all": "Понављање: све",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Уравнотежено",
     "visual_quality_balanced_hint": "Умереније кретање позадине без замућења текста",
     "visual_quality_lite": "Основно",
+    "visual_quality_blur": "Само замућени омот",
+    "visual_quality_blur_hint": "Непокретни замућени омот уместо анимиране позадине",
     "visual_quality_lite_hint": "Спорија анимирана позадина са мање кадрова у секунди",
     "instrumental_hint": "Ова песма је инструментална",
     "seek": "Премотај",

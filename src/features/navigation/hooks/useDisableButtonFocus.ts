@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 
-function isButtonElement(target: EventTarget | null): target is HTMLElement {
-  if (!(target instanceof HTMLElement)) return false;
+function isButtonElement(target: HTMLElement): boolean {
   if (target.tagName === "BUTTON") return true;
   return target.getAttribute("role") === "button";
 }
@@ -9,9 +8,10 @@ function isButtonElement(target: EventTarget | null): target is HTMLElement {
 export function useDisableButtonFocus(): void {
   useEffect(() => {
     const onFocusIn = (event: FocusEvent) => {
-      if (isButtonElement(event.target)) {
-        (event.target as HTMLElement).blur();
-      }
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !isButtonElement(target)) return;
+      if (target.closest("[data-keep-keyboard-focus]") && target.matches(":focus-visible")) return;
+      target.blur();
     };
 
     document.addEventListener("focusin", onFocusIn);

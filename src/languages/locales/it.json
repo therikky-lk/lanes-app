@@ -54,6 +54,7 @@
     "all_releases": "Tutto",
     "discography": "Discografia",
     "your_tracks": "Brani tra i preferiti: {count}",
+    "saved_tracks": "I tuoi brani salvati",
     "open": "Apri il profilo dell’artista",
     "verified": "Verificato"
   },
@@ -74,6 +75,7 @@
     "sec": "s"
   },
   "common": {
+    "enterFullscreen": "Attiva schermo intero",
     "show_more": "Mostra altro",
     "pause": "Pausa",
     "source": "Fonte",
@@ -83,6 +85,8 @@
       "version": "Versione 0.1.0"
     },
     "sidebar": {
+      "expand": "Espandi la barra laterale",
+      "collapse": "Comprimi la barra laterale",
       "home": "Home",
       "search": "Cerca",
       "library": "Libreria",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Apri il lettore a schermo intero",
     "open_cover": "Apri copertina",
     "repeat_off": "Ripeti: disattivato",
     "repeat_all": "Ripeti: tutto",
@@ -636,6 +641,8 @@
     "visual_quality_balanced": "Equilibrato",
     "visual_quality_balanced_hint": "Movimento più delicato dello sfondo, senza sfocare il testo",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Solo copertina sfocata",
+    "visual_quality_blur_hint": "Copertina sfocata statica al posto dello sfondo animato",
     "visual_quality_lite_hint": "Sfondo animato più lento, con meno fotogrammi",
     "volume": "Volume",
     "previous": "Precedente",

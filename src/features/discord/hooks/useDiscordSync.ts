@@ -7,6 +7,7 @@ import { useDiscordSettingsStore } from "../store/discordSettingsStore";
 
 const artistAvatarCache = new Map<string, string | null>();
 const pendingArtistAvatars = new Map<string, Promise<string | null>>();
+const ARTIST_AVATAR_LIMIT = 128;
 
 function loadArtistAvatar(artistId: string): Promise<string | null> {
   const pending = pendingArtistAvatars.get(artistId);
@@ -17,6 +18,10 @@ function loadArtistAvatar(artistId: string): Promise<string | null> {
     .catch(() => null)
     .then((url) => {
       artistAvatarCache.set(artistId, url);
+      if (artistAvatarCache.size > ARTIST_AVATAR_LIMIT) {
+        const oldest = artistAvatarCache.keys().next().value;
+        if (oldest !== undefined) artistAvatarCache.delete(oldest);
+      }
       pendingArtistAvatars.delete(artistId);
       return url;
     });

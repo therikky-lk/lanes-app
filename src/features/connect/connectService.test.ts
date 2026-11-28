@@ -1,6 +1,6 @@
 import { webcrypto } from "node:crypto";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { startConnect, stopConnect, useConnectStore } from "./connectService";
+import { getRemotePlaybackClock, startConnect, stopConnect, useConnectStore } from "./connectService";
 import { usePlayerStore } from "@/features/player/engine/playerEngine";
 
 const transport = vi.hoisted(() => ({
@@ -102,4 +102,17 @@ it("does not show the intermediate tracks from a replayed burst", async () => {
   await vi.advanceTimersByTimeAsync(250);
   expect(seen).toEqual(["latest"]);
   unsubscribe();
+});
+
+it("provides a live lyrics clock between mirrored progress updates and freezes it on pause", async () => {
+  await startConnect();
+  const at = Date.now();
+  const remote = { track: track("one"), positionMs: 4000, at, rate: 1.5, volume: 1 };
+  expect(getRemotePlaybackClock()).toBeNull();
+  useConnectStore.setState({ followingId: phone.id, remote: { ...remote, status: "playing" } });
+  await vi.advanceTimersByTimeAsync(100);
+  expect(getRemotePlaybackClock()).toEqual({ positionMs: 4150, playing: true, rate: 1.5 });
+  useConnectStore.setState({ remote: { ...remote, positionMs: 9000, status: "paused" } });
+  await vi.advanceTimersByTimeAsync(100);
+  expect(getRemotePlaybackClock()).toEqual({ positionMs: 9000, playing: false, rate: 1.5 });
 });

@@ -14,6 +14,7 @@ import { ArrowLeftLine, ArrowRightLine } from "@mingcute/react";
 import useHorizontalScroll from "@/shared/hooks/useHorizontalScroll";
 import { isMobileLayout, useIsMobile } from "@/shared/hooks/useIsMobile";
 import SectionExpandButton from "@/shared/ui/SectionExpandButton";
+import { useSectionScrollRestore } from "@/shared/hooks/useSectionScrollRestore";
 
 interface DailyMixCardProps {
   mix: DailyMix;
@@ -166,10 +167,11 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
   const scroll = useHorizontalScroll();
   const isMobile = useIsMobile();
   const [showAll, setShowAll] = useState(false);
+  const { anchorRef, remember } = useSectionScrollRestore<HTMLDivElement>(showAll);
   if (mixes.length === 0) return null;
 
   return (
-    <div className="home-scroll-section flex min-w-0 flex-col overflow-hidden">
+    <div ref={anchorRef} className="home-scroll-section flex min-w-0 flex-col overflow-hidden">
       <div className={`${headingMarginTop} flex min-w-0 items-center justify-between gap-[12px] px-[16px] md:px-[32px]`}>
         <div className="flex items-center gap-2.5">
           <div className="flex items-center shrink-0">
@@ -217,7 +219,10 @@ function DailyMixesSection({ mixes, headingMarginTop = "mt-[8px]" }: DailyMixesS
         ))}
       </ScrollableRow>)}
       {isMobile && mixes.length > 2 && <SectionExpandButton label={t(showAll ? "artist.show_less" : "common.show_more")}
-        expanded={showAll} controls="daily-mixes-list" onClick={() => setShowAll(value => !value)} />}
+        expanded={showAll} controls="daily-mixes-list" onClick={() => {
+          if (!showAll) remember();
+          setShowAll(!showAll);
+        }} />}
 
     </div>
   );

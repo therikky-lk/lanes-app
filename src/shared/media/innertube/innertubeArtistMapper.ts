@@ -68,7 +68,7 @@ export function releaseShelfKind(title: string | undefined): ReleaseShelf | null
   if (["albums", "album", "альбомы", "альбом", "альбоми"].includes(t)) return "albums";
   if (
     /^(singles?|eps?)( (&|and) (eps?|singles?))?$/.test(t) ||
-    /^(синглы?|сингли)(\s*(и|й|та|&|\+)\s*(ep|eps|эп|мини-?альбомы?))?$/.test(t) ||
+    /^(синглы?|сингли)(\s*(и|й|та|&|\+)\s*(ep|eps|эп|мини-?альбомы?|выпуски|випуски))?$/.test(t) ||
     /^(ep|eps|эп)(\s*(&|и|й|та)\s*(singles?|синглы?|сингли))$/.test(t)
   ) return "singles";
   return null;

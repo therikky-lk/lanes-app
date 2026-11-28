@@ -27,6 +27,7 @@ import {
   RightLine,
 } from "@mingcute/react";
 import CoverImage from "@/features/covers/ui/CoverImage";
+import { useSectionScrollRestore } from "@/shared/hooks/useSectionScrollRestore";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -71,9 +72,10 @@ export default function HomePage() {
 
   // desktop: "My Vibe" can fill the whole page (arrow next to its settings)
   const [vibeExpanded, setVibeExpanded] = useState(false);
+  const { anchorRef: homeScrollerRef, remember: rememberHomeScroll } = useSectionScrollRestore<HTMLDivElement>(vibeExpanded, false);
 
   return (
-    <div data-page-scroller data-lane-home className={`relative h-full min-w-0 w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
+    <div ref={homeScrollerRef} data-page-scroller data-lane-home className={`relative h-full min-w-0 w-full overflow-x-hidden bg-transparent ${vibeExpanded ? "overflow-y-hidden" : "overflow-y-auto"}`}>
 
       <div
         data-window-drag
@@ -87,7 +89,10 @@ export default function HomePage() {
           recent={vibeRecent}
           trending={vibeTrending}
           expanded={vibeExpanded}
-          onToggleExpanded={() => setVibeExpanded((v) => !v)}
+          onToggleExpanded={() => {
+            if (!vibeExpanded) rememberHomeScroll();
+            setVibeExpanded(!vibeExpanded);
+          }}
         />
       </div>
 

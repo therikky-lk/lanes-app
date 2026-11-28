@@ -9,6 +9,7 @@ import { useTranslation } from "@/languages";
 import { showToast } from "@/shared/ui/Toast";
 import type { Track } from "@/shared/types";
 import type { ProfileArtist } from "../store/profileCustomization";
+import { artistHref, canonicalArtistId } from "@/shared/media/artistIdentity";
 
 interface Props {
   artist: ProfileArtist | null;
@@ -59,7 +60,8 @@ export default function ProfileMusic({ artist, tracks, disabled = false, onChoos
     if (active) { playerEngine.togglePlayPause(); return; }
     pending.current = true; setBusy(true);
     try {
-      const queue = track ? [track] : (await api.getArtist(selectedArtist!.id)).tracks.map(toClientTrack);
+      const queue = track ? [track] : (await api.getArtist(canonicalArtistId(selectedArtist!.id, selectedArtist!.name))).tracks
+        .filter(item => !item.catalogUnavailable).map(toClientTrack);
       if (!queue.length) throw new Error("No playable tracks");
       await playerEngine.playTrack(track || queue[0], queue, selectedArtist && !track ? selectedArtist.name : t("settings.profile.favorites"), selectedArtist && !track ? selectedArtist.coverUrl : track?.coverUrl);
     } catch { showToast(t("settings.profile.play_failed"), "error"); }
@@ -76,7 +78,7 @@ export default function ProfileMusic({ artist, tracks, disabled = false, onChoos
     <h3>{t(selectedArtist ? "settings.profile.favorite_artist" : track ? "settings.profile.favorite_track" : "settings.profile.favorites")}</h3>
     <div className={`lane-profile-favorites-card ${!hasSelection ? "is-empty" : ""}`} data-playback-state={active ? status : undefined} aria-busy={loading}>
       {selectedArtist && <div className="lane-profile-music-item">
-        <button type="button" className="lane-profile-music-row" onClick={() => navigate(`/artist?id=${encodeURIComponent(selectedArtist.id)}`)}>
+        <button type="button" className="lane-profile-music-row" onClick={() => navigate(artistHref(selectedArtist.id, selectedArtist.name))}>
           <span className="lane-profile-artwork is-artist">{selectedArtist.coverUrl && <CoverImage src={selectedArtist.coverUrl} alt="" />}</span>
           <span><strong>{selectedArtist.name}</strong></span>
         </button>

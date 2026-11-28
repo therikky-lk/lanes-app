@@ -546,7 +546,7 @@ function intercept(action: RemoteAction): boolean {
     if (action.type === "pause") next = { ...remote, status: "paused", positionMs: livePosition(remote), at: Date.now() };
     if (action.type === "seek") next = { ...remote, positionMs: action.positionMs, at: Date.now() };
     if (action.type === "volume") next = { ...remote, volume: action.volume };
-    if (action.type === "rate") next = { ...remote, rate: action.rate };
+    if (action.type === "rate") next = { ...remote, positionMs: livePosition(remote), at: Date.now(), rate: action.rate };
     if (action.type === "pitch") next = { ...remote, pitch: action.semitones };
     if (next) {
       useConnectStore.setState({ remote: next });
@@ -594,6 +594,13 @@ function livePosition(state: RemoteState): number {
   const elapsed = state.status === "playing" ? Math.max(0, Date.now() - state.at) * (state.rate ?? 1) : 0;
   const position = Math.max(0, state.positionMs + elapsed);
   return Math.min(position, state.track?.durationMs || position);
+}
+
+/** Live clock for renderers: the mirrored player store updates only twice a second. */
+export function getRemotePlaybackClock(): { positionMs: number; playing: boolean; rate: number } | null {
+  const { followingId, remote } = useConnectStore.getState();
+  if (!followingId || !remote) return null;
+  return { positionMs: livePosition(remote), playing: remote.status === "playing", rate: remote.rate ?? 1 };
 }
 
 function onLocalPlay(): void {

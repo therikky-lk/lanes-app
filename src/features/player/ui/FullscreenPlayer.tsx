@@ -1,7 +1,7 @@
 import { useShallow } from "zustand/react/shallow";
 import { fullscreenChromeMask } from "./fullscreenChromeMask";
 import { VisualQualityPicker } from "./VisualQualityPicker";
-import { useVisualQualityStore, visualEffects } from "../store/visualQualityStore";
+import { useVisualQualityStore, fullscreenVisualQuality } from "../store/visualQualityStore";
 import { usePlayerStore } from "../store/playerStore";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
@@ -49,6 +49,7 @@ import { SpeedPitchPicker } from "./SpeedPitchPicker";
 import { PlaybackSpeed } from "@solar-icons/react";
 import { useTranslation } from "@/languages";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
+import { getRemotePlaybackClock } from "@/features/connect/connectService";
 import FullscreenQueueSheet from "./FullscreenQueueSheet";
 import TrackComments, { supportsTrackComments, useTrackCommentsAccount } from "./TrackComments";
 
@@ -72,7 +73,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, o
   const lastWheelTimeRef = useRef(0);
   const isInFreeSearchRef = useRef(false);
   const waitingForAudioAfterClickRef = useRef(false);
-  const pinnedToTopRef = useRef(startsPinnedToTop(player.status, playerEngine.getSnapshot().positionMs));
+  const pinnedToTopRef = useRef(!getRemotePlaybackClock() && startsPinnedToTop(player.status, playerEngine.getSnapshot().positionMs));
 
   const scrollToActiveLine = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -167,7 +168,9 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, o
     el.host = { getScrollElement: () => el };
     el.theme = braccatoThemeCss;
     el.tickOptions = { ...el.tickOptions, lyricOffset: offsetRef.current / 1000 };
-    el.source = "#liner-audio";
+    const localSource = "#liner-audio";
+    const syncTouchBar = window.linerElectron?.platform === "darwin";
+    el.source = getRemotePlaybackClock() ? null : localSource;
 
     const handleBraccatoLineClick = (e: Event) => {
       const isAudioLoading = playerEngine.getSnapshot().status === "loading";
@@ -208,14 +211,35 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, o
     let syncRafId: number;
     let lastReportedIndex = -1;
     let lastCheckAt = -Infinity;
+    let appliedLatency = -1;
+    const syncLatency = (remote: boolean) => {
+      const lat = remote ? 0 : lyricsOutputLatencyMs();
+      if (appliedLatency >= 0 && lat !== 0 && Math.abs(lat - appliedLatency) < 10) return;
+      if (lat === appliedLatency) return;
+      appliedLatency = lat;
+      applyLyricsLatency(el, lat);
+    };
 
     const checkActiveLine = (timestamp: number) => {
       syncRafId = requestAnimationFrame(checkActiveLine);
-      if (timestamp - lastCheckAt < 40) return;
+      const remote = getRemotePlaybackClock();
+      const source = remote ? null : localSource;
+      if (el.source !== source) {
+        syncLatency(Boolean(remote));
+        el.source = source;
+      }
+      if (remote) {
+        if (el.tickOptions.playbackRate !== remote.rate) el.tickOptions = { ...el.tickOptions, playbackRate: remote.rate };
+        if (el.playing !== remote.playing) el.playing = remote.playing;
+        const time = remote.positionMs / 1000;
+        if (el.currentTime !== time) el.currentTime = time;
+      }
+      if (!syncTouchBar || timestamp - lastCheckAt < 40) return;
       lastCheckAt = timestamp;
       const audioEl = el.mediaElement;
-      if (audioEl && !Number.isNaN(audioEl.currentTime)) {
-        const currentMs = audioEl.currentTime * 1000 - Math.max(appliedLatency, 0);
+      const positionMs = remote?.positionMs ?? (audioEl ? audioEl.currentTime * 1000 : NaN);
+      if (Number.isFinite(positionMs)) {
+        const currentMs = positionMs - Math.max(appliedLatency, 0) - offsetRef.current;
         const lines = useLyricsStore.getState().syncedLines;
         let low = 0;
         let high = lines.length;
@@ -239,17 +263,10 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, o
 
     syncRafId = requestAnimationFrame(checkActiveLine);
     // keep the lyrics on the sound that is heard, not on the element's clock
-    let appliedLatency = -1;
-    const syncLatency = () => {
-      const lat = lyricsOutputLatencyMs();
-      if (Math.abs(lat - appliedLatency) < 10) return;
-      appliedLatency = lat;
-      applyLyricsLatency(el, lat);
-    };
-    syncLatency();
+    syncLatency(Boolean(getRemotePlaybackClock()));
     finishLayoutRef.current = installFullscreenLyrics(el, latestLyricsRef.current);
     assignedLyricsRef.current = latestLyricsRef.current;
-    const latencyTimer = setInterval(syncLatency, 2000);
+    const latencyTimer = setInterval(() => syncLatency(Boolean(getRemotePlaybackClock())), 2000);
 
     el.addEventListener("braccato:line-click", handleBraccatoLineClick);
     el.addEventListener("wheel", onUserScroll, { passive: true, capture: true });
@@ -260,7 +277,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, o
       finishLayoutRef.current?.();
       finishLayoutRef.current = null;
       clearInterval(latencyTimer);
-      useLyricsStore.getState().setActiveLineIndex(null);
+      if (syncTouchBar) useLyricsStore.getState().setActiveLineIndex(null);
       el.removeEventListener("braccato:line-click", handleBraccatoLineClick);
       el.removeEventListener("wheel", onUserScroll, { capture: true });
       el.removeEventListener("touchmove", onUserScroll, { capture: true });
@@ -327,7 +344,7 @@ const BraccatoLyricsView = memo(function BraccatoLyricsView({ lyrics, karaoke, o
         audioTimeMs: (audio?.currentTime ?? 0) * 1000,
         pinnedForMs: performance.now() - startedAt,
       });
-      if (release) {
+      if (getRemotePlaybackClock() || release) {
         pinnedToTopRef.current = false;
         el?.renderer?.resumeAutoscroll?.();
         return;
@@ -397,8 +414,7 @@ export function FullscreenPlayer({
     return () => observer.disconnect();
   }, [isMobile]);
 
-  const quality = useVisualQualityStore(state => state.quality);
-  const effects = visualEffects(quality, isMobile);
+  const quality = useVisualQualityStore(state => fullscreenVisualQuality(state.quality, isMobile));
   const [mobileLyrics, setMobileLyrics] = useState(false);
   useLayoutEffect(() => {
     if (!isMobile) return;
@@ -470,6 +486,9 @@ export function FullscreenPlayer({
   const onKawarpLoad = useCallback(() => {
     setKawarpShown(true);
   }, []);
+  useEffect(() => {
+    if (quality === "blur" || !effectsReady) setKawarpShown(false);
+  }, [quality, effectsReady]);
 
   const nextCoverUrl = player.queue[player.currentIndex + 1]?.coverUrl;
   useEffect(() => {
@@ -514,19 +533,26 @@ export function FullscreenPlayer({
           className="absolute inset-0"
           style={{ backgroundColor: "var(--color-bg-primary)" }}
         />
-        <AnimatePresence initial={false}>
-          {kawarpSrc && !kawarpShown && (
-            <motion.div key={kawarpSrc}
-              initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}
-              transition={{ duration: 0.65, ease: "easeInOut" }}
-              className="absolute inset-0 bg-cover bg-center filter blur-xl scale-105 pointer-events-none"
-              style={{ backgroundImage: `url(${kawarpSrc})` }}
-            />
-          )}
-        </AnimatePresence>
-        {effectsReady ? (
-           <KawarpWrapper src={kawarpSrc} quality={quality} onLoad={onKawarpLoad} onError={onError} />
-        ) : null}
+        {quality === "blur" ? (
+          kawarpSrc && <div aria-hidden="true"
+            className="absolute inset-0 bg-cover bg-center filter blur-xl scale-105 opacity-50 pointer-events-none"
+            style={{ backgroundImage: `url(${kawarpSrc})` }}
+          />
+        ) : (
+          <>
+            <AnimatePresence initial={false}>
+              {kawarpSrc && !kawarpShown && (
+                <motion.div key={kawarpSrc}
+                  initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.65, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-cover bg-center filter blur-xl scale-105 pointer-events-none"
+                  style={{ backgroundImage: `url(${kawarpSrc})` }}
+                />
+              )}
+            </AnimatePresence>
+            {effectsReady && <KawarpWrapper src={kawarpSrc} quality={quality} onLoad={onKawarpLoad} onError={onError} />}
+          </>
+        )}
       </div>
 
       <div className={`absolute inset-0 z-[1] ${isMobile ? "bg-black/40" : "lane-fs-desktop-shade"}`} />
@@ -563,7 +589,7 @@ export function FullscreenPlayer({
                   transition={{ duration: isMobile ? 0.22 : 0, ease: "easeInOut" }}
                   className="absolute inset-0 flex flex-col"
                 >
-                  <BraccatoLyricsView lyrics={displayLyrics} karaoke={karaoke} offsetMs={offsetMs} blurEdges={effects.lyricBlur} />
+                  <BraccatoLyricsView lyrics={displayLyrics} karaoke={karaoke} offsetMs={offsetMs} blurEdges={quality === "all"} />
                 </motion.div>
               )}
             </AnimatePresence>

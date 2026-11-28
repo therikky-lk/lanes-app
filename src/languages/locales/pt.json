@@ -54,6 +54,7 @@
     "all_releases": "Tudo",
     "discography": "Discografia",
     "your_tracks": "Músicas curtidas: {count}",
+    "saved_tracks": "Suas músicas salvas",
     "open": "Abrir perfil do artista",
     "verified": "Verificado"
   },
@@ -74,6 +75,7 @@
     "sec": "s"
   },
   "common": {
+    "enterFullscreen": "Entrar em tela cheia",
     "show_more": "Mostrar mais",
     "pause": "Pausar",
     "source": "Fonte",
@@ -83,6 +85,8 @@
       "version": "Versão 0.1.0"
     },
     "sidebar": {
+      "expand": "Expandir o menu lateral",
+      "collapse": "Recolher o menu lateral",
       "home": "Início",
       "search": "Pesquisa",
       "library": "Biblioteca",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Abrir o reprodutor em tela cheia",
     "open_cover": "Abrir capa",
     "repeat_off": "Repetir: desativado",
     "repeat_all": "Repetir: tudo",
@@ -641,6 +646,8 @@
     "visual_quality_balanced": "Equilibrado",
     "visual_quality_balanced_hint": "Movimento de fundo mais suave, sem desfocar a letra",
     "visual_quality_lite": "Leve",
+    "visual_quality_blur": "Apenas capa desfocada",
+    "visual_quality_blur_hint": "Capa desfocada estática em vez de um fundo animado",
     "visual_quality_lite_hint": "Fundo animado mais lento, com menos fotogramas por segundo",
     "instrumental_hint": "Esta música é instrumental",
     "seek": "Mudar posição",

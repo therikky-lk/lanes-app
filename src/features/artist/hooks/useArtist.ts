@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { api, mediaUrl, toMaxQualityAvatarUrl, toClientTrack } from "@/shared/api";
 import type { Track } from "@/shared/types";
 import type { ArtistDetails } from "@/shared/contracts";
-import { canonicalArtistId, sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
+import { canonicalArtistId, nativeArtistName, nativeTrackTitle, sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
+import { isAppleArtistId } from "@/shared/media/innertube/appleReleaseCatalog";
 
 export interface ArtistAlbumViewModel {
   id: string;
@@ -37,7 +38,7 @@ export interface ArtistPageData {
   singles: ArtistReleaseViewModel[];
 }
 
-export function useArtist(id: string | null, expectedName: string | null = null) {
+export function useArtist(id: string | null, expectedName: string | null = null, sourceTrackId: string | null = null) {
   const [data, setData] = useState<ArtistPageData | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(id));
 
@@ -54,12 +55,22 @@ export function useArtist(id: string | null, expectedName: string | null = null)
     setData(null);
     setLoading(true);
 
+    let confirmedArtistId: string | undefined;
+    const matches = (artist: ArtistDetails) =>
+      !expectedName || sameArtistName(artist.name, expectedName) || artist.id === confirmedArtistId ||
+      (!!sourceTrackId && artist.id === artistId && artist.tracks.some(track =>
+        track.id === sourceTrackId && track.artists.some(credit => credit.id === artist.id),
+      ));
+    const hasCatalog = (artist: ArtistDetails) =>
+      artist.tracks.length > 0 || artist.albums.length > 0 || artist.singles.length > 0;
+
     function publish(artist: ArtistDetails) {
-        if (!active || (expectedName && !sameArtistName(artist.name, expectedName))) return;
+        if (!active || !matches(artist)) return;
         const tracks = artist.tracks.map(toClientTrack);
+        const credit = { id: artist.id, name: artist.name };
         const formatted: ArtistPageData = {
           id: artist.id,
-          title: artist.name,
+          title: nativeArtistName(artist.id, artist.name),
           monthlyListeners: artist.monthlyListeners,
           verified: Boolean(artist.verified),
           description: artist.bio?.trim() || "",
@@ -72,7 +83,7 @@ export function useArtist(id: string | null, expectedName: string | null = null)
           popularSongs: tracks.slice(0, 5),
           albums: artist.albums.map((album) => ({
             id: album.id,
-            title: album.title,
+            title: nativeTrackTitle(album.title, credit),
             coverUrl: album.cover ? mediaUrl(album.cover.url) : "",
             ...(album.year ? { releaseDate: String(album.year) } : {}),
             totalTracks: album.totalTracks ?? album.trackCount,
@@ -81,7 +92,7 @@ export function useArtist(id: string | null, expectedName: string | null = null)
           reposts: [],
           singles: artist.singles.map((single) => ({
             id: single.id,
-            title: single.title,
+            title: nativeTrackTitle(single.title, credit),
             coverUrl: single.cover ? mediaUrl(single.cover.url) : "",
             releaseType: single.releaseType,
             ...(single.year ? { releaseDate: String(single.year) } : {}),
@@ -95,19 +106,44 @@ export function useArtist(id: string | null, expectedName: string | null = null)
 
     async function loadArtist() {
       try {
-        const nameOnly = expectedName && sameArtistName(artistId, expectedName);
-        let artist = nameOnly
+        const nameOnly = expectedName && (artistId === "unknown" || sameArtistName(artistId, expectedName));
+        const artist = nameOnly
           ? null
           : await api.getArtist(artistId, publish).catch(() => null);
         if (!active) return;
-        if (expectedName && (!artist || !sameArtistName(artist.name, expectedName))) {
-          const { items } = await api.search(expectedName, "artist");
-          if (!active) return;
-          const matchId = uniqueArtistId(items, expectedName);
-          artist = matchId && (nameOnly || canonicalArtistId(matchId) !== artistId)
-            ? await api.getArtist(canonicalArtistId(matchId), publish) : null;
-        }
         if (artist) publish(artist);
+        if (isAppleArtistId(artistId)) return;
+        if (sourceTrackId && (!artist || !matches(artist) || !hasCatalog(artist))) {
+          const source = await api.getTrack(sourceTrackId).catch(() => null);
+          if (!active) return;
+          const credits = source?.artists.filter(credit => credit.id && credit.id !== "unknown") ?? [];
+          const credited = credits.find(credit => credit.id === artistId);
+          const matchingIds = new Set(credits.filter(credit => expectedName && sameArtistName(credit.name, expectedName))
+            .map(credit => canonicalArtistId(credit.id, credit.name)));
+          confirmedArtistId = credited ? canonicalArtistId(credited.id, credited.name)
+            : matchingIds.size === 1 ? matchingIds.values().next().value : undefined;
+          if (confirmedArtistId) {
+            const recovered = artist?.id === confirmedArtistId ? artist
+              : await api.getArtist(confirmedArtistId, publish).catch(() => null);
+            if (!active) return;
+            if (recovered?.id === confirmedArtistId) {
+              publish(recovered);
+              if (hasCatalog(recovered)) return;
+            }
+          }
+        }
+        const lookupName = expectedName || artist?.name;
+        if (lookupName && (!artist || !matches(artist) || !hasCatalog(artist))) {
+          const { items } = await api.search(lookupName, "artist");
+          if (!active) return;
+          const matchId = uniqueArtistId(items, lookupName);
+          if (matchId && (nameOnly || matchId !== artistId)) {
+            const recovered = await api.getArtist(matchId);
+            if (sameArtistName(recovered.name, lookupName) && (!artist || !matches(artist) || hasCatalog(recovered))) {
+              publish(recovered);
+            }
+          }
+        }
       } catch {
         // Keep any verified profile already published from the first response.
       } finally {
@@ -122,7 +158,7 @@ export function useArtist(id: string | null, expectedName: string | null = null)
     return () => {
       active = false;
     };
-  }, [id, expectedName]);
+  }, [id, expectedName, sourceTrackId]);
 
   return { data, loading };
 }

@@ -17,6 +17,7 @@ export interface Track {
   playCount: number;
   explicit?: boolean;
   musicVideoType?: string;
+  catalogUnavailable?: boolean;
   releaseDate?: string;
   /** When this track was liked/saved in the user's library. */
   likedAt?: string | number;

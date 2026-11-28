@@ -1,5 +1,5 @@
 import { useTranslation } from "@/languages";
-import { LuMinus, LuSquare, LuX } from "react-icons/lu";
+import { LuMaximize2, LuMinimize2, LuMinus, LuSquare, LuX } from "react-icons/lu";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
 import { useWindowState } from "../hooks/useWindowState";
 import { useWindowAnimationStore } from "@/shared/ui";
@@ -46,8 +46,8 @@ export default function WindowControls({
   const { t } = useTranslation();
   const { isFullScreen: isWindowFullScreen, isMaximized: isWindowMaximized } = useWindowState();
 
-  const isHyprland = window.linerElectron?.isHyprland ?? false;
-  if (window.linerElectron?.platform === "darwin") return null;
+  const electron = window.linerElectron;
+  const isHyprland = electron?.isHyprland ?? false;
 
   const handleMinimize = () => {
     // macos fullscreen spaces and hyprland tiling wm prohibit/ignore minimizing
@@ -68,9 +68,55 @@ export default function WindowControls({
   const isMinimizeDisabled = isWindowFullScreen || isHyprland;
   const hasCustomBg = useIsContentTransparent();
   const isGlass = hasCustomBg || variant === "glass";
+  const fullscreenLabel = t(isWindowFullScreen ? "common.exitFullscreen" : "common.enterFullscreen");
+  const toggleFullscreen = () => electron?.toggleFullScreen();
+  const hasFullscreenButton = electron?.platform === "win32" && !isFullscreen;
+  const exitFullscreenWithMaximize = isWindowFullScreen && !hasFullscreenButton;
+  const maximizeDisabled = isWindowFullScreen && hasFullscreenButton;
+  const maximizeLabel = exitFullscreenWithMaximize
+    ? fullscreenLabel
+    : t(isWindowMaximized ? "common.restore" : "common.maximize");
+
+  if (!electron) return null;
+
+  if (electron.platform === "darwin") {
+    const buttons = [
+      { label: t("common.close"), color: "#ff5f57", Icon: LuX, onClick: handleClose },
+      { label: t("common.minimize"), color: "#febc2e", Icon: LuMinus, onClick: handleMinimize, disabled: isMinimizeDisabled },
+      { label: fullscreenLabel, color: "#28c840", Icon: isWindowFullScreen ? LuMinimize2 : LuMaximize2, onClick: toggleFullscreen },
+    ];
+    return (
+      <div
+        data-keep-keyboard-focus
+        style={style}
+        className={`absolute top-[12px] z-[62] flex items-center gap-[3px] pointer-events-none select-none ${
+          isFullscreen ? "right-[12px] h-[36px] pr-[12px]" : "left-[12px] h-[24px]"
+        } ${className}`}
+      >
+        {buttons.map(({ label, color, Icon, onClick, disabled }) => (
+          <button
+            key={color}
+            type="button"
+            data-no-window-drag
+            data-no-tooltip="true"
+            title={label}
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+            className="group pointer-events-auto grid h-[20px] w-[13px] place-items-center border-0 bg-transparent p-0 cursor-pointer disabled:opacity-35 disabled:cursor-default"
+          >
+            <span style={{ backgroundColor: color }} className="grid h-[12px] w-[12px] place-items-center rounded-full text-black/80">
+              <Icon size={8} aria-hidden className="opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" />
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
+      data-keep-keyboard-focus
       style={style}
       className={`absolute top-[12px] right-[12px] z-[62] flex items-center justify-end pointer-events-none select-none ${className}`.trim()}
     >
@@ -88,12 +134,25 @@ export default function WindowControls({
                 : "bg-bg-panel/90 text-text-primary backdrop-blur-xl"
         }`}
       >
+        {hasFullscreenButton && (
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            data-no-tooltip="true"
+            title={fullscreenLabel}
+            aria-label={fullscreenLabel}
+            className="flex items-center justify-center w-[24px] h-[26px] rounded-md cursor-pointer border-none bg-transparent text-text-primary hover:bg-border-alpha-14 active:scale-95"
+          >
+            {isWindowFullScreen ? <LuMinimize2 size={12} /> : <LuMaximize2 size={12} />}
+          </button>
+        )}
         <button
           type="button"
           onClick={isMinimizeDisabled ? undefined : handleMinimize}
           disabled={isMinimizeDisabled}
           aria-disabled={isMinimizeDisabled}
           data-no-tooltip="true"
+          title={t("common.minimize")}
           className={`flex items-center justify-center w-[24px] h-[26px] min-w-[24px] min-h-[26px] max-h-[26px] rounded-md border-none bg-transparent transition-colors ${
             isMinimizeDisabled
               ? "opacity-30 cursor-not-allowed pointer-events-none"
@@ -112,9 +171,13 @@ export default function WindowControls({
         <button
           type="button"
           onClick={handleMaximize}
+          disabled={maximizeDisabled}
           data-no-tooltip="true"
+          title={maximizeLabel}
           className={`flex items-center justify-center w-[24px] h-[26px] min-w-[24px] min-h-[26px] max-h-[26px] rounded-md cursor-pointer border-none bg-transparent transition-colors active:scale-95 ${
-            isFullscreen
+            maximizeDisabled
+              ? "opacity-30 pointer-events-none"
+              : isFullscreen
               ? "text-white/80 hover:text-white hover:bg-white/10"
               : isGlass
                 ? "text-text-primary hover:bg-black/10 dark:hover:bg-white/10"
@@ -122,20 +185,15 @@ export default function WindowControls({
                   ? "text-white/70 hover:text-white hover:bg-white/10"
                   : "text-text-primary hover:bg-border-alpha-14"
           }`}
-          aria-label={
-            isWindowFullScreen
-              ? t("common.exitFullscreen")
-              : isWindowMaximized
-                ? t("common.restore")
-                : t("common.maximize")
-          }
+          aria-label={maximizeLabel}
         >
-          <LuSquare size={11} />
+          {exitFullscreenWithMaximize ? <LuMinimize2 size={12} /> : <LuSquare size={11} />}
         </button>
         <button
           type="button"
           onClick={handleClose}
           data-no-tooltip="true"
+          title={t("common.close")}
           className={`flex items-center justify-center w-[24px] h-[26px] min-w-[24px] min-h-[26px] max-h-[26px] rounded-md cursor-pointer border-none bg-transparent transition-colors hover:bg-[#E81123] hover:text-white active:scale-95 ${
             isFullscreen
               ? "text-white/80 hover:text-white hover:bg-[#E81123]"
@@ -153,9 +211,5 @@ export default function WindowControls({
     </div>
   );
 }
-
-
-
-
 
 

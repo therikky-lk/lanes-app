@@ -10,6 +10,7 @@ import { asArray, isRecord, numberValue, trimmedString } from "@/shared/utils/js
 import { getCollection, getJson, requireId, SoundCloudCatalogError } from "./soundcloudCatalogRequest";
 import { parseSoundCloudPlaylistId, parseSoundCloudUserId, soundCloudPlaylistId } from "./soundcloudIds";
 import {
+  alignSoundCloudArtistTracks,
   mapSoundCloudArtist,
   mapSoundCloudCatalogTrack,
   mapSoundCloudRelease,
@@ -60,11 +61,11 @@ async function getArtist(artistId: string, signal?: AbortSignal): Promise<Artist
   return {
     type: "artist",
     id: artist.id,
-    name: trimmedString(user.full_name) ?? artist.name,
+    name: artist.name,
     ...(bio ? { bio } : {}),
     ...(cover ? { cover } : {}),
     verified: user.verified === true,
-    tracks: uniqueTracks([...mapSoundCloudTracks(topTracks), ...mapSoundCloudTracks(uploads)]),
+    tracks: alignSoundCloudArtistTracks(uniqueTracks([...mapSoundCloudTracks(topTracks), ...mapSoundCloudTracks(uploads)]), artist),
     albums,
     singles,
   };

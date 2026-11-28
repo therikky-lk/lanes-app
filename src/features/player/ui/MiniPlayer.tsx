@@ -4,7 +4,8 @@ import { isEqActive } from "../engine/equalizer";
 import { Settings6Line } from "@mingcute/react";
 import ConnectDevicesButton from "@/features/connect/ui/ConnectDevicesButton";
 import { memo } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Radio,
@@ -23,6 +24,7 @@ import {
   Shuffle,
 } from "@solar-icons/react";
 import { HeartFill, HeartLine } from "@mingcute/react";
+import { LuChevronUp } from "react-icons/lu";
 
 import {
   PlayerMorphIcon,
@@ -30,21 +32,19 @@ import {
   ICON_PAUSE,
 } from "./morphPlayerIcons";
 
-import { usePlayerState } from "../hooks/usePlayerState";
 import { playerEngine } from "../engine/playerEngine";
 import { isRadioContext, nextRepeatMode } from "../engine/radioMode";
 import Button from "@/shared/ui/Button";
-import SongCard from "./SongCard";
 import { useTranslation } from "@/languages";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 import { usePlayerStore } from "../store/playerStore";
 import { toVolumeGain, toVolumeLevel } from "../engine/volume";
 import { VerticalVolumeSlider, VolumeLevelIcon } from "./VerticalVolumeSlider";
 import { SpeedPitchPicker } from "./SpeedPitchPicker";
-import { TimelineSlider } from "./TimelineSlider";
+import { TimelineSlider, type TimelineSliderProps } from "./TimelineSlider";
 import { useTheme } from "next-themes";
 import { useCoverReady, CoverImage } from "@/features/covers";
-import { useCustomizationStore, getBlockStyle } from "@/features/settings";
+import { useCustomizationStore, getBlockStyle } from "@/features/settings/store/customizationStore";
 import ExplicitBadge from "@/shared/ui/ExplicitBadge";
 import SourceBadge from "@/shared/ui/SourceBadge";
 import { ArtistLink } from "@/features/artist";
@@ -203,6 +203,34 @@ export interface MiniPlayerProps {
   isEdgeToEdge?: boolean;
 }
 
+function MiniPlayerProgress({ durationMs, scrubRatio, color }: {
+  durationMs: number;
+  scrubRatio: number | null;
+  color: string;
+}) {
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const progress = scrubRatio ?? (durationMs > 0 ? Math.min(1, Math.max(0, positionMs / durationMs)) : 0);
+  return (
+    <div
+      data-mini-player-progress
+      className="absolute inset-y-0 left-0 z-0 pointer-events-none"
+      style={{
+        backgroundColor: color,
+        width: `${progress * 100}%`,
+        willChange: "width",
+        transition: scrubRatio !== null ? "none" : "width 200ms cubic-bezier(0.22, 1, 0.36, 1)",
+      }}
+    />
+  );
+}
+
+const seekPlayback = (positionMs: number) => playerEngine.seek(positionMs);
+
+function MiniPlayerTimeline(props: Omit<TimelineSliderProps, "positionMs" | "onSeek">) {
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  return <TimelineSlider {...props} positionMs={positionMs} onSeek={seekPlayback} />;
+}
+
 function MiniPlayer({
   onQueueOpenChange,
   onQueueToggle,
@@ -210,7 +238,19 @@ function MiniPlayer({
   embedded = false,
   isEdgeToEdge = false,
 }: MiniPlayerProps) {
-  const player = usePlayerState();
+  const player = usePlayerStore(useShallow((state) => ({
+    currentTrack: state.currentTrack,
+    durationMs: state.durationMs,
+    status: state.status,
+    volume: state.volume,
+    repeat: state.repeat,
+    shuffle: state.shuffle,
+    playbackContext: state.playbackContext,
+    isEqEnabled: state.isEqEnabled,
+    eqGains: state.eqGains,
+    playbackRate: state.playbackRate,
+    pitchSemitones: state.pitchSemitones,
+  })));
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isLight =
@@ -219,7 +259,6 @@ function MiniPlayer({
       : typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "light";
   const miniPlayerStyle = usePlayerStore((state) => state.miniPlayerStyle);
   const usesRoundedStyle = !embedded && miniPlayerStyle === "rounded";
-  const usesBackgroundProgress = true;
   const backgroundImage = useCustomizationStore((state) => state.backgroundImage);
   const miniplayerConfig = useCustomizationStore((state) => state.miniplayer);
   const hasCustomBg = Boolean(backgroundImage && !isLight);
@@ -231,34 +270,7 @@ function MiniPlayer({
   const [accentColorSolid, setAccentColorSolid] = useState(
     isLight ? "rgb(23, 23, 23)" : "rgb(255, 255, 255)",
   );
-  const [contextAccentColorSolid, setContextAccentColorSolid] = useState(
-    isLight ? "rgb(23, 23, 23)" : "rgb(255, 255, 255)",
-  );
-
   const coverUrl = player.currentTrack?.coverUrl || "";
-
-  useEffect(() => {
-    if (!player.playbackContextCover) {
-      return;
-    }
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return;
-        canvas.width = 64;
-        canvas.height = 64;
-        ctx.drawImage(img, 0, 0, 64, 64);
-        const { accentColorSolid: acs } = extractColorsFromCanvas(canvas, isLight);
-        setContextAccentColorSolid(acs);
-      } catch {
-        setContextAccentColorSolid(isLight ? "rgb(23, 23, 23)" : "rgb(255, 255, 255)");
-      }
-    };
-    img.src = player.playbackContextCover;
-  }, [player.playbackContextCover, isLight]);
 
   useEffect(() => {
     if (!coverUrl) {
@@ -304,7 +316,6 @@ function MiniPlayer({
     }
   }, [isLight]);
 
-  const [queueLimit, setQueueLimit] = useState(50);
   const [volumeOpen, setVolumeOpen] = useState(false);
   const [volumePopupStyle, setVolumePopupStyle] = useState<React.CSSProperties>(
     { bottom: 52 },
@@ -312,11 +323,7 @@ function MiniPlayer({
   const [speedOpen, setSpeedOpen] = useState(false);
   const [audioPanel, setAudioPanel] = useState<"speed" | "eq">("speed");
   const eqToggleRef = useRef<HTMLButtonElement>(null);
-  const [speedPopupStyle, setSpeedPopupStyle] = useState<React.CSSProperties>(
-    {},
-  );
   const miniPlayerRootRef = useRef<HTMLDivElement>(null);
-  const queuePopupRef = useRef<HTMLDivElement>(null);
   const volumePopupRef = useRef<HTMLDivElement>(null);
   const volumeToggleRef = useRef<HTMLDivElement>(null);
   const speedPopupRef = useRef<HTMLDivElement>(null);
@@ -351,11 +358,6 @@ function MiniPlayer({
     player.durationMs > 0
       ? player.durationMs
       : (player.currentTrack?.durationMs ?? 0);
-  const progress =
-    durationMs > 0
-      ? Math.min(1, Math.max(0, player.positionMs / durationMs))
-      : 0;
-
   const isPlaying = player.status === "playing";
   const isLoading = player.status === "loading";
   const trackTitle = player.currentTrack?.title ?? t("player.nothing_playing");
@@ -363,53 +365,6 @@ function MiniPlayer({
     player.currentTrack?.artists ?? t("player.choose_track");
 
   const isCoverLoaded = useCoverReady(coverUrl);
-
-  const queueItems = useMemo(() => {
-    return player.queue.slice(0, queueLimit).map((item, index) => {
-      const isCurrent = index === player.currentIndex;
-      return (
-        <SongCard
-          key={`${item.id}-${index}`}
-          title={item.title}
-          artists={item.artists}
-          artistId={item.artistId}
-          artistList={item.artistList}
-          coverUrl={item.coverUrl || ""}
-          duration={
-            item.durationMs
-              ? `${Math.floor(item.durationMs / 60000)}:${Math.floor(
-                  (item.durationMs % 60000) / 1000,
-                )
-                  .toString()
-                  .padStart(2, "0")}`
-              : undefined
-          }
-          explicit={item.explicit}
-          onPlay={() => {
-            void playerEngine.playTrack(
-              item,
-              player.queue,
-              player.playbackContext,
-              player.playbackContextCover,
-              index,
-              true,
-            );
-          }}
-          className={`rounded-[12px] px-[8px] py-[10px] text-left transition-all duration-200 ${
-            isCurrent
-              ? "bg-black/[0.065] dark:bg-white/[0.08]"
-              : "bg-transparent hover:bg-black/[0.035] dark:hover:bg-white/[0.04]"
-          }`}
-        />
-      );
-    });
-  }, [
-    player.queue,
-    queueLimit,
-    player.currentIndex,
-    player.playbackContext,
-    player.playbackContextCover,
-  ]);
 
   // off -> all (loop the whole queue/playlist) -> one (loop the track) -> off
   const repeatIcon = useMemo(() => {
@@ -482,21 +437,25 @@ function MiniPlayer({
     }
   }, [volumeLevel]);
 
-  const handleVolumeWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? 0.04 : -0.04;
-      const nextLevel = Math.min(1, Math.max(0, volumeLevel + delta));
-      playerEngine.setVolume(toVolumeGain(nextLevel));
-      setVolumeOpen(true);
-      clearVolumeHoverTimer();
-      volumeHoverCloseTimerRef.current = setTimeout(() => {
-        setVolumeOpen(false);
-      }, 1200);
-    },
-    [clearVolumeHoverTimer, volumeLevel],
-  );
+  useEffect(() => {
+    const toggle = volumeToggleRef.current;
+    if (!toggle) return;
+
+    const handleVolumeWheel = (event: WheelEvent) => {
+      if (event.deltaY === 0 || event.ctrlKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const currentPercent = Math.round(toVolumeLevel(usePlayerStore.getState().volume) * 100);
+      const step = event.deltaY < 0 ? 4 : -4;
+      playerEngine.setVolume(toVolumeGain((currentPercent + step) / 100));
+      handleVolumeMouseEnter();
+    };
+
+    // React's wheel listener is passive; cancel scrolling on the button itself.
+    toggle.addEventListener("wheel", handleVolumeWheel, { passive: false });
+    return () => toggle.removeEventListener("wheel", handleVolumeWheel);
+  }, [handleVolumeMouseEnter]);
 
   const handleVolumeDraggingChange = useCallback((dragging: boolean) => {
     setIsVolumeDragging(dragging);
@@ -513,17 +472,26 @@ function MiniPlayer({
     updateVolumePopupPosition();
   }, [volumeOpen, updateVolumePopupPosition]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!speedOpen) return;
     const toggle = audioPanel === "eq" ? eqToggleRef.current : speedToggleRef.current;
     const root = miniPlayerRootRef.current;
-    if (!toggle || !root) return;
-    const toggleRect = toggle.getBoundingClientRect();
-    const rootRect = root.getBoundingClientRect();
-    const popupW = 300;
-    const btnW = toggleRect.width;
-    const right = rootRect.right - toggleRect.right + (btnW - popupW) / 2;
-    setSpeedPopupStyle({ right: Math.max(8, right) });
+    const popup = speedPopupRef.current;
+    if (!toggle || !root || !popup) return;
+    const positionPopup = () => {
+      const toggleRect = toggle.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+      const width = popup.offsetWidth;
+      const right = rootRect.right - toggleRect.left - (toggleRect.width + width) / 2;
+      const limit = rootRect.width - width - 8;
+      popup.style.right = `${Math.max(8, Math.min(limit, right))}px`;
+    };
+    // Anchor before the first paint; never animate from the element's static position.
+    positionPopup();
+    const observer = new ResizeObserver(positionPopup);
+    observer.observe(root);
+    observer.observe(popup);
+    return () => observer.disconnect();
   }, [speedOpen, audioPanel]);
 
   useEffect(() => {
@@ -578,7 +546,6 @@ function MiniPlayer({
   }, [clearVolumeHoverTimer, speedOpen, volumeOpen]);
 
   const [scrubRatio, setScrubRatio] = useState<number | null>(null);
-  const activeProgress = scrubRatio !== null ? scrubRatio : progress;
 
   return (
     <div
@@ -590,12 +557,11 @@ function MiniPlayer({
           <motion.div
             key="speed-popup"
             ref={speedPopupRef}
-            initial={{ opacity: 0, y: 10, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.985 }}
+            initial={false}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute bottom-[74px] z-[92] w-[300px] max-w-[calc(100vw-24px)] rounded-[18px] border border-white/[0.08] bg-black/20 p-[16px] shadow-2xl backdrop-blur-xl prevent-seek"
-            style={speedPopupStyle}
+            className="absolute bottom-[74px] right-2 z-[92] max-h-[calc(100dvh-94px)] w-[300px] max-w-[calc(100%-16px)] overflow-y-auto overscroll-contain rounded-[18px] border border-white/[0.08] bg-black/20 p-[16px] shadow-2xl backdrop-blur-xl prevent-seek"
             onPointerDown={(e) => e.stopPropagation()}
           >
             {audioPanel === "eq" ? <EqualizerPicker /> : <SpeedPitchPicker onClose={() => setSpeedOpen(false)} />}
@@ -662,20 +628,7 @@ function MiniPlayer({
           window.addEventListener("pointercancel", onUp);
         }}
       >
-        {usesBackgroundProgress && (
-          <div
-            className="absolute inset-y-0 left-0 z-0 pointer-events-none"
-            style={{
-              backgroundColor: accentColor,
-              width: `${activeProgress * 100}%`,
-              willChange: "width",
-              transition:
-                scrubRatio !== null
-                  ? "none"
-                  : "width 200ms cubic-bezier(0.22, 1, 0.36, 1)",
-            }}
-          />
-        )}
+        <MiniPlayerProgress durationMs={durationMs} scrubRatio={scrubRatio} color={accentColor} />
 
         {embedded ? null : (
           <div
@@ -686,10 +639,8 @@ function MiniPlayer({
             }`}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <TimelineSlider
-              positionMs={player.positionMs}
+            <MiniPlayerTimeline
               durationMs={durationMs}
-              onSeek={(pos) => playerEngine.seek(pos)}
               size="xs"
               fillColor={accentColorSolid || undefined}
               fillClassName={!accentColorSolid ? (isLight ? "bg-text-primary" : "bg-white") : undefined}
@@ -707,11 +658,12 @@ function MiniPlayer({
           } ${!usesRoundedStyle && !embedded ? "pb-[4px]" : ""}`}
         >
           <div className="flex h-full items-center gap-[16px] px-[18px] pt-[1px] pointer-events-none cursor-default">
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label={t("player.open_player")}
-              className={`relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-[8px] bg-bg-elevated cursor-pointer pointer-events-auto prevent-seek ${
+            <button
+              type="button"
+              data-keep-keyboard-focus
+              aria-label={t("player.open_fullscreen_player")}
+              title={t("player.open_fullscreen_player")}
+              className={`group relative h-[38px] w-[38px] shrink-0 overflow-hidden rounded-[8px] border-0 p-0 bg-bg-elevated cursor-pointer pointer-events-auto prevent-seek ${
                 coverUrl && !isCoverLoaded ? "animate-pulse" : ""
               }`}
               onClick={onFullscreenOpen}
@@ -730,7 +682,10 @@ function MiniPlayer({
                 }}
                 className="h-[38px] w-[38px] object-cover rounded-[8px]"
               />
-            </div>
+              <span aria-hidden className="pointer-events-none absolute bottom-[3px] right-[3px] grid size-4 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <LuChevronUp size={11} />
+              </span>
+            </button>
             <div className="flex min-w-0 flex-col pointer-events-none">
               <p
                 className="m-0 truncate text-[16px] font-[400] text-text-primary flex items-center gap-[6px] pointer-events-none"
@@ -770,6 +725,7 @@ function MiniPlayer({
                   name={trackArtists}
                   artistId={player.currentTrack?.artistId}
                   artistList={player.currentTrack?.artistList}
+                  trackId={player.currentTrack?.id}
                   className="text-text-tertiary pointer-events-auto"
                 />
                 {player.currentTrack?.explicit && <ExplicitBadge />}
@@ -916,7 +872,6 @@ function MiniPlayer({
                 onClick={() => {
                   setSpeedOpen(false);
                   setVolumeOpen(false);
-                  setQueueLimit(50);
                   onQueueToggle?.();
                 }}
                 style={{ cursor: "pointer" }}

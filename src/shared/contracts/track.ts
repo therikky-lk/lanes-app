@@ -19,6 +19,8 @@ export interface Track {
   cover?: Cover;
   explicit?: boolean;
   musicVideoType?: string;
+  /** Album metadata is known, but no matching audio recording is available. */
+  catalogUnavailable?: boolean;
 }
 
 export interface ApiTrack extends Track {

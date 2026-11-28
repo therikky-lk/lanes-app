@@ -26,7 +26,9 @@ import { Dialog, Button, Tooltip, useToast } from "@/shared/ui";
 import {
   useShortcutsStore,
   normalizeShortcutToEnglish,
+  DEFAULT_SEARCH_ALTERNATE,
   DEFAULT_SHORTCUTS,
+  formatAcceleratorForDisplay,
   type GlobalShortcutsSettings,
   type MainAppShortcutsSettings,
   type MiniplayerShortcutsSettings,
@@ -123,7 +125,12 @@ export function ShortcutsTab({ searchQuery: externalQuery }: { searchQuery?: str
     },
     search: {
       title: t("settings.shortcuts.search") || "Search music",
-      desc: t("settings.shortcuts.search_desc") || "Quickly open the search dialog.",
+      desc: t("settings.shortcuts.search_desc") + (
+        mainApp.search === DEFAULT_SHORTCUTS.mainApp.search &&
+        !Object.values(mainApp).includes(DEFAULT_SEARCH_ALTERNATE)
+          ? ` (${formatAcceleratorForDisplay(DEFAULT_SEARCH_ALTERNATE)})`
+          : ""
+      ),
     },
     toggleQueue: {
       title: t("settings.shortcuts.toggle_queue") || "Queue",

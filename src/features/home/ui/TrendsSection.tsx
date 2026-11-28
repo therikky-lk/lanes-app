@@ -8,6 +8,7 @@ import CoverImage from "@/features/covers/ui/CoverImage";
 import { loadChart, resolveSong, type ChartEntry, type ChartRegion, type Movement } from "../trends/charts";
 import type { Track } from "@/shared/types/track";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
+import { useSectionScrollRestore } from "@/shared/hooks/useSectionScrollRestore";
 import { useIsTrackLiked, useLikeTrack, useUnlikeTrack } from "@/features/library/hooks";
 
 const PREVIEW = 10;
@@ -141,6 +142,7 @@ export default function TrendsSection() {
   const [entries, setEntries] = useState<ChartEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [all, setAll] = useState(false);
+  const { remember } = useSectionScrollRestore(all);
   const currentId = usePlayerStore((s) => s.currentTrack?.id);
   const [opening, setOpening] = useState<string | null>(null);
   const entriesRef = useRef<ChartEntry[] | null>(null);
@@ -266,7 +268,10 @@ export default function TrendsSection() {
       {entries && entries.length > PREVIEW && (
         <SectionExpandButton controls={chartId} expanded={all}
           label={all ? t("trends.less") : t("trends.all", { n: entries.length })}
-          onClick={() => setAll(value => !value)} />
+          onClick={() => {
+            if (!all) remember(sectionRef.current);
+            setAll(!all);
+          }} />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { fetchSpotifyAccountProfile, spotifyLikedCount, spotifyRetryAt } from "./spotifyAccount";
 
-vi.mock("@/shared/platform/native", () => ({ isNativeApp: () => false }));
+vi.mock("@/shared/platform/native", () => ({ isAndroidApp: () => false }));
 vi.mock("./spotifyAuth", () => ({ buildSpotifyTokenUrl: async () => "https://open.spotify.com/api/token" }));
 
 afterEach(() => {

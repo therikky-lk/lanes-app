@@ -15,6 +15,7 @@ import {
   useState,
   useMemo,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
@@ -81,6 +82,8 @@ interface AppFrameProps {
 
 const RIGHT_DRAWER_WIDTH = 440;
 const SIDEBAR_WIDTH = 58;
+const EXPANDED_SIDEBAR_WIDTH = 200;
+const SIDEBAR_MODE_KEY = "lane_sidebar_expanded";
 const SHELL_EDGE_GAP = 12;
 const SEARCH_QUERY_CACHE_TTL_MS = 60_000;
 const LEGACY_LAYOUT_STORAGE_KEYS = [
@@ -107,6 +110,14 @@ export default function AppFrame({ children }: AppFrameProps) {
   const closeSettings = useModalStore(state => state.closeSettings);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => localStorage.getItem(SIDEBAR_MODE_KEY) === "true");
+  const sidebarWidth = sidebarExpanded ? EXPANDED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
+  const hasSidebarBleed = !isMobile && sidebarExpanded && pathname === "/";
+  const hasMacWindowControls = window.linerElectron?.platform === "darwin";
+  const toggleSidebar = useCallback(() => setSidebarExpanded((expanded) => !expanded), []);
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_MODE_KEY, String(sidebarExpanded));
+  }, [sidebarExpanded]);
   const [queuePopupOpen, setQueuePopupOpen] = useState(false);
   const [rightDrawerTab, setRightDrawerTabState] = useState<RightPanelTab>(() => {
     if (typeof window === "undefined") return "queue";
@@ -317,7 +328,10 @@ export default function AppFrame({ children }: AppFrameProps) {
 
   useGlobalShortcuts({
     searchOpen,
-    openSearch,
+    openSearch: () => {
+      if (searchOpen) searchInputRef.current?.focus();
+      else openSearch();
+    },
     closeSearch,
     rightPanelOpen: queuePopupOpen,
     rightPanelTab: rightDrawerTab,
@@ -972,16 +986,24 @@ export default function AppFrame({ children }: AppFrameProps) {
 
       <aside
         ref={sidebarRef}
-        className={`w-[58px] h-full shrink-0 z-[45] relative ${isMobile ? "hidden" : ""}`}
+        className={`h-full shrink-0 z-[45] relative ${isMobile ? "hidden" : ""}`}
+        style={{ width: sidebarWidth }}
       >
         <Sidebar
           searchOpen={searchOpen}
           onSearchToggle={handleSearchToggle}
           isEdgeToEdge={isEdgeToEdge}
+          expanded={sidebarExpanded}
+          onToggleExpanded={toggleSidebar}
+          hasMacWindowControls={hasMacWindowControls}
         />
       </aside>
 
-      <div className={`flex-1 flex flex-col min-w-0 ${isMobile ? "min-h-0" : "h-full gap-1.5"} relative overflow-hidden`}>
+      <div
+        data-sidebar-bleed={hasSidebarBleed ? "" : undefined}
+        className={`flex-1 flex flex-col min-w-0 ${isMobile ? "min-h-0" : "h-full gap-1.5"} relative overflow-hidden`}
+        style={hasSidebarBleed ? { "--lane-row-bleed": `calc(${sidebarWidth}px + 0.375rem)` } as CSSProperties : undefined}
+      >
         <main
           data-lane-content
           data-custom-bg={hasCustomBg ? "true" : undefined}
@@ -1049,6 +1071,7 @@ export default function AppFrame({ children }: AppFrameProps) {
         {shouldShowMiniPlayer && !isMobile && (
           <div
             ref={miniPlayerContainerRef}
+            data-lane-mini-player
             // Above the right drawer (z-50) so the player's volume/speed/queue
             // popups, which live in this stacking context, aren't hidden by it.
             className="relative z-[55] w-full shrink-0"
@@ -1138,16 +1161,12 @@ export default function AppFrame({ children }: AppFrameProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.99 }}
             transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className={`absolute right-0 z-[60] flex flex-col items-center pointer-events-none ${isMobile ? "lane-search-mobile" : "pt-[56px]"}`}
-            style={
-              isMobile
-                ? { left: 10, right: 10, top: "calc(var(--lane-safe-top, 0px) + 10px)", bottom: "calc(var(--lane-dock-h, 58px) + 10px)" }
-                : { left: SIDEBAR_WIDTH + SHELL_EDGE_GAP, right: SHELL_EDGE_GAP, top: 12 }
-            }
+            className="absolute right-0 z-[75] flex flex-col items-center pointer-events-none pt-[56px]"
+            style={{ left: (isFullscreenPlayer ? 0 : sidebarWidth) + SHELL_EDGE_GAP, right: SHELL_EDGE_GAP, top: 12 }}
           >
             {/* 1. Search Input Island */}
             <div
-              className="w-[min(660px,calc(100vw-72px))] lane-search-box h-[54px] shrink-0 rounded-[12px] pointer-events-auto flex items-center px-[18px] gap-[14px] bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_10px_36px_rgba(0,0,0,0.24)]"
+              className="w-full max-w-[660px] lane-search-box h-[54px] shrink-0 rounded-[12px] pointer-events-auto flex items-center px-[18px] gap-[14px] bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_10px_36px_rgba(0,0,0,0.24)]"
             >
               <span className="shrink-0 flex items-center justify-center text-text-tertiary">
                 <AnimatePresence mode="wait" initial={false}>
@@ -1228,7 +1247,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
                   transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[500px] h-[500px] rounded-[14px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
+                  className="w-full max-w-[660px] lane-search-panel mt-[8px] max-h-[500px] h-[500px] rounded-[14px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
                 >
                   <div className="flex gap-[6px] px-[14px] pt-[12px] pb-[6px] shrink-0 overflow-x-auto">
                     {filterKeys.map((key) => {
@@ -1364,7 +1383,7 @@ export default function AppFrame({ children }: AppFrameProps) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.99 }}
                   transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  className="w-[min(660px,calc(100vw-72px))] lane-search-panel mt-[8px] max-h-[480px] h-auto rounded-[14px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
+                  className="w-full max-w-[660px] lane-search-panel mt-[8px] max-h-[480px] h-auto rounded-[14px] pointer-events-auto flex flex-col overflow-hidden bg-bg-panel/90 border border-border-primary/40 backdrop-blur-2xl shadow-[0_14px_40px_rgba(0,0,0,0.28)]"
                 >
                   <SearchHistoryList
                     onSelectQuery={handleSelectHistoryQuery}
@@ -1399,8 +1418,9 @@ export default function AppFrame({ children }: AppFrameProps) {
       {!isMobile && <WindowControls
         isFullscreen={isFullscreenPlayer}
         style={{
-          top: isFullscreenPlayer ? 0 : isEdgeToEdge ? 12 : 18,
-          right: isFullscreenPlayer ? 0 : isEdgeToEdge ? 12 : 18,
+          ...(hasMacWindowControls && !isFullscreenPlayer
+            ? { top: isEdgeToEdge ? 2 : 8, left: isEdgeToEdge ? 6 : 12 }
+            : { top: isFullscreenPlayer ? 0 : isEdgeToEdge ? 12 : 18, right: isFullscreenPlayer ? 0 : isEdgeToEdge ? 12 : 18 }),
           transition: "all 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
           zIndex: 80,
         }}

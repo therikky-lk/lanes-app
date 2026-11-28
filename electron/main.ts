@@ -561,17 +561,12 @@ if (!gotTheLock) {
 
     handleTrusted("window:toggle-maximize", () => {
       if (!mainWindow) return;
-      // on macos, frameless windows enter native fullscreen mode
-      if (process.platform === "darwin") {
-        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      if (mainWindow.isFullScreen()) {
+        mainWindow.setFullScreen(false);
+      } else if (mainWindow.isMaximized()) {
+        unmaximizeWindow();
       } else {
-        if (mainWindow.isFullScreen()) {
-          mainWindow.setFullScreen(false);
-        } else if (mainWindow.isMaximized()) {
-          unmaximizeWindow();
-        } else {
-          maximizeWindow();
-        }
+        maximizeWindow();
       }
     });
 

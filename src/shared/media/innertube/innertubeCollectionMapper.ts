@@ -55,8 +55,8 @@ export function mapInnertubeAlbumDetails(id: string, body: unknown): AlbumDetail
     ...getRuns(header?.subtitle).map((run) => run.text),
   ) ?? releaseDateFromDescription(stringValue(microformat?.description));
   const trackCount = trackCountFrom(header?.secondSubtitle);
-  // YouTube can substitute an official video (OMV) for most songs in the
-  // album's own tracklist. These are still album members, not recommendations.
+  // Keep substituted videos as lookup hints for getAlbum; it resolves them
+  // to the actual audio releases before exposing the tracklist.
   const tracks = mapInnertubeBrowseTracks(body, artists, true).map((track) => ({
     ...track,
     cover: cover ?? track.cover,

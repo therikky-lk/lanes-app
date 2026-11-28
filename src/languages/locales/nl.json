@@ -54,6 +54,7 @@
     "all_releases": "Allemaal",
     "discography": "Discografie",
     "your_tracks": "In je favoriete nummers: {count}",
+    "saved_tracks": "Je opgeslagen nummers",
     "open": "Artiestenprofiel openen",
     "verified": "Geverifieerd"
   },
@@ -74,6 +75,7 @@
     "sec": "sec"
   },
   "common": {
+    "enterFullscreen": "Volledig scherm inschakelen",
     "show_more": "Laat meer zien",
     "pause": "Pauze",
     "source": "Bron",
@@ -83,6 +85,8 @@
       "version": "Versie 0.1.0"
     },
     "sidebar": {
+      "expand": "Zijbalk uitklappen",
+      "collapse": "Zijbalk inklappen",
       "home": "Start",
       "search": "Zoeken",
       "library": "Bibliotheek",
@@ -550,6 +554,7 @@
     "frame_title": "Cloudflare-beveiligingscontrole"
   },
   "player": {
+    "open_fullscreen_player": "Speler op volledig scherm openen",
     "open_cover": "Hoes openen",
     "repeat_off": "Herhaal: uit",
     "repeat_all": "Herhaal: allemaal",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Evenwichtig",
     "visual_quality_balanced_hint": "Rustigere achtergrondbeweging, zonder tekstvervaging",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Alleen vervaagde albumhoes",
+    "visual_quality_blur_hint": "Statische vervaagde albumhoes in plaats van een bewegende achtergrond",
     "visual_quality_lite_hint": "Langzamer bewegende achtergrond met minder beelden per seconde",
     "instrumental_hint": "Dit nummer is instrumentaal",
     "seek": "Doorspoelen",

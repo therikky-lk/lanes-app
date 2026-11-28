@@ -54,6 +54,7 @@
     "all_releases": "všechny",
     "discography": "Diskografie",
     "your_tracks": "Oblíbené skladby: {count}",
+    "saved_tracks": "Vaše uložené skladby",
     "open": "Otevřít profil interpreta",
     "verified": "Ověřeno"
   },
@@ -74,6 +75,7 @@
     "sec": "sek"
   },
   "common": {
+    "enterFullscreen": "Přejít na celou obrazovku",
     "show_more": "Zobrazit více",
     "pause": "Pauza",
     "source": "Zdroj",
@@ -83,6 +85,8 @@
       "version": "Verze 0.1.0"
     },
     "sidebar": {
+      "expand": "Rozbalit postranní panel",
+      "collapse": "Sbalit postranní panel",
       "home": "Domů",
       "search": "Hledat",
       "library": "Knihovna",
@@ -550,6 +554,7 @@
     "frame_title": "Bezpečnostní kontrola Cloudflare"
   },
   "player": {
+    "open_fullscreen_player": "Otevřít přehrávač na celé obrazovce",
     "open_cover": "Otevřít obal",
     "repeat_off": "Opakovat: vypnuto",
     "repeat_all": "Opakuji: všechny",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Vyvážený",
     "visual_quality_balanced_hint": "Mírnější pohyb pozadí bez rozmazání textu",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Jen rozmazaný obal",
+    "visual_quality_blur_hint": "Statický rozmazaný obal místo animovaného pozadí",
     "visual_quality_lite_hint": "Pomalejší animované pozadí s méně snímky",
     "instrumental_hint": "Tato píseň je instrumentální",
     "seek": "Posunout přehrávání",

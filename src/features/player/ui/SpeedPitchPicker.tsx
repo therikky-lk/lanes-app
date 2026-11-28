@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { usePlayerState } from "../hooks/usePlayerState";
+import { useShallow } from "zustand/react/shallow";
+import { usePlayerStore } from "../store/playerStore";
 import { playerEngine } from "../engine/playerEngine";
 import { useTranslation } from "@/languages";
 import { ToggleSwitch } from "@/shared/ui";
@@ -179,10 +180,12 @@ function SliderRow({
           }}
         />
         <motion.span
-          animate={{ left: `${percentage}%`, scale: isActive ? 1.12 : 1 }}
+          initial={false}
+          animate={{ scale: isActive ? 1.12 : 1 }}
           transition={{ type: "spring", stiffness: 450, damping: 32 }}
           className="absolute top-[1px] z-[1] -translate-x-1/2"
           style={{
+            left: `${percentage}%`,
             width: 0,
             height: 0,
             borderLeft: "7px solid transparent",
@@ -213,7 +216,14 @@ export const SpeedPitchPicker = memo(function SpeedPitchPicker({
   className = "",
 }: SpeedPitchPickerProps) {
   const { t } = useTranslation();
-  const player = usePlayerState();
+  const player = usePlayerStore(useShallow((state) => ({
+    playbackRate: state.playbackRate,
+    pitchSemitones: state.pitchSemitones,
+    isPitchLinked: state.isPitchLinked,
+    keepSpeedAcrossTracks: state.keepSpeedAcrossTracks,
+    isReverbEnabled: state.isReverbEnabled,
+    reverbLevel: state.reverbLevel,
+  })));
 
   const playbackRate = player.playbackRate ?? 1;
   const pitchSemitones = player.pitchSemitones ?? 0;

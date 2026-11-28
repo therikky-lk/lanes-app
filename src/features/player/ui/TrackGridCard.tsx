@@ -19,10 +19,11 @@ export interface TrackGridCardProps {
   playlistTitle?: string;
   onPlay: () => void;
   showLikeButton?: boolean;
+  variant?: "grid" | "shelf";
 }
 
 /** a track as a tile: cover, title, artist; same menu as the list rows */
-function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTitle, onPlay, showLikeButton = false }: TrackGridCardProps) {
+function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTitle, onPlay, showLikeButton = false, variant = "grid" }: TrackGridCardProps) {
   const { t } = useTranslation();
   const coverUrl = track.coverUrl || coverFallback || "";
   const displayTitle = cleanTrackTitle(track.title, track.artists)?.trim() || t("player.track_unavailable_title");
@@ -79,19 +80,19 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
 
   return (
     <div
-      className={`group flex min-w-0 flex-col gap-[8px] cursor-pointer select-none ${track.onlyOnDevice ? "opacity-[0.42]" : ""}`}
+      className={`group/track-card flex min-w-0 flex-col gap-[8px] cursor-pointer select-none ${track.onlyOnDevice ? "opacity-[0.42]" : ""}`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "auto 220px", fontFamily: "var(--font-inter), sans-serif" }}
       onClick={onPlay}
       onContextMenu={onContextMenu}
     >
-      <div className="relative aspect-square w-full overflow-hidden rounded-[16px] bg-bg-elevated">
+      <div className={`relative aspect-square w-full overflow-hidden ${variant === "shelf" ? "rounded-md bg-border-alpha-14" : "rounded-[16px] bg-bg-elevated"}`}>
         {coverUrl ? (
           <CoverImage
             src={coverUrl}
             alt={track.title}
             fill
             sizes="200px"
-            className="object-cover transition-all duration-300 group-hover:brightness-[0.8]"
+            className="object-cover transition-all duration-300 group-hover/track-card:brightness-[0.8]"
             draggable={false}
           />
         ) : (
@@ -101,7 +102,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
         )}
         <span
           className={`absolute bottom-[8px] right-[8px] inline-flex h-[38px] w-[38px] items-center justify-center rounded-full bg-white text-black shadow-[0_6px_18px_rgba(0,0,0,0.35)] transition-all duration-200 ${
-            isCurrent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px] group-hover:opacity-100 group-hover:translate-y-0"
+            isCurrent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-[6px] group-hover/track-card:opacity-100 group-hover/track-card:translate-y-0"
           }`}
         >
           <PlayFill size={18} className="translate-x-[1px]" />
@@ -115,7 +116,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
             setMenuPosition({ x: r.left, y: r.bottom });
             setMenuOpen(true);
           }}
-          className="absolute top-[6px] right-[6px] inline-flex h-[28px] w-[28px] items-center justify-center rounded-full border-0 bg-black/45 text-white opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100 cursor-pointer"
+          className="absolute top-[6px] right-[6px] inline-flex h-[28px] w-[28px] items-center justify-center rounded-full border-0 bg-black/45 text-white opacity-0 backdrop-blur-md transition-opacity group-hover/track-card:opacity-100 focus-visible:opacity-100 cursor-pointer"
         >
           <More2Fill size={16} />
         </button>
@@ -128,7 +129,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
               e.stopPropagation();
               handleLikeToggle();
             }}
-            className={`absolute top-[6px] left-[6px] inline-flex h-[28px] w-[28px] items-center justify-center rounded-full border-0 bg-black/45 backdrop-blur-md transition-opacity group-hover:opacity-100 cursor-pointer ${
+            className={`absolute top-[6px] left-[6px] inline-flex h-[28px] w-[28px] items-center justify-center rounded-full border-0 bg-black/45 backdrop-blur-md transition-opacity group-hover/track-card:opacity-100 focus-visible:opacity-100 cursor-pointer ${
               isLiked ? "text-[#ff3b5c] opacity-100" : "text-white opacity-0"
             }`}
           >
@@ -140,7 +141,7 @@ function TrackGridCard({ track, coverFallback, isCurrent, playlistId, playlistTi
         <p className={`m-0 truncate text-[14px] font-[500] ${isCurrent ? "text-accent-primary" : "text-text-primary"}`}>{displayTitle}</p>
         <p className="m-0 mt-[2px] flex min-w-0 items-center gap-[5px] text-[13px] text-text-tertiary" onClick={(e) => e.stopPropagation()}>
           {track.explicit && <ExplicitBadge size="md" className="shrink-0" />}
-          <ArtistLink name={track.artists} artistId={track.artistId} artistList={track.artistList} className="text-text-tertiary" />
+          <ArtistLink name={track.artists} artistId={track.artistId} artistList={track.artistList} trackId={track.id} className="text-text-tertiary" />
         </p>
       </div>
       {menuItems.length > 0 && (

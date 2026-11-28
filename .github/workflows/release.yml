@@ -1,4 +1,4 @@
-# Builds Lane for Linux, Windows, macOS (Intel / Apple Silicon) and Android
+# Builds Lane for Linux, Windows, macOS (Intel / Apple Silicon), Android and iOS
 # and publishes all packages as one GitHub
 # Release with the tag `releases` ("Release Version X.Y.Z").
 #
@@ -6,8 +6,8 @@
 # * push a tag such as v1.0.1 -> packages are built and the release is replaced;
 # * or Actions ▸ Release ▸ Run workflow -> same, from the selected branch.
 #
-# No workflow artifacts: every build uploads its files straight into a draft
-# release (release assets don't count toward the Actions storage quota). The
+# Builds upload their files into a draft release. The iOS job passes its IPA
+# to the publish job as an Actions artifact. The
 # draft replaces the `releases` release only once every build has succeeded,
 # so a failed run leaves the previous release untouched.
 name: Release
@@ -224,12 +224,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "$DRAFT_TAG" release/*.apk release/SHA256SUMS-android.txt --clobber
 
+  ios:
+    name: Build iOS IPA
+    uses: ./.github/workflows/ios-ipa.yml
+
   publish:
     name: Publish release
-    needs: [linux, windows, macos, android]
+    needs: [linux, windows, macos, android, ios]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lane-iOS-unsigned
+          path: ios-artifacts
+      - name: Add the iOS IPA to the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$DRAFT_TAG" ios-artifacts/*.ipa --clobber
       - name: Replace the `releases` release with the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

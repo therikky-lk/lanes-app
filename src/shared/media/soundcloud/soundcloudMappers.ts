@@ -1,6 +1,7 @@
 import type { ApiTrack, ArtistAlbum, ArtistRelease, Cover } from "@/shared/contracts";
 import { asArray, asRecord, type JsonRecord, numberValue, trimmedString } from "@/shared/utils/json";
 import { soundCloudPlaylistId, soundCloudTrackId, soundCloudUserId } from "./soundcloudIds";
+import { sameArtistName } from "@/shared/media/artistIdentity";
 
 const ARTWORK_SIZE = 500;
 const ARTWORK_VARIANT = /-(?:large|t\d+x\d+|crop|original)(?=\.[a-z]+$)/i;
@@ -24,8 +25,20 @@ export function soundCloudCover(rawUrl: unknown): Cover | undefined {
 export function mapSoundCloudArtist(rawUser: unknown): SoundCloudArtistRef | undefined {
   const user = asRecord(rawUser);
   const id = numberValue(user?.id);
-  const name = trimmedString(user?.username);
+  const username = trimmedString(user?.username);
+  const fullName = trimmedString(user?.full_name);
+  // Prefer the artist's own Cyrillic spelling when the other field is only
+  // a transliteration. A different full name is not a replacement stage name.
+  const name = fullName && username && /\p{Script=Cyrillic}/u.test(fullName) &&
+    !/\p{Script=Cyrillic}/u.test(username) && sameArtistName(fullName, username)
+    ? fullName : username ?? fullName;
   return id !== undefined && name ? { id: soundCloudUserId(id), name } : undefined;
+}
+
+export function alignSoundCloudArtistTracks(tracks: ApiTrack[], artist: SoundCloudArtistRef): ApiTrack[] {
+  return tracks.map(track => track.artists.some(credit => credit.id === artist.id && credit.name !== artist.name)
+    ? { ...track, artists: track.artists.map(credit => credit.id === artist.id ? artist : credit) }
+    : track);
 }
 
 export function mapSoundCloudCatalogTrack(rawTrack: unknown): ApiTrack | null {

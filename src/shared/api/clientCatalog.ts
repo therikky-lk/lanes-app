@@ -19,6 +19,9 @@ function matchesQueryLoosely(query: string, title: string, artistNames: string[]
 }
 import { isAbortError } from "@/shared/utils/abort";
 import { log } from "@/shared/utils/logger";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
+import { appleArtistIdFromUrl, getAppleCatalogAlbum, getAppleCatalogArtist, isAppleArtistId, isAppleReleaseId, searchAppleArtists } from "@/shared/media/innertube/appleReleaseCatalog";
+import { sameArtistName } from "@/shared/media/artistIdentity";
 import type {
   AlbumDetails,
   ArtistDetails,
@@ -114,11 +117,19 @@ export const clientCatalog = {
   resolveSnapshot,
 
   async search(query: string, type: SearchType, server: () => Promise<SearchResponse>): Promise<SearchResponse> {
+    if (appleArtistIdFromUrl(query)) return { items: await searchAppleArtists(query) };
     if (isSoundCloudUrl(query)) return { items: await resolveSoundCloudUrl(query, type).catch(() => []) };
     const [main] = await Promise.all([
       preferClient("search", async () => ({ items: await innertubeCatalog.search(query, type) }), server),
     ]);
-    return { items: await withAudius(main.items, query, type) };
+    const items = main.items.filter(item => item.type !== "track" || !isVideoTrack(item));
+    const short = /^[aа]\d+$/iu.test(query.trim());
+    if ((type === "artist" && !items.some(item => item.type === "artist" && sameArtistName(item.name, query))) ||
+      ((type === "all" || type === "artist") && short)) {
+      const supplemental = await searchAppleArtists(query).catch(() => []);
+      if (supplemental.length) items.unshift(...supplemental);
+    }
+    return { items: await withAudius(items, query, type) };
   },
 
   getTrack(id: string, server: () => Promise<TrackDetails>): Promise<TrackDetails> {
@@ -135,7 +146,11 @@ export const clientCatalog = {
 
   getAlbum(id: string, server: () => Promise<AlbumDetails>): Promise<AlbumDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getAlbum(id);
-    return loadAlbumWithFallback(() => innertubeCatalog.getAlbum(id), server);
+    if (isAppleReleaseId(id)) return getAppleCatalogAlbum(id);
+    return loadAlbumWithFallback(() => innertubeCatalog.getAlbum(id), async () => {
+      const album = await server();
+      return { ...album, tracks: album.tracks.filter(track => !isVideoTrack(track)) };
+    });
   },
 
   async getArtistImage(id: string): Promise<string | undefined> {
@@ -145,7 +160,11 @@ export const clientCatalog = {
 
   getArtist(id: string, server: () => Promise<ArtistDetails>, onPreview?: (artist: ArtistDetails) => void): Promise<ArtistDetails> {
     if (isSoundCloudCatalogId(id)) return soundcloudCatalog.getArtist(id);
-    return loadArtistWithFallback(() => innertubeCatalog.getArtist(id, undefined, onPreview), server);
+    if (isAppleArtistId(id)) return getAppleCatalogArtist(id);
+    return loadArtistWithFallback(() => innertubeCatalog.getArtist(id, undefined, onPreview), async () => {
+      const artist = await server();
+      return { ...artist, tracks: artist.tracks.filter(track => !isVideoTrack(track)) };
+    });
   },
 
   getPlaylist(id: string, server: () => Promise<CatalogPlaylistDetails>): Promise<CatalogPlaylistDetails> {

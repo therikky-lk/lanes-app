@@ -23,6 +23,12 @@ export interface UseHorizontalScrollResult {
   handlers: HorizontalScrollHandlers;
 }
 
+function pageStep(row: HTMLDivElement) {
+  // Scroll padding marks the part of the carousel underneath the side panel.
+  const covered = Number.parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0;
+  return Math.max((row.clientWidth - covered) * 0.75, 200);
+}
+
 export function useHorizontalScroll(
   options: HorizontalScrollOptions = {},
 ): UseHorizontalScrollResult {
@@ -50,15 +56,13 @@ export function useHorizontalScroll(
   const scrollPrev = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const step = Math.max(el.clientWidth * 0.75, 200);
-    el.scrollBy({ left: -step, behavior: "smooth" });
+    el.scrollBy({ left: -pageStep(el), behavior: "smooth" });
   }, []);
 
   const scrollNext = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const step = Math.max(el.clientWidth * 0.75, 200);
-    el.scrollBy({ left: step, behavior: "smooth" });
+    el.scrollBy({ left: pageStep(el), behavior: "smooth" });
   }, []);
 
   useLayoutEffect(() => {

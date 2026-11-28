@@ -214,7 +214,7 @@ export class KawarpEngine {
   private isTransitioning = false;
   private transitionStartTime = 0;
   private transitionDuration = 1000;
-  private loadSequenceId = 0;
+  private imageRequest: AbortController | null = null;
 
   private warpIntensity = 1.1;
   private blurPasses = 8;
@@ -324,110 +324,40 @@ export class KawarpEngine {
 
   public async loadImage(src: string, preDecoded?: HTMLImageElement): Promise<void> {
     if (!src) return;
-    const loadId = ++this.loadSequenceId;
-
-    let bitmap: ImageBitmap | HTMLImageElement | null =
-      preDecoded && preDecoded.complete && preDecoded.naturalWidth > 0 ? preDecoded : null;
-
-    if (!bitmap) {
-      try {
-        const res = await fetch(src, { mode: 'cors' });
-        if (res.ok) {
-          const blob = await res.blob();
-          bitmap = await createImageBitmap(blob);
-        }
-      } catch {
-      }
-    }
-
-    if (!bitmap) {
-      try {
-        bitmap = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
-          img.src = src;
-        });
-      } catch (err) {
-        try {
-          const fallback = await prepareCoverFallback(src);
-          if (fallback && fallback !== src) {
-            const res = await fetch(fallback, { mode: 'cors' });
-            if (res.ok) {
-              const blob = await res.blob();
-              bitmap = await createImageBitmap(blob);
-            }
-            if (!bitmap) {
-              bitmap = await new Promise<HTMLImageElement>((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error(`Failed to load image: ${fallback}`));
-                img.src = fallback;
-              });
-            }
-          }
-        } catch {
-        }
-        if (!bitmap) {
-          throw err;
-        }
-      }
-    }
-
-    // drop out-of-order stale loads
-    if (loadId !== this.loadSequenceId) {
-      if ('close' in bitmap && typeof (bitmap as ImageBitmap).close === 'function') {
-        (bitmap as ImageBitmap).close();
-      }
-      return;
-    }
-
-    const gl = this.gl;
-    gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
-
+    this.imageRequest?.abort();
+    const request = new AbortController();
+    this.imageRequest = request;
+    const { signal } = request;
+    let image: ImageBitmap | HTMLImageElement | undefined;
     try {
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
-    } catch {
-      // If WebGL rejected a DOM element, fallback to clean CORS fetch/blob
-      let cleanBitmap: ImageBitmap | null = null;
+      image = preDecoded && preDecoded.complete && preDecoded.naturalWidth > 0
+        ? preDecoded : await loadArtwork(src, signal);
+      signal.throwIfAborted();
+      const gl = this.gl;
+      gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
       try {
-        const res = await fetch(src, { mode: 'cors' });
-        if (res.ok) {
-          const blob = await res.blob();
-          cleanBitmap = await createImageBitmap(blob);
-        }
-      } catch {}
-
-      if (!cleanBitmap) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      } catch {
+        // A decoded DOM image may not be safe to upload to WebGL due to CORS.
+        const clean = await fetchArtwork(src, signal) ?? await fetchFallbackArtwork(src, signal);
         try {
-          const fallback = await prepareCoverFallback(src);
-          if (fallback) {
-            const res = await fetch(fallback, { mode: 'cors' });
-            if (res.ok) {
-              const blob = await res.blob();
-              cleanBitmap = await createImageBitmap(blob);
-            }
+          signal.throwIfAborted();
+          if (clean) {
+            gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, clean);
           }
-        } catch {}
-      }
-
-      if (cleanBitmap) {
-        if (loadId === this.loadSequenceId) {
-          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cleanBitmap);
+        } finally {
+          clean?.close();
         }
-        cleanBitmap.close();
       }
+      this.processNewImage();
+    } catch (error) {
+      if (!signal.aborted) throw error;
+    } finally {
+      if (image && "close" in image) image.close();
+      if (this.imageRequest === request) this.imageRequest = null;
     }
-
-    if ('close' in bitmap && typeof (bitmap as ImageBitmap).close === 'function') {
-      (bitmap as ImageBitmap).close();
-    }
-
-    if (loadId !== this.loadSequenceId) return;
-    this.processNewImage();
   }
 
   private processNewImage() {
@@ -708,6 +638,7 @@ export class KawarpEngine {
   }
 
   public dispose() {
+    this.imageRequest?.abort();
     this.stop();
     this.stopWatchingVisibility();
     const gl = this.gl;
@@ -725,5 +656,55 @@ export class KawarpEngine {
     this.deleteFramebuffer(this.nextAlbumFBO);
     this.deleteFramebuffer(this.transitionFBO);
     this.deleteFramebuffer(this.warpFBO);
+  }
+}
+
+async function fetchArtwork(src: string, signal: AbortSignal): Promise<ImageBitmap | undefined> {
+  try {
+    const response = await fetch(src, { mode: "cors", signal });
+    if (response.ok) return await createImageBitmap(await response.blob());
+  } catch {
+    signal.throwIfAborted();
+  }
+}
+
+async function fetchFallbackArtwork(src: string, signal: AbortSignal) {
+  const fallback = await prepareCoverFallback(src);
+  signal.throwIfAborted();
+  if (fallback && fallback !== src) return fetchArtwork(fallback, signal);
+}
+
+function loadArtworkElement(src: string, signal: AbortSignal): Promise<HTMLImageElement> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const cleanup = () => {
+      image.onload = image.onerror = null;
+      signal.removeEventListener("abort", abort);
+    };
+    const abort = () => {
+      cleanup();
+      image.removeAttribute("src");
+      reject(signal.reason);
+    };
+    image.crossOrigin = "anonymous";
+    image.onload = () => { cleanup(); resolve(image); };
+    image.onerror = () => { cleanup(); reject(new Error(`Failed to load image: ${src}`)); };
+    signal.addEventListener("abort", abort);
+    image.src = src;
+  });
+}
+
+async function loadArtwork(src: string, signal: AbortSignal): Promise<ImageBitmap | HTMLImageElement> {
+  const bitmap = await fetchArtwork(src, signal);
+  if (bitmap) return bitmap;
+  try {
+    return await loadArtworkElement(src, signal);
+  } catch (error) {
+    signal.throwIfAborted();
+    const fallback = await prepareCoverFallback(src);
+    signal.throwIfAborted();
+    if (!fallback || fallback === src) throw error;
+    return await fetchArtwork(fallback, signal) ?? await loadArtworkElement(fallback, signal);
   }
 }

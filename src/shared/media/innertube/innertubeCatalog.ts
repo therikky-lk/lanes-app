@@ -1,6 +1,6 @@
 import { isBrowserRuntime } from "@/shared/platform/browser";
 import { isAbortError } from "@/shared/utils/abort";
-import { sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
+import { canonicalArtistId, sameArtistName, uniqueArtistId } from "@/shared/media/artistIdentity";
 import { getInvidiousTrack, getInvidiousRadio } from "./invidiousFallback";
 import { isMusicVideo } from "./innertubeTrackMapper";
 import type {
@@ -29,7 +29,11 @@ import {
   mapInnertubeBrowseTracks,
 } from "./innertubeCollectionMapper";
 import { getQueueItems, getTrackItem, mapInnertubeRadioTrack, mapInnertubeTrackDetails } from "./innertubeQueueMapper";
-import { searchArtistOfficialVideos, searchCatalog } from "./innertubeSearch";
+import { searchCatalog } from "./innertubeSearch";
+import { isVideoTrack } from "@/shared/media/isVideoTrack";
+import { resolveAlbumAudioTracks } from "./albumAudioTracks";
+import { supplementArtistAlbums } from "./appleReleaseCatalog";
+import { learnOfficialArtistName } from "./artistDisplayName";
 import { soundcloudCatalog } from "@/shared/media/soundcloud";
 import { fetchYoutubePlaylist } from "@/shared/media/youtube/playlist/youtubePlaylist";
 
@@ -122,7 +126,7 @@ async function getAlbum(albumId: string, signal?: AbortSignal): Promise<AlbumDet
     if (tracks.length === previousCount) break;
   }
 
-  album.tracks = tracks;
+  album.tracks = await resolveAlbumAudioTracks(tracks, signal, true);
   return album;
 }
 
@@ -175,6 +179,7 @@ function mergeReleases<T extends { id: string }>(primary: T[], extra: T[]): T[] 
 function mergeArtistTracks(...groups: Track[][]): Track[] {
   const seen = new Set<string>();
   return groups.flat().filter((track) => {
+    if (isVideoTrack(track)) return false;
     const title = track.title.toLocaleLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]+/gu, "");
     const artists = track.artists.map((artist) => artist.name.toLocaleLowerCase().replace(/ё/g, "е")).sort().join("|");
     const key = `${title}:${artists}`;
@@ -222,14 +227,20 @@ async function loadArtistReleaseTracks(releases: { id: string }[], signal?: Abor
     }
   };
   await Promise.all(Array.from({ length: Math.min(4, releases.length) }, worker));
-  return mergeArtistTracks(...result);
+  return result.flat();
 }
 
 async function loadArtist(artistId: string, signal?: AbortSignal, onPreview?: (artist: ArtistDetails) => void): Promise<ArtistDetails | null> {
   const body = await browse(artistId, undefined, signal);
   const artist = mapInnertubeArtistDetails(artistId, body);
   if (!artist) return null;
-  onPreview?.(artist);
+  const preview = { ...artist, tracks: artist.tracks.filter(track => !isVideoTrack(track)) };
+  onPreview?.(preview);
+  const displayName = onPreview
+    ? learnOfficialArtistName(artistId, artist.name, body, signal).then(changed => {
+        if (changed && !signal?.aborted) onPreview(preview);
+      }).catch(() => {})
+    : Promise.resolve();
   const topSongs = getArtistTopSongsBrowse(body);
   const releaseRefs = getArtistReleaseBrowses(body);
   const [allTracks, allAlbums, allSingles] = await Promise.all([
@@ -248,34 +259,32 @@ async function loadArtist(artistId: string, signal?: AbortSignal, onPreview?: (a
     [...(artist.singles ?? []), ...(allAlbums?.singles ?? []), ...(allSingles?.albums ?? []), ...(allSingles?.singles ?? [])],
   );
   let tracks = mergeArtistTracks(allTracks, artist.tracks);
-  const normalizedArtist = artist.name.trim().toLocaleLowerCase();
-  const [searchedTracks, officialVideos] = await Promise.all([
-    searchCatalog(artist.name, "track", signal).catch(() => []),
-    searchArtistOfficialVideos(artist.id, artist.name, signal).catch(() => []),
-  ]);
+  const searchedTracks = await searchCatalog(artist.name, "track", signal).catch(() => []);
   const matchingSearchTracks = searchedTracks.flatMap((item) => {
     if (item.type !== "track") return [];
     if (!item.artists.some((credit) =>
-      credit.id === artist.id || credit.name.trim().toLocaleLowerCase() === normalizedArtist,
+      credit.id && credit.id !== "unknown"
+        ? canonicalArtistId(credit.id) === canonicalArtistId(artist.id)
+        : artist.name.trim().length > 3 && sameArtistName(credit.name, artist.name),
     )) return [];
     const { type: _type, viewer: _viewer, ...track } = item;
     return [track];
   });
-  tracks = mergeArtistTracks(tracks, matchingSearchTracks, officialVideos);
+  tracks = mergeArtistTracks(tracks, matchingSearchTracks);
 
   // Sparse artist catalogs often have only one or two top-song entries. Load
   // every discovered release (with bounded concurrency) so their full tracklists
   // appear on the artist page and can be played as one queue.
   if (tracks.length < 30 && releases.length > 0) {
-    tracks = mergeArtistTracks(tracks, await loadArtistReleaseTracks(releases, signal));
+    tracks = mergeArtistTracks(tracks, await resolveAlbumAudioTracks(await loadArtistReleaseTracks(releases, signal), signal));
   }
 
-  if (tracks.length < 30) {
+  if (tracks.length < 30 && artist.name.trim().length > 3) {
     const soundcloudTracks = await soundcloudCatalog.search(artist.name, 30, signal).catch(() => []);
     tracks = mergeArtistTracks(
       tracks,
       soundcloudTracks.filter((track) =>
-        track.artists.some((credit) => credit.name.trim().toLocaleLowerCase() === normalizedArtist),
+        track.artists.some((credit) => sameArtistName(credit.name, artist.name)),
       ),
     );
   }
@@ -288,10 +297,14 @@ async function loadArtist(artistId: string, signal?: AbortSignal, onPreview?: (a
       ...r,
     })),
   );
+  const completeAlbums = artist.verified
+    ? await supplementArtistAlbums(albums, artist.name, signal).catch(() => albums)
+    : albums;
+  await displayName;
   return {
     ...artist,
     tracks,
-    albums,
+    albums: completeAlbums,
     singles,
   };
 }

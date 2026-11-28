@@ -3,7 +3,7 @@ import { isNativeApp } from "@/shared/platform/native";
 import { isLowEndDevice } from "@/shared/platform/deviceTier";
 import { memo, useEffect, useRef, useState } from "react";
 import { KawarpEngine } from "../engine/kawarpEngine";
-import { backdropMotion, type VisualQuality } from "../store/visualQualityStore";
+import { backdropMotion, type AnimatedVisualQuality } from "../store/visualQualityStore";
 import { getCoverElement, useCoverElement } from "@/features/covers";
 
 export const KAWARP_RESIZE_SETTLE_MS = 300;
@@ -13,7 +13,7 @@ export const KAWARP_RENDER_SCALE = isNativeApp() ? (isLowEndDevice() ? 0.22 : 0.
 
 interface KawarpWrapperProps {
   src?: string;
-  quality?: VisualQuality;
+  quality?: AnimatedVisualQuality;
   paused?: boolean;
   onLoad?: () => void;
   onError?: (err: Error) => void;

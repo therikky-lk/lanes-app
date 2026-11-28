@@ -10,6 +10,7 @@ import { isDailyMixId, readDailyMixIdentities } from "@/features/home/mixes/dail
 import { countryFromMixId, countryMixCover, countryMixTitle, loadCountryMix } from "@/features/home/mixes/countryMixes";
 import { createTranslatorSync, getStoredLocale } from "@/languages";
 import { fetchYoutubeAccountPlaylist, isAccountPlaylistId } from "@/shared/media/youtube";
+import { loadVerifiedRelease } from "./loadVerifiedRelease";
 
 export interface CollectionPageData {
   type?: "playlist" | "album";
@@ -33,7 +34,9 @@ export function useCollection(
   isRelease = false,
 ) {
   const owner = useSessionOwner();
-  const cacheKey = type && id ? `collection:${type}:${id}` : null;
+  const cacheKey = type && id ? isRelease
+    ? `verified-release:${JSON.stringify([id, fallbackTitle, fallbackArtist])}`
+    : `collection:${type}:${id}` : null;
   const cached = cacheKey ? queryCache.get<CollectionPageData>(cacheKey) : undefined;
   const [data, setData] = useState<CollectionPageData | null>(cached ?? null);
   const [loading, setLoading] = useState<boolean>(!cached && Boolean(type && id));
@@ -144,81 +147,7 @@ export function useCollection(
           }
           let collection = type === "playlist"
             ? await api.getPlaylist(id)
-            : await api.getAlbum(id).catch(() => null);
-
-          // A single can expose a bad release id. Keep a direct result only
-          // when it belongs to the requested artist; otherwise resolve a
-          // normal YouTube Music track from the artist + release query.
-          if (isRelease && fallbackTitle) {
-            const query = [fallbackTitle, fallbackArtist].filter(Boolean).join(" ");
-            const artist = fallbackArtist?.toLocaleLowerCase().trim();
-            const title = fallbackTitle.toLocaleLowerCase().trim();
-            const hasCyrillic = /[а-яё]/i.test(fallbackTitle);
-            const belongsToArtist = (artists: { name: string }[]) => !artist || artists.some((entry) => {
-                const name = entry.name.toLocaleLowerCase().trim();
-                return name === artist || name.includes(artist) || artist.includes(name);
-              });
-            const titleScore = (value: string) => {
-              const candidate = value.toLocaleLowerCase().trim();
-              let score = candidate === title ? 100 : candidate.includes(title) || title.includes(candidate) ? 55 : 0;
-              if (hasCyrillic && /[а-яё]/i.test(value)) score += 30;
-              if (hasCyrillic && !/[а-яё]/i.test(value)) score -= 20;
-              return score;
-            };
-
-            const directIsValid = Boolean(
-              collection && collection.tracks.length > 0 &&
-              belongsToArtist(collection.tracks[0].artists) &&
-              titleScore(collection.title) > 0,
-            );
-            if (!directIsValid) {
-              collection = null;
-              const results = await api.search(query, "track").catch(() => ({ items: [] }));
-              const match = results.items
-                .filter((item) => item.type === "track" && belongsToArtist(item.artists))
-                .sort((a, b) => titleScore("title" in b ? b.title : "") - titleScore("title" in a ? a.title : ""))[0];
-              if (match?.type === "track") {
-                const track = toClientTrack(match);
-                collection = {
-                  type: "album" as const,
-                  id,
-                  title: track.title || fallbackTitle,
-                  artists: track.artistList?.map((entry) => ({ id: entry.id ?? "", name: entry.name })) ?? [],
-                  cover: track.coverUrl ? { url: track.coverUrl, width: 500, height: 500 } : undefined,
-                  tracks: [match] as any,
-                };
-              }
-            }
-          }
-
-          // Artist discography entries can point at a one-track release ID
-          // even when the displayed release title is a full album (e.g. the
-          // same album track promoted as a standalone release). Resolve the
-          // canonical album by its exact title/artist before showing that
-          // single track as the entire album.
-          if (isRelease && fallbackTitle && collection && collection.tracks.length <= 1) {
-            const title = fallbackTitle.toLocaleLowerCase().trim();
-            const artist = fallbackArtist?.toLocaleLowerCase().trim();
-            const results = await api.search(fallbackTitle, "album").catch(() => ({ items: [] }));
-            const candidates = results.items
-              .filter((item) =>
-                item.type === "album" &&
-                item.title.toLocaleLowerCase().trim() === title &&
-                (!artist || item.artists.some((entry) => {
-                  const name = entry.name.toLocaleLowerCase().trim();
-                  return name === artist || name.includes(artist) || artist.includes(name);
-                })),
-              )
-              .sort((a, b) => Number(b.id !== decodedId) - Number(a.id !== decodedId));
-            for (const candidate of candidates) {
-              if (candidate.id === decodedId) continue;
-              const completeAlbum = await api.getAlbum(candidate.id).catch(() => null);
-              if (completeAlbum && completeAlbum.tracks.length > collection.tracks.length) {
-                collection = completeAlbum;
-                break;
-              }
-            }
-          }
+            : isRelease ? await loadVerifiedRelease(id, fallbackTitle, fallbackArtist) : await api.getAlbum(id).catch(() => null);
 
           // Single releases can expose a browse id that returns metadata but
           // no track shelf. Resolve the release again through catalog search.
@@ -241,7 +170,7 @@ export function useCollection(
             }
           }
 
-          if (!collection) {
+          if (!collection && !isRelease) {
             const tracks = fallbackTitle
               ? (await api.search(fallbackTitle, "track").catch(() => ({ items: [] }))).items
                   .filter((item): item is Extract<typeof item, { type: "track" }> => {

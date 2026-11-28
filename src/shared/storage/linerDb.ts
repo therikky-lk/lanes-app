@@ -429,15 +429,18 @@ class LinerDb {
     });
   }
 
-  async getOldestAudioRecords(): Promise<CachedAudioRecord[]> {
+  async getOldestAudioRecords(): Promise<Pick<CachedAudioRecord, "trackId" | "byteSize" | "savedAt" | "lastPlayedAt">[]> {
+    type Entry = Pick<CachedAudioRecord, "trackId" | "byteSize" | "savedAt" | "lastPlayedAt">;
+    const toEntry = ({ trackId, byteSize, blob, savedAt, lastPlayedAt }: CachedAudioRecord): Entry =>
+      ({ trackId, byteSize: byteSize || blob?.size || 0, savedAt, lastPlayedAt });
     const result = await this.runTransaction("audio", "readonly", (store) => {
-      return new Promise<CachedAudioRecord[]>((resolve) => {
-        const records: CachedAudioRecord[] = [];
+      return new Promise<Entry[]>((resolve) => {
+        const records: Entry[] = [];
         const req = store.openCursor();
         req.onsuccess = () => {
           const cursor = req.result;
           if (cursor) {
-            records.push(cursor.value as CachedAudioRecord);
+            records.push(toEntry(cursor.value as CachedAudioRecord));
             cursor.continue();
           } else {
             records.sort((a, b) => (a.lastPlayedAt ?? a.savedAt) - (b.lastPlayedAt ?? b.savedAt));
@@ -452,7 +455,7 @@ class LinerDb {
       return result;
     }
 
-    const memList = Array.from(this.memAudio.values());
+    const memList = Array.from(this.memAudio.values(), toEntry);
     memList.sort((a, b) => (a.lastPlayedAt ?? a.savedAt) - (b.lastPlayedAt ?? b.savedAt));
     return memList;
   }

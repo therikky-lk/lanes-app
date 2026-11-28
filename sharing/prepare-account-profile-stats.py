@@ -99,11 +99,15 @@ old_follow = '''      if (req.method === "POST") {
       }
       res.writeHead(204, { "x-request-id": res.requestId });
       res.end();'''
-if "profileRelation(database, target.id, viewer.id)" not in source:
-    if source.count(old_follow) != 1:
+current_follow = old_follow.split('      res.writeHead')[0] + '''      const state = await profileRelation(database, target.id, viewer.id);
+      json(res, 200, { isFollowing: state.is_following, followersCount: state.followers, relationshipUpdatedAt: state.observedAt });'''
+new_follow = '''      const state = await writeProfileRelation(database, target.id, viewer.id, req.method === "POST");
+      json(res, 200, state);'''
+if new_follow not in source:
+    candidates = [handler for handler in (old_follow, current_follow) if source.count(handler) == 1]
+    if len(candidates) != 1:
         raise SystemExit("Follow handler changed; manual review required.")
-    source = source.replace(old_follow, old_follow.split('      res.writeHead')[0] + '''      const state = await profileRelation(database, target.id, viewer.id);
-      json(res, 200, { isFollowing: state.is_following, followersCount: state.followers, relationshipUpdatedAt: state.observedAt });''')
+    source = 'import { writeProfileRelation } from "./profile-relations.mjs";\n' + source.replace(candidates[0], new_follow)
 target_query = "SELECT * FROM users WHERE id::text=$1 OR username=$1"
 if source.count(target_query) == 1:
     source = source.replace(target_query, "SELECT *, CURRENT_TIMESTAMP AS profile_read_at FROM users WHERE id::text=$1 OR username=$1")

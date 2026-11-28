@@ -1,3 +1,8 @@
+import { isMacPlatform } from "./utils/shortcutMatching";
+
+const searchModifier = isMacPlatform() ? "Command" : "Control";
+export const DEFAULT_SEARCH_ALTERNATE = `${searchModifier}+L`;
+
 export interface GlobalShortcutsSettings {
   toggleOverlay: string; // e.g. "Alt+Shift+O"
   quickLikeSong: string; // e.g. "Alt+Shift+L"
@@ -12,7 +17,7 @@ export interface MainAppShortcutsSettings {
   volumeUp: string;         // e.g. "Up" (1 button)
   volumeDown: string;       // e.g. "Down" (1 button)
   toggleMute: string;       // e.g. "M" (1 button)
-  search: string;           // e.g. "/" (1 button)
+  search: string;           // e.g. "Command+K" (2 buttons)
   toggleQueue: string;      // e.g. "Q" (1 button)
   toggleLyrics: string;     // e.g. "L" (1 button)
   toggleFullscreen: string; // e.g. "F" (1 button)
@@ -50,7 +55,7 @@ export const DEFAULT_SHORTCUTS: ShortcutsSettings = {
     volumeUp: "Up",
     volumeDown: "Down",
     toggleMute: "M",
-    search: "/",
+    search: `${searchModifier}+K`,
     toggleQueue: "Q",
     toggleLyrics: "L",
     toggleFullscreen: "F",

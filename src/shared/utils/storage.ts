@@ -1,4 +1,7 @@
-const pendingWrites = new Map<string, string>();
+import type { PersistStorage, StorageValue } from "zustand/middleware";
+
+type PendingWrite = string | (() => string);
+const pendingWrites = new Map<string, PendingWrite>();
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
 function cancelScheduledFlush() {
@@ -12,7 +15,7 @@ function flushPendingWrites() {
   if (typeof localStorage === "undefined" || pendingWrites.size === 0) return;
   for (const [name, value] of pendingWrites.entries()) {
     try {
-      localStorage.setItem(name, value);
+      localStorage.setItem(name, typeof value === "function" ? value() : value);
     } catch {}
   }
   pendingWrites.clear();
@@ -26,19 +29,20 @@ if (typeof window !== "undefined") {
   });
 }
 
+function queueWrite(name: string, value: PendingWrite) {
+  if (typeof window === "undefined") return;
+  pendingWrites.set(name, value);
+  flushTimer ??= setTimeout(flushPendingWrites, 1000);
+}
+
 export const debouncedStorage = {
   getItem: (name: string) => {
     if (typeof window === "undefined" || typeof localStorage === "undefined") return null;
-    if (pendingWrites.has(name)) {
-      return pendingWrites.get(name)!;
-    }
+    const value = pendingWrites.get(name);
+    if (value !== undefined) return typeof value === "function" ? value() : value;
     return localStorage.getItem(name);
   },
-  setItem: (name: string, value: string) => {
-    if (typeof window === "undefined") return;
-    pendingWrites.set(name, value);
-    flushTimer ??= setTimeout(flushPendingWrites, 1000);
-  },
+  setItem: queueWrite,
   removeItem: (name: string) => {
     if (typeof window === "undefined") return;
     pendingWrites.delete(name);
@@ -49,3 +53,17 @@ export const debouncedStorage = {
   },
   flush: flushPendingWrites,
 };
+
+export function createDeferredJSONStorage<T>(): PersistStorage<T> {
+  return {
+    getItem(name) {
+      const value = debouncedStorage.getItem(name);
+      return value === null ? null : JSON.parse(value) as StorageValue<T>;
+    },
+    setItem(name, value) {
+      // Only the newest snapshot per key gets serialized, at flush time.
+      queueWrite(name, () => JSON.stringify(value));
+    },
+    removeItem: debouncedStorage.removeItem,
+  };
+}

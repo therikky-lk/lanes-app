@@ -290,6 +290,7 @@ export const PlayerUiElements = memo(function PlayerUiElements({
               name={trackArtists}
               artistId={track?.artistId}
               artistList={track?.artistList}
+              trackId={track?.id}
               onNavigate={() => {
                 if (location.pathname !== "/player") {
                   onClose?.();

@@ -10,7 +10,7 @@ import { sqliteD1 } from "./testing/sqlite-d1.mjs";
 import { publicPlaylistSnapshot, renderSharePage, snapshotOf, validEntity } from "./presentation.mjs";
 import { profileImage } from "./profile-presentation.mjs";
 import { profileStats } from "./account-profile-stats.mjs";
-import { profileRelation } from "./account-profile-relations.mjs";
+import { profileRelation, writeProfileRelation } from "./account-profile-relations.mjs";
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const module = new WebAssembly.Module(readFileSync(new URL("./signer.wasm", import.meta.url)));
 const playlistId = "12345678-1234-1234-1234-123456789abc";
@@ -199,6 +199,20 @@ test("relationship snapshots bypass stale query caching and return real subscrip
   assert.equal(next.followers, 8);
   assert.equal(next.observedAt, "2026-11-22T20:00:00.000Z");
   assert.match(calls[0].sql, /SELECT CURRENT_TIMESTAMP AS observed_at/);
+  assert.deepEqual(calls[0].values.slice(0, 2), ["owner", "viewer"]);
+  assert.notEqual(calls[0].values[2], calls[1].values[2]);
+});
+
+test("unfollow returns the result of the write without a separate cached read", async () => {
+  const calls = [];
+  const db = { query: async (sql, values) => {
+    calls.push({ sql, values });
+    return { rows: [{ followers: 0, observed_at: new Date("2026-11-28T10:00:00Z") }] };
+  } };
+  const state = await writeProfileRelation(db, "owner", "viewer", false);
+  assert.deepEqual(state, { isFollowing: false, followersCount: 0, relationshipUpdatedAt: "2026-11-28T10:00:00.000Z" });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].sql, /WITH changed AS \(DELETE .* RETURNING 1\)/);
   assert.deepEqual(calls[0].values, ["owner", "viewer"]);
 });
 test("rejects anonymous and invalid account sessions", async t => {

@@ -54,6 +54,7 @@
     "all_releases": "Tout",
     "discography": "Discographie",
     "your_tracks": "Titres favoris : {count}",
+    "saved_tracks": "Vos titres enregistrés",
     "open": "Ouvrir le profil de l’artiste",
     "verified": "Vérifié"
   },
@@ -74,6 +75,7 @@
     "sec": "s"
   },
   "common": {
+    "enterFullscreen": "Passer en plein écran",
     "show_more": "Afficher plus",
     "pause": "Pause",
     "source": "Source",
@@ -83,6 +85,8 @@
       "version": "Version 0.1.0"
     },
     "sidebar": {
+      "expand": "Développer le menu latéral",
+      "collapse": "Réduire le menu latéral",
       "home": "Accueil",
       "search": "Rechercher",
       "library": "Bibliothèque",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Ouvrir le lecteur en plein écran",
     "open_cover": "Ouvrir la pochette",
     "repeat_off": "Répéter : désactivé",
     "repeat_all": "Répéter : tout",
@@ -636,6 +641,8 @@
     "visual_quality_balanced": "Équilibré",
     "visual_quality_balanced_hint": "Mouvement de fond plus doux, sans flou des paroles",
     "visual_quality_lite": "Léger",
+    "visual_quality_blur": "Pochette floue uniquement",
+    "visual_quality_blur_hint": "Pochette floue fixe à la place du fond animé",
     "visual_quality_lite_hint": "Fond animé plus lent, avec moins d’images par seconde",
     "volume": "Volume",
     "previous": "Précédent",

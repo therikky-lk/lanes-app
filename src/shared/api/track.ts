@@ -2,6 +2,7 @@ import { mediaUrl } from "./api";
 import type { Track as TrackSnapshot } from "../contracts";
 import type { Track } from "../types";
 import { cleanTrackTitle } from "../utils/trackTitle";
+import { canonicalArtistId, nativeArtistName, nativeTrackTitle } from "../media/artistIdentity";
 
 // Commas and explicit feature credits separate artists; "&" can be a band name.
 const ARTIST_SEPARATOR = /\s*,\s*|\s+(?:×|x|feat\.?|ft\.?|featuring)\s+/i;
@@ -82,7 +83,10 @@ export function toClientTrack(source: any): Track {
     ];
   }
 
-  artistsList = splitJoinedArtists(artistsList);
+  artistsList = splitJoinedArtists(artistsList).map((credit) => {
+    const id = canonicalArtistId(credit.id, credit.name);
+    return { id, name: nativeArtistName(id, credit.name) };
+  });
   // always "A, B": the same look everywhere, whatever the source wrote
   const artistsString = artistsList.map((artist) => artist.name).filter(Boolean).join(", ");
 
@@ -104,9 +108,10 @@ export function toClientTrack(source: any): Track {
         }
       : undefined;
 
+  const title = cleanTrackTitle(source.title, artistsString);
   return {
     id: source.id,
-    title: cleanTrackTitle(source.title, artistsString),
+    title: artistsList[0] ? nativeTrackTitle(title, artistsList[0]) : title,
     artists: artistsString,
     artistList: artistsList.length > 0 ? artistsList : undefined,
     artistId: primaryArtistId,
@@ -115,6 +120,7 @@ export function toClientTrack(source: any): Track {
     playCount: source.playCount ?? 0,
     explicit: source.explicit,
     musicVideoType: typeof source.musicVideoType === "string" ? source.musicVideoType : undefined,
+    ...(source.catalogUnavailable === true ? { catalogUnavailable: true } : {}),
     album: album && (album.id || album.title) ? album : undefined,
   };
 }

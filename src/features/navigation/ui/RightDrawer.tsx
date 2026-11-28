@@ -240,10 +240,8 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
     queue: state.queue,
     currentIndex: state.currentIndex,
     currentTrack: state.currentTrack,
-    status: state.status,
     playbackContext: state.playbackContext,
     playbackContextCover: state.playbackContextCover,
-    positionMs: activeTab === "lyrics" ? state.positionMs : 0,
     durationMs: activeTab === "lyrics" ? state.durationMs : 0,
   })));
   const { t } = useTranslation();
@@ -374,7 +372,7 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
   const isMatchingTrack = Boolean(
     player.currentTrack?.id && currentLyricsTrackId === player.currentTrack.id,
   );
-  const effectiveSyncedLines = isMatchingTrack ? syncedLines : [];
+  const effectiveSyncedLines = useMemo(() => isMatchingTrack ? syncedLines : [], [isMatchingTrack, syncedLines]);
   const effectivePlainLyrics = isMatchingTrack ? plainLyrics : null;
   const effectiveLoading = lyricsLoading || !isMatchingTrack;
 
@@ -396,7 +394,6 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
     prevQualityRef.current = lyricsQuality;
   }, [lyricsQuality, activeTab, player.currentTrack?.id, t, toast]);
 
-  const isPlaying = player.status === "playing";
 
   const [activeLineIndices, setActiveLineIndices] = useState<number[]>([]);
   const activeLineIndicesRef = useRef<number[]>([]);
@@ -522,12 +519,9 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
 
   const isActuallySynced = effectiveSyncedLines.some((line) => line.timeMs > 0);
 
-  const { registerWordSpan, setWordData, clearWordSpans } = useLyricsAnimator({
+  const { registerWordSpan } = useLyricsAnimator({
     syncedLines: effectiveSyncedLines,
     isActuallySynced,
-    isPlaying,
-    positionMs: player.positionMs,
-    durationMs: player.durationMs,
     enabled: activeTab === "lyrics",
     onActiveLineChange: handleActiveLineChange,
   });
@@ -594,21 +588,6 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
     }
   }, [activeTab, returnToFollowingMode, scrollToActiveLine]);
 
-  useEffect(() => {
-    effectiveSyncedLines.forEach((line, i) => {
-      const words = line.words || [];
-      const animatedWords = words.filter((w) => w.text.trim().length > 0);
-      if (animatedWords.length > 0) {
-        setWordData(
-          i,
-          animatedWords.map((w) => ({ timeMs: w.timeMs, endMs: w.endMs })),
-        );
-      } else {
-        clearWordSpans(i);
-      }
-    });
-  }, [effectiveSyncedLines, setWordData, clearWordSpans]);
-
   const renderWordLevel = (
     line: { timeMs: number; text: string; words?: WordData[] },
     i: number,
@@ -652,7 +631,7 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
             className={`bg-clip-text text-transparent ${className}`}
             style={{
               backgroundImage:
-                "linear-gradient(to right, var(--color-text-primary) 0%, var(--color-text-tertiary) 0%)",
+                "linear-gradient(to right, var(--color-text-primary) var(--lane-word-progress, 0%), var(--color-text-tertiary) var(--lane-word-progress, 0%))",
               transform: "none",
             }}
             ref={(el) => {
@@ -704,6 +683,9 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
   const dotsActivateMs =
     lastWordEndMs ??
     (lastLine?.timeMs != null ? lastLine.timeMs + prevDuration : null);
+  const outroActivated = usePlayerStore(state =>
+    activeTab === "lyrics" && dotsActivateMs != null && state.positionMs >= dotsActivateMs,
+  );
   const showOutroDots =
     player.durationMs > 0 &&
     lastLine?.timeMs > 0 &&
@@ -1044,10 +1026,7 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
                     }
 
                     const isLastLine = i === effectiveSyncedLines.length - 1;
-                    const isLastLineDone =
-                      isLastLine &&
-                      dotsActivateMs != null &&
-                      player.positionMs >= dotsActivateMs;
+                     const isLastLineDone = isLastLine && outroActivated;
                     const lineIsActive = isActive && !isLastLineDone;
 
                     const customStyle: React.CSSProperties = {
@@ -1112,8 +1091,7 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
                       className={`relative text-[25px] font-[700] lyric-line ${
                         activeLineIndices.length > 0 &&
                         activeLineIndices[0] === lastIdx &&
-                        dotsActivateMs != null &&
-                        player.positionMs >= dotsActivateMs
+                         outroActivated
                           ? "lyric-line--active text-text-primary"
                           : "text-text-tertiary"
                       }`}
@@ -1121,8 +1099,7 @@ function RightDrawer({ activeTab: requestedTab, onTabChange, onClose }: RightDra
                     >
                       {activeLineIndices.length > 0 &&
                       activeLineIndices[0] === lastIdx &&
-                      dotsActivateMs != null &&
-                      player.positionMs >= dotsActivateMs ? (
+                         outroActivated ? (
                         <span className="inline-flex">
                           {"•••".split("").map((d, di) => (
                             <span

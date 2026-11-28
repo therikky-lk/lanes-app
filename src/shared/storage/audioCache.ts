@@ -72,9 +72,8 @@ class AudioCache {
     const oldest = await linerDb.getOldestAudioRecords();
     for (const item of oldest) {
       if (evictedBytes >= bytesToEvict) break;
-      const size = item.byteSize || item.blob?.size || 0;
       await this.deleteAudio(item.trackId);
-      evictedBytes += size;
+      evictedBytes += item.byteSize;
     }
 
     return evictedBytes;
@@ -86,9 +85,12 @@ class AudioCache {
       return this.activeUrls.get(trackId)!;
     }
 
+    const generation = this.generation;
     const downloaded = await downloadsDb.get(trackId).catch(() => undefined);
     const record = downloaded ?? await linerDb.getAudio(trackId);
-    if (!record) return null;
+    if (!record || generation !== this.generation) return null;
+    const existing = this.activeUrls.get(trackId);
+    if (existing) return existing;
 
     void linerDb.touchAudio(trackId);
 

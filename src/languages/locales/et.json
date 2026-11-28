@@ -54,6 +54,7 @@
     "all_releases": "Kõik",
     "discography": "Diskograafia",
     "your_tracks": "Lemmiklood: {count}",
+    "saved_tracks": "Sinu salvestatud lood",
     "open": "Ava esitaja profiil",
     "verified": "Kinnitatud"
   },
@@ -74,6 +75,7 @@
     "sec": "sek"
   },
   "common": {
+    "enterFullscreen": "Ava täisekraan",
     "show_more": "Näita rohkem",
     "pause": "Paus",
     "source": "Allikas",
@@ -83,6 +85,8 @@
       "version": "Versioon 0.1.0"
     },
     "sidebar": {
+      "expand": "Laienda külgriba",
+      "collapse": "Ahenda külgriba",
       "home": "Avaleht",
       "search": "Otsi",
       "library": "Raamatukogu",
@@ -550,6 +554,7 @@
     "frame_title": "Cloudflare'i turvakontroll"
   },
   "player": {
+    "open_fullscreen_player": "Ava mängija täisekraanil",
     "open_cover": "Ava kaanepilt",
     "repeat_off": "Korda: väljas",
     "repeat_all": "Korda: kõik",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Tasakaalustatud",
     "visual_quality_balanced_hint": "Rahulikum taustaliikumine, laulusõnade hägustuseta",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Ainult hägune kaanepilt",
+    "visual_quality_blur_hint": "Liikuva tausta asemel staatiline hägune kaanepilt",
     "visual_quality_lite_hint": "Aeglasem liikuv taust väiksema kaadrisagedusega",
     "instrumental_hint": "See laul on instrumentaalne",
     "seek": "Keri",

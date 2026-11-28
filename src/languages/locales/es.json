@@ -54,6 +54,7 @@
     "all_releases": "Todo",
     "discography": "Discografía",
     "your_tracks": "Canciones que te gustan: {count}",
+    "saved_tracks": "Tus canciones guardadas",
     "open": "Abrir el perfil del artista",
     "verified": "Verificado"
   },
@@ -74,6 +75,7 @@
     "sec": "s"
   },
   "common": {
+    "enterFullscreen": "Entrar en pantalla completa",
     "show_more": "Mostrar más",
     "pause": "Pausa",
     "source": "Fuente",
@@ -83,6 +85,8 @@
       "version": "Versión 0.1.0"
     },
     "sidebar": {
+      "expand": "Expandir el menú lateral",
+      "collapse": "Contraer el menú lateral",
       "home": "Inicio",
       "search": "Buscar",
       "library": "Biblioteca",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Abrir el reproductor en pantalla completa",
     "open_cover": "Abrir portada",
     "repeat_off": "Repetir: desactivado",
     "repeat_all": "Repetir: todo",
@@ -636,6 +641,8 @@
     "visual_quality_balanced": "Equilibrado",
     "visual_quality_balanced_hint": "Movimiento más suave del fondo, sin desenfoque de la letra",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Solo portada desenfocada",
+    "visual_quality_blur_hint": "Portada desenfocada estática en lugar de un fondo animado",
     "visual_quality_lite_hint": "Fondo animado más lento y con menos fotogramas",
     "volume": "Volumen",
     "previous": "Anterior",

@@ -68,7 +68,7 @@ export default function ArtistSheet() {
     const { onNavigate } = useArtistSheetStore.getState();
     close();
     onNavigate?.();
-    navigate(artistHref(artist.id, artist.name));
+    navigate(artistHref(artist.id, artist.name, artist.sourceTrackId));
   };
 
   const main = artists.find((a) => a.id === selectedId) ?? artists[0];

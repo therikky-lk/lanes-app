@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import AppImage from "@/features/covers/ui/AppImage";
 import { Link, useLocation } from "react-router-dom";
 import { navSectionOf, sidebarNavItems } from "../data/navigation";
@@ -39,20 +40,26 @@ const brandingLogos: Record<Exclude<AccentVariant, "default">, string> = {
   vhs: vhsLogo,
 };
 
-const SIDEBAR_SLOT_CLASS = "inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center";
-
 interface SidebarProps {
   searchOpen: boolean;
   onSearchToggle: () => void;
   isEdgeToEdge?: boolean;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  hasMacWindowControls?: boolean;
 }
 
-function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarProps) {
+function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false, expanded, onToggleExpanded, hasMacWindowControls }: SidebarProps) {
   const { pathname, search } = useLocation();
   const { t } = useTranslation();
   const accentVariant = usePlayerStore((state) => state.accentVariant);
   const settingsOpen = useModalStore((state) => state.settingsOpen);
   const toggleSettings = useModalStore((state) => state.toggleSettings);
+  const toggleLabel = t(expanded ? "common.sidebar.collapse" : "common.sidebar.expand");
+  const rowWrapperClass = expanded ? "w-full min-w-0" : undefined;
+  const slotClass = `group flex h-[36px] shrink-0 items-center rounded-lg border-0 bg-transparent text-text-primary cursor-pointer hover:bg-border-alpha-14 active:scale-[0.96] transition-transform duration-100 ${
+    expanded ? "w-full min-w-0 justify-start gap-3 pl-[5px] pr-2" : "w-[36px] justify-center p-0"
+  }`;
 
   const section = navSectionOf(pathname, search);
   const isItemActive = (id: string, href?: string) => {
@@ -69,59 +76,45 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
     sidebarNavItems
       .filter((item) => item.id !== "settings")
       .map((item) => {
-      const active = isItemActive(item.id, item.href);
-      const Icon = item.Icon;
-    const tooltipLabel = item.id === "liked"
-      ? (t("library.liked_songs") || t(`common.sidebar.${item.id}`) || item.label)
-      : (t(`common.sidebar.${item.id}`) || item.label);
-
-      if (item.id === "search") {
-        return (
-          <Tooltip
-            key={item.id}
-            content={tooltipLabel}
-            side="right"
-            sideOffset={12}
-          >
-            <button
-              type="button"
-              aria-pressed={searchOpen}
-              onClick={onSearchToggle}
-              className={`${SIDEBAR_SLOT_CLASS} group relative bg-transparent border-0 p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100`}
-            >
-              <Icon
-                size={26}
-                className={`relative z-10 text-text-primary transition-opacity duration-150 ease-out ${
-                  active ? "opacity-100" : "opacity-55 group-hover:opacity-90"
-                }`}
-              />
-            </button>
-          </Tooltip>
-        );
-      }
-
-      return (
-        <Tooltip
-          key={item.id}
-          content={tooltipLabel}
-          side="right"
-          sideOffset={12}
-        >
-          <Link
-            key={item.id}
-            to={item.href!}
-            aria-current={active ? "page" : undefined}
-            className={`${SIDEBAR_SLOT_CLASS} group relative cursor-pointer active:scale-[0.96] transition-transform duration-100`}
-          >
+        const active = isItemActive(item.id, item.href);
+        const Icon = item.Icon;
+        const tooltipLabel = item.id === "liked"
+          ? (t("library.liked_songs") || t(`common.sidebar.${item.id}`) || item.label)
+          : (t(`common.sidebar.${item.id}`) || item.label);
+        const content = (
+          <>
             <Icon
               size={26}
-              className={`relative z-10 text-text-primary transition-opacity duration-150 ease-out ${
-                active ? "opacity-100" : "opacity-55 group-hover:opacity-90"
-              }`}
+              className={`shrink-0 transition-opacity duration-150 ${active ? "opacity-100" : "opacity-55 group-hover:opacity-90"}`}
             />
-          </Link>
-        </Tooltip>
-      );
+            {expanded && <span className="truncate text-[13px] font-medium">{tooltipLabel}</span>}
+          </>
+        );
+
+        return (
+          <Tooltip key={item.id} content={tooltipLabel} side="right" sideOffset={12} wrapperClassName={rowWrapperClass}>
+            {item.id === "search" ? (
+              <button
+                type="button"
+                aria-label={tooltipLabel}
+                aria-pressed={searchOpen}
+                onClick={onSearchToggle}
+                className={slotClass}
+              >
+                {content}
+              </button>
+            ) : (
+              <Link
+                to={item.href!}
+                aria-label={tooltipLabel}
+                aria-current={active ? "page" : undefined}
+                className={slotClass}
+              >
+                {content}
+              </Link>
+            )}
+          </Tooltip>
+        );
       });
 
   const renderSettingsButton = () => {
@@ -134,19 +127,22 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
         content={tooltipLabel}
         side="right"
         sideOffset={12}
+        wrapperClassName={rowWrapperClass}
       >
         <button
           type="button"
+          aria-label={tooltipLabel}
           aria-pressed={settingsOpen}
           onClick={toggleSettings}
-          className={`${SIDEBAR_SLOT_CLASS} group relative bg-transparent border-0 p-0 cursor-pointer active:scale-[0.96] transition-transform duration-100`}
+          className={slotClass}
         >
           <Icon
             size={26}
-            className={`relative z-10 text-text-primary transition-opacity duration-150 ease-out ${
+            className={`shrink-0 transition-opacity duration-150 ease-out ${
               settingsOpen ? "opacity-100" : "opacity-55 group-hover:opacity-90"
             }`}
           />
+          {expanded && <span className="truncate text-[13px] font-medium">{tooltipLabel}</span>}
         </button>
       </Tooltip>
     );
@@ -166,42 +162,59 @@ function Sidebar({ searchOpen, onSearchToggle, isEdgeToEdge = false }: SidebarPr
   const sidebarStyle = getBlockStyle(sidebarConfig, isDark, hasCustomBg);
 
   return (
-    <aside className="h-full">
       <div
         data-liquid-glass="sidebar"
-        className={`h-full w-[58px] ${
+        data-sidebar-expanded={expanded ? "" : undefined}
+        data-keep-keyboard-focus
+        className={`h-full w-full ${
           isEdgeToEdge ? "rounded-l-none" : "rounded-l-xl"
         } rounded-r-sm ${
-          hasCustomBg ? "" : "bg-bg-primary"
+          hasCustomBg || expanded ? "" : "bg-bg-primary"
         } flex flex-col overflow-hidden`}
         style={sidebarStyle}
       >
-        <div className="flex justify-center items-center pt-[16px] pb-[16px] shrink-0">
-
-          <AppImage
-            src={logo}
-            alt="Lane"
-            width={34}
-            height={34}
-            className="w-[34px] h-[34px] theme-logo"
-            draggable={false}
-          />
+        <div className={`flex justify-center items-center pb-[16px] shrink-0 ${hasMacWindowControls ? "pt-[34px]" : "pt-[16px]"} ${expanded ? "px-[11px]" : ""}`}>
+          <Tooltip content={toggleLabel} side="right" sideOffset={12} wrapperClassName={rowWrapperClass}>
+            <button
+              type="button"
+              aria-label={toggleLabel}
+              aria-expanded={expanded}
+              onClick={onToggleExpanded}
+              className={`group relative flex h-[36px] items-center rounded-lg border-0 bg-transparent text-text-primary cursor-pointer ${expanded ? "w-full gap-2 py-0 pl-px pr-2 hover:bg-border-alpha-14" : "w-[36px] justify-center p-0"}`}
+            >
+              <AppImage
+                src={logo}
+                alt=""
+                width={34}
+                height={34}
+                className="w-[34px] h-[34px] shrink-0 theme-logo"
+                draggable={false}
+              />
+              {expanded ? (
+                <>
+                  <span className="text-[14px] font-semibold">Lane</span>
+                  <LuChevronLeft size={13} aria-hidden className="ml-auto shrink-0 opacity-60" />
+                </>
+              ) : (
+                <LuChevronRight size={11} aria-hidden className="absolute -right-[8px] opacity-0 transition-opacity group-hover:opacity-60 group-focus-visible:opacity-60" />
+              )}
+            </button>
+          </Tooltip>
         </div>
 
-        <nav className="relative shrink-0 flex flex-col items-center gap-[12px] pt-[12px] pb-[12px]">
+        <nav className={`relative shrink-0 flex flex-col items-center gap-[12px] py-[12px] ${expanded ? "px-[11px]" : ""}`}>
           {renderNavItems()}
         </nav>
 
         {/* pinned playlists / artists, under a line, filling the space down to settings */}
         <div className="flex min-h-0 flex-1 flex-col items-center">
-          <SidebarPins />
+          <SidebarPins expanded={expanded} />
         </div>
 
-        <div className="pt-[16px] pb-[16px] shrink-0 flex justify-center items-center">
+        <div className={`py-[16px] shrink-0 flex justify-center items-center ${expanded ? "px-[11px]" : ""}`}>
           {renderSettingsButton()}
         </div>
       </div>
-    </aside>
   );
 }
 

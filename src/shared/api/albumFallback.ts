@@ -14,14 +14,16 @@ export async function loadAlbumWithFallback(
     if (isAbortError(error)) throw error;
     return server();
   }
-  if (album.tracks.length > 0 && (!album.trackCount || album.tracks.length >= album.trackCount)) return album;
+  const playable = album.tracks.filter(track => !track.catalogUnavailable).length;
+  if (playable > 0 && playable === album.tracks.length && (!album.trackCount || playable >= album.trackCount)) return album;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const fallback = await Promise.race([
       server(),
       new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); }),
     ]);
-    return fallback && fallback.tracks.length > album.tracks.length ? fallback : album;
+    const fallbackPlayable = fallback?.tracks.filter(track => !track.catalogUnavailable).length ?? 0;
+    return fallback && fallback.tracks.length >= album.tracks.length && fallbackPlayable > playable ? fallback : album;
   } catch (error) {
     if (isAbortError(error) || !album.tracks.length) throw error;
     return album;

@@ -54,6 +54,10 @@
   border-radius: 28px;
 }
 
+:root[data-color-theme="liquid-glass"] [data-liquid-glass="sidebar"][data-sidebar-expanded] {
+  --glass-fill: var(--lane-expanded-sidebar-glass);
+}
+
 :root[data-color-theme="liquid-glass"] :is([data-liquid-glass="player"], .lane-search-box) {
   border-radius: 999px;
 }

@@ -4,7 +4,7 @@ import { getClientVisitorData } from "@/shared/api/visitorSession";
 import { getApiBaseUrl } from "@/shared/api/baseUrl";
 import { getYoutubeAuthorization, getYoutubePageId } from "../youtube/auth/youtubeAuthSession";
 
-export type InnertubeEndpoint = "search" | "browse" | "next" | "player" | "account/accounts_list";
+export type InnertubeEndpoint = "search" | "browse" | "next" | "player" | "account/accounts_list" | "navigation/resolve_url";
 
 export interface InnertubeProfile {
   clientName: string;
@@ -49,11 +49,18 @@ export interface InnertubeRequestOptions {
   signal?: AbortSignal;
 }
 
+// YouTube only translates post-Soviet artists' names into Russian
+// ("Христина Соловій"); the Ukrainian or Serbian UI language falls back to the
+// channel's Latin default ("Khrystyna Soloviy"), and English does the same.
+// The catalog always asks for Russian so proper names keep their native
+// Cyrillic spelling. Interface strings we display are re-localised by the app.
+const CATALOG_LANGUAGE = "ru";
+
 function buildClientContext(profile: InnertubeProfile, visitorData: string): Record<string, unknown> {
   return {
     clientName: profile.clientName,
     clientVersion: profile.clientVersion,
-    hl: "en",
+    hl: CATALOG_LANGUAGE,
     gl: "US",
     ...(visitorData ? { visitorData } : {}),
     ...(profile.includeUserAgentInContext && profile.userAgent ? { userAgent: profile.userAgent } : {}),
@@ -93,9 +100,11 @@ export async function postInnertube(
   // Browsers need the public catalog transport even on secure localhost/HTTPS.
   // Only native clients can send YouTube's required Origin/UA headers directly.
   const browserTransport = Boolean(runtime && !runtime.linerElectron && !runtime.Capacitor?.isNativePlatform?.());
-  const previewCatalog = import.meta.env.DEV && (endpoint === "search" || endpoint === "browse");
+  const previewCatalog = import.meta.env.DEV && (endpoint === "search" || endpoint === "browse" || endpoint === "navigation/resolve_url");
+  const previewPath = profile.clientName === "WEB" && (endpoint === "browse" || endpoint === "navigation/resolve_url")
+    ? "/__lane/channel" : "/__lane/catalog";
   const requestUrl = browserTransport && !authorization
-    ? previewCatalog ? `/__lane/catalog/${endpoint}` : `${getApiBaseUrl()}/v1/public/youtube/innertube/${endpoint}`
+    ? previewCatalog ? `${previewPath}/${endpoint}` : `${getApiBaseUrl()}/v1/public/youtube/innertube/${endpoint}`
     : url;
   const payload = {
     ...body,

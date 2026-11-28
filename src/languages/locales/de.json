@@ -54,6 +54,7 @@
     "all_releases": "Alle",
     "discography": "Diskographie",
     "your_tracks": "Titel in deinen Favoriten: {count}",
+    "saved_tracks": "Deine gespeicherten Titel",
     "open": "Künstlerprofil öffnen",
     "verified": "Verifiziert"
   },
@@ -74,6 +75,7 @@
     "sec": "Sek."
   },
   "common": {
+    "enterFullscreen": "Vollbild aktivieren",
     "show_more": "Mehr anzeigen",
     "pause": "Pause",
     "source": "Quelle",
@@ -83,6 +85,8 @@
       "version": "Version 0.1.0"
     },
     "sidebar": {
+      "expand": "Seitenleiste ausklappen",
+      "collapse": "Seitenleiste einklappen",
       "home": "Startseite",
       "search": "Suche",
       "library": "Mediathek",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Player im Vollbild öffnen",
     "open_cover": "Cover öffnen",
     "repeat_off": "Wiederholung: aus",
     "repeat_all": "Wiederholung: alle",
@@ -641,6 +646,8 @@
     "visual_quality_balanced": "Ausgewogen",
     "visual_quality_balanced_hint": "Sanftere Hintergrundbewegung ohne Textunschärfe",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Nur unscharfes Cover",
+    "visual_quality_blur_hint": "Statisches unscharfes Cover statt eines animierten Hintergrunds",
     "visual_quality_lite_hint": "Langsamer animierter Hintergrund mit weniger Bildern pro Sekunde",
     "instrumental_hint": "Dieses Lied ist instrumental",
     "seek": "Spulen",

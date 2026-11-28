@@ -54,6 +54,7 @@
     "all_releases": "Toate",
     "discography": "Discografie",
     "your_tracks": "Piese apreciate: {count}",
+    "saved_tracks": "Piesele tale salvate",
     "open": "Deschide profilul artistului",
     "verified": "Verificat"
   },
@@ -74,6 +75,7 @@
     "sec": "sec"
   },
   "common": {
+    "enterFullscreen": "Intră în modul ecran complet",
     "show_more": "Arată mai multe",
     "pause": "Pauză",
     "source": "Sursa",
@@ -83,6 +85,8 @@
       "version": "Versiunea 0.1.0"
     },
     "sidebar": {
+      "expand": "Extinde bara laterală",
+      "collapse": "Restrânge bara laterală",
       "home": "Acasă",
       "search": "Caută",
       "library": "Biblioteca",
@@ -550,6 +554,7 @@
     "frame_title": "Verificare de securitate Cloudflare"
   },
   "player": {
+    "open_fullscreen_player": "Deschide playerul în modul ecran complet",
     "open_cover": "Deschide coperta",
     "repeat_off": "Repet: oprit",
     "repeat_all": "Repet: toate",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Echilibrat",
     "visual_quality_balanced_hint": "Mișcare mai discretă a fundalului, fără estomparea versurilor",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Doar coperta estompată",
+    "visual_quality_blur_hint": "Copertă estompată statică în locul unui fundal animat",
     "visual_quality_lite_hint": "Fundal animat mai lent, cu mai puține cadre pe secundă",
     "instrumental_hint": "Acest cântec este instrumental",
     "seek": "Derulează",

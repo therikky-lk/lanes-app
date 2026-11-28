@@ -54,6 +54,7 @@
     "all_releases": "Tümü",
     "discography": "Diskografi",
     "your_tracks": "Beğenilen şarkılar: {count}",
+    "saved_tracks": "Kaydettiğin şarkılar",
     "open": "Sanatçı profilini aç",
     "verified": "Doğrulanmış"
   },
@@ -74,6 +75,7 @@
     "sec": "sn"
   },
   "common": {
+    "enterFullscreen": "Tam ekrana geç",
     "show_more": "Daha fazla göster",
     "pause": "Duraklat",
     "source": "Kaynak",
@@ -83,6 +85,8 @@
       "version": "Sürüm 0.1.0"
     },
     "sidebar": {
+      "expand": "Kenar çubuğunu genişlet",
+      "collapse": "Kenar çubuğunu daralt",
       "home": "Ana sayfa",
       "search": "Ara",
       "library": "Kitaplık",
@@ -539,6 +543,7 @@
     }
   },
   "player": {
+    "open_fullscreen_player": "Oynatıcıyı tam ekranda aç",
     "open_cover": "Kapağı aç",
     "repeat_off": "Tekrar: kapalı",
     "repeat_all": "Tekrar: tümü",
@@ -636,6 +641,8 @@
     "visual_quality_balanced": "Dengeli",
     "visual_quality_balanced_hint": "Daha sakin arka plan hareketi, şarkı sözleri bulanıklaşmaz",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Yalnızca bulanık kapak",
+    "visual_quality_blur_hint": "Hareketli arka plan yerine sabit, bulanık kapak",
     "visual_quality_lite_hint": "Daha az kareyle daha yavaş hareket eden arka plan",
     "volume": "Ses seviyesi",
     "previous": "Önceki",

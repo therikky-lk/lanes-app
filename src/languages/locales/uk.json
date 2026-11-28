@@ -54,6 +54,7 @@
     "all_releases": "Усі",
     "discography": "Дискографія",
     "your_tracks": "Улюблені треки: {count}",
+    "saved_tracks": "Ваші додані треки",
     "open": "Відкрити профіль виконавця",
     "verified": "Підтверджено"
   },
@@ -74,6 +75,7 @@
     "sec": "сек"
   },
   "common": {
+    "enterFullscreen": "Увійти в повноекранний режим",
     "show_more": "Показати більше",
     "pause": "Пауза",
     "source": "Джерело",
@@ -83,6 +85,8 @@
       "version": "Версія 0.1.0"
     },
     "sidebar": {
+      "expand": "Розгорнути бічне меню",
+      "collapse": "Згорнути бічне меню",
       "home": "Головна",
       "search": "Пошук",
       "library": "Бібліотека",
@@ -539,6 +543,7 @@
     "error_wrong_password": "Невірний пароль"
   },
   "player": {
+    "open_fullscreen_player": "Відкрити повноекранний програвач",
     "open_cover": "Відкрити обкладинку",
     "repeat_off": "Повтор: вимкнено",
     "repeat_all": "Повтор: усе",
@@ -636,6 +641,8 @@
     "visual_quality_balanced": "Збалансований",
     "visual_quality_balanced_hint": "Спокійніший рух тла, без розмиття тексту",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Лише розмита обкладинка",
+    "visual_quality_blur_hint": "Нерухома розмита обкладинка замість анімованого тла",
     "visual_quality_lite_hint": "Повільніше живе тло з меншою частотою кадрів",
     "volume": "Гучність",
     "previous": "Попередній",

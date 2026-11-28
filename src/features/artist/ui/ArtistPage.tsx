@@ -1,7 +1,7 @@
 import ShareButton from "@/shared/ui/ShareButton";
 import SectionExpandButton from "@/shared/ui/SectionExpandButton";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useState, Suspense, useRef } from "react";
+import { useState, Suspense, useRef, useMemo } from "react";
 import {
   PlayFill,
   AddLine,
@@ -15,7 +15,6 @@ import { findArtistTracks, useYourArtistTrackCount } from "../hooks/useYourArtis
 import { useLikedTracks } from "@/features/library/hooks/useLikedTracks";
 import AlbumCard from "@/features/collection/ui/AlbumCard";
 import ReleaseCard from "@/features/collection/ui/ReleaseCard";
-import ScrollableRow from "@/shared/ui/ScrollableRow";
 import CoverImage from "@/features/covers/ui/CoverImage";
 import { playerEngine } from "@/features/player";
 import { AnimatePresence, motion } from "framer-motion";
@@ -29,8 +28,11 @@ import ArtistProfileModal from "./ArtistProfileModal";
 import { PinFill, PinLine } from "@mingcute/react";
 import { usePinsStore } from "@/features/navigation/store/pinsStore";
 import ArtistPageSkeleton from "./ArtistPageSkeleton";
-import ArtistReleasesView, { type ReleaseFilter } from "./ArtistReleasesView";
+import ArtistReleaseShelf from "./ArtistReleaseShelf";
+import ArtistSavedTracks, { ArtistSavedTracksShelf } from "./ArtistSavedTracks";
 import { useIsContentTransparent } from "@/features/settings/store/customizationStore";
+import { artistHref } from "@/shared/media/artistIdentity";
+import { parseMonthlyListenersCount } from "@/shared/media/innertube/monthlyListeners";
 
 interface ArtistAlbumViewModel {
   id: string;
@@ -62,6 +64,7 @@ function ArtistFallback({ id, name }: { id: string | null; name: string | null }
   const { t } = useTranslation();
   const { data, isLoading } = useLikedTracks();
   const tracks = findArtistTracks(data.tracks, { id, name });
+  const [isScrolled, setIsScrolled] = useState(false);
   if (isLoading && (id || name) && !tracks.length) return <ArtistPageSkeleton />;
   if (!tracks.length) {
     return (
@@ -72,23 +75,50 @@ function ArtistFallback({ id, name }: { id: string | null; name: string | null }
   }
   const title = name || tracks[0].artists;
   return (
-    <div className="h-full w-full overflow-y-auto px-4 pt-[calc(var(--lane-safe-top,0px)+16px)] pb-24">
-      <h1 className="mb-2 text-2xl font-bold">{title}</h1>
-      <p className="mb-4 text-text-secondary">{t("artist.your_tracks", { count: tracks.length })}</p>
-      {tracks.map(track => (
-        <SongCardWithMenu
-          key={track.id}
-          id={track.id}
-          title={track.title}
-          artists={track.artists}
-          artistId={track.artistId}
-          artistList={track.artistList}
-          coverUrl={track.coverUrl}
-          durationMs={track.durationMs}
-          explicit={track.explicit}
-          onPlay={() => playerEngine.playTrack(track, tracks, title)}
+    <div
+      className="relative h-full w-full overflow-y-auto pb-[32px]"
+      data-page-scroller
+      onScroll={(event) => {
+        const next = event.currentTarget.scrollTop > 40;
+        setIsScrolled((prev) => (prev === next ? prev : next));
+      }}
+    >
+      <StickyHeader
+        isScrolled={isScrolled}
+        desktopBackdrop
+        backButtonSurface
+        frostedBackButton
+        plainMetadata
+        title={title}
+      />
+
+      <div className="relative w-full min-h-[260px] flex flex-col justify-end overflow-hidden">
+        <div
+          className="absolute inset-0 z-0 bg-bg-elevated"
+          style={{
+            maskImage: "linear-gradient(to bottom, black 0%, black 35%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 35%, transparent 100%)",
+          }}
         />
-      ))}
+        <div className="relative z-10 px-[32px] pb-[20px] pt-[96px]">
+          <h1
+            className="m-0 text-[38px] md:text-[48px] font-[700] tracking-[-0.03em] leading-[1.05] text-text-primary"
+            style={{ fontFamily: "var(--font-inter), sans-serif" }}
+          >
+            {title}
+          </h1>
+          <p
+            className="m-0 mt-[6px] text-[14px] text-text-secondary font-[400]"
+            style={{ fontFamily: "var(--font-inter), sans-serif" }}
+          >
+            {t("artist.your_tracks", { count: tracks.length })}
+          </p>
+        </div>
+      </div>
+
+      <div className="relative z-10 px-[32px] pt-[8px]">
+        <ArtistSavedTracksShelf tracks={tracks} name={title} />
+      </div>
     </div>
   );
 }
@@ -97,17 +127,20 @@ function ArtistContent() {
   const { t, locale } = useTranslation();
   const navigate = useNavigate();
   const hasCustomBg = useIsContentTransparent();
+  const actionButtonVariant = hasCustomBg ? "glass-action" : "outline";
+  const actionButtonClass = `!h-[38px] !w-[38px] !p-0 shrink-0 flex items-center justify-center transition-colors ${
+    hasCustomBg ? "" : "text-text-secondary hover:text-text-primary !bg-bg-panel/40 backdrop-blur-sm"
+  }`;
   const [searchParams] = useSearchParams();
   const requestedId = searchParams.get("id");
   const requestedName = searchParams.get("name");
-  const { data, loading } = useArtist(requestedId, requestedName);
+  const { data, loading } = useArtist(requestedId, requestedName, searchParams.get("track"));
+  const playableTracks = useMemo(() => data?.tracks.filter(track => !track.catalogUnavailable) ?? [], [data?.tracks]);
   const id = data?.id ?? requestedId;
   const pinned = usePinsStore((st) => Boolean(id && st.pins.some((p) => p.kind === "artist" && p.id === id)));
 
   const artistImage = useArtistAvatar(data ? id ?? undefined : undefined, data?.title, data?.coverUrl ?? undefined);
   const [showAllTracks, setShowAllTracks] = useState(false);
-  const [releasesView, setReleasesView] = useState<ReleaseFilter | null>(null);
-  const ROW_LIMIT = 14;
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [loadingMore] = useState(false);
@@ -120,17 +153,17 @@ function ArtistContent() {
   const inLibrary = savedArtists.some((artist) => artist.id === decodedId);
 
   const handlePlayAll = () => {
-    if (!data || data.tracks.length === 0) return;
-    const [first] = data.tracks;
+    if (!data || playableTracks.length === 0) return;
+    const [first] = playableTracks;
     playerEngine.clearQueue();
-    playerEngine.playTrack(first, data.tracks, data.title, data.coverUrl);
+    playerEngine.playTrack(first, playableTracks, data.title, data.coverUrl);
   };
 
   const { toast } = useToast();
 
   const handleAddToQueue = () => {
-    if (!data || data.tracks.length === 0) return;
-    data.tracks.forEach((track) => playerEngine.addToQueue(track));
+    if (!data || playableTracks.length === 0) return;
+    playableTracks.forEach((track) => playerEngine.addToQueue(track));
     toast(t("artist.added_to_queue"), "info", {
       description: data.title || undefined,
     });
@@ -280,11 +313,10 @@ function ArtistContent() {
                       style={{ fontFamily: "var(--font-inter), sans-serif" }}
                     >
                       {(() => {
-                        const match = data.monthlyListeners.match(
-                          /^([\d.,]+[KMBkmb]?)/,
-                        );
-                        const count = match ? match[1] : data.monthlyListeners;
-                        return t("artist.monthly_audience", { count });
+                        const count = parseMonthlyListenersCount(data.monthlyListeners);
+                        return count === undefined ? data.monthlyListeners : t("artist.monthly_audience", {
+                          count: Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 2 }).format(count),
+                        });
                       })()}
                     </p>
                   ) : data.followers ? (
@@ -305,6 +337,7 @@ function ArtistContent() {
                     <Button
                       variant={hasCustomBg ? "glass-primary" : "primary"}
                       onClick={handlePlayAll}
+                      disabled={!playableTracks.length}
                       className="!h-[38px] !text-[13px] !font-[500] px-[20px] flex items-center gap-[6px]"
                     >
                       <PlayFill size={15} />
@@ -312,26 +345,19 @@ function ArtistContent() {
                     </Button>
 
                     <Button
-                      variant={hasCustomBg ? "glass-action" : "outline"}
+                      variant={actionButtonVariant}
                       onClick={handleAddToQueue}
-                      className={`!h-[38px] !w-[38px] !p-0 flex items-center justify-center transition-colors ${
-                        hasCustomBg
-                          ? ""
-                          : "text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm"
-                      }`}
+                      disabled={!playableTracks.length}
+                      className={actionButtonClass}
                       title={t("artist.add_to_queue")}
                     >
                       <AddLine size={18} />
                     </Button>
 
                     <Button
-                      variant={hasCustomBg ? "glass-action" : "outline"}
+                      variant={actionButtonVariant}
                       onClick={handleSaveToLibrary}
-                      className={`!h-[38px] !w-[38px] !p-0 flex items-center justify-center transition-colors ${
-                        hasCustomBg
-                          ? ""
-                          : "text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm"
-                      }`}
+                      className={actionButtonClass}
                       title={
                         inLibrary
                           ? t("artist.remove_from_library")
@@ -364,7 +390,7 @@ function ArtistContent() {
                     </Button>
 
                     <Button
-                      variant={hasCustomBg ? "glass-action" : "outline"}
+                      variant={actionButtonVariant}
                       onClick={() =>
                         id &&
                         usePinsStore.getState().toggle({
@@ -372,19 +398,23 @@ function ArtistContent() {
                           id,
                           title: data.title,
                           imageUrl: data.coverUrl || undefined,
-                          href: `/artist?id=${encodeURIComponent(id)}`,
+                           href: artistHref(id, data.title),
                         })
                       }
-                      className={`!h-[38px] !w-[38px] !p-0 flex items-center justify-center transition-colors ${
-                        hasCustomBg
-                          ? ""
-                          : "text-text-secondary hover:text-text-primary bg-bg-panel/40 backdrop-blur-sm"
-                      }`}
+                      className={actionButtonClass}
                       title={pinned ? (t("common.sidebar.unpin") || "Unpin from menu") : (t("common.sidebar.pin") || "Pin to menu")}
                     >
                       {pinned ? <PinFill size={18} /> : <PinLine size={18} />}
                     </Button>
-                    {id && <ShareButton menu type="artist" entityId={decodedId} snapshot={{ title: data.title, coverUrl: data.coverUrl ?? undefined }} />}
+                    {id && (
+                      <ShareButton
+                        type="artist"
+                        entityId={decodedId}
+                        snapshot={{ title: data.title, coverUrl: data.coverUrl ?? undefined }}
+                        variant={actionButtonVariant}
+                        className={actionButtonClass}
+                      />
+                    )}
 
                   </div>
                 </div>
@@ -432,7 +462,7 @@ function ArtistContent() {
                     {data.tracks.slice(0, 5).map((track) => (
                       <SongCardWithMenu
                         key={track.id}
-                        id={track.id}
+                        id={track.catalogUnavailable ? undefined : track.id}
                         title={track.title}
                         artists={track.artists}
                         artistId={track.artistId}
@@ -449,10 +479,12 @@ function ArtistContent() {
                         }
                         durationMs={track.durationMs}
                         explicit={track.explicit}
-                        onPlay={() =>
+                        unavailableNote={track.catalogUnavailable ? t("player.track_unavailable_title") : undefined}
+                        hideMenuTrigger={track.catalogUnavailable}
+                        onPlay={track.catalogUnavailable ? undefined : () =>
                           playerEngine.playTrack(
                             track,
-                            data.tracks,
+                            playableTracks,
                             data.title,
                             data.coverUrl,
                           )
@@ -473,7 +505,7 @@ function ArtistContent() {
                           {data.tracks.slice(5).map((track) => (
                             <SongCardWithMenu
                               key={track.id}
-                              id={track.id}
+                              id={track.catalogUnavailable ? undefined : track.id}
                               title={track.title}
                               artists={track.artists}
                               artistId={track.artistId}
@@ -490,8 +522,10 @@ function ArtistContent() {
                               }
                               durationMs={track.durationMs}
                               explicit={track.explicit}
-                              onPlay={() =>
-                                playerEngine.playTrack(track, data.tracks, data.title, data.coverUrl)
+                              unavailableNote={track.catalogUnavailable ? t("player.track_unavailable_title") : undefined}
+                              hideMenuTrigger={track.catalogUnavailable}
+                              onPlay={track.catalogUnavailable ? undefined : () =>
+                                playerEngine.playTrack(track, playableTracks, data.title, data.coverUrl)
                               }
                             />
                           ))}
@@ -510,68 +544,34 @@ function ArtistContent() {
                 </section>
 
                 {data.albums.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between mb-[16px] gap-[12px]">
-                      <h2
-                        className="m-0 text-[22px] font-[500] text-text-primary"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {t("artist.albums")}
-                        <span className="ml-[8px] text-[14px] font-[400] text-text-tertiary tabular-nums">{data.albums.length}</span>
-                      </h2>
-                    </div>
-                    <ScrollableRow
-                      overlayWidth="w-[32px]"
-                      className="flex w-full gap-[16px] overflow-x-auto pb-[24px]"
-                    >
-                      {data.albums.slice(0, ROW_LIMIT).map((album) => (
+                  <ArtistReleaseShelf label={t("artist.albums")} items={data.albums}
+                    renderCard={(album) => (
                         <AlbumCard
-                          key={album.id}
                           id={album.id}
                           title={album.title}
                           coverUrl={album.coverUrl}
                           year={album.releaseDate}
                           explicit={album.explicit}
                           trackCount={album.totalTracks}
-                          className="w-[180px] shrink-0"
                         />
-                      ))}
-                    </ScrollableRow>
-                    <SectionExpandButton label={t("artist.show_all")} onClick={() => setReleasesView("albums")} />
-                  </section>
+                    )} />
                 )}
 
                 {data.singles.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between mb-[16px] gap-[12px]">
-                      <h2
-                        className="m-0 text-[22px] font-[500] text-text-primary"
-                        style={{ fontFamily: "var(--font-inter), sans-serif" }}
-                      >
-                        {t("artist.singles")}
-                        <span className="ml-[8px] text-[14px] font-[400] text-text-tertiary tabular-nums">{data.singles.length}</span>
-                      </h2>
-                    </div>
-                    <ScrollableRow
-                      overlayWidth="w-[32px]"
-                      className="flex w-full gap-[16px] overflow-x-auto pb-[24px]"
-                    >
-                      {data.singles.slice(0, ROW_LIMIT).map((single) => (
+                  <ArtistReleaseShelf label={t("artist.singles")} items={data.singles}
+                    renderCard={(single) => (
                         <ReleaseCard
-                          key={single.id}
                           id={single.id}
                           title={single.title}
                           coverUrl={single.coverUrl}
                           releaseType={single.releaseType}
+                          artistName={data.title}
                           year={single.releaseDate}
                           explicit={single.explicit}
-                          className="w-[180px] shrink-0"
                         />
-                      ))}
-                    </ScrollableRow>
-                    <SectionExpandButton label={t("artist.show_all")} onClick={() => setReleasesView("singles")} />
-                  </section>
+                    )} />
                 )}
+                <ArtistSavedTracks id={id} name={data.title} coverUrl={data.coverUrl} />
               </div>
             </div>
           </div>
@@ -580,17 +580,6 @@ function ArtistContent() {
          {!data && <ArtistPageSkeleton />}
       </div>
       </div>
-
-      {data && (
-        <ArtistReleasesView
-          open={releasesView !== null}
-          artistName={data.title}
-          albums={data.albums}
-          singles={data.singles}
-          initialFilter={releasesView ?? "all"}
-          onClose={() => setReleasesView(null)}
-        />
-      )}
 
       {data && (
         <ArtistProfileModal

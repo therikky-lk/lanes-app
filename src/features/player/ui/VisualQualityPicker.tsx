@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { CheckLine } from "@mingcute/react";
 import { useTranslation } from "@/languages";
 import { useAnchoredPanel } from "@/shared/hooks/useAnchoredPanel";
-import { useVisualQualityStore, type VisualQuality } from "../store/visualQualityStore";
+import { useVisualQualityStore, VISUAL_QUALITIES } from "../store/visualQualityStore";
 
 export function VisualQualityPicker() {
   const { t } = useTranslation();
@@ -37,7 +37,7 @@ export function VisualQualityPicker() {
       className="lane-fs-popover lane-fs-quality-menu dark" data-theme="dark" style={position}>
       <h3 className="m-0 text-[13px] font-semibold text-white">{t("player.visual_quality")}</h3>
       <p className="m-0 mb-2 mt-1 text-[11px] leading-[1.4] text-white/65">{t("player.visual_quality_hint")}</p>
-      {(["all", "balanced", "lite"] as VisualQuality[]).map(mode => <button key={mode} type="button" role="menuitemradio" aria-checked={quality === mode}
+      {VISUAL_QUALITIES.map(mode => <button key={mode} type="button" role="menuitemradio" aria-checked={quality === mode}
         onClick={() => {
           setQuality(mode);
           setOpen(false);

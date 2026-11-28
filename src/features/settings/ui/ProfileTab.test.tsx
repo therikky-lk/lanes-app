@@ -232,6 +232,19 @@ it("shows the same profile statistics as the public page on mobile", async () =>
   expect(stats.compareDocumentPosition(container.querySelector(".lane-profile-header-actions")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
+it("styles the profile placeholder only while the uncached profile is loading", async () => {
+  const profile = { banner: "https://example.test/banner.jpg", links: [], artist: null, tracks: [] };
+  let resolveProfile!: (value: typeof profile) => void;
+  mocks.request.mockImplementationOnce(() => new Promise(resolve => { resolveProfile = resolve; }));
+
+  await act(async () => root.render(<ProfileTab />));
+  const card = container.querySelector(".lane-profile-card")!;
+  expect(card.hasAttribute("data-profile-loading")).toBe(true);
+  await act(async () => resolveProfile(profile));
+  expect(card.hasAttribute("data-profile-loading")).toBe(false);
+  expect(card.querySelector<HTMLElement>(".lane-profile-banner")!.style.backgroundImage).toContain(profile.banner);
+});
+
 it("shows the cached profile on reopen and replaces it when the background requests finish", async () => {
   const previous = {
     banner: "https://example.test/banner.jpg", links: [], artist: null,
@@ -249,6 +262,7 @@ it("shows the cached profile on reopen and replaces it when the background reque
 
   const banner = container.querySelector<HTMLButtonElement>(".lane-profile-banner-upload")!;
   expect(banner.style.backgroundImage).toContain(previous.banner);
+  expect(container.querySelector("[data-profile-loading]")).toBeNull();
   expect(banner.disabled).toBe(true);
   expect(container.textContent).toContain("Cached favorite");
   expect(container.textContent).toContain("settings.profile.followers7");

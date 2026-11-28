@@ -309,6 +309,7 @@ function SongCard({
                 name={artists}
                 artistId={artistId}
                 artistList={artistList}
+                trackId={trackId}
                 onNavigate={onOpenArtist ? undefined : onNavigate}
                 onOpenArtist={onOpenArtist}
                 className="text-text-secondary"

@@ -51,7 +51,7 @@ export function isKeyHandledByFocusedControl(
   const role = target.getAttribute("role");
 
   if (code === "Space") {
-    if (target.tagName === "SELECT") return true;
+    if (target.tagName === "SELECT" || target.tagName === "BUTTON") return true;
     return role !== null && SPACE_CONSUMING_ROLES.has(role);
   }
 

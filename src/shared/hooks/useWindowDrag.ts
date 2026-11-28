@@ -166,8 +166,6 @@ export function useWindowDrag({
       startScreenY = e.screenY;
       lastScreenX = e.screenX;
       lastScreenY = e.screenY;
-      lastWindowDragTime = Date.now();
-
       window.addEventListener("pointermove", handlePointerMove, { capture: true });
       window.addEventListener("pointerup", handlePointerUp, { capture: true });
       window.addEventListener("pointercancel", handlePointerUp, { capture: true });

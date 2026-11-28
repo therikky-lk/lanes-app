@@ -54,6 +54,7 @@
     "all_releases": "sve",
     "discography": "Diskografija",
     "your_tracks": "Omiljene pjesme: {count}",
+    "saved_tracks": "Vaše spremljene pjesme",
     "open": "Otvori profil izvođača",
     "verified": "Provjereno"
   },
@@ -74,6 +75,7 @@
     "sec": "sek"
   },
   "common": {
+    "enterFullscreen": "Prijeđi na cijeli zaslon",
     "show_more": "Prikaži više",
     "pause": "Pauza",
     "source": "Izvor",
@@ -83,6 +85,8 @@
       "version": "Verzija 0.1.0"
     },
     "sidebar": {
+      "expand": "Proširi bočnu traku",
+      "collapse": "Sažmi bočnu traku",
       "home": "Početna",
       "search": "Traži",
       "library": "Knjižnica",
@@ -550,6 +554,7 @@
     "frame_title": "Cloudflare sigurnosna provjera"
   },
   "player": {
+    "open_fullscreen_player": "Otvori reproduktor preko cijelog zaslona",
     "open_cover": "Otvori naslovnicu",
     "repeat_off": "Ponavljanje: isključeno",
     "repeat_all": "Ponavljam: sve",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Uravnotežen",
     "visual_quality_balanced_hint": "Blaže kretanje pozadine bez zamućenja teksta",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Samo zamućeni omot",
+    "visual_quality_blur_hint": "Statični zamućeni omot umjesto animirane pozadine",
     "visual_quality_lite_hint": "Sporija animirana pozadina s manje sličica u sekundi",
     "instrumental_hint": "Ova pjesma je instrumentalna",
     "seek": "Premotaj",

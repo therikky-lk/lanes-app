@@ -139,8 +139,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isMobile = useIsMobile();
-  // weak phones: a smaller CSS blur radius on the two animated layers (the GPU
-  // re-blurs them on every drawn frame; the cost grows with the radius)
+  // Weak phones use smaller blur radii; the GPU re-blurs these layers on every frame.
   const [weakDevice] = useState(() => isLowEndDevice());
   const mood = settings.mood;
 
@@ -153,7 +152,6 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   const live = useRef({ playing: false, target: NEUTRAL_PALETTE as VibePalette, pulse: 0, covered: false, ambient: false });
   live.current.playing = status === "playing" && vibeActive;
   live.current.ambient = !mood && (!currentTrack || !isPlaying);
-  // the full screen player covers the home page: no point drawing under it
   const fullscreenOpen = usePlayerStore((s) => s.fullscreen);
   live.current.covered = !!fullscreenOpen || settingsOpen;
   const resumeRef = useRef<() => void>(() => {});
@@ -203,11 +201,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     const bc: CanvasRenderingContext2D = bloom;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    // phones: fewer pixels and ~20 fps; keep ambient motion even before playback
     const lite = isNativeApp() || window.innerWidth < 700;
-    // weak phones (Helio G99…): the same picture drawn at ~24 fps, with
-    // fewer curve points / gradient stops (the layers are blurred anyway)
-    const weak = isLowEndDevice();
+    const weak = weakDevice;
     const frameMs = weak ? 66 : lite ? 50 : 0;
     const curvePoints = weak ? 32 : lite ? 40 : 72;
     const gradientStops = weak ? 10 : lite ? 14 : 36;
@@ -222,24 +217,28 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     let scrolling = false;
     let w = 0;
     let h = 0;
+    let contentWidth = 0;
     let glowScale = 1;
     let silkScale = 1;
     let bloomScale = 1;
+    const sizeCanvas = (canvas: HTMLCanvasElement, scale: number) => {
+      const width = Math.max(1, Math.round(w * scale));
+      const height = Math.max(1, Math.round(h * scale));
+      if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
+    };
 
     const resize = () => {
       const rect = glowCanvas.getBoundingClientRect();
       w = rect.width;
       h = rect.height;
-      // the glow and bloom layers are blurred by CSS: they need fewer pixels
+      contentWidth = wrap.clientWidth || w;
       glowScale = weak ? 0.28 : lite ? 0.35 : 0.75;
       bloomScale = weak ? 0.28 : lite ? 0.35 : 0.6;
       silkScale = Math.min(weak ? 1.25 : lite ? 1.35 : 2.5, window.devicePixelRatio || 1);
-      bloomCanvas.width = Math.max(1, Math.round(w * bloomScale));
-      bloomCanvas.height = Math.max(1, Math.round(h * bloomScale));
-      glowCanvas.width = Math.max(1, Math.round(w * glowScale));
-      glowCanvas.height = Math.max(1, Math.round(h * glowScale));
-      silkCanvas.width = Math.max(1, Math.round(w * silkScale));
-      silkCanvas.height = Math.max(1, Math.round(h * silkScale));
+      sizeCanvas(glowCanvas, glowScale);
+      sizeCanvas(bloomCanvas, bloomScale);
+      sizeCanvas(silkCanvas, silkScale);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -319,10 +318,11 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       const [hi, main, deep] = palette;
       const b = bass * motion + pulse * 0.9;
 
-      const cx = w / 2;
+      // The canvas can also cover the sidebar on the left; center the ring over the controls.
+      const cx = w - contentWidth / 2;
       const heroH = Math.max(1, h - BLEED);
       const cy = BLEED + heroH / 2;
-      const R = Math.min(w * 0.4, heroH * 0.42, heroH > HERO_HEIGHT + 50 ? 440 : 280) * (1 + pulse * 0.07);
+      const R = Math.min(contentWidth * 0.4, heroH * 0.42, heroH > HERO_HEIGHT + 50 ? 440 : 280) * (1 + pulse * 0.07);
       const white: [number, number, number] = [255, 255, 255];
 
       // ---- glow layer (low-res, blurred by CSS): coloured light around a dark centre
@@ -364,8 +364,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       gc.fill();
       gc.globalCompositeOperation = "source-over";
 
-      // ---- neon layer (full resolution, sharp) + its bloom (blurred copy):
-      // fine tubes of light with a white-hot core, folded around the centre
+      // Fine neon tubes with a white-hot core and a blurred bloom layer.
       sc.setTransform(silkScale, 0, 0, silkScale, 0, 0);
       sc.clearRect(0, 0, w, h);
       bc.setTransform(bloomScale, 0, 0, bloomScale, 0, 0);
@@ -385,14 +384,12 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
         const fade = 1 - spread * 0.72;
         const thick = i % 3 === 0 ? 1.6 : 1; // a few stronger tubes among fine threads
 
-        // bloom: the tube's light spilling into the air
         strand(bc, ox, oy, r, t, b);
         bc.strokeStyle = lit(bc, cx, cy, t, (k) => blend(main, hi, k * 0.6), 0.75 * fade);
         bc.lineWidth = 10 * thick;
         bc.stroke();
 
         strand(sc, ox, oy, r, t, b);
-        // tube
         sc.strokeStyle = lit(sc, cx, cy, t, (k) => blend(main, hi, k), 0.9 * fade);
         sc.lineWidth = 3.2 * thick;
         sc.stroke();
@@ -408,7 +405,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
     }
 
     function canAnimate() {
-      return visible && isWindowVisible() && !scrolling && !live.current.covered;
+      return visible && isWindowVisible() && document.hasFocus() && !scrolling && !live.current.covered;
     }
 
     function syncAnimation() {
@@ -433,6 +430,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       }, 180);
     };
     const stopWatchingVisibility = onWindowVisibilityChange(syncAnimation);
+    window.addEventListener("focus", syncAnimation);
+    window.addEventListener("blur", syncAnimation);
     // Give touch scrolling the GPU while the page is moving. The hero resumes
     // its ambient animation shortly after the user's finger lifts.
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
@@ -444,9 +443,11 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
       io.disconnect();
       resumeRef.current = () => {};
       stopWatchingVisibility();
+      window.removeEventListener("focus", syncAnimation);
+      window.removeEventListener("blur", syncAnimation);
       window.removeEventListener("scroll", onScroll, true);
     };
-  }, []);
+  }, [weakDevice]);
 
   const launch = async (next: VibeSettings) => {
     const revision = ++launchRevision.current;
@@ -518,6 +519,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
   return (
     <section
       ref={wrapRef}
+      data-vibe-expanded={expanded ? "" : undefined}
       className="lane-vibe-hero relative w-full select-none overflow-visible"
       style={{
         height: expanded ? "100%" : HERO_HEIGHT,
@@ -532,8 +534,8 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
           className="pointer-events-none absolute"
           style={{
             top: -BLEED,
-            left: 0,
-            width: "100%",
+            left: "calc(-1 * var(--lane-vibe-bleed, 0px))",
+            width: "calc(100% + var(--lane-vibe-bleed, 0px))",
             height: expanded ? `calc(100% + ${BLEED}px)` : HERO_HEIGHT + BLEED,
             filter:
               layer === "glow"
@@ -554,6 +556,7 @@ export default function MyVibeHero({ liked, recent, trending, expanded = false, 
         aria-hidden="true"
         style={{
           top: -BLEED,
+          left: "calc(-1 * var(--lane-vibe-bleed, 0px))",
           height: expanded ? `calc(100% + ${BLEED}px)` : HERO_HEIGHT + BLEED,
           backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>")`,
           opacity: isMobile ? 0 : 0.07,

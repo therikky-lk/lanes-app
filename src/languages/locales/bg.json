@@ -54,6 +54,7 @@
     "all_releases": "Всички",
     "discography": "Дискография",
     "your_tracks": "Харесани песни: {count}",
+    "saved_tracks": "Вашите запазени песни",
     "open": "Отваряне на профила на изпълнителя",
     "verified": "Проверен"
   },
@@ -74,6 +75,7 @@
     "sec": "сек"
   },
   "common": {
+    "enterFullscreen": "Премини на цял екран",
     "show_more": "Покажи повече",
     "pause": "Пауза",
     "source": "Източник",
@@ -83,6 +85,8 @@
       "version": "Версия 0.1.0"
     },
     "sidebar": {
+      "expand": "Разгъни страничното меню",
+      "collapse": "Свий страничното меню",
       "home": "Начало",
       "search": "Търсене",
       "library": "Библиотека",
@@ -550,6 +554,7 @@
     "frame_title": "Проверка на сигурността на Cloudflare"
   },
   "player": {
+    "open_fullscreen_player": "Отвори плейъра на цял екран",
     "open_cover": "Отвори обложката",
     "repeat_off": "Повторете: изключено",
     "repeat_all": "Повторете: всички",
@@ -655,6 +660,8 @@
     "visual_quality_balanced": "Балансиран",
     "visual_quality_balanced_hint": "По-спокойно движение на фона, без замъгляване на текста",
     "visual_quality_lite": "Lite",
+    "visual_quality_blur": "Само замъглена обложка",
+    "visual_quality_blur_hint": "Статична замъглена обложка вместо анимиран фон",
     "visual_quality_lite_hint": "По-бавен жив фон с по-малко кадри",
     "instrumental_hint": "Тази песен е инструментална",
     "seek": "Превърти",

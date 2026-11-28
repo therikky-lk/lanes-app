@@ -120,6 +120,17 @@ export const useShortcutsStore = create<ShortcutsStoreState>()(
     }),
     {
       name: "liner_shortcuts_settings_v1",
+      version: 1,
+      migrate: (stored, version) => {
+        const settings = stored as Partial<ShortcutsSettings> | undefined;
+        if (version === 0 && settings?.mainApp?.search === "/") {
+          return {
+            ...settings,
+            mainApp: { ...settings.mainApp, search: DEFAULT_SHORTCUTS.mainApp.search },
+          };
+        }
+        return settings;
+      },
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         global: state.global,

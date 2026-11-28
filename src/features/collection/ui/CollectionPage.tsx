@@ -158,12 +158,13 @@ function CollectionContent() {
     () => search.matches ?? (data?.tracks ?? NO_TRACKS).map((track, index) => ({ track, index })),
     [search.matches, data?.tracks],
   );
+  const playableTracks = useMemo(() => (data?.tracks ?? NO_TRACKS).filter(track => !track.catalogUnavailable), [data?.tracks]);
 
   const handleSearchSubmit = useCallback(() => {
-    const first = search.matches?.[0];
+    const first = search.matches?.find(match => !match.track.catalogUnavailable);
     if (!data || !first) return;
-    playerEngine.playTrack(first.track, data.tracks, playbackContext, data.coverUrl);
-  }, [search.matches, data, playbackContext]);
+    playerEngine.playTrack(first.track, playableTracks, playbackContext, data.coverUrl);
+  }, [search.matches, data, playableTracks, playbackContext]);
 
   const { toast } = useToast();
   const [addedToQueue, setAddedToQueue] = useState(false);
@@ -179,29 +180,29 @@ function CollectionContent() {
   const isThisActive = isThisPlaying && (playerStatus === "playing" || playerStatus === "loading");
 
   const handlePlayAll = () => {
-    if (!data || data.tracks.length === 0) return;
+    if (!data || playableTracks.length === 0) return;
     if (isThisPlaying) {
       playerEngine.togglePlayPause();
       return;
     }
-    const [first] = data.tracks;
+    const [first] = playableTracks;
     playerEngine.clearQueue();
-    playerEngine.playTrack(first, data.tracks, playbackContext, data.coverUrl);
+    playerEngine.playTrack(first, playableTracks, playbackContext, data.coverUrl);
   };
 
   const handleShufflePlay = useCallback(() => {
-    if (!data || data.tracks.length === 0) return;
+    if (!data || playableTracks.length === 0) return;
     playerEngine.clearQueue();
     void playerEngine.playShuffled(
-      data.tracks,
+      playableTracks,
       playbackContext,
       data.coverUrl,
     );
-  }, [data, playbackContext]);
+  }, [data, playableTracks, playbackContext]);
 
   const handleAddToQueue = useCallback(() => {
-    if (!data || data.tracks.length === 0) return;
-    for (const track of data.tracks) {
+    if (!data || playableTracks.length === 0) return;
+    for (const track of playableTracks) {
       playerEngine.addToQueue(track);
     }
     toast(t("collection.added_to_queue"), "info", {
@@ -212,7 +213,7 @@ function CollectionContent() {
       setAddedToQueue(false);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [data, toast, t]);
+  }, [data, playableTracks, toast, t]);
 
   const handleSaveToLibrary = () => {
     if (!data || !id) return;
@@ -475,7 +476,7 @@ function CollectionContent() {
                       <Button
                         variant={hasCustomBg ? "glass-primary" : "primary"}
                         onClick={handlePlayAll}
-                        disabled={!data || data.tracks.length === 0}
+                         disabled={playableTracks.length === 0}
                         className="!h-[36px] w-auto shrink-0 !text-[13.5px] !font-[500] px-[16px] flex items-center justify-center gap-[6px] max-md:w-full"
                       >
                         {isThisActive ? <PauseFill size={16} /> : <PlayFill size={16} />}
@@ -486,7 +487,7 @@ function CollectionContent() {
                         <Button
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleAddToQueue}
-                          disabled={!data || data.tracks.length === 0}
+                           disabled={playableTracks.length === 0}
                           className={`!h-[36px] min-w-0 ${mixSidebar ? "flex-1" : "md:flex-none max-md:flex-1"} !text-[13px] !font-[500] px-[12px] flex items-center justify-center gap-[6px] ${
                             // optical centring: with three icon buttons beside it the label reads 1px right
                             !isDailyMix ? "[&>*]:-translate-x-px" : ""
@@ -524,7 +525,7 @@ function CollectionContent() {
                         <Button
                           variant={hasCustomBg ? "glass-action" : "outline"}
                           onClick={handleShufflePlay}
-                          disabled={!data || data.tracks.length === 0}
+                           disabled={playableTracks.length === 0}
                           className="!h-[36px] !w-[36px] shrink-0 !p-0 flex items-center justify-center text-text-primary"
                           title={t("common.shuffle")}
                         >
@@ -587,7 +588,7 @@ function CollectionContent() {
                   {visibleTracks.map(({ track, index }) => (
                     <SongCardWithMenu
                       key={track.id}
-                      id={track.id}
+                       id={track.catalogUnavailable ? undefined : track.id}
                       title={track.title}
                       artists={track.artists}
                       artistId={track.artistId}
@@ -608,10 +609,12 @@ function CollectionContent() {
                       explicit={track.explicit}
                       isCurrent={currentTrackId === track.id}
                       showLikeButton={isDailyMix}
-                      onPlay={() =>
+                       unavailableNote={track.catalogUnavailable ? t("player.track_unavailable_title") : undefined}
+                       hideMenuTrigger={track.catalogUnavailable}
+                       onPlay={track.catalogUnavailable ? undefined : () =>
                         playerEngine.playTrack(
                           track,
-                          data.tracks,
+                           playableTracks,
                           playbackContext,
                           data.coverUrl,
                         )

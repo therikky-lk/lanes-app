@@ -32,7 +32,9 @@ export function ScrollableRow({
     controller ?? internalController;
 
   const maskStyle = useMemo(() => {
-    const leftMask = showLeftShadow ? "transparent 0px, black 32px" : "black 0px";
+    const leftMask = showLeftShadow
+      ? "transparent 0px, black var(--lane-row-fade-end, 32px)"
+      : "black 0px";
     const rightMask = showRightShadow ? "black calc(100% - 32px), transparent 100%" : "black 100%";
     return {
       maskImage: `linear-gradient(to right, ${leftMask}, ${rightMask})`,
@@ -42,7 +44,7 @@ export function ScrollableRow({
   }, [showLeftShadow, showRightShadow]);
 
   return (
-    <div className="relative group min-w-0 max-w-full overflow-hidden">
+    <div data-scrollable-row className="relative group min-w-0 max-w-full overflow-hidden">
       <div
         ref={scrollRef}
         {...handlers}

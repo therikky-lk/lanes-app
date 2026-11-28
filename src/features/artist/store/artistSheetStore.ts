@@ -4,6 +4,7 @@ export interface ArtistSheetArtist {
   /** artist id, or the name when the track only knows the name */
   id: string;
   name: string;
+  sourceTrackId?: string;
 }
 
 interface ArtistSheetState {
