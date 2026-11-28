@@ -139,18 +139,49 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         };
         const input = document.querySelector('input[name="email"]');
         const secret = document.querySelector('input[name="password"]');
-        if (!input || !secret) return null;
+        if (!input?.form || !secret) return null;
+        const form = input.form;
+        let submitSeen = false;
+        form.addEventListener("submit", () => { submitSeen = true; }, {once: true});
+        const requests = [];
+        const originalFetch = window.fetch;
+        window.fetch = async function (resource, init) {
+            let endpoint;
+            try {
+                const path = new URL(resource instanceof Request ? resource.url : resource, location.href).pathname;
+                endpoint = {"/v1/auth/challenge": "challenge", "/v1/auth/login": "login", "/v1/me": "profile"}[path];
+            } catch {}
+            const entry = endpoint ? {endpoint, outcome: "pending"} : null;
+            if (entry) requests.push(entry);
+            try {
+                const response = await originalFetch.call(this, resource, init);
+                if (entry) { entry.outcome = "response"; entry.status = response.status; }
+                return response;
+            } catch (error) {
+                if (entry) entry.outcome = error?.name === "AbortError" ? "aborted" : "network failure";
+                throw error;
+            }
+        };
         const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
         for (const [field, value] of [[input, email], [secret, password]]) {
             setValue.call(field, value);
             field.dispatchEvent(new Event("input", {bubbles: true}));
         }
         await delay(150);
-        input.form?.requestSubmit();
+        form.requestSubmit();
         const frame = () => document.querySelector("[data-lane-frame]");
         const loginResult = () => document.querySelector('[role="dialog"] iframe, iframe[src*="turnstile"]');
-        await wait(() => frame() || loginResult(), 35000);
-        if (!frame()) return JSON.stringify({login: loginResult() ? "human verification required" : "did not open signed-in home"});
+        try {
+            await wait(() => frame() || loginResult() || form.dataset.authFailure, 60000);
+        } finally {
+            window.fetch = originalFetch;
+        }
+        const diagnostic = {submitSeen, requests, submitting: form.dataset.authSubmitting === "true",
+            failure: form.dataset.authFailure, httpStatus: form.dataset.authHttpStatus};
+        if (!frame()) return JSON.stringify({
+            login: loginResult() ? "human verification required" : form.dataset.authFailure ? "rejected" : "did not open signed-in home",
+            ...diagnostic
+        });
         document.activeElement?.blur();
         const results = {};
         const routes = [
@@ -175,7 +206,7 @@ final class LaneBridgeViewController: CAPBridgeViewController {
                 location.hash.split("?")[0] === "#" + path && frame()?.querySelector(selector), 4000);
         }
         const dock = document.querySelector(".lane-dock-glass");
-        return JSON.stringify({login: "passed", routes: results,
+        return JSON.stringify({login: "passed", ...diagnostic, routes: results,
             liquidGlassVisible: Array.from(document.querySelectorAll("button, [role=option]"))
                 .some(node => node.textContent.trim() === "Liquid Glass"),
             theme: document.documentElement.dataset.colorTheme,

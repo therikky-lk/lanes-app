@@ -43,6 +43,7 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loginFailure, setLoginFailure] = useState<{ category: string; status?: number } | null>(null);
   const [emailFlow, setEmailFlow] = useState<EmailCodePurpose | null>(null);
   const [resetAvailable, setResetAvailable] = useState(false);
   const [passwordReset, setPasswordReset] = useState(false);
@@ -137,12 +138,15 @@ export default function LoginPage() {
     if (submitting) return;
 
     if (mode === "login") {
+      setLoginFailure(null);
       const normalizedEmail = email.trim().toLowerCase();
       if (!EMAIL_RE.test(normalizedEmail)) {
+        setLoginFailure({ category: "invalid_email_format" });
         setError(t("login.errors.email_invalid"));
         return;
       }
       if (password.length < 8) {
+        setLoginFailure({ category: "password_too_short" });
         setError(t("login.errors.password_min_8"));
         return;
       }
@@ -152,6 +156,10 @@ export default function LoginPage() {
         await login(normalizedEmail, password);
         navigate("/", { replace: true });
       } catch (nextError) {
+        setLoginFailure({
+          category: getAuthErrorCode(nextError),
+          status: nextError instanceof ApiError ? nextError.status : undefined,
+        });
         setError(resolveErrorMessage(nextError));
       } finally {
         setSubmitting(false);
@@ -347,7 +355,14 @@ export default function LoginPage() {
               )}
 
               {passwordReset && <p role="status" className="mt-0 text-sm text-white/80">{t("login.email_code.reset_done")}</p>}
-              <form noValidate onSubmit={submit} className="flex flex-col">
+              <form
+                noValidate
+                onSubmit={submit}
+                className="flex flex-col"
+                data-auth-submitting={submitting}
+                data-auth-failure={mode === "login" ? loginFailure?.category : undefined}
+                data-auth-http-status={mode === "login" ? loginFailure?.status : undefined}
+              >
                 <AnimatePresence initial={false}>
                   {mode === "login" || registerStep === 1 ? (
                     <motion.div
