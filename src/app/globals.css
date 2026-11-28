@@ -501,7 +501,6 @@ button.apple-glass-action:hover,
               opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
               filter 0.32s ease,
               color 0.32s ease;
-  will-change: transform, opacity, filter;
   cursor: pointer;
 }
 
@@ -670,13 +669,6 @@ html[data-hover-reset] [data-window-controls] button:hover {
 :root[data-lane-platform="ios"] [data-dialog-container] > [role="dialog"] {
   min-width: 0;
   max-height: min(var(--lane-dialog-max-height, 85dvh), var(--lane-ios-dialog-height)) !important;
-}
-@media (prefers-reduced-transparency: no-preference) {
-  :root[data-lane-platform="ios"] [data-mobile-dock] .lane-dock-glass {
-    -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
-    backdrop-filter: blur(12px) saturate(1.2) !important;
-    background-color: color-mix(in srgb, var(--bg-primary) 76%, transparent) !important;
-  }
 }
 .lane-mobile { --lane-scroll-top-inset: var(--lane-safe-top, 0px); }
 .lane-mobile [data-page-scroller] {
@@ -1045,6 +1037,26 @@ html[data-hover-reset] [data-window-controls] button:hover {
   -webkit-backdrop-filter: none;
   background: color-mix(in srgb, var(--bg-primary, #0d0d10) 94%, transparent);
 }
+
+/* A WebKit version without the transparency media feature still gets blur. */
+:root[data-lane-platform="ios"] [data-mobile-dock] .lane-dock-glass {
+  -webkit-backdrop-filter: blur(18px) saturate(1.2) !important;
+  backdrop-filter: blur(18px) saturate(1.2) !important;
+  background-color: color-mix(in srgb, var(--bg-primary) 70%, transparent) !important;
+}
+:root[data-lane-platform="ios"] [data-mobile-dock] .lane-dock-glass--elevated {
+  background-color: color-mix(in srgb, var(--bg-elevated) 76%, transparent) !important;
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-lane-platform="ios"] [data-mobile-dock] .lane-dock-glass {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--bg-primary) !important;
+  }
+  :root[data-lane-platform="ios"] [data-mobile-dock] .lane-dock-glass--elevated {
+    background-color: var(--bg-elevated) !important;
+  }
+}
 .lane-low-end .apple-glass-pill,
 .lane-low-end .apple-glass-action,
 .lane-low-end .apple-glass-static,
@@ -1055,7 +1067,6 @@ html[data-hover-reset] [data-window-controls] button:hover {
 /* lyrics: no per-line blur filter (each line would be its own filtered layer) */
 .lane-low-end .lyric-line {
   filter: none !important;
-  will-change: transform, opacity;
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
               opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
               color 0.28s ease;
@@ -1077,6 +1088,46 @@ html[data-hover-reset] [data-window-controls] button:hover {
   content-visibility: auto;
   contain-intrinsic-size: auto 66px;
 }
+
+[data-sidebar-expanded] {
+  --lane-expanded-sidebar-glass: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--bg-primary) 50%, transparent),
+    color-mix(in srgb, var(--bg-primary) 28%, transparent)
+  );
+  background: var(--lane-expanded-sidebar-glass);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+/* Extend the clipping column itself behind the sidebar. Only the carousels
+   draw into that space; keep the rest of the page and mini player aligned. */
+[data-sidebar-bleed] {
+  margin-left: calc(-1 * var(--lane-row-bleed));
+}
+[data-sidebar-bleed] [data-lane-home] {
+  padding-left: var(--lane-row-bleed);
+}
+[data-sidebar-bleed] [data-vibe-expanded] {
+  --lane-vibe-bleed: var(--lane-row-bleed);
+}
+[data-sidebar-bleed] > [data-lane-mini-player] {
+  width: calc(100% - var(--lane-row-bleed));
+  margin-left: var(--lane-row-bleed);
+}
+[data-sidebar-bleed] [data-lane-home] .home-scroll-section {
+  overflow: visible;
+}
+[data-sidebar-bleed] [data-lane-home] .home-scroll-section > [data-scrollable-row] {
+  margin-left: calc(-1 * var(--lane-row-bleed));
+  max-width: none;
+}
+[data-sidebar-bleed] [data-lane-home] .home-scroll-section > [data-scrollable-row] > div {
+  --lane-row-fade-end: 18px;
+  padding-left: calc(var(--lane-row-inset, 32px) + var(--lane-row-bleed));
+  scroll-padding-left: var(--lane-row-bleed);
+}
+
 .lane-mobile .home-scroll-section {
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;

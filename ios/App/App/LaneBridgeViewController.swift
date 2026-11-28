@@ -100,25 +100,25 @@ final class LaneBridgeViewController: CAPBridgeViewController {
 
     private func checkGlass(attempts: Int) {
         guard attempts > 0 else { return }
-        // Use the bundled settings panel CSS against a repeatable backdrop.
+        // Exercise the dock's bundled CSS, including the low-end override.
         let probe = """
         if (!document.querySelector("#root button, #root a, #root input")) return null;
         document.activeElement?.blur();
         await new Promise(resolve => setTimeout(resolve, 400));
         window.scrollTo(0, 0);
         const root = document.documentElement;
-        root.classList.add("lane-mobile");
+        root.classList.add("lane-mobile", "lane-low-end");
         const stage = document.createElement("section");
         stage.style.cssText = "position:fixed;z-index:2147483647;inset:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);padding:22px 12px;color:white;background:#141414;font:15px system-ui;overflow:hidden";
         const background = "repeating-linear-gradient(0deg, #121212 0 4px, #ededed 4px 8px)";
         stage.innerHTML = '<h1 style="font-size:22px;margin:0 0 12px">Lane • Standard blur</h1>' +
           '<p style="margin:0 0 24px">iPhone Simulator · bundled app styles</p>' +
           '<div style="display:flex;gap:8px">' +
-          '<div style="flex:1;min-width:0"><p>App effect</p><div style="height:224px;padding:12px;background:' + background + '"><div class="lane-settings-shell" data-liquid-glass="field" style="height:200px"></div></div></div>' +
-          '<div style="flex:1;min-width:0"><p>Blur disabled</p><div style="height:224px;padding:12px;background:' + background + '"><div class="lane-settings-shell" data-liquid-glass="field" style="height:200px;backdrop-filter:none!important;-webkit-backdrop-filter:none!important"></div></div></div>' +
+          '<div style="flex:1;min-width:0"><p>Dock blur</p><div data-mobile-dock style="height:224px;padding:12px;background:' + background + '"><nav class="lane-dock-glass" style="height:200px"></nav></div></div>' +
+          '<div style="flex:1;min-width:0"><p>Blur disabled</p><div data-mobile-dock style="height:224px;padding:12px;background:' + background + '"><nav class="lane-dock-glass" style="height:200px;backdrop-filter:none!important;-webkit-backdrop-filter:none!important"></nav></div></div>' +
           '</div>';
         document.body.appendChild(stage);
-        const [glass, control] = stage.querySelectorAll("[data-liquid-glass]");
+        const [glass, control] = stage.querySelectorAll(".lane-dock-glass");
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const describe = (el) => {
             const {x, y, width, height} = el.getBoundingClientRect();
