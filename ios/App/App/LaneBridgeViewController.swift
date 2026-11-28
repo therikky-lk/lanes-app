@@ -67,7 +67,9 @@ final class LaneBridgeViewController: CAPBridgeViewController {
 final class LaneHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     let identifier = "LaneHttpPlugin"
     let jsName = "LaneHttp"
-    let pluginMethods = [CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise)]
+    let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise)
+    ]
 
     private let cookieSession = URLSession(configuration: .ephemeral)
     private let anonymousSession: URLSession = {
