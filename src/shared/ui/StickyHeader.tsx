@@ -53,12 +53,13 @@ export function StickyHeader({
 
   return (
     <div
-      className={`sticky top-0 z-20 w-full pointer-events-none select-none ${isMobile ? "lane-sticky-header" : ""} ${className}`}
+      className={`sticky z-20 w-full pointer-events-none select-none ${isMobile ? "lane-sticky-header" : "top-0"} ${className}`}
       data-frost={isMobile && isScrolled ? "true" : undefined}
       style={
         isMobile
           ? {
-              // Offset the scroller padding initially, then stick at the top of the viewport.
+              // Extend the bar above the scroller's safe-area padding.
+              top: "calc(-1 * var(--lane-safe-top, 0px))",
               marginTop: "calc(-1 * var(--lane-safe-top, 0px))",
               height: "calc(56px + var(--lane-safe-top, 0px))",
               marginBottom: "calc(-56px - var(--lane-safe-top, 0px))",
