@@ -16,11 +16,19 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         #if targetEnvironment(simulator)
         if ProcessInfo.processInfo.arguments.contains("--lane-smoke-test") {
             checkRenderer(attempts: 60)
+        } else if ProcessInfo.processInfo.arguments.contains("--lane-glass-test") {
+            checkGlass(attempts: 60)
         }
         #endif
     }
 
     #if targetEnvironment(simulator)
+    private func writeTestResult(_ text: String, named name: String) {
+        guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return }
+        try? FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
+        try? Data(text.utf8).write(to: caches.appendingPathComponent(name), options: .atomic)
+    }
+
     private func checkRenderer(attempts: Int) {
         guard attempts > 0 else { return }
         // This verifies the bundled React UI (not just a successful native launch)
@@ -48,14 +56,66 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         } finally { audio.pause(); URL.revokeObjectURL(url); }
         """
         webView?.callAsyncJavaScript(probe, arguments: [:], in: nil, in: .page) { [weak self] result in
-            if case .success(let value) = result, (value as? Bool) == true,
-               let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-                try? FileManager.default.createDirectory(at: caches, withIntermediateDirectories: true)
-                try? Data("Lane renderer and WebKit audio ready\n".utf8)
-                    .write(to: caches.appendingPathComponent("lane-smoke-ready"), options: .atomic)
+            if case .success(let value) = result, (value as? Bool) == true {
+                self?.writeTestResult("Lane renderer and WebKit audio ready\n", named: "lane-smoke-ready")
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     self?.checkRenderer(attempts: attempts - 1)
+                }
+            }
+        }
+    }
+
+    private func checkGlass(attempts: Int) {
+        guard attempts > 0 else { return }
+        // Use the bundled CSS and real lens generator, against a repeatable
+        // backdrop. No account, live requests, or credentials are needed.
+        let probe = """
+        if (!document.querySelector("#root button, #root a, #root input")) return null;
+        const root = document.documentElement;
+        root.classList.add("lane-mobile");
+        root.dataset.colorTheme = "liquid-glass";
+        const stage = document.createElement("section");
+        stage.style.cssText = "position:fixed;z-index:2147483647;inset:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);padding:22px 12px;color:white;background:#141414;font:15px system-ui";
+        const background = "repeating-linear-gradient(0deg, #121212 0 4px, #ededed 4px 8px)";
+        stage.innerHTML = '<h1 style="font-size:22px;margin:0 0 12px">Lane • Liquid Glass</h1>' +
+          '<p style="margin:0 0 24px">iPhone Simulator · bundled app styles</p>' +
+          '<div style="display:flex;gap:8px">' +
+          '<div style="flex:1;min-width:0"><p>App effect</p><div data-lane-swatch style="height:224px;padding:12px;background:' + background + '"><div data-liquid-glass="field" style="height:200px;border-radius:24px"></div></div></div>' +
+          '<div style="flex:1;min-width:0"><p>Blur disabled</p><div data-lane-swatch style="height:224px;padding:12px;background:' + background + '"><div data-liquid-glass="field" style="height:200px;border-radius:24px;backdrop-filter:none!important;-webkit-backdrop-filter:none!important"></div></div></div>' +
+          '</div>';
+        document.body.appendChild(stage);
+        const [glass, control] = stage.querySelectorAll("[data-liquid-glass]");
+        const svgSupport = CSS.supports("backdrop-filter", 'url("#lane-glass-lens")');
+        if (svgSupport) {
+            for (let i = 0; i < 20 && !glass.style.getPropertyValue("--lane-glass-filter"); i++) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const describe = (el) => {
+            const {x, y, width, height} = el.getBoundingClientRect();
+            const style = getComputedStyle(el);
+            return {x, y, width, height, filter: style.backdropFilter || style.webkitBackdropFilter};
+        };
+        return JSON.stringify({
+            userAgent: navigator.userAgent,
+            devicePixelRatio: window.devicePixelRatio,
+            viewport: {width: window.innerWidth, height: window.innerHeight},
+            reducedTransparency: matchMedia("(prefers-reduced-transparency: reduce)").matches,
+            blurSupported: CSS.supports("backdrop-filter", "blur(14px)"),
+            svgSupport,
+            lens: glass.style.getPropertyValue("--lane-glass-filter"),
+            glass: describe(glass),
+            control: describe(control)
+        }, null, 2);
+        """
+        webView?.callAsyncJavaScript(probe, arguments: [:], in: nil, in: .page) { [weak self] result in
+            if case .success(let value) = result, let report = value as? String {
+                self?.writeTestResult(report + "\n", named: "lane-glass-ready")
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self?.checkGlass(attempts: attempts - 1)
                 }
             }
         }

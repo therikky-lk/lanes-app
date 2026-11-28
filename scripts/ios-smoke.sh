@@ -20,7 +20,9 @@ device=$(xcrun simctl list devices available -j | node -e '
 ')
 
 cleanup() {
-  xcrun simctl io "$device" screenshot "$output/launch.png" || true
+  if [[ ! -f "$output/launch.png" ]]; then
+    xcrun simctl io "$device" screenshot "$output/launch.png" || true
+  fi
   xcrun simctl spawn "$device" log show --last 3m --predicate 'process == "App"' \
     > "$output/simulator.log" || true
 }
@@ -39,10 +41,28 @@ for ((attempt = 0; attempt < 60; attempt++)); do
   if [[ -f "$marker" ]]; then
     cp "$marker" "$output/result.txt"
     cat "$output/result.txt"
-    exit 0
+    xcrun simctl io "$device" screenshot "$output/launch.png"
+    break
   fi
   sleep 1
 done
 
-echo "The renderer/audio smoke check didn't finish" >&2
+if [[ ! -f "$marker" ]]; then
+  echo "The renderer/audio smoke check didn't finish" >&2
+  exit 1
+fi
+
+marker="$container/Library/Caches/lane-glass-ready"
+if [[ -f "$marker" ]]; then rm "$marker"; fi
+xcrun simctl launch --terminate-running-process "$device" "$bundle" --lane-glass-test
+for ((attempt = 0; attempt < 60; attempt++)); do
+  if [[ -f "$marker" ]]; then
+    cp "$marker" "$output/glass.json"
+    cat "$output/glass.json"
+    xcrun simctl io "$device" screenshot "$output/glass.png"
+    exit 0
+  fi
+  sleep 1
+done
+echo "The Liquid Glass check didn't finish" >&2
 exit 1
