@@ -19,6 +19,11 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         } else if ProcessInfo.processInfo.arguments.contains("--lane-glass-test") {
             checkGlass(attempts: 60)
         } else if ProcessInfo.processInfo.arguments.contains("--lane-account-test") {
+            if ProcessInfo.processInfo.arguments.contains("--lane-capture-gallery") {
+                webView?.configuration.userContentController.addScriptMessageHandler(
+                    self, contentWorld: .page, name: "laneQACapture"
+                )
+            }
             checkAccount(attempts: 60)
         }
         #endif
@@ -184,29 +189,119 @@ final class LaneBridgeViewController: CAPBridgeViewController {
         });
         document.activeElement?.blur();
         const results = {};
+        const captures = {};
+        const capture = async (name) => {
+            const handler = window.webkit?.messageHandlers?.laneQACapture;
+            if (!handler) return;
+            await delay(280);
+            try { captures[name] = await handler.postMessage(name) === true; }
+            catch { captures[name] = false; }
+        };
         const routes = [
-            ["/", "[data-page-scroller]"],
-            ["/search", 'form[role="search"]'],
-            ["/library", "[data-page-scroller]"],
-            ["/library/cached", "[data-page-scroller]"],
-            ["/local", "[data-page-scroller]"],
-            ["/recent", "[data-page-scroller]"],
-            ["/settings", ".lane-settings-page"],
-            ["/settings/Appearance", ".lane-settings-page"],
-            ["/settings/Profile", ".lane-settings-page"],
-            ["/settings/Playback", ".lane-settings-page"],
-            ["/settings/Audio", ".lane-settings-page"]
+            ["/", "[data-page-scroller]", "01-home"],
+            ["/search", 'form[role="search"]', "02-search"],
+            ["/library", "[data-page-scroller]", "03-library"],
+            ["/library/cached", "[data-page-scroller]", "04-cached"],
+            ["/local", "[data-page-scroller]", "05-local"],
+            ["/recent", "[data-page-scroller]", "06-recent"],
+            ["/settings", ".lane-settings-page", "07-settings"],
+            ...["Appearance", "Profile", "Playback", "Audio", "Storage", "Connect", "Youtube", "YandexMusic", "Spotify", "About"]
+                .map((tab, index) => ["/settings/" + tab, ".lane-settings-page", (8 + index).toString().padStart(2, "0") + "-settings-" + tab.toLowerCase()])
         ];
-        for (const [path, selector] of routes) {
+        const navigate = async (path) => {
             const link = document.querySelector(`nav a[href="#${path}"]`);
             if (link) link.click();
             else location.hash = path;
             await delay(450);
+        };
+        for (const [path, selector, name] of routes) {
+            await navigate(path);
             results[path] = await wait(() =>
                 location.hash.split("?")[0] === "#" + path && frame()?.querySelector(selector), 4000);
+            if (results[path]) await capture(name);
+        }
+        const extras = {};
+        if (window.webkit?.messageHandlers?.laneQACapture) {
+            const interact = async (name, trigger, expected) => {
+                const button = typeof trigger === "string" ? document.querySelector(trigger) : trigger();
+                if (!button) { extras[name] = "trigger unavailable"; return false; }
+                button.click();
+                if (!await wait(() => document.querySelector(expected), 2500)) {
+                    extras[name] = "surface not visible"; return false;
+                }
+                await capture(name);
+                extras[name] = "opened";
+                return true;
+            };
+            const byText = (container, text) => () => Array.from(document.querySelectorAll(container + " button"))
+                .find(button => text.test(button.textContent.trim()));
+            const selectButtons = () => [...document.querySelectorAll(".lane-settings-page button[aria-haspopup=listbox]")];
+            await navigate("/settings/Appearance");
+            if (await interact("32-language-options", () => selectButtons()[0], '[role="listbox"]')) selectButtons()[0]?.click();
+            if (await interact("33-theme-options", () => selectButtons()[1], '[role="listbox"]')) selectButtons()[1]?.click();
+            await navigate("/settings/Profile");
+            await interact("34-edit-profile", byText(".lane-settings-page", /^edit(?: profile)?$/i), ".lane-profile-dialog");
+            const libraryHeader = ".lane-library-mobile-header";
+            await navigate("/library");
+            await interact("20-library-view-menu", libraryHeader + ' button[aria-label="More"]', "[data-dropdown-menu]");
+            await navigate("/search");
+            await navigate("/library");
+            if (await interact("21-library-add-menu", libraryHeader + " button:first-of-type", "[data-dropdown-menu]")) {
+                await interact("22-create-playlist", byText("[data-dropdown-menu]", /create|new playlist/i), '[role="dialog"], [aria-label="Choose cover"]');
+                const close = document.querySelector('[role="dialog"] button[aria-label="Close"], button[aria-label="Close"]');
+                close?.click();
+            }
+            await navigate("/search");
+            await navigate("/library");
+            const add = document.querySelector(libraryHeader + " button:first-of-type");
+            add?.click();
+            if (await wait(() => document.querySelector("[data-dropdown-menu]"), 1500)) {
+                await interact("35-import-playlist", byText("[data-dropdown-menu]", /import/i), '[role="dialog"]');
+                document.querySelector('[role="dialog"] button[aria-label="Close"]')?.click();
+            }
+            await navigate("/search");
+            const search = document.querySelector('input[type="search"]');
+            if (search?.form) {
+                setValue.call(search, "Daft Punk");
+                search.dispatchEvent(new Event("input", {bubbles: true}));
+                await delay(700);
+                search.form.requestSubmit();
+                await delay(1600);
+                await capture("23-search-results");
+                extras["23-search-results"] = "query submitted";
+                byText('[aria-label="Search"]', /^tracks$|^songs$/i)()?.click();
+                await wait(() => document.querySelector("[data-reorder-item]"), 6000);
+                if (await interact("30-track-actions", '[data-reorder-item] button[aria-label="More options"]', ".lane-track-actions-sheet, [data-dropdown-menu]")) {
+                    document.querySelector('.lane-track-actions-sheet button[aria-label="Close"]')?.click();
+                }
+                const track = document.querySelector("[data-reorder-item]");
+                if (track) {
+                    track.click();
+                    await delay(650);
+                    await capture("31-mini-player");
+                }
+            }
+            await navigate("/player");
+            if (document.querySelector("[data-visual-quality]")) {
+                await capture("24-player");
+                const playerActions = [
+                    ["25-player-queue", "Queue", '[aria-label="Close"], [role="dialog"]'],
+                    ["26-player-lyrics", "Lyrics", "[data-lyrics-mode]"],
+                    ["27-player-comments", "Comments", '[role="dialog"], [data-no-sheet-drag]'],
+                    ["28-player-equalizer", "Equalizer", '[role="dialog"], [data-no-sheet-drag]'],
+                    ["29-player-speed", "Speed", '[role="dialog"], [data-no-sheet-drag]']
+                ];
+                for (const [name, label, expected] of playerActions) {
+                    await interact(name, 'button[aria-label="' + label + '"]', expected);
+                    await navigate("/");
+                    await navigate("/player");
+                }
+            } else {
+                extras["24-player"] = "fullscreen player unavailable with no selected track";
+            }
         }
         const dock = document.querySelector(".lane-dock-glass");
-        return JSON.stringify({login: "passed", ...diagnostic, routes: results,
+        return JSON.stringify({login: "passed", ...diagnostic, routes: results, captures, extras,
             liquidGlassVisible: Array.from(document.querySelectorAll("button, [role=option]"))
                 .some(node => node.textContent.trim() === "Liquid Glass"),
             theme: document.documentElement.dataset.colorTheme,
@@ -229,6 +324,37 @@ final class LaneBridgeViewController: CAPBridgeViewController {
     }
     #endif
 }
+
+#if targetEnvironment(simulator)
+extension LaneBridgeViewController: WKScriptMessageHandlerWithReply {
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage,
+        replyHandler: @escaping (Any?, String?) -> Void
+    ) {
+        guard message.name == "laneQACapture", message.frameInfo.isMainFrame,
+              let name = message.body as? String,
+              name.range(of: "^[0-9]{2}-[a-z0-9-]{1,45}$", options: .regularExpression) != nil,
+              let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            replyHandler(false, nil)
+            return
+        }
+        let ready = caches.appendingPathComponent("lane-qa-capture-ack")
+        try? FileManager.default.removeItem(at: ready)
+        writeTestResult(name, named: "lane-qa-capture")
+        func waitForCapture(_ attempts: Int) {
+            if let result = try? String(contentsOf: ready, encoding: .utf8), result == name {
+                replyHandler(true, nil)
+            } else if attempts > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { waitForCapture(attempts - 1) }
+            } else {
+                replyHandler(false, nil)
+            }
+        }
+        waitForCapture(100)
+    }
+}
+#endif
 
 @objc(LaneHttpPlugin)
 final class LaneHttpPlugin: CAPPlugin, CAPBridgedPlugin {
